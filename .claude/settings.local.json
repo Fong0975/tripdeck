@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:magicui.design)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm create:*)",
+      "Bash(npx create-vite@latest . --template react-ts)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const {zhTW} = require\\(''date-fns/locale''\\); console.log\\(''locale ok'', typeof zhTW\\)\")",
+      "Bash(node -e \"const dk = require\\(''./node_modules/@dnd-kit/sortable''\\); console.log\\(Object.keys\\(dk\\).join\\('', ''\\)\\)\")",
+      "Bash(node -e \"const dk = require\\(''./node_modules/@dnd-kit/core''\\); console.log\\(''PointerSensor:'', typeof dk.PointerSensor, ''DragOverlay:'', typeof dk.DragOverlay\\)\")",
+      "Bash(npx eslint:*)",
+      "Bash(npm run:*)",
+      "Bash(ls -la D:Githubword-flashcardweb/*.*)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(file \"D:\\\\Github\\\\word-flashcard\\\\web/public/\"*)"
+    ]
+  }
+}

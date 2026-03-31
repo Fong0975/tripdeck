@@ -1,0 +1,90 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'src/**/*.json'
+      - 'src/**/*.css'
+      - '.eslintrc.json'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - 'tailwind.config.js'
+      - 'postcss.config.js'
+      - 'tsconfig.json'
+      - 'tsconfig.app.json'
+      - '!package.json'
+      - '!package-lock.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'src/**/*.json'
+      - 'src/**/*.css'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.eslintrc.json'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - 'tailwind.config.js'
+      - 'postcss.config.js'
+      - 'tsconfig.json'
+      - 'tsconfig.app.json'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Run Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set Pending Status
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+          -d '{
+            "state": "pending",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "description": "Code quality check in progress...",
+            "context": "Code Quality (Manual)"
+          }'
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint (includes Prettier and Tailwind CSS checks)
+        run: npm run lint:check
+
+      - name: Run Prettier format check (CSS and JSON)
+        run: npm run format:check
+
+      - name: Update Final Status
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          STATE="${{ job.status == 'success' && 'success' || 'failure' }}"
+
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} \
+          -d "{
+            \"state\": \"$STATE\",
+            \"target_url\": \"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+            \"description\": \"Code quality check completed\",
+            \"context\": \"Code Quality (Manual)\"
+          }"

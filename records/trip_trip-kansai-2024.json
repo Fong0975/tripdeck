@@ -1,0 +1,149 @@
+{
+  "tripId": "trip-kansai-2024",
+  "days": [
+    {
+      "day": 1,
+      "date": "2024-05-10",
+      "attractions": [
+        {
+          "id": "atk-fushimi",
+          "name": "伏見稻荷大社",
+          "googleMapUrl": "https://maps.google.com/?q=伏見稲荷大社",
+          "notes": "全日本約 3 萬座稻荷神社的總本社，千本鳥居為必拍。建議早上 6-7 點前往人少，全程健行約 2-3 小時",
+          "nearbyAttractions": "伏見夢百衆（日本酒體驗）、月桂冠大倉記念館",
+          "referenceWebsites": ["https://inari.jp/"]
+        },
+        {
+          "id": "atk-kiyomizu",
+          "name": "清水寺",
+          "googleMapUrl": "https://maps.google.com/?q=清水寺",
+          "notes": "門票 ¥500，清水舞台懸空木造建築為世界遺產，音羽瀑布三道水各司其職（學業、戀愛、長壽）",
+          "nearbyAttractions": "二年坂、三年坂、祇園",
+          "referenceWebsites": ["https://www.kiyomizudera.or.jp/"]
+        },
+        {
+          "id": "atk-gion",
+          "name": "祇園花見小路",
+          "googleMapUrl": "https://maps.google.com/?q=祇園花見小路",
+          "notes": "保留江戶時代風情的茶屋街，傍晚有機會遇見舞妓。夜間散步氣氛絕佳",
+          "nearbyAttractions": "白川（夜間點燈）、建仁寺",
+          "referenceWebsites": []
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-fushimi-kiyomizu",
+          "fromAttractionId": "atk-fushimi",
+          "toAttractionId": "atk-kiyomizu",
+          "transportMode": "transit",
+          "duration": "約 40 分鐘",
+          "route": "JR 稻荷站 → 京都站 → 市巴士 206 號 → 清水道站"
+        },
+        {
+          "id": "conn-kiyomizu-gion",
+          "fromAttractionId": "atk-kiyomizu",
+          "toAttractionId": "atk-gion",
+          "transportMode": "walk",
+          "duration": "約 15 分鐘",
+          "route": "沿二年坂、三年坂石板路步行下山"
+        }
+      ]
+    },
+    {
+      "day": 2,
+      "date": "2024-05-11",
+      "attractions": [
+        {
+          "id": "atk-dotonbori",
+          "name": "道頓堀",
+          "googleMapUrl": "https://maps.google.com/?q=道頓堀",
+          "notes": "大阪必訪美食街！章魚燒、大阪燒、串炸等在此一次滿足。格力高跑跑人招牌必拍",
+          "nearbyAttractions": "心齋橋筋商店街、法善寺橫丁",
+          "referenceWebsites": []
+        },
+        {
+          "id": "atk-osaka-castle",
+          "name": "大阪城",
+          "googleMapUrl": "https://maps.google.com/?q=大阪城",
+          "notes": "天守閣入場費 ¥600，8 樓展望台可俯瞰大阪城公園全景。周遭公園春天賞花、夏天音樂祭",
+          "nearbyAttractions": "大阪城天守閣、西之丸庭園",
+          "referenceWebsites": ["https://www.osakacastle.net/"]
+        },
+        {
+          "id": "atk-namba",
+          "name": "難波Parks購物中心",
+          "googleMapUrl": "https://maps.google.com/?q=なんばパークス",
+          "notes": "屋頂空中花園免費入場，層層疊疊的綠意花園很適合拍照。B2F 美食街品項豐富",
+          "nearbyAttractions": "南海難波站、黑門市場（廚師之胃）",
+          "referenceWebsites": ["https://www.nambaparks.com/"]
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-dotonbori-osaka-castle",
+          "fromAttractionId": "atk-dotonbori",
+          "toAttractionId": "atk-osaka-castle",
+          "transportMode": "transit",
+          "duration": "約 20 分鐘",
+          "route": "大阪Metro千日前線 難波站 → 谷町九丁目站"
+        },
+        {
+          "id": "conn-osaka-castle-namba",
+          "fromAttractionId": "atk-osaka-castle",
+          "toAttractionId": "atk-namba",
+          "transportMode": "transit",
+          "duration": "約 25 分鐘",
+          "route": "大阪Metro谷町線 天滿橋站 → 谷町九丁目站 → 千日前線 → 難波站"
+        }
+      ]
+    },
+    {
+      "day": 3,
+      "date": "2024-05-12",
+      "attractions": [
+        {
+          "id": "atk-kitano",
+          "name": "北野異人館街",
+          "googleMapUrl": "https://maps.google.com/?q=北野異人館",
+          "notes": "明治時代外國人住宅群，英式、法式、德式洋館散落坡道間。風見雞館（¥500）、萌黃館必參觀",
+          "nearbyAttractions": "北野天滿神社、三宮中心街",
+          "referenceWebsites": ["https://www.ijinkan.net/"]
+        },
+        {
+          "id": "atk-kobe-port",
+          "name": "神戶港（美利堅公園）",
+          "googleMapUrl": "https://maps.google.com/?q=メリケンパーク",
+          "notes": "神戶 Port Tower（改裝中）、BE KOBE 地標裝置必拍。港邊夜景浪漫，神戶牛排館林立",
+          "nearbyAttractions": "Harborland、南京町（中華街）",
+          "referenceWebsites": []
+        },
+        {
+          "id": "atk-kyuryuchi",
+          "name": "舊居留地",
+          "googleMapUrl": "https://maps.google.com/?q=神戸旧居留地",
+          "notes": "19 世紀外國人居留地，保留大量新古典主義洋館，現為精品商店與咖啡廳。「神戶珈琲」文化起源地",
+          "nearbyAttractions": "大丸百貨神戶店、元町商店街",
+          "referenceWebsites": []
+        }
+      ],
+      "connections": [
+        {
+          "id": "conn-kitano-port",
+          "fromAttractionId": "atk-kitano",
+          "toAttractionId": "atk-kobe-port",
+          "transportMode": "transit",
+          "duration": "約 20 分鐘",
+          "route": "北野坂步行至三宮站，搭乘神戶市巴士 → 美利堅公園前"
+        },
+        {
+          "id": "conn-port-kyuryuchi",
+          "fromAttractionId": "atk-kobe-port",
+          "toAttractionId": "atk-kyuryuchi",
+          "transportMode": "walk",
+          "duration": "約 10 分鐘",
+          "route": "沿海岸通步行向東即達"
+        }
+      ]
+    }
+  ]
+}

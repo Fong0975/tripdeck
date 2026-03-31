@@ -1,0 +1,21 @@
+{
+  "short_name": "Tripdeck",
+  "name": "Tripdeck — 旅遊行程規劃",
+  "description": "規劃你的旅程，一天一天排好行程",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0ea5e9",
+  "background_color": "#ffffff"
+}
