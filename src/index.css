@@ -5,32 +5,32 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 98%;
-    --card-foreground: 222 47% 11%;
-    --border: 214 32% 91%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --primary: 199 89% 48%;
+    --foreground: 213 60% 12%;
+    --card: 213 30% 98%;
+    --card-foreground: 213 60% 12%;
+    --border: 213 30% 88%;
+    --muted: 213 25% 94%;
+    --muted-foreground: 213 20% 48%;
+    --primary: 213 95% 24%;
     --primary-foreground: 0 0% 100%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 213 40% 92%;
+    --accent-foreground: 213 60% 12%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --border: 217 33% 18%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --primary: 199 89% 48%;
+    --background: 220 12% 7%;
+    --foreground: 213 15% 92%;
+    --card: 220 12% 11%;
+    --card-foreground: 213 15% 92%;
+    --border: 220 12% 18%;
+    --muted: 220 12% 15%;
+    --muted-foreground: 213 10% 58%;
+    --primary: 213 80% 52%;
     --primary-foreground: 0 0% 100%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 12% 15%;
+    --accent-foreground: 213 15% 92%;
     --destructive: 0 63% 51%;
     --destructive-foreground: 0 0% 100%;
   }
@@ -54,7 +54,7 @@
       90deg,
       hsl(var(--foreground)) 0%,
       hsl(var(--primary)) 40%,
-      hsl(199 89% 70%) 60%,
+      hsl(213 80% 60%) 60%,
       hsl(var(--foreground)) 100%
     );
     background-size: 200% auto;
