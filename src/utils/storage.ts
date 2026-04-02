@@ -2,53 +2,122 @@ import { differenceInCalendarDays, parseISO, format } from 'date-fns';
 
 import type { Trip, TripContent, DayPlan } from '@/types';
 
-const TRIPS_KEY = 'tripdeck_trips';
-const tripContentKey = (id: string) => `tripdeck_trip_${id}`;
+const SESSION_TRIPS_KEY = 'tripdeck_session_trips';
+const sessionTripKey = (id: string) => `tripdeck_session_trip_${id}`;
 
-// --- Trips list ---
+// --- Low-level file API ---
 
-export function getTrips(): Trip[] {
-  try {
-    const raw = localStorage.getItem(TRIPS_KEY);
-    return raw ? (JSON.parse(raw) as Trip[]) : [];
-  } catch {
+async function fetchTripsFromFile(): Promise<Trip[]> {
+  const res = await fetch('/api/records/trips');
+  if (!res.ok) {
     return [];
   }
+  return res.json() as Promise<Trip[]>;
 }
 
-export function saveTrips(trips: Trip[]): void {
-  localStorage.setItem(TRIPS_KEY, JSON.stringify(trips));
+async function writeTripsToFile(trips: Trip[]): Promise<void> {
+  await fetch('/api/records/trips', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(trips),
+  });
 }
 
-export function addTrip(trip: Trip): void {
-  const trips = getTrips();
-  trips.push(trip);
-  saveTrips(trips);
-}
-
-export function deleteTrip(id: string): void {
-  const trips = getTrips().filter(t => t.id !== id);
-  saveTrips(trips);
-  localStorage.removeItem(tripContentKey(id));
-}
-
-// --- Trip content ---
-
-export function getTripContent(tripId: string): TripContent | null {
-  try {
-    const raw = localStorage.getItem(tripContentKey(tripId));
-    return raw ? (JSON.parse(raw) as TripContent) : null;
-  } catch {
+async function fetchTripContentFromFile(
+  id: string,
+): Promise<TripContent | null> {
+  const res = await fetch(`/api/records/trip/${id}`);
+  if (!res.ok) {
     return null;
   }
+  return res.json() as Promise<TripContent>;
 }
 
-export function saveTripContent(content: TripContent): void {
-  localStorage.setItem(tripContentKey(content.tripId), JSON.stringify(content));
+async function writeTripContentToFile(content: TripContent): Promise<void> {
+  await fetch(`/api/records/trip/${content.tripId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(content),
+  });
+}
+
+async function deleteTripContentFile(id: string): Promise<void> {
+  await fetch(`/api/records/trip/${id}`, { method: 'DELETE' });
+}
+
+// --- Session cache helpers ---
+
+function getSessionTrips(): Trip[] | null {
+  const raw = sessionStorage.getItem(SESSION_TRIPS_KEY);
+  return raw ? (JSON.parse(raw) as Trip[]) : null;
+}
+
+function setSessionTrips(trips: Trip[]): void {
+  sessionStorage.setItem(SESSION_TRIPS_KEY, JSON.stringify(trips));
+}
+
+function getSessionTripContent(id: string): TripContent | null {
+  const raw = sessionStorage.getItem(sessionTripKey(id));
+  return raw ? (JSON.parse(raw) as TripContent) : null;
+}
+
+function setSessionTripContent(content: TripContent): void {
+  sessionStorage.setItem(
+    sessionTripKey(content.tripId),
+    JSON.stringify(content),
+  );
+}
+
+// --- Public API ---
+
+export async function getTrips(): Promise<Trip[]> {
+  const cached = getSessionTrips();
+  if (cached) {
+    return cached;
+  }
+  const trips = await fetchTripsFromFile();
+  setSessionTrips(trips);
+  return trips;
+}
+
+export async function saveTrips(trips: Trip[]): Promise<void> {
+  setSessionTrips(trips);
+  await writeTripsToFile(trips);
+}
+
+export async function addTrip(trip: Trip): Promise<void> {
+  const trips = await getTrips();
+  await saveTrips([...trips, trip]);
+}
+
+export async function deleteTrip(id: string): Promise<void> {
+  const trips = (await getTrips()).filter(t => t.id !== id);
+  await Promise.all([saveTrips(trips), deleteTripContentFile(id)]);
+  sessionStorage.removeItem(sessionTripKey(id));
+}
+
+export async function getTripContent(
+  tripId: string,
+): Promise<TripContent | null> {
+  const cached = getSessionTripContent(tripId);
+  if (cached) {
+    return cached;
+  }
+  const content = await fetchTripContentFromFile(tripId);
+  if (content) {
+    setSessionTripContent(content);
+  }
+  return content;
+}
+
+export async function saveTripContent(content: TripContent): Promise<void> {
+  setSessionTripContent(content);
+  await writeTripContentToFile(content);
 }
 
 /**
- * Initializes trip content with empty day plans based on trip date range.
+ * Creates an empty TripContent for the given trip based on its date range.
+ * Does not persist — call saveTripContent to write it.
  */
 export function initTripContent(trip: Trip): TripContent {
   const start = parseISO(trip.startDate);
@@ -62,33 +131,25 @@ export function initTripContent(trip: Trip): TripContent {
     connections: [],
   }));
 
-  const content: TripContent = { tripId: trip.id, days };
-  saveTripContent(content);
-  return content;
+  return { tripId: trip.id, days };
 }
 
-export function getOrInitTripContent(trip: Trip): TripContent {
-  return getTripContent(trip.id) ?? initTripContent(trip);
-}
-
-/**
- * Fetches seed JSON files from /records/ and populates localStorage.
- * Only runs when no trips exist yet.
- */
-export async function seedFromFiles(): Promise<void> {
-  if (getTrips().length > 0) {
-    return;
+export async function getOrInitTripContent(trip: Trip): Promise<TripContent> {
+  const content = await getTripContent(trip.id);
+  if (content) {
+    return content;
   }
+  const newContent = initTripContent(trip);
+  await saveTripContent(newContent);
+  return newContent;
+}
 
-  const tripsRes = await fetch('/records/trips.json');
-  const trips: Trip[] = await tripsRes.json();
-  saveTrips(trips);
+export async function forceReloadTrips(): Promise<Trip[]> {
+  sessionStorage.removeItem(SESSION_TRIPS_KEY);
+  return getTrips();
+}
 
-  await Promise.all(
-    trips.map(async trip => {
-      const res = await fetch(`/records/trip_${trip.id}.json`);
-      const content: TripContent = await res.json();
-      saveTripContent(content);
-    }),
-  );
+export async function forceReloadTripContent(trip: Trip): Promise<TripContent> {
+  sessionStorage.removeItem(sessionTripKey(trip.id));
+  return getOrInitTripContent(trip);
 }

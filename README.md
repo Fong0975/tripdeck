@@ -7,14 +7,15 @@ A travel itinerary planning app built with React. Organize your trips day by day
 ```
 tripdeck/
 ├── public/               # Static assets (favicon, icons, PWA manifest)
-│   └── records/          # Seed data (JSON files loaded on first launch)
+│   └── records/          # Sample data — copy these files to records/ to get started
+├── records/              # Local data directory (git-ignored, created automatically)
 ├── src/
 │   ├── components/       # Reusable UI components
 │   ├── context/          # React context (theme)
 │   ├── hooks/            # Custom React hooks
 │   ├── pages/            # Route-level page components
 │   ├── types/            # TypeScript type definitions
-│   └── utils/            # Storage utilities (localStorage CRUD)
+│   └── utils/            # Storage utilities (file-based CRUD with session cache)
 └── .github/workflows/    # CI: lint check, automated version bumping
 ```
 
@@ -26,7 +27,7 @@ tripdeck/
 - **Attraction Cards** — Add, edit, and delete attractions with notes, Google Maps links, and reference websites
 - **Travel Connections** — Define transport mode and duration between two consecutive attractions
 - **Light / Dark Mode** — Follows system preference on first load; manually toggleable via the navbar
-- **Persistent Storage** — All data is saved to `localStorage`; sample trips are seeded automatically on first launch
+- **File-Based Storage** — All data is read from and written to JSON files in `records/`; changes are cached in sessionStorage for the current session
 - **PWA Support** — Installable on iOS and Android with full-screen standalone mode
 
 ## Getting Started
@@ -37,7 +38,19 @@ tripdeck/
 npm install
 ```
 
-### 2. Start Development Server
+### 2. Set Up Sample Data (Optional)
+
+To start with sample trips, copy the provided sample files into the `records/` directory:
+
+```bash
+cp public/records/trips.json records/trips.json
+cp public/records/trip_trip-tokyo-2024.json records/trip_trip-tokyo-2024.json
+cp public/records/trip_trip-kansai-2024.json records/trip_trip-kansai-2024.json
+```
+
+The `records/` directory is git-ignored and will be created automatically when the dev server starts. If it is empty, the app starts with no trips.
+
+### 3. Start Development Server
 
 ```bash
 npm run dev
@@ -45,7 +58,9 @@ npm run dev
 
 The app will be available at `http://localhost:5173`.
 
-### 3. Build for Production
+> **Note:** The app requires the Vite dev server to be running. File read/write is handled by a Vite plugin that exposes a local `/api/records` endpoint — opening `index.html` directly will not work.
+
+### 4. Build for Production
 
 ```bash
 npm run build
@@ -53,7 +68,7 @@ npm run build
 
 The output will be in the `dist/` directory.
 
-### 4. Preview Production Build
+### 5. Preview Production Build
 
 ```bash
 npm run preview

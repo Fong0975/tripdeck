@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import type { Trip } from '@/types';
-import { addTrip, initTripContent } from '@/utils/storage';
+import { addTrip, initTripContent, saveTripContent } from '@/utils/storage';
 
 interface Props {
   onClose: () => void;
@@ -27,7 +27,7 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       return setError('請輸入旅程名稱');
@@ -49,8 +49,8 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
       createdAt: new Date().toISOString(),
     };
 
-    addTrip(trip);
-    initTripContent(trip);
+    await addTrip(trip);
+    await saveTripContent(initTripContent(trip));
     onAdded(trip);
   };
 
