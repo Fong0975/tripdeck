@@ -53,7 +53,25 @@ Run from the workspace root — npm workspaces installs all packages in one step
 npm install
 ```
 
-### 2. Set Up Sample Data (Optional)
+### 2. Configure Database Connection
+
+Copy `.env.example` to `.env` at the workspace root and fill in your MySQL credentials:
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=tripdeck
+```
+
+The database and all tables are created automatically on first server start.
+
+### 3. Set Up Sample Data (Optional)
 
 To start with sample trips and checklists, copy the provided sample files into `records/`:
 
@@ -68,7 +86,7 @@ cp client/public/records/checklist_trip-kansai-2024.json records/checklist_trip-
 
 The `records/` directory is git-ignored and auto-created on first run. Without sample data the app starts empty.
 
-### 3. Start Development Servers
+### 4. Start Development Servers
 
 Run both the frontend and backend concurrently from the workspace root:
 
@@ -88,7 +106,7 @@ npm run dev -w client   # frontend only
 npm run dev -w server   # backend only
 ```
 
-### 4. Build for Production
+### 5. Build for Production
 
 ```bash
 npm run build
@@ -98,7 +116,7 @@ Outputs:
 - `client/dist/` — static frontend bundle
 - `server/dist/` — compiled Node.js server
 
-### 5. Start Production Server
+### 6. Start Production Server
 
 ```bash
 npm run start
