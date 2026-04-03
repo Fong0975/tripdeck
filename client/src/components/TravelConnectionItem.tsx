@@ -30,15 +30,15 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
     <div className='group my-1 flex items-center gap-2 px-3'>
       {/* Vertical line */}
       <div className='flex w-6 shrink-0 flex-col items-center'>
-        <div className='h-3 w-px bg-border' />
-        <div className='size-1.5 rounded-full bg-primary/50' />
-        <div className='h-3 w-px bg-border' />
+        <div className='bg-border h-3 w-px' />
+        <div className='bg-primary/50 size-1.5 rounded-full' />
+        <div className='bg-border h-3 w-px' />
       </div>
 
       {/* Connection info */}
       <div
         onClick={() => onEdit(connection)}
-        className='flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-transparent bg-muted/50 px-3 py-1.5 text-xs transition-all hover:border-border hover:bg-muted'
+        className='bg-muted/50 hover:border-border hover:bg-muted flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-transparent px-3 py-1.5 text-xs transition-all'
       >
         <div className='flex items-center gap-1.5'>
           <span>{TRANSPORT_ICONS[connection.transportMode]}</span>
@@ -56,7 +56,7 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
         </div>
         <Pencil
           size={11}
-          className='shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100'
+          className='text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100'
         />
       </div>
     </div>

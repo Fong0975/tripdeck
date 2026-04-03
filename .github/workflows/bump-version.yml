@@ -6,8 +6,10 @@ on:
     paths:
       - '**'
       - '!package.json'
+      - '!client/package.json'
+      - '!server/package.json'
       - '!package-lock.json'
-      - '!public/records/**'
+      - '!client/public/records/**'
       - '!.github/**'
   workflow_dispatch:
     inputs:
@@ -48,8 +50,10 @@ jobs:
             changed:
               - '**'
               - '!package.json'
+              - '!client/package.json'
+              - '!server/package.json'
               - '!package-lock.json'
-              - '!public/records/**'
+              - '!client/public/records/**'
               - '!.github/**'
 
   bump-version:
@@ -99,6 +103,8 @@ jobs:
           fi
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           npm version "$NEW_VERSION" --no-git-tag-version
+          npm version "$NEW_VERSION" --no-git-tag-version -w client
+          npm version "$NEW_VERSION" --no-git-tag-version -w server
           echo "old_version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -127,7 +133,7 @@ jobs:
           NEW="${{ steps.version.outputs.new_version }}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add package.json package-lock.json
+          git add package.json client/package.json server/package.json package-lock.json
           BODY="- ${OLD} → ${NEW}"
           if [ -n "$EXTRA_BODY" ]; then
             BODY="${BODY}"$'\n'"${EXTRA_BODY}"

@@ -48,30 +48,30 @@ export default function TravelConnectionModal({
         onClick={onClose}
       />
 
-      <div className='relative w-full max-w-md animate-slide-up rounded-2xl border border-border bg-card p-6 shadow-2xl'>
+      <div className='animate-slide-up border-border bg-card relative w-full max-w-md rounded-2xl border p-6 shadow-2xl'>
         <div className='mb-6 flex items-center justify-between'>
-          <h2 className='text-xl font-bold text-foreground'>移動資訊</h2>
+          <h2 className='text-foreground text-xl font-bold'>移動資訊</h2>
           <button
             onClick={onClose}
-            className='rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-colors'
           >
             <X size={20} />
           </button>
         </div>
 
         <div className='mb-6 flex items-center gap-2 text-sm'>
-          <span className='max-w-[130px] truncate rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary'>
+          <span className='bg-primary/10 text-primary max-w-[130px] truncate rounded-full px-2.5 py-1 font-medium'>
             {fromName}
           </span>
           <span className='text-muted-foreground'>→</span>
-          <span className='max-w-[130px] truncate rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary'>
+          <span className='bg-primary/10 text-primary max-w-[130px] truncate rounded-full px-2.5 py-1 font-medium'>
             {toName}
           </span>
         </div>
 
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className='mb-2 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-2 block text-sm font-medium'>
               交通方式
             </label>
             <div className='grid grid-cols-3 gap-2'>
@@ -94,19 +94,19 @@ export default function TravelConnectionModal({
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               所需時間
             </label>
             <input
               value={form.duration ?? ''}
               onChange={e => set('duration', e.target.value)}
               placeholder='例：30 分鐘'
-              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50'
+              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
             />
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               路線說明
             </label>
             <textarea
@@ -114,19 +114,19 @@ export default function TravelConnectionModal({
               onChange={e => set('route', e.target.value)}
               placeholder='例：搭乘銀座線至上野站...'
               rows={2}
-              className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50'
+              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full resize-none rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
             />
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               備註
             </label>
             <input
               value={form.notes ?? ''}
               onChange={e => set('notes', e.target.value)}
               placeholder='其他注意事項...'
-              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50'
+              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
             />
           </div>
 
@@ -134,13 +134,13 @@ export default function TravelConnectionModal({
             <button
               type='button'
               onClick={onClose}
-              className='flex-1 rounded-xl border border-border px-4 py-2 text-foreground transition-colors hover:bg-accent'
+              className='border-border text-foreground hover:bg-accent flex-1 rounded-xl border px-4 py-2 transition-colors'
             >
               取消
             </button>
             <button
               type='submit'
-              className='flex-1 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
+              className='bg-primary text-primary-foreground flex-1 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
             >
               儲存
             </button>

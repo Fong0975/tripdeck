@@ -23,19 +23,19 @@ export default function TripList({
   return (
     <main className='mx-auto max-w-screen-xl px-4 pb-20'>
       <div className='mb-8 flex items-center justify-between'>
-        <h2 className='text-2xl font-bold text-foreground'>我的旅程</h2>
+        <h2 className='text-foreground text-2xl font-bold'>我的旅程</h2>
         <div className='flex items-center gap-2'>
           <button
             onClick={onReload}
             disabled={refreshing}
-            className='rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40'
+            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors disabled:opacity-40'
             aria-label='重新載入'
           >
             <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
           <button
             onClick={onAdd}
-            className='flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
+            className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
           >
             <Plus size={18} />
             新增旅程
@@ -45,12 +45,12 @@ export default function TripList({
 
       {loading ? (
         <div className='py-24 text-center'>
-          <p className='animate-pulse text-sm text-muted-foreground'>載入中…</p>
+          <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
         </div>
       ) : trips.length === 0 ? (
         <div className='py-24 text-center'>
           <p className='mb-4 text-5xl'>✈️</p>
-          <p className='text-lg text-muted-foreground'>
+          <p className='text-muted-foreground text-lg'>
             還沒有旅程，點擊「新增旅程」開始規劃吧！
           </p>
         </div>

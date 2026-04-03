@@ -35,7 +35,7 @@ export default function TripCard({ trip, onDelete }: Props) {
   return (
     <div
       onClick={() => navigate(`/trip/${trip.id}`)}
-      className='card-hover group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card p-6'
+      className='card-hover border-border bg-card group relative cursor-pointer overflow-hidden rounded-2xl border p-6'
     >
       {/* Glow accent */}
       <div
@@ -48,15 +48,15 @@ export default function TripCard({ trip, onDelete }: Props) {
 
       <div className='relative'>
         <div className='mb-3 flex items-start justify-between'>
-          <h3 className='pr-8 text-lg font-bold leading-tight text-foreground'>
+          <h3 className='text-foreground pr-8 text-lg font-bold leading-tight'>
             {trip.title}
           </h3>
           <button
             onClick={handleDelete}
             className={`absolute right-0 top-0 rounded-lg p-1.5 transition-all ${
               confirming
-                ? 'scale-110 bg-destructive text-white'
-                : 'text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100'
+                ? 'bg-destructive scale-110 text-white'
+                : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100'
             }`}
             title={confirming ? '再次點擊確認刪除' : '刪除旅程'}
           >
@@ -65,13 +65,13 @@ export default function TripCard({ trip, onDelete }: Props) {
         </div>
 
         {trip.destination && (
-          <div className='mb-3 flex items-center gap-1.5 text-sm text-muted-foreground'>
+          <div className='text-muted-foreground mb-3 flex items-center gap-1.5 text-sm'>
             <MapPin size={14} />
             <span>{trip.destination}</span>
           </div>
         )}
 
-        <div className='mb-4 flex items-center gap-1.5 text-sm text-muted-foreground'>
+        <div className='text-muted-foreground mb-4 flex items-center gap-1.5 text-sm'>
           <Calendar size={14} />
           <span>
             {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
@@ -79,16 +79,16 @@ export default function TripCard({ trip, onDelete }: Props) {
         </div>
 
         {trip.description && (
-          <p className='mb-4 line-clamp-2 text-sm text-muted-foreground'>
+          <p className='text-muted-foreground mb-4 line-clamp-2 text-sm'>
             {trip.description}
           </p>
         )}
 
         <div className='flex items-center justify-between'>
-          <span className='rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'>
+          <span className='bg-primary/10 text-primary rounded-full px-2.5 py-1 text-xs font-semibold'>
             {totalDays} 天
           </span>
-          <span className='text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100'>
+          <span className='text-muted-foreground text-xs opacity-0 transition-opacity group-hover:opacity-100'>
             點擊進入 →
           </span>
         </div>

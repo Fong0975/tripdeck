@@ -66,14 +66,14 @@ export default function AttractionModal({
         onClick={onClose}
       />
 
-      <div className='relative max-h-[90vh] w-full max-w-lg animate-slide-up overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl'>
+      <div className='animate-slide-up border-border bg-card relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-6 shadow-2xl'>
         <div className='mb-6 flex items-center justify-between'>
-          <h2 className='text-xl font-bold text-foreground'>
+          <h2 className='text-foreground text-xl font-bold'>
             {attraction ? '編輯景點' : '新增景點'}
           </h2>
           <button
             onClick={onClose}
-            className='rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-colors'
           >
             <X size={20} />
           </button>
@@ -81,7 +81,7 @@ export default function AttractionModal({
 
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               景點名稱 *
             </label>
             <input
@@ -96,7 +96,7 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               Google Maps 連結
             </label>
             <div className='flex gap-2'>
@@ -111,7 +111,7 @@ export default function AttractionModal({
                   href={form.googleMapUrl}
                   target='_blank'
                   rel='noopener noreferrer'
-                  className='rounded-lg p-2 text-primary transition-colors hover:bg-primary/10'
+                  className='text-primary hover:bg-primary/10 rounded-lg p-2 transition-colors'
                 >
                   <ExternalLink size={18} />
                 </a>
@@ -120,7 +120,7 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               補充資訊
             </label>
             <textarea
@@ -133,7 +133,7 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               附近景點
             </label>
             <textarea
@@ -146,7 +146,7 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
               參考網站
             </label>
             <div className='space-y-2'>
@@ -156,14 +156,14 @@ export default function AttractionModal({
                     href={url}
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='flex-1 truncate text-sm text-primary hover:underline'
+                    className='text-primary flex-1 truncate text-sm hover:underline'
                   >
                     {url}
                   </a>
                   <button
                     type='button'
                     onClick={() => removeWebsite(idx)}
-                    className='p-1 text-muted-foreground transition-colors hover:text-destructive'
+                    className='text-muted-foreground hover:text-destructive p-1 transition-colors'
                   >
                     <Trash2 size={14} />
                   </button>
@@ -185,7 +185,7 @@ export default function AttractionModal({
                 <button
                   type='button'
                   onClick={addWebsite}
-                  className='rounded-lg p-2 text-primary transition-colors hover:bg-primary/10'
+                  className='text-primary hover:bg-primary/10 rounded-lg p-2 transition-colors'
                 >
                   <Plus size={18} />
                 </button>
@@ -193,19 +193,19 @@ export default function AttractionModal({
             </div>
           </div>
 
-          {error && <p className='text-sm text-destructive'>{error}</p>}
+          {error && <p className='text-destructive text-sm'>{error}</p>}
 
           <div className='flex gap-3 pt-2'>
             <button
               type='button'
               onClick={onClose}
-              className='flex-1 rounded-xl border border-border px-4 py-2 text-foreground transition-colors hover:bg-accent'
+              className='border-border text-foreground hover:bg-accent flex-1 rounded-xl border px-4 py-2 transition-colors'
             >
               取消
             </button>
             <button
               type='submit'
-              className='flex-1 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
+              className='bg-primary text-primary-foreground flex-1 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
             >
               儲存
             </button>

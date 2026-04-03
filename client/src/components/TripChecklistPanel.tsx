@@ -108,7 +108,7 @@ export default function TripChecklistPanel({ tripId }: Props) {
   if (loading || !checklist) {
     return (
       <div className='flex flex-1 items-center justify-center py-24'>
-        <p className='animate-pulse text-sm text-muted-foreground'>載入中…</p>
+        <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export default function TripChecklistPanel({ tripId }: Props) {
       <div className='flex flex-1 items-center justify-center py-24 text-center'>
         <div>
           <p className='mb-2 text-4xl'>🧳</p>
-          <p className='text-sm text-muted-foreground'>
+          <p className='text-muted-foreground text-sm'>
             尚未設定行李清單模板，請先至首頁新增分類與項目。
           </p>
         </div>
@@ -136,9 +136,9 @@ export default function TripChecklistPanel({ tripId }: Props) {
       <div className='min-w-max'>
         <table className='w-full border-collapse text-sm'>
           <thead>
-            <tr className='border-b border-border'>
+            <tr className='border-border border-b'>
               {/* Fixed left header */}
-              <th className='sticky left-0 z-20 min-w-[160px] bg-background px-4 py-3 text-left font-semibold text-foreground'>
+              <th className='bg-background text-foreground sticky left-0 z-20 min-w-[160px] px-4 py-3 text-left font-semibold'>
                 項目
               </th>
 
@@ -160,24 +160,24 @@ export default function TripChecklistPanel({ tripId }: Props) {
                           onChange={e =>
                             updateOccasionName(occ.id, e.target.value)
                           }
-                          className='w-20 bg-transparent text-center text-sm font-semibold text-foreground focus:outline-none'
+                          className='text-foreground w-20 bg-transparent text-center text-sm font-semibold focus:outline-none'
                         />
                         {checklist.occasions.length > 1 && (
                           <button
                             onClick={() => deleteOccasion(occ.id)}
-                            className='rounded p-0.5 text-muted-foreground hover:text-destructive'
+                            className='text-muted-foreground hover:text-destructive rounded p-0.5'
                             aria-label='刪除時機'
                           >
                             <X size={12} />
                           </button>
                         )}
                       </div>
-                      <span className='text-xs text-muted-foreground'>
+                      <span className='text-muted-foreground text-xs'>
                         {checked} / {totalItems}
                       </span>
-                      <div className='h-1 w-full overflow-hidden rounded-full bg-muted'>
+                      <div className='bg-muted h-1 w-full overflow-hidden rounded-full'>
                         <div
-                          className='h-full rounded-full bg-primary transition-all duration-300'
+                          className='bg-primary h-full rounded-full transition-all duration-300'
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -190,7 +190,7 @@ export default function TripChecklistPanel({ tripId }: Props) {
               <th className='p-3'>
                 <button
                   onClick={addOccasion}
-                  className='flex items-center gap-1 rounded-lg border border-dashed border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary'
+                  className='border-border text-muted-foreground hover:border-primary hover:text-primary flex items-center gap-1 rounded-lg border border-dashed px-2 py-1 text-xs transition-colors'
                 >
                   <Plus size={12} />
                   新增時機
@@ -205,11 +205,11 @@ export default function TripChecklistPanel({ tripId }: Props) {
                 {/* Category header row */}
                 <tr
                   key={`cat-${cat.id}`}
-                  className='border-b border-border bg-muted/40'
+                  className='border-border bg-muted/40 border-b'
                 >
                   <td
                     colSpan={checklist.occasions.length + 2}
-                    className='sticky left-0 z-10 bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground'
+                    className='bg-muted/40 text-muted-foreground sticky left-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wide'
                   >
                     {cat.name}
                   </td>
@@ -219,12 +219,12 @@ export default function TripChecklistPanel({ tripId }: Props) {
                 {cat.items.map((item, idx) => (
                   <tr
                     key={item.id}
-                    className={`border-b border-border transition-colors hover:bg-accent/40 ${
+                    className={`border-border hover:bg-accent/40 border-b transition-colors ${
                       idx % 2 === 0 ? '' : 'bg-muted/10'
                     }`}
                   >
                     {/* Item name - sticky */}
-                    <td className='sticky left-0 z-10 bg-background px-4 py-2.5 text-foreground hover:bg-accent/40'>
+                    <td className='bg-background text-foreground hover:bg-accent/40 sticky left-0 z-10 px-4 py-2.5'>
                       {item.name}
                     </td>
 
@@ -241,7 +241,7 @@ export default function TripChecklistPanel({ tripId }: Props) {
                             checked={!!occ.checks[item.id]}
                             onChange={() => toggleCheck(occ.id, item.id)}
                             onClick={e => e.stopPropagation()}
-                            className='size-4 cursor-pointer rounded border-border accent-primary'
+                            className='border-border accent-primary size-4 cursor-pointer rounded'
                           />
                         </label>
                       </td>

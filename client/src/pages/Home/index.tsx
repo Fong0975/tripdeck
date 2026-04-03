@@ -20,7 +20,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className='min-h-screen bg-background'>
+    <div className='bg-background min-h-screen'>
       <Navbar />
       <HeroSection />
       <TripList

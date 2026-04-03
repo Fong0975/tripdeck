@@ -108,7 +108,7 @@ export default function ChecklistTemplateEditor() {
 
   if (!template) {
     return (
-      <p className='animate-pulse text-sm text-muted-foreground'>載入中…</p>
+      <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
     );
   }
 
@@ -117,22 +117,22 @@ export default function ChecklistTemplateEditor() {
       {template.categories.map(cat => (
         <div
           key={cat.id}
-          className='overflow-hidden rounded-xl border border-border bg-card'
+          className='border-border bg-card overflow-hidden rounded-xl border'
         >
           {/* Category header */}
-          <div className='flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3'>
+          <div className='border-border bg-muted/40 flex items-center gap-2 border-b px-4 py-3'>
             <input
               value={cat.name}
               onChange={e => updateCategoryName(cat.id, e.target.value)}
-              className='min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground focus:outline-none'
+              className='text-foreground min-w-0 flex-1 bg-transparent text-sm font-semibold focus:outline-none'
               placeholder='分類名稱'
             />
-            <span className='text-xs text-muted-foreground'>
+            <span className='text-muted-foreground text-xs'>
               {cat.items.length} 項
             </span>
             <button
               onClick={() => deleteCategory(cat.id)}
-              className='rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive'
+              className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1 transition-colors'
               aria-label='刪除分類'
             >
               <Trash2 size={14} />
@@ -140,21 +140,21 @@ export default function ChecklistTemplateEditor() {
           </div>
 
           {/* Items */}
-          <div className='divide-y divide-border'>
+          <div className='divide-border divide-y'>
             {cat.items.map(item => (
               <div key={item.id} className='flex items-center gap-2 px-4 py-2'>
-                <span className='text-xs text-muted-foreground'>•</span>
+                <span className='text-muted-foreground text-xs'>•</span>
                 <input
                   value={item.name}
                   onChange={e =>
                     updateItemName(cat.id, item.id, e.target.value)
                   }
-                  className='min-w-0 flex-1 bg-transparent text-sm text-foreground focus:outline-none'
+                  className='text-foreground min-w-0 flex-1 bg-transparent text-sm focus:outline-none'
                   placeholder='項目名稱'
                 />
                 <button
                   onClick={() => deleteItem(cat.id, item.id)}
-                  className='rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive'
+                  className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1 transition-colors'
                   aria-label='刪除項目'
                 >
                   <Trash2 size={12} />
@@ -167,7 +167,7 @@ export default function ChecklistTemplateEditor() {
           <div className='px-4 py-2'>
             <button
               onClick={() => addItem(cat.id)}
-              className='flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-primary'
+              className='text-muted-foreground hover:text-primary flex items-center gap-1.5 text-xs transition-colors'
             >
               <Plus size={13} />
               新增項目
@@ -178,7 +178,7 @@ export default function ChecklistTemplateEditor() {
 
       <button
         onClick={addCategory}
-        className='flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary'
+        className='border-border text-muted-foreground hover:border-primary hover:text-primary flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm transition-colors'
       >
         <Plus size={15} />
         新增分類

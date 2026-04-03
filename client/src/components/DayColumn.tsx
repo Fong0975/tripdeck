@@ -45,10 +45,10 @@ export default function DayColumn({
     <div className='flex w-64 shrink-0 flex-col'>
       {/* Column header */}
       <div className='mb-3 px-1 text-center'>
-        <span className='rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary'>
+        <span className='bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold'>
           第 {day.day} 天
         </span>
-        <p className='mt-1 text-sm text-muted-foreground'>{dateLabel}</p>
+        <p className='text-muted-foreground mt-1 text-sm'>{dateLabel}</p>
       </div>
 
       {/* Drop zone */}
@@ -56,8 +56,8 @@ export default function DayColumn({
         ref={setNodeRef}
         className={`flex min-h-[200px] flex-1 flex-col gap-0 rounded-2xl p-3 transition-colors ${
           isOver
-            ? 'border-2 border-dashed border-primary/30 bg-primary/5'
-            : 'border-2 border-transparent bg-muted/30'
+            ? 'border-primary/30 bg-primary/5 border-2 border-dashed'
+            : 'bg-muted/30 border-2 border-transparent'
         }`}
       >
         <SortableContext
@@ -90,7 +90,7 @@ export default function DayColumn({
                   ) : (
                     <div className='my-1 flex items-center gap-2 px-3'>
                       <div className='flex w-6 shrink-0 flex-col items-center'>
-                        <div className='h-4 w-px bg-border' />
+                        <div className='bg-border h-4 w-px' />
                       </div>
                       <button
                         onClick={() =>
@@ -100,7 +100,7 @@ export default function DayColumn({
                             nextAttraction.id,
                           )
                         }
-                        className='py-0.5 text-xs text-muted-foreground transition-colors hover:text-primary'
+                        className='text-muted-foreground hover:text-primary py-0.5 text-xs transition-colors'
                       >
                         + 新增移動資訊
                       </button>
@@ -113,7 +113,7 @@ export default function DayColumn({
 
         <button
           onClick={() => onAddAttraction(dayIndex)}
-          className='mt-2 flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-2 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary'
+          className='border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary mt-2 flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed py-2 text-sm transition-all'
         >
           <Plus size={15} />
           新增景點

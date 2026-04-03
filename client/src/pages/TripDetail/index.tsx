@@ -156,14 +156,14 @@ export default function TripDetail() {
 
   if (!trip || !content) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-background'>
-        <p className='animate-pulse text-sm text-muted-foreground'>載入中…</p>
+      <div className='bg-background flex min-h-screen items-center justify-center'>
+        <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
       </div>
     );
   }
 
   return (
-    <div className='flex min-h-screen flex-col bg-background'>
+    <div className='bg-background flex min-h-screen flex-col'>
       <Navbar />
 
       <TripHeader
@@ -174,7 +174,7 @@ export default function TripDetail() {
       />
 
       {/* Tab bar */}
-      <div className='border-b border-border bg-background'>
+      <div className='border-border bg-background border-b'>
         <div className='mx-auto flex max-w-screen-xl px-4'>
           {(
             [
@@ -188,7 +188,7 @@ export default function TripDetail() {
               className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground border-transparent'
               }`}
             >
               {tab.label}

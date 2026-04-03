@@ -13,7 +13,7 @@ export default function HeroSection() {
         <h1 className='shimmer-text mb-4 text-5xl font-extrabold'>
           規劃你的旅程
         </h1>
-        <p className='mx-auto max-w-md text-lg text-muted-foreground'>
+        <p className='text-muted-foreground mx-auto max-w-md text-lg'>
           像卡牌一樣排列景點，輕鬆安排每一天的行程
         </p>
       </div>
