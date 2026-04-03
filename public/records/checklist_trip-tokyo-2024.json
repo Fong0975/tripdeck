@@ -1,0 +1,79 @@
+{
+  "tripId": "trip-tokyo-2024",
+  "categories": [
+    {
+      "id": "cat-docs",
+      "name": "證件",
+      "items": [
+        { "id": "item-passport", "name": "護照" },
+        { "id": "item-visa", "name": "簽證" },
+        { "id": "item-id-card", "name": "身分證" },
+        { "id": "item-travel-insurance", "name": "旅遊保險" },
+        { "id": "item-booking-confirm", "name": "訂房/訂票確認單" }
+      ]
+    },
+    {
+      "id": "cat-electronics",
+      "name": "3C 電子",
+      "items": [
+        { "id": "item-phone", "name": "手機" },
+        { "id": "item-charger", "name": "充電器" },
+        { "id": "item-power-bank", "name": "行動電源" },
+        { "id": "item-adapter", "name": "電源轉接頭" },
+        { "id": "item-camera", "name": "相機" },
+        { "id": "item-earphones", "name": "耳機" }
+      ]
+    },
+    {
+      "id": "cat-clothes",
+      "name": "衣物",
+      "items": [
+        { "id": "item-tops", "name": "上衣" },
+        { "id": "item-bottoms", "name": "褲子／裙子" },
+        { "id": "item-jacket", "name": "外套" },
+        { "id": "item-underwear", "name": "內衣褲" },
+        { "id": "item-socks", "name": "襪子" },
+        { "id": "item-shoes", "name": "備用鞋" },
+        { "id": "item-pajamas", "name": "睡衣" }
+      ]
+    },
+    {
+      "id": "cat-toiletries",
+      "name": "盥洗用品",
+      "items": [
+        { "id": "item-toothbrush", "name": "牙刷牙膏" },
+        { "id": "item-shampoo", "name": "洗髮精" },
+        { "id": "item-bodywash", "name": "沐浴乳" },
+        { "id": "item-skincare", "name": "保養品" },
+        { "id": "item-sunscreen", "name": "防曬乳" }
+      ]
+    },
+    {
+      "id": "cat-medicine",
+      "name": "藥品",
+      "items": [
+        { "id": "item-common-meds", "name": "常備藥品" },
+        { "id": "item-motion-sickness", "name": "暈車藥" },
+        { "id": "item-band-aid", "name": "OK繃" }
+      ]
+    },
+    {
+      "id": "cat-misc",
+      "name": "其他",
+      "items": [
+        { "id": "item-cash", "name": "現金／外幣" },
+        { "id": "item-credit-card", "name": "信用卡" },
+        { "id": "item-luggage-lock", "name": "行李鎖" },
+        { "id": "item-plastic-bags", "name": "塑膠袋" },
+        { "id": "item-umbrella", "name": "雨傘" }
+      ]
+    }
+  ],
+  "occasions": [
+    {
+      "id": "occ-default",
+      "name": "收拾",
+      "checks": {}
+    }
+  ]
+}

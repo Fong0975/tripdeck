@@ -8,6 +8,7 @@ import AttractionModal from '@/components/AttractionModal';
 import DayColumn from '@/components/DayColumn';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
+import TripChecklistPanel from '@/components/TripChecklistPanel';
 import type { Attraction, TravelConnection, TripContent } from '@/types';
 import { saveTripContent } from '@/utils/storage';
 
@@ -24,6 +25,9 @@ export default function TripDetail() {
     useTripData(id);
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
+    'itinerary',
+  );
 
   const updateContent = useCallback(
     (updater: (prev: TripContent) => TripContent) => {
@@ -169,55 +173,83 @@ export default function TripDetail() {
         onRefresh={() => void handleForceRefresh()}
       />
 
-      {/* Board */}
-      <div className='flex-1 overflow-x-auto px-4 py-6'>
-        <DndContext
-          sensors={dnd.sensors}
-          onDragStart={dnd.handleDragStart}
-          onDragEnd={dnd.handleDragEnd}
-        >
-          <div className='flex min-w-max gap-4 pb-4'>
-            {content.days.map((day, i) => (
-              <DayColumn
-                key={day.day}
-                day={day}
-                dayIndex={i}
-                onAddAttraction={di =>
-                  setModal({ type: 'addAttraction', dayIndex: di })
-                }
-                onEditAttraction={(di, a) =>
-                  setModal({
-                    type: 'editAttraction',
-                    dayIndex: di,
-                    attraction: a,
-                  })
-                }
-                onDeleteAttraction={handleDeleteAttraction}
-                onEditConnection={(di, c) =>
-                  setModal({
-                    type: 'editConnection',
-                    dayIndex: di,
-                    connection: c,
-                  })
-                }
-                onAddConnection={handleAddConnection}
-              />
-            ))}
-          </div>
-
-          <DragOverlay>
-            {dnd.activeAttractionId && dnd.getActiveAttraction() && (
-              <div className='rotate-2 opacity-90 shadow-xl'>
-                <AttractionCard
-                  attraction={dnd.getActiveAttraction()!}
-                  onEdit={() => {}}
-                  onDelete={() => {}}
-                />
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+      {/* Tab bar */}
+      <div className='border-b border-border bg-background'>
+        <div className='mx-auto flex max-w-screen-xl px-4'>
+          {(
+            [
+              { key: 'itinerary', label: '行程規劃' },
+              { key: 'checklist', label: '行李清單' },
+            ] as const
+          ).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {activeTab === 'checklist' ? (
+        <TripChecklistPanel tripId={trip.id} />
+      ) : (
+        /* Board */
+        <div className='flex-1 overflow-x-auto px-4 py-6'>
+          <DndContext
+            sensors={dnd.sensors}
+            onDragStart={dnd.handleDragStart}
+            onDragEnd={dnd.handleDragEnd}
+          >
+            <div className='flex min-w-max gap-4 pb-4'>
+              {content.days.map((day, i) => (
+                <DayColumn
+                  key={day.day}
+                  day={day}
+                  dayIndex={i}
+                  onAddAttraction={di =>
+                    setModal({ type: 'addAttraction', dayIndex: di })
+                  }
+                  onEditAttraction={(di, a) =>
+                    setModal({
+                      type: 'editAttraction',
+                      dayIndex: di,
+                      attraction: a,
+                    })
+                  }
+                  onDeleteAttraction={handleDeleteAttraction}
+                  onEditConnection={(di, c) =>
+                    setModal({
+                      type: 'editConnection',
+                      dayIndex: di,
+                      connection: c,
+                    })
+                  }
+                  onAddConnection={handleAddConnection}
+                />
+              ))}
+            </div>
+
+            <DragOverlay>
+              {dnd.activeAttractionId && dnd.getActiveAttraction() && (
+                <div className='rotate-2 opacity-90 shadow-xl'>
+                  <AttractionCard
+                    attraction={dnd.getActiveAttraction()!}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      )}
 
       {/* Modals */}
       {modal.type === 'addAttraction' && (
