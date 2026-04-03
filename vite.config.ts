@@ -101,6 +101,74 @@ function recordsApiPlugin(): Plugin {
             }
           }
 
+          if (url === '/checklist-template') {
+            if (method === 'GET') {
+              let raw: string | null = null
+              try {
+                raw = await readFile(
+                  path.join(RECORDS_DIR, 'checklist_template.json'),
+                  'utf-8',
+                )
+              } catch {
+                try {
+                  raw = await readFile(
+                    path.resolve(process.cwd(), 'public/records/checklist_template.json'),
+                    'utf-8',
+                  )
+                } catch {
+                  // no default available
+                }
+              }
+              respond(200, raw ? JSON.parse(raw) : { categories: [] })
+              return
+            }
+            if (method === 'PUT') {
+              const data = await readBody()
+              await writeFile(
+                path.join(RECORDS_DIR, 'checklist_template.json'),
+                JSON.stringify(data, null, 2),
+                'utf-8',
+              )
+              respond(200, { ok: true })
+              return
+            }
+          }
+
+          const checklistMatch = url.match(/^\/checklist\/([^/?]+)/)
+          if (checklistMatch) {
+            const tripId = checklistMatch[1]
+            const filePath = path.join(RECORDS_DIR, `checklist_${tripId}.json`)
+
+            if (method === 'GET') {
+              try {
+                const data = await readFile(filePath, 'utf-8')
+                respond(200, JSON.parse(data))
+              } catch {
+                respond(404, { error: 'Not found' })
+              }
+              return
+            }
+            if (method === 'PUT') {
+              const data = await readBody()
+              await writeFile(
+                filePath,
+                JSON.stringify(data, null, 2),
+                'utf-8',
+              )
+              respond(200, { ok: true })
+              return
+            }
+            if (method === 'DELETE') {
+              try {
+                await unlink(filePath)
+              } catch {
+                // file may not exist
+              }
+              respond(200, { ok: true })
+              return
+            }
+          }
+
           next()
         } catch (err) {
           respond(500, { error: String(err) })

@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import type { Trip } from '@/types';
-import { addTrip, initTripContent, saveTripContent } from '@/utils/storage';
+import {
+  addTrip,
+  getChecklistTemplate,
+  initTripChecklist,
+  initTripContent,
+  saveTripChecklist,
+  saveTripContent,
+} from '@/utils/storage';
 
 interface Props {
   onClose: () => void;
@@ -49,8 +56,12 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
       createdAt: new Date().toISOString(),
     };
 
-    await addTrip(trip);
-    await saveTripContent(initTripContent(trip));
+    const template = await getChecklistTemplate();
+    await Promise.all([
+      addTrip(trip),
+      saveTripContent(initTripContent(trip)),
+      saveTripChecklist(initTripChecklist(trip.id, template)),
+    ]);
     onAdded(trip);
   };
 

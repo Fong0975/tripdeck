@@ -46,3 +46,31 @@ export interface TripContent {
   tripId: string;
   days: DayPlan[];
 }
+
+export interface ChecklistItem {
+  id: string;
+  name: string;
+}
+
+export interface ChecklistCategory {
+  id: string;
+  name: string;
+  items: ChecklistItem[];
+}
+
+export interface ChecklistTemplate {
+  categories: ChecklistCategory[];
+}
+
+export interface ChecklistOccasion {
+  id: string;
+  name: string;
+  /** Maps itemId to checked state */
+  checks: Record<string, boolean>;
+}
+
+export interface TripChecklist {
+  tripId: string;
+  categories: ChecklistCategory[];
+  occasions: ChecklistOccasion[];
+}

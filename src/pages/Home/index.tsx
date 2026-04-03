@@ -3,6 +3,7 @@ import { useState } from 'react';
 import AddTripModal from '@/components/AddTripModal';
 import Navbar from '@/components/Navbar';
 
+import ChecklistSection from './ChecklistSection';
 import HeroSection from './HeroSection';
 import TripList from './TripList';
 import { useHomeData } from './useHomeData';
@@ -30,6 +31,8 @@ export default function Home() {
         onDelete={handleDeleteTrip}
         onReload={() => void handleForceReload()}
       />
+
+      <ChecklistSection />
 
       {showModal && (
         <AddTripModal
