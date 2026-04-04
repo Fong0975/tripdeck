@@ -2,8 +2,9 @@
 node_modules/
 
 # Build output
-dist/
-dist-ssr/
+client/dist/
+client/dist-ssr/
+server/dist/
 
 # TypeScript
 *.tsbuildinfo
@@ -28,14 +29,10 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Local data (not committed — copy from public/records/ to get started)
-records/*.json
-
 # Claude Code
 .claude/
 
 # Editor
-.claude/
 .vscode/*
 !.vscode/extensions.json
 .idea/

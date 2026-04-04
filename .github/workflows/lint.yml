@@ -4,35 +4,41 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**/*.ts'
-      - 'src/**/*.tsx'
-      - 'src/**/*.json'
-      - 'src/**/*.css'
-      - '.eslintrc.json'
+      - 'client/src/**/*.ts'
+      - 'client/src/**/*.tsx'
+      - 'client/src/**/*.json'
+      - 'client/src/**/*.css'
+      - 'client/.eslintrc.json'
+      - 'client/tailwind.config.js'
+      - 'client/postcss.config.js'
+      - 'client/tsconfig.json'
+      - 'client/tsconfig.app.json'
+      - 'server/src/**/*.ts'
+      - 'server/.eslintrc.json'
+      - 'server/tsconfig.json'
       - '.prettierrc.json'
       - '.prettierignore'
-      - 'tailwind.config.js'
-      - 'postcss.config.js'
-      - 'tsconfig.json'
-      - 'tsconfig.app.json'
       - '!package.json'
       - '!package-lock.json'
   pull_request:
     branches: [main]
     paths:
-      - 'src/**/*.ts'
-      - 'src/**/*.tsx'
-      - 'src/**/*.json'
-      - 'src/**/*.css'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.eslintrc.json'
+      - 'client/src/**/*.ts'
+      - 'client/src/**/*.tsx'
+      - 'client/src/**/*.json'
+      - 'client/src/**/*.css'
+      - 'client/.eslintrc.json'
+      - 'client/tailwind.config.js'
+      - 'client/postcss.config.js'
+      - 'client/tsconfig.json'
+      - 'client/tsconfig.app.json'
+      - 'server/src/**/*.ts'
+      - 'server/.eslintrc.json'
+      - 'server/tsconfig.json'
       - '.prettierrc.json'
       - '.prettierignore'
-      - 'tailwind.config.js'
-      - 'postcss.config.js'
-      - 'tsconfig.json'
-      - 'tsconfig.app.json'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 jobs:
@@ -67,10 +73,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint (includes Prettier and Tailwind CSS checks)
-        run: npm run lint:check
+      - name: Run ESLint on client (includes Prettier and Tailwind CSS checks)
+        run: npm run lint:check -w client
 
-      - name: Run Prettier format check (CSS and JSON)
+      - name: Run ESLint on server (includes Prettier checks)
+        run: npm run lint:check -w server
+
+      - name: Run Prettier format check (CSS, JSON and all non-TS files)
         run: npm run format:check
 
       - name: Update Final Status

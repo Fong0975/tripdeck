@@ -1,0 +1,39 @@
+{
+  "name": "@tripdeck/server",
+  "private": true,
+  "version": "1.0.6",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "lint:check": "eslint src --ext .ts --max-warnings 0",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "format:diff": "prettier --list-different \"src/**/*.ts\"",
+    "swagger": "tsx swagger/generate.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "mysql2": "^3.14.0",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.1",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-import-resolver-typescript": "^3.10.1",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.1",
+    "tsx": "^4.19.3",
+    "typescript": "~5.7.2"
+  }
+}

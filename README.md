@@ -1,22 +1,36 @@
 # Tripdeck
 
-A travel itinerary planning app built with React. Organize your trips day by day with a drag-and-drop kanban board.
+A travel itinerary planning app with a React frontend and a Node.js REST API backend. Organize your trips day by day with a drag-and-drop kanban board, and track your packing checklist with multi-occasion columns.
 
 ## Project Structure
 
 ```
 tripdeck/
-├── public/               # Static assets (favicon, icons, PWA manifest)
-│   └── records/          # Sample data — copy these files to records/ to get started
-├── records/              # Local data directory (git-ignored, created automatically)
-├── src/
-│   ├── components/       # Reusable UI components
-│   ├── context/          # React context (theme)
-│   ├── hooks/            # Custom React hooks
-│   ├── pages/            # Route-level page components
-│   ├── types/            # TypeScript type definitions
-│   └── utils/            # Storage utilities (file-based CRUD with session cache)
-└── .github/workflows/    # CI: lint check, automated version bumping
+├── client/                   # React frontend (Vite + TypeScript + Tailwind)
+│   ├── public/
+│   ├── src/
+│   │   ├── components/       # Reusable UI components
+│   │   ├── context/          # React context (theme)
+│   │   ├── hooks/            # Custom React hooks
+│   │   ├── pages/            # Route-level page components
+│   │   ├── types/            # TypeScript type definitions
+│   │   └── utils/            # Backend API client utilities
+│   ├── package.json
+│   └── vite.config.ts
+├── server/                   # Node.js REST API backend (Express + TypeScript)
+│   ├── src/
+│   │   ├── config/           # Database connection setup
+│   │   ├── controllers/      # Handles API business logic and responses
+│   │   ├── db/               # Schema definitions and table initialization
+│   │   ├── repositories/     # Database query layer (MySQL2)
+│   │   ├── routes/           # Defines API endpoints and URL mapping
+│   │   ├── types/            # Request/response type definitions
+│   │   └── index.ts          # Express server entry point
+│   ├── swagger/              # Auto-generated Swagger spec (output.json)
+│   ├── package.json
+│   └── tsconfig.json
+├── package.json              # Workspace root — orchestrates client + server
+└── .github/workflows/        # CI: lint check, automated version bumping
 ```
 
 ## Features
@@ -26,39 +40,59 @@ tripdeck/
 - **Drag-and-Drop** — Reorder attraction cards within and across day columns
 - **Attraction Cards** — Add, edit, and delete attractions with notes, Google Maps links, and reference websites
 - **Travel Connections** — Define transport mode and duration between two consecutive attractions
+- **Luggage Checklist** — Manage a reusable packing template; each trip gets a snapshot copy with multi-occasion columns for check-off tracking
 - **Light / Dark Mode** — Follows system preference on first load; manually toggleable via the navbar
-- **File-Based Storage** — All data is read from and written to JSON files in `records/`; changes are cached in sessionStorage for the current session
+- **MySQL Database** — All data is persisted in a MySQL database; tables are created automatically on first server start
 - **PWA Support** — Installable on iOS and Android with full-screen standalone mode
+- **Health API** — `GET /api/health` endpoint exposed by the backend server
 
 ## Getting Started
 
 ### 1. Install Dependencies
 
+Run from the workspace root — npm workspaces installs all packages in one step:
+
 ```bash
 npm install
 ```
 
-### 2. Set Up Sample Data (Optional)
+### 2. Configure Database Connection
 
-To start with sample trips, copy the provided sample files into the `records/` directory:
+Copy `.env.example` to `.env` at the workspace root and fill in your MySQL credentials:
 
 ```bash
-cp public/records/trips.json records/trips.json
-cp public/records/trip_trip-tokyo-2024.json records/trip_trip-tokyo-2024.json
-cp public/records/trip_trip-kansai-2024.json records/trip_trip-kansai-2024.json
+cp .env.example .env
 ```
 
-The `records/` directory is git-ignored and will be created automatically when the dev server starts. If it is empty, the app starts with no trips.
+```dotenv
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=tripdeck
+```
 
-### 3. Start Development Server
+The database and all tables are created automatically on first server start.
+
+### 3. Start Development Servers
+
+Run both the frontend and backend concurrently from the workspace root:
 
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`.
+| Service | URL |
+|---------|-----|
+| Frontend (Vite) | http://localhost:5173 |
+| Backend (Express) | http://localhost:3001 |
 
-> **Note:** The app requires the Vite dev server to be running. File read/write is handled by a Vite plugin that exposes a local `/api/records` endpoint — opening `index.html` directly will not work.
+Or start each independently:
+
+```bash
+npm run dev -w client   # frontend only
+npm run dev -w server   # backend only
+```
 
 ### 4. Build for Production
 
@@ -66,36 +100,98 @@ The app will be available at `http://localhost:5173`.
 npm run build
 ```
 
-The output will be in the `dist/` directory.
+Outputs:
+- `client/dist/` — static frontend bundle
+- `server/dist/` — compiled Node.js server
 
-### 5. Preview Production Build
+### 5. Start Production Server
 
 ```bash
-npm run preview
+npm run start
 ```
 
 ## Development
 
-### Code Quality
+### Available Root Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start both frontend and backend in watch mode |
+| `npm run build` | Build client and server for production |
+| `npm run start` | Start the production server |
+| `npm run swagger` | Generate / update `server/swagger/output.json` from route annotations |
+| `npm run lint` | Run ESLint across client and server |
+| `npm run lint:fix` | Auto-fix all fixable ESLint issues across client and server |
+| `npm run lint:check` | ESLint strict check — fails on any warning (used in CI) |
+| `npm run format` | Format all files with Prettier |
+| `npm run format:check` | Check formatting without making changes (used in CI) |
+
+### Client-Only Scripts
 
 ```bash
-# Run ESLint (includes Prettier formatting and Tailwind CSS class validation)
-npm run lint
-
-# Auto-fix all fixable issues
-npm run lint:fix
-
-# Strict check — fails on any warning
-npm run lint:check
-
-# Format all source files with Prettier
-npm run format
-
-# Check formatting without making changes
-npm run format:check
-
-# Show which files would be reformatted
-npm run format:diff
+npm run dev -w client
+npm run build -w client
+npm run lint -w client
+npm run lint:fix -w client
+npm run lint:check -w client       # Fails on any warning
+npm run format -w client
+npm run format:check -w client
+npm run format:diff -w client
 ```
 
-> ESLint covers code quality, import ordering, React hooks rules, Prettier formatting, and Tailwind CSS class validation in a single pass. Use pure Prettier commands when you only need fast formatting without full analysis.
+### Server-Only Scripts
+
+```bash
+npm run dev -w server              # tsx watch — auto-restarts on changes
+npm run build -w server            # tsc — compiles to server/dist/
+npm run start -w server            # node dist/index.js
+npm run swagger -w server          # Generate / update server/swagger/output.json
+npm run lint -w server
+npm run lint:fix -w server
+npm run lint:check -w server       # Fails on any warning
+npm run format -w server
+npm run format:check -w server
+npm run format:diff -w server
+```
+
+### API Documentation (Swagger)
+
+The backend exposes an interactive Swagger UI generated by [swagger-autogen](https://github.com/davibaltar/swagger-autogen).
+
+**Generate or update the spec** (run whenever routes or `#swagger.*` annotations change):
+
+```bash
+npm run swagger
+```
+
+This scans `server/swagger/entry.ts` and writes the result to `server/swagger/output.json`.
+
+**View the docs** (requires the backend to be running):
+
+```
+http://localhost:3001/api/docs
+```
+
+> The `server/swagger/output.json` file is committed to the repository so the server can start without requiring a prior `npm run swagger` call. Re-run the command after any route changes to keep it in sync.
+
+### Code Quality
+
+Both client and server have full ESLint + Prettier coverage:
+
+| Tool | Client | Server |
+|------|--------|--------|
+| ESLint | TypeScript, React hooks, Tailwind CSS, import order, Prettier | TypeScript, import order, Prettier |
+| Prettier | All `.ts`, `.tsx`, `.css`, `.json` | All `.ts` |
+
+The CI workflow (`lint.yml`) runs three checks on every push or PR to `main`:
+1. **Client ESLint** — `npm run lint:check -w client` (zero warnings allowed)
+2. **Server ESLint** — `npm run lint:check -w server` (zero warnings allowed)
+3. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
+
+## API Reference
+
+The full interactive API reference is available via Swagger UI while the backend is running:
+
+```
+http://localhost:3001/api/docs
+```
