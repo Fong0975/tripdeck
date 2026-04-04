@@ -13,7 +13,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: ['./tsconfig.json', './swagger/tsconfig.json'],
     tsconfigRootDir: __dirname,
   },
   plugins: ['@typescript-eslint', 'prettier', 'import'],
@@ -43,7 +43,7 @@ module.exports = {
     'import/resolver': {
       typescript: {
         alwaysTryTypes: true,
-        project: `${__dirname}/tsconfig.json`,
+        project: [`${__dirname}/tsconfig.json`, `${__dirname}/swagger/tsconfig.json`],
       },
     },
   },

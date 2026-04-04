@@ -15,6 +15,30 @@ import type {
 // --- Trips ---
 
 export async function getTrips(_req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'List all trips'
+     #swagger.responses[200] = {
+       description: 'Array of trips',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'array',
+             items: {
+               type: 'object',
+               properties: {
+                 id: { type: 'integer', example: 1 },
+                 title: { type: 'string', example: '關西之旅' },
+                 destination: { type: 'string', nullable: true, example: '大阪、京都、神戶' },
+                 startDate: { type: 'string', format: 'date', example: '2024-05-10' },
+                 endDate: { type: 'string', format: 'date', example: '2024-05-12' },
+                 description: { type: 'string', nullable: true, example: null },
+                 createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000Z' }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     res.json(await tripRepo.findAll());
   } catch {
@@ -23,6 +47,27 @@ export async function getTrips(_req: Request, res: Response): Promise<void> {
 }
 
 export async function getTrip(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'Get a trip by ID'
+     #swagger.responses[200] = {
+       description: 'Trip found',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               title: { type: 'string', example: '關西之旅' },
+               destination: { type: 'string', nullable: true, example: '大阪、京都、神戶' },
+               startDate: { type: 'string', format: 'date', example: '2024-05-10' },
+               endDate: { type: 'string', format: 'date', example: '2024-05-12' },
+               description: { type: 'string', nullable: true, example: null },
+               createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000Z' }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const trip = await tripRepo.findById(tripId);
@@ -37,6 +82,27 @@ export async function getTrip(req: Request, res: Response): Promise<void> {
 }
 
 export async function createTrip(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'Create a new trip'
+     #swagger.responses[201] = {
+       description: 'Trip created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               title: { type: 'string', example: '關西之旅' },
+               destination: { type: 'string', nullable: true, example: '大阪、京都、神戶' },
+               startDate: { type: 'string', format: 'date', example: '2024-05-10' },
+               endDate: { type: 'string', format: 'date', example: '2024-05-12' },
+               description: { type: 'string', nullable: true, example: null },
+               createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000Z' }
+             }
+           }
+         }
+       }
+     } */
   try {
     const body = req.body as CreateTripBody;
     if (!body.title || !body.startDate || !body.endDate) {
@@ -52,6 +118,8 @@ export async function createTrip(req: Request, res: Response): Promise<void> {
 }
 
 export async function deleteTrip(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'Delete a trip' */
   try {
     const tripId = Number(req.params.tripId);
     const deleted = await tripRepo.deleteById(tripId);
@@ -71,6 +139,62 @@ export async function getTripContent(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'Get full trip content (days, attractions, connections)'
+     #swagger.responses[200] = {
+       description: 'Full trip content',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               tripId: { type: 'integer', example: 1 },
+               days: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     day: { type: 'integer', example: 1 },
+                     date: { type: 'string', format: 'date', example: '2024-05-10' },
+                     attractions: {
+                       type: 'array',
+                       items: {
+                         type: 'object',
+                         properties: {
+                           id: { type: 'integer', example: 1 },
+                           name: { type: 'string', example: '伏見稻荷大社' },
+                           googleMapUrl: { type: 'string', nullable: true, example: null },
+                           notes: { type: 'string', nullable: true, example: '建議早上前往' },
+                           nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+                           referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
+                           sortOrder: { type: 'integer', example: 0 }
+                         }
+                       }
+                     },
+                     connections: {
+                       type: 'array',
+                       items: {
+                         type: 'object',
+                         properties: {
+                           id: { type: 'integer', example: 1 },
+                           fromAttractionId: { type: 'integer', example: 1 },
+                           toAttractionId: { type: 'integer', example: 2 },
+                           transportMode: { type: 'string', nullable: true, example: 'transit' },
+                           duration: { type: 'string', nullable: true, example: '約 40 分鐘' },
+                           route: { type: 'string', nullable: true, example: 'JR 稻荷站 → 京都站' },
+                           notes: { type: 'string', nullable: true, example: null }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const content = await tripRepo.findContent(tripId);
@@ -90,6 +214,27 @@ export async function addAttraction(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Add an attraction to a day'
+     #swagger.responses[201] = {
+       description: 'Attraction created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               name: { type: 'string', example: '伏見稻荷大社' },
+               googleMapUrl: { type: 'string', nullable: true, example: null },
+               notes: { type: 'string', nullable: true, example: '建議早上前往' },
+               nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+               referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
+               sortOrder: { type: 'integer', example: 0 }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const dayId = Number(req.params.dayId);
@@ -116,6 +261,27 @@ export async function updateAttraction(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Update an attraction'
+     #swagger.responses[200] = {
+       description: 'Attraction updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               name: { type: 'string', example: '伏見稻荷大社' },
+               googleMapUrl: { type: 'string', nullable: true, example: null },
+               notes: { type: 'string', nullable: true, example: '建議早上前往' },
+               nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+               referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
+               sortOrder: { type: 'integer', example: 0 }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const attractionId = Number(req.params.attractionId);
@@ -147,6 +313,8 @@ export async function deleteAttraction(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Delete an attraction' */
   try {
     const tripId = Number(req.params.tripId);
     const attractionId = Number(req.params.attractionId);
@@ -171,6 +339,8 @@ export async function reorderAttractions(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Reorder attractions within a day' */
   try {
     const tripId = Number(req.params.tripId);
     const dayId = Number(req.params.dayId);
@@ -200,6 +370,27 @@ export async function addConnection(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Connections']
+     #swagger.summary = 'Add a connection between two attractions'
+     #swagger.responses[201] = {
+       description: 'Connection created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               fromAttractionId: { type: 'integer', example: 1 },
+               toAttractionId: { type: 'integer', example: 2 },
+               transportMode: { type: 'string', nullable: true, example: 'transit' },
+               duration: { type: 'string', nullable: true, example: '約 40 分鐘' },
+               route: { type: 'string', nullable: true, example: 'JR 稻荷站 → 京都站' },
+               notes: { type: 'string', nullable: true, example: null }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const dayId = Number(req.params.dayId);
@@ -229,6 +420,27 @@ export async function updateConnection(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Connections']
+     #swagger.summary = 'Update a connection'
+     #swagger.responses[200] = {
+       description: 'Connection updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               fromAttractionId: { type: 'integer', example: 1 },
+               toAttractionId: { type: 'integer', example: 2 },
+               transportMode: { type: 'string', nullable: true, example: 'transit' },
+               duration: { type: 'string', nullable: true, example: '約 40 分鐘' },
+               route: { type: 'string', nullable: true, example: 'JR 稻荷站 → 京都站' },
+               notes: { type: 'string', nullable: true, example: null }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const connectionId = Number(req.params.connectionId);
@@ -260,6 +472,8 @@ export async function deleteConnection(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Connections']
+     #swagger.summary = 'Delete a connection' */
   try {
     const tripId = Number(req.params.tripId);
     const connectionId = Number(req.params.connectionId);

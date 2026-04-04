@@ -6,6 +6,42 @@ import * as tripRepo from '../repositories/checklistTripRepository';
 // ── Template ─────────────────────────────────────────────────────────────────
 
 export async function getTemplate(_req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Get the global packing checklist template'
+     #swagger.responses[200] = {
+       description: 'Full template with all categories and items',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               categories: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: '證件' },
+                     sortOrder: { type: 'integer', example: 0 },
+                     items: {
+                       type: 'array',
+                       items: {
+                         type: 'object',
+                         properties: {
+                           id: { type: 'integer', example: 1 },
+                           name: { type: 'string', example: '護照' },
+                           sortOrder: { type: 'integer', example: 0 }
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     res.json(await templateRepo.findTemplate());
   } catch {
@@ -14,6 +50,24 @@ export async function getTemplate(_req: Request, res: Response): Promise<void> {
 }
 
 export async function addCategory(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Add a category to the template'
+     #swagger.responses[201] = {
+       description: 'Category created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 7 },
+               name: { type: 'string', example: '運動用品' },
+               sortOrder: { type: 'integer', example: 6 },
+               items: { type: 'array', items: {}, example: [] }
+             }
+           }
+         }
+       }
+     } */
   try {
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
@@ -30,6 +84,34 @@ export async function updateCategory(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Update a template category name'
+     #swagger.responses[200] = {
+       description: 'Category updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               name: { type: 'string', example: '重要證件' },
+               sortOrder: { type: 'integer', example: 0 },
+               items: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: '護照' },
+                     sortOrder: { type: 'integer', example: 0 }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     const catId = Number(req.params.catId);
     const { name } = req.body;
@@ -52,6 +134,8 @@ export async function deleteCategory(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Delete a template category and all its items' */
   try {
     const catId = Number(req.params.catId);
     const deleted = await templateRepo.deleteCategory(catId);
@@ -66,6 +150,23 @@ export async function deleteCategory(
 }
 
 export async function addItem(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Add an item to a template category'
+     #swagger.responses[201] = {
+       description: 'Item created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 32 },
+               name: { type: 'string', example: '電子簽證' },
+               sortOrder: { type: 'integer', example: 5 }
+             }
+           }
+         }
+       }
+     } */
   try {
     const catId = Number(req.params.catId);
     const { name } = req.body;
@@ -85,6 +186,23 @@ export async function addItem(req: Request, res: Response): Promise<void> {
 }
 
 export async function updateItem(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Update a template item name'
+     #swagger.responses[200] = {
+       description: 'Item updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               name: { type: 'string', example: '電子簽證' },
+               sortOrder: { type: 'integer', example: 0 }
+             }
+           }
+         }
+       }
+     } */
   try {
     const catId = Number(req.params.catId);
     const itemId = Number(req.params.itemId);
@@ -113,6 +231,8 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
 }
 
 export async function deleteItem(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Delete a template item' */
   try {
     const catId = Number(req.params.catId);
     const itemId = Number(req.params.itemId);
@@ -141,6 +261,59 @@ export async function getTripChecklist(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Get the packing checklist for a trip'
+     #swagger.description = 'Returns the trip checklist. Automatically initialized from the global template if it does not exist yet.'
+     #swagger.responses[200] = {
+       description: 'Trip checklist',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               tripId: { type: 'integer', example: 1 },
+               categories: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: '證件' },
+                     sortOrder: { type: 'integer', example: 0 },
+                     items: {
+                       type: 'array',
+                       items: {
+                         type: 'object',
+                         properties: {
+                           id: { type: 'integer', example: 1 },
+                           name: { type: 'string', example: '護照' },
+                           sortOrder: { type: 'integer', example: 0 }
+                         }
+                       }
+                     }
+                   }
+                 }
+               },
+               occasions: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: '收拾' },
+                     checks: {
+                       type: 'object',
+                       additionalProperties: { type: 'boolean' },
+                       example: { '3': true, '7': true }
+                     }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     res.json(await tripRepo.findOrInitChecklist(tripId));
@@ -150,6 +323,23 @@ export async function getTripChecklist(
 }
 
 export async function addOccasion(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Add a packing occasion to a trip checklist'
+     #swagger.responses[201] = {
+       description: 'Occasion created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 2 },
+               name: { type: 'string', example: '回程' },
+               checks: { type: 'object', additionalProperties: { type: 'boolean' }, example: {} }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const { name } = req.body;
@@ -167,6 +357,27 @@ export async function updateOccasion(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Update an occasion name'
+     #swagger.responses[200] = {
+       description: 'Occasion updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               name: { type: 'string', example: '出發' },
+               checks: {
+                 type: 'object',
+                 additionalProperties: { type: 'boolean' },
+                 example: { '3': true, '7': true }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const occId = Number(req.params.occId);
@@ -195,6 +406,9 @@ export async function deleteOccasion(
   req: Request,
   res: Response,
 ): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Delete an occasion'
+     #swagger.description = 'Rejected with 409 if this is the last remaining occasion.' */
   try {
     const tripId = Number(req.params.tripId);
     const occId = Number(req.params.occId);
@@ -220,6 +434,8 @@ export async function deleteOccasion(
 }
 
 export async function setCheck(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Set the checked state of an item within an occasion' */
   try {
     const tripId = Number(req.params.tripId);
     const occId = Number(req.params.occId);
