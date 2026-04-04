@@ -2,6 +2,8 @@ import { Router } from 'express';
 
 import * as tripController from '../controllers/tripController';
 
+import checklistTripRoutes from './checklistTripRoutes';
+
 const router = Router();
 
 // Trip CRUD
@@ -38,5 +40,8 @@ router.delete(
   '/:tripId/connections/:connectionId',
   tripController.deleteConnection,
 );
+
+// Checklist
+router.use('/:tripId/checklist', checklistTripRoutes);
 
 export default router;
