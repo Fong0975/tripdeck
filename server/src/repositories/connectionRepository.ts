@@ -4,8 +4,11 @@ import pool from '../config/database';
 import type {
   ConnectionResponse,
   CreateConnectionBody,
+  ImageResponse,
   UpdateConnectionBody,
 } from '../types/trip';
+
+import * as imageRepo from './imageRepository';
 
 // --- Row type ---
 
@@ -22,7 +25,10 @@ interface TripConnectionRow extends RowDataPacket {
 
 // --- Helper ---
 
-function toConnectionResponse(row: TripConnectionRow): ConnectionResponse {
+function toConnectionResponse(
+  row: TripConnectionRow,
+  images: ImageResponse[] = [],
+): ConnectionResponse {
   return {
     id: row.id,
     fromAttractionId: row.trip_attraction_id_from,
@@ -31,6 +37,7 @@ function toConnectionResponse(row: TripConnectionRow): ConnectionResponse {
     duration: row.duration,
     route: row.route,
     notes: row.notes,
+    images,
   };
 }
 
@@ -78,6 +85,7 @@ export async function create(
     duration: data.duration ?? null,
     route: data.route ?? null,
     notes: data.notes ?? null,
+    images: [],
   };
 }
 
@@ -116,7 +124,8 @@ export async function update(
     'SELECT * FROM trip_connections WHERE id = ?',
     [connectionId],
   );
-  return toConnectionResponse(updatedRows[0]);
+  const images = await imageRepo.getConnectionImages(connectionId);
+  return toConnectionResponse(updatedRows[0], images);
 }
 
 export async function deleteById(connectionId: number): Promise<boolean> {

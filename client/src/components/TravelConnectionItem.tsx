@@ -1,4 +1,4 @@
-import { Pencil } from 'lucide-react';
+import { Images, Pencil } from 'lucide-react';
 
 import type { TravelConnection, TransportMode } from '@/types';
 
@@ -50,6 +50,15 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
               <span className='text-muted-foreground/50'>·</span>
               <span className='text-muted-foreground'>
                 {connection.duration}
+              </span>
+            </>
+          )}
+          {(connection.images ?? []).length > 0 && (
+            <>
+              <span className='text-muted-foreground/50'>·</span>
+              <span className='text-muted-foreground flex items-center gap-0.5'>
+                <Images size={10} />
+                {connection.images!.length}
               </span>
             </>
           )}

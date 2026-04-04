@@ -6,10 +6,13 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
+  Images,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import type { Attraction } from '@/types';
+
+import ImageLightbox from './ImageLightbox';
 
 interface Props {
   attraction: Attraction;
@@ -23,6 +26,7 @@ export default function AttractionCard({
   onDelete,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const {
     attributes,
@@ -133,8 +137,44 @@ export default function AttractionCard({
               ))}
             </div>
           )}
+
+          {(attraction.images ?? []).length > 0 && (
+            <button
+              type='button'
+              onClick={e => {
+                e.stopPropagation();
+                setLightboxIndex(0);
+              }}
+              className='mt-2 flex items-center gap-1.5 transition-opacity hover:opacity-80'
+            >
+              <div className='flex -space-x-2'>
+                {attraction.images!.slice(0, 3).map(img => (
+                  <img
+                    key={img.id}
+                    src={`/uploads/${img.filename}`}
+                    alt={img.title}
+                    title={img.title}
+                    className='border-card size-7 rounded-md border-2 object-cover'
+                  />
+                ))}
+              </div>
+              {attraction.images!.length > 3 && (
+                <span className='text-muted-foreground flex items-center gap-0.5 text-xs'>
+                  <Images size={10} />+{attraction.images!.length - 3}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={attraction.images!}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 }

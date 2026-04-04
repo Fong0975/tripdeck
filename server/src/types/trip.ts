@@ -1,5 +1,12 @@
 // --- Response shapes returned to the client ---
 
+export interface ImageResponse {
+  id: number;
+  filename: string;
+  title: string;
+  sortOrder: number;
+}
+
 export interface TripResponse {
   id: number;
   title: string;
@@ -17,6 +24,7 @@ export interface AttractionResponse {
   notes: string | null;
   nearbyAttractions: string | null;
   referenceWebsites: string[];
+  images: ImageResponse[];
   sortOrder: number;
 }
 
@@ -28,6 +36,7 @@ export interface ConnectionResponse {
   duration: string | null;
   route: string | null;
   notes: string | null;
+  images: ImageResponse[];
 }
 
 export interface DayResponse {
