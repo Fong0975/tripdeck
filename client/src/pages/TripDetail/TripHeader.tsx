@@ -1,22 +1,15 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 
 import type { Trip } from '@/types';
 
 interface Props {
   trip: Trip;
-  refreshing: boolean;
   onBack: () => void;
-  onRefresh: () => void;
 }
 
-export default function TripHeader({
-  trip,
-  refreshing,
-  onBack,
-  onRefresh,
-}: Props) {
+export default function TripHeader({ trip, onBack }: Props) {
   const totalDays =
     differenceInCalendarDays(parseISO(trip.endDate), parseISO(trip.startDate)) +
     1;
@@ -48,15 +41,6 @@ export default function TripHeader({
             <span className='text-primary font-medium'>{totalDays} 天</span>
           </div>
         </div>
-
-        <button
-          onClick={onRefresh}
-          disabled={refreshing}
-          className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors disabled:opacity-40'
-          aria-label='重新整理'
-        >
-          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-        </button>
       </div>
     </div>
   );

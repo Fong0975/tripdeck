@@ -8,7 +8,7 @@ import type { Trip } from '@/types';
 
 interface Props {
   trip: Trip;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
 }
 
 export default function TripCard({ trip, onDelete }: Props) {

@@ -1,4 +1,4 @@
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import TripCard from '@/components/TripCard';
 import type { Trip } from '@/types';
@@ -6,41 +6,22 @@ import type { Trip } from '@/types';
 interface Props {
   trips: Trip[];
   loading: boolean;
-  refreshing: boolean;
   onAdd: () => void;
-  onDelete: (id: string) => void;
-  onReload: () => void;
+  onDelete: (id: number) => void;
 }
 
-export default function TripList({
-  trips,
-  loading,
-  refreshing,
-  onAdd,
-  onDelete,
-  onReload,
-}: Props) {
+export default function TripList({ trips, loading, onAdd, onDelete }: Props) {
   return (
     <main className='mx-auto max-w-screen-xl px-4 pb-20'>
       <div className='mb-8 flex items-center justify-between'>
         <h2 className='text-foreground text-2xl font-bold'>我的旅程</h2>
-        <div className='flex items-center gap-2'>
-          <button
-            onClick={onReload}
-            disabled={refreshing}
-            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors disabled:opacity-40'
-            aria-label='重新載入'
-          >
-            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-          </button>
-          <button
-            onClick={onAdd}
-            className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
-          >
-            <Plus size={18} />
-            新增旅程
-          </button>
-        </div>
+        <button
+          onClick={onAdd}
+          className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
+        >
+          <Plus size={18} />
+          新增旅程
+        </button>
       </div>
 
       {loading ? (

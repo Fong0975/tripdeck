@@ -1,6 +1,5 @@
 import { X, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import type { Attraction } from '@/types';
 
@@ -14,7 +13,7 @@ const INPUT_CLS =
   'w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors';
 
 const empty: Attraction = {
-  id: '',
+  id: 0,
   name: '',
   googleMapUrl: '',
   notes: '',
@@ -28,7 +27,7 @@ export default function AttractionModal({
   onSave,
 }: Props) {
   const [form, setForm] = useState<Attraction>(
-    attraction ? { ...attraction } : { ...empty, id: uuid() },
+    attraction ? { ...attraction } : { ...empty },
   );
   const [newWebsite, setNewWebsite] = useState('');
   const [error, setError] = useState('');

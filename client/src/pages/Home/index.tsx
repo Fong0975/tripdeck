@@ -9,14 +9,7 @@ import TripList from './TripList';
 import { useHomeData } from './useHomeData';
 
 export default function Home() {
-  const {
-    trips,
-    loading,
-    refreshing,
-    handleTripAdded,
-    handleDeleteTrip,
-    handleForceReload,
-  } = useHomeData();
+  const { trips, loading, handleTripAdded, handleDeleteTrip } = useHomeData();
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -26,10 +19,8 @@ export default function Home() {
       <TripList
         trips={trips}
         loading={loading}
-        refreshing={refreshing}
         onAdd={() => setShowModal(true)}
-        onDelete={handleDeleteTrip}
-        onReload={() => void handleForceReload()}
+        onDelete={id => void handleDeleteTrip(id)}
       />
 
       <ChecklistSection />

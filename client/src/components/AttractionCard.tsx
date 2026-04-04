@@ -14,7 +14,7 @@ import type { Attraction } from '@/types';
 interface Props {
   attraction: Attraction;
   onEdit: (attraction: Attraction) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
 }
 
 export default function AttractionCard({

@@ -1,50 +1,33 @@
 import { Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useCallback, useEffect, useState } from 'react';
 
-import type { ChecklistOccasion, TripChecklist } from '@/types';
+import type { TripChecklist } from '@/types';
 import {
-  getChecklistTemplate,
+  addOccasion,
+  deleteOccasion,
   getTripChecklist,
-  initTripChecklist,
-  saveTripChecklist,
+  setCheck,
+  updateOccasion,
 } from '@/utils/storage';
 
 interface Props {
-  tripId: string;
+  tripId: number;
 }
 
 export default function TripChecklistPanel({ tripId }: Props) {
   const [checklist, setChecklist] = useState<TripChecklist | null>(null);
   const [loading, setLoading] = useState(true);
-  const nameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const reload = useCallback(async () => {
+    setChecklist(await getTripChecklist(tripId));
+  }, [tripId]);
 
   useEffect(() => {
     setLoading(true);
-    const load = async () => {
-      let cl = await getTripChecklist(tripId);
-      if (!cl) {
-        const template = await getChecklistTemplate();
-        cl = initTripChecklist(tripId, template);
-        await saveTripChecklist(cl);
-      }
-      setChecklist(cl);
-      setLoading(false);
-    };
-    void load();
-  }, [tripId]);
+    void reload().finally(() => setLoading(false));
+  }, [reload]);
 
-  const persistName = (updated: TripChecklist) => {
-    setChecklist(updated);
-    if (nameTimer.current) {
-      clearTimeout(nameTimer.current);
-    }
-    nameTimer.current = setTimeout(() => {
-      void saveTripChecklist(updated);
-    }, 400);
-  };
-
-  const toggleCheck = (occId: string, itemId: string) => {
+  const handleToggleCheck = async (occId: number, itemId: number) => {
     if (!checklist) {
       return;
     }
@@ -52,57 +35,34 @@ export default function TripChecklistPanel({ tripId }: Props) {
     if (!occ) {
       return;
     }
-    const updated: TripChecklist = {
+    const newChecked = !occ.checks[itemId];
+    setChecklist({
       ...checklist,
       occasions: checklist.occasions.map(o =>
         o.id === occId
-          ? { ...o, checks: { ...o.checks, [itemId]: !o.checks[itemId] } }
+          ? { ...o, checks: { ...o.checks, [itemId]: newChecked } }
           : o,
       ),
-    };
-    setChecklist(updated);
-    void saveTripChecklist(updated);
-  };
-
-  const updateOccasionName = (occId: string, name: string) => {
-    if (!checklist) {
-      return;
-    }
-    persistName({
-      ...checklist,
-      occasions: checklist.occasions.map(o =>
-        o.id === occId ? { ...o, name } : o,
-      ),
     });
+    await setCheck(tripId, occId, itemId, newChecked);
   };
 
-  const addOccasion = () => {
-    if (!checklist) {
+  const handleOccasionBlur = async (occId: number, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
       return;
     }
-    const newOcc: ChecklistOccasion = {
-      id: uuid(),
-      name: '新時機',
-      checks: {},
-    };
-    const updated: TripChecklist = {
-      ...checklist,
-      occasions: [...checklist.occasions, newOcc],
-    };
-    setChecklist(updated);
-    void saveTripChecklist(updated);
+    await updateOccasion(tripId, occId, trimmed);
   };
 
-  const deleteOccasion = (occId: string) => {
-    if (!checklist) {
-      return;
-    }
-    const updated: TripChecklist = {
-      ...checklist,
-      occasions: checklist.occasions.filter(o => o.id !== occId),
-    };
-    setChecklist(updated);
-    void saveTripChecklist(updated);
+  const handleAddOccasion = async () => {
+    await addOccasion(tripId, '新時機');
+    await reload();
+  };
+
+  const handleDeleteOccasion = async (occId: number) => {
+    await deleteOccasion(tripId, occId);
+    await reload();
   };
 
   if (loading || !checklist) {
@@ -156,15 +116,15 @@ export default function TripChecklistPanel({ tripId }: Props) {
                     <div className='flex flex-col items-center gap-1'>
                       <div className='flex items-center gap-1'>
                         <input
-                          value={occ.name}
-                          onChange={e =>
-                            updateOccasionName(occ.id, e.target.value)
+                          defaultValue={occ.name}
+                          onBlur={e =>
+                            void handleOccasionBlur(occ.id, e.target.value)
                           }
                           className='text-foreground w-20 bg-transparent text-center text-sm font-semibold focus:outline-none'
                         />
                         {checklist.occasions.length > 1 && (
                           <button
-                            onClick={() => deleteOccasion(occ.id)}
+                            onClick={() => void handleDeleteOccasion(occ.id)}
                             className='text-muted-foreground hover:text-destructive rounded p-0.5'
                             aria-label='刪除時機'
                           >
@@ -189,7 +149,7 @@ export default function TripChecklistPanel({ tripId }: Props) {
               {/* Add occasion button */}
               <th className='p-3'>
                 <button
-                  onClick={addOccasion}
+                  onClick={() => void handleAddOccasion()}
                   className='border-border text-muted-foreground hover:border-primary hover:text-primary flex items-center gap-1 rounded-lg border border-dashed px-2 py-1 text-xs transition-colors'
                 >
                   <Plus size={12} />
@@ -233,13 +193,15 @@ export default function TripChecklistPanel({ tripId }: Props) {
                       <td
                         key={occ.id}
                         className='px-4 py-2.5 text-center'
-                        onClick={() => toggleCheck(occ.id, item.id)}
+                        onClick={() => void handleToggleCheck(occ.id, item.id)}
                       >
                         <label className='flex cursor-pointer items-center justify-center'>
                           <input
                             type='checkbox'
                             checked={!!occ.checks[item.id]}
-                            onChange={() => toggleCheck(occ.id, item.id)}
+                            onChange={() =>
+                              void handleToggleCheck(occ.id, item.id)
+                            }
                             onClick={e => e.stopPropagation()}
                             className='border-border accent-primary size-4 cursor-pointer rounded'
                           />

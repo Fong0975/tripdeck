@@ -1,16 +1,8 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import type { Trip } from '@/types';
-import {
-  addTrip,
-  getChecklistTemplate,
-  initTripChecklist,
-  initTripContent,
-  saveTripChecklist,
-  saveTripContent,
-} from '@/utils/storage';
+import { createTrip } from '@/utils/storage';
 
 interface Props {
   onClose: () => void;
@@ -46,23 +38,18 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
       return setError('結束日期不能早於開始日期');
     }
 
-    const trip: Trip = {
-      id: uuid(),
-      title: form.title.trim(),
-      destination: form.destination.trim(),
-      startDate: form.startDate,
-      endDate: form.endDate,
-      description: form.description.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    };
-
-    const template = await getChecklistTemplate();
-    await Promise.all([
-      addTrip(trip),
-      saveTripContent(initTripContent(trip)),
-      saveTripChecklist(initTripChecklist(trip.id, template)),
-    ]);
-    onAdded(trip);
+    try {
+      const trip = await createTrip({
+        title: form.title.trim(),
+        destination: form.destination.trim() || undefined,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        description: form.description.trim() || undefined,
+      });
+      onAdded(trip);
+    } catch {
+      setError('建立旅程失敗，請稍後再試');
+    }
   };
 
   return (

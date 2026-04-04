@@ -1,7 +1,6 @@
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { v4 as uuid } from 'uuid';
 
 import AttractionCard from '@/components/AttractionCard';
 import AttractionModal from '@/components/AttractionModal';
@@ -9,8 +8,14 @@ import DayColumn from '@/components/DayColumn';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
-import type { Attraction, TravelConnection, TripContent } from '@/types';
-import { saveTripContent } from '@/utils/storage';
+import type { Attraction, TravelConnection } from '@/types';
+import {
+  addAttraction,
+  addConnection,
+  deleteAttraction,
+  updateAttraction,
+  updateConnection,
+} from '@/utils/storage';
 
 import TripHeader from './TripHeader';
 import type { ModalState } from './types';
@@ -21,118 +26,99 @@ export default function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { trip, content, setContent, refreshing, handleForceRefresh } =
-    useTripData(id);
+  const { trip, content, reloadContent } = useTripData(id);
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
     'itinerary',
   );
 
-  const updateContent = useCallback(
-    (updater: (prev: TripContent) => TripContent) => {
-      setContent(prev => {
-        if (!prev) {
-          return prev;
-        }
-        const next = updater(prev);
-        void saveTripContent(next);
-        return next;
-      });
-    },
-    [setContent],
-  );
-
-  const dnd = useDragAndDrop(content, updateContent);
+  const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
 
   // --- Attraction CRUD ---
 
-  const handleSaveAttraction = (dayIndex: number, attraction: Attraction) => {
-    updateContent(prev => ({
-      ...prev,
-      days: prev.days.map((day, i) => {
-        if (i !== dayIndex) {
-          return day;
-        }
-        const exists = day.attractions.find(a => a.id === attraction.id);
-        return {
-          ...day,
-          attractions: exists
-            ? day.attractions.map(a =>
-                a.id === attraction.id ? attraction : a,
-              )
-            : [...day.attractions, attraction],
-        };
-      }),
-    }));
+  const handleSaveAttraction = async (
+    dayIndex: number,
+    attraction: Attraction,
+  ) => {
+    if (!trip || !content) {
+      return;
+    }
+    const day = content.days[dayIndex];
+    if (attraction.id === 0) {
+      await addAttraction(trip.id, day.id, {
+        name: attraction.name,
+        googleMapUrl: attraction.googleMapUrl ?? undefined,
+        notes: attraction.notes ?? undefined,
+        nearbyAttractions: attraction.nearbyAttractions ?? undefined,
+        referenceWebsites: attraction.referenceWebsites,
+      });
+    } else {
+      await updateAttraction(trip.id, attraction.id, {
+        name: attraction.name,
+        googleMapUrl: attraction.googleMapUrl ?? null,
+        notes: attraction.notes ?? null,
+        nearbyAttractions: attraction.nearbyAttractions ?? null,
+        referenceWebsites: attraction.referenceWebsites,
+      });
+    }
+    await reloadContent();
     setModal({ type: 'none' });
   };
 
-  const handleDeleteAttraction = (dayIndex: number, attractionId: string) => {
-    updateContent(prev => ({
-      ...prev,
-      days: prev.days.map((day, i) => {
-        if (i !== dayIndex) {
-          return day;
-        }
-        return {
-          ...day,
-          attractions: day.attractions.filter(a => a.id !== attractionId),
-          connections: day.connections.filter(
-            c =>
-              c.fromAttractionId !== attractionId &&
-              c.toAttractionId !== attractionId,
-          ),
-        };
-      }),
-    }));
+  const handleDeleteAttraction = async (
+    _dayIndex: number,
+    attractionId: number,
+  ) => {
+    if (!trip) {
+      return;
+    }
+    await deleteAttraction(trip.id, attractionId);
+    await reloadContent();
   };
 
   // --- Connection CRUD ---
 
   const handleAddConnection = (
     dayIndex: number,
-    fromId: string,
-    toId: string,
+    fromId: number,
+    toId: number,
   ) => {
-    const newConn: TravelConnection = {
-      id: uuid(),
+    const pending: TravelConnection = {
+      id: 0,
       fromAttractionId: fromId,
       toAttractionId: toId,
       transportMode: 'transit',
     };
-    updateContent(prev => ({
-      ...prev,
-      days: prev.days.map((day, i) =>
-        i === dayIndex
-          ? { ...day, connections: [...day.connections, newConn] }
-          : day,
-      ),
-    }));
-    setModal({ type: 'editConnection', dayIndex, connection: newConn });
+    setModal({ type: 'editConnection', dayIndex, connection: pending });
   };
 
-  const handleSaveConnection = (
+  const handleSaveConnection = async (
     dayIndex: number,
     connection: TravelConnection,
   ) => {
-    updateContent(prev => ({
-      ...prev,
-      days: prev.days.map((day, i) => {
-        if (i !== dayIndex) {
-          return day;
-        }
-        const exists = day.connections.find(c => c.id === connection.id);
-        return {
-          ...day,
-          connections: exists
-            ? day.connections.map(c =>
-                c.id === connection.id ? connection : c,
-              )
-            : [...day.connections, connection],
-        };
-      }),
-    }));
+    if (!trip || !content) {
+      return;
+    }
+    const day = content.days[dayIndex];
+    if (connection.id === 0) {
+      await addConnection(trip.id, day.id, {
+        fromAttractionId: connection.fromAttractionId,
+        toAttractionId: connection.toAttractionId,
+        transportMode: connection.transportMode,
+        duration: connection.duration ?? undefined,
+        route: connection.route ?? undefined,
+        notes: connection.notes ?? undefined,
+      });
+    } else {
+      await updateConnection(trip.id, connection.id, {
+        transportMode: connection.transportMode,
+        duration: connection.duration ?? null,
+        route: connection.route ?? null,
+        notes: connection.notes ?? null,
+      });
+    }
+    await reloadContent();
     setModal({ type: 'none' });
   };
 
@@ -166,12 +152,7 @@ export default function TripDetail() {
     <div className='bg-background flex min-h-screen flex-col'>
       <Navbar />
 
-      <TripHeader
-        trip={trip}
-        refreshing={refreshing}
-        onBack={() => navigate('/')}
-        onRefresh={() => void handleForceRefresh()}
-      />
+      <TripHeader trip={trip} onBack={() => navigate('/')} />
 
       {/* Tab bar */}
       <div className='border-border bg-background border-b'>
@@ -210,7 +191,7 @@ export default function TripDetail() {
             <div className='flex min-w-max gap-4 pb-4'>
               {content.days.map((day, i) => (
                 <DayColumn
-                  key={day.day}
+                  key={day.id}
                   day={day}
                   dayIndex={i}
                   onAddAttraction={di =>
@@ -223,7 +204,9 @@ export default function TripDetail() {
                       attraction: a,
                     })
                   }
-                  onDeleteAttraction={handleDeleteAttraction}
+                  onDeleteAttraction={(di, aId) =>
+                    void handleDeleteAttraction(di, aId)
+                  }
                   onEditConnection={(di, c) =>
                     setModal({
                       type: 'editConnection',
@@ -255,7 +238,7 @@ export default function TripDetail() {
       {modal.type === 'addAttraction' && (
         <AttractionModal
           onClose={() => setModal({ type: 'none' })}
-          onSave={a => handleSaveAttraction(modal.dayIndex, a)}
+          onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
         />
       )}
 
@@ -263,7 +246,7 @@ export default function TripDetail() {
         <AttractionModal
           attraction={modal.attraction}
           onClose={() => setModal({ type: 'none' })}
-          onSave={a => handleSaveAttraction(modal.dayIndex, a)}
+          onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
         />
       )}
 
@@ -273,7 +256,9 @@ export default function TripDetail() {
           fromName={editConnectionData.fromName}
           toName={editConnectionData.toName}
           onClose={() => setModal({ type: 'none' })}
-          onSave={c => handleSaveConnection(editConnectionData.dayIndex, c)}
+          onSave={c =>
+            void handleSaveConnection(editConnectionData.dayIndex, c)
+          }
         />
       )}
     </div>

@@ -7,35 +7,36 @@ export type TransportMode =
   | 'other';
 
 export interface Trip {
-  id: string;
+  id: number;
   title: string;
-  destination: string;
+  destination: string | null;
   startDate: string;
   endDate: string;
-  description?: string;
+  description?: string | null;
   createdAt: string;
 }
 
 export interface Attraction {
-  id: string;
+  id: number;
   name: string;
-  googleMapUrl?: string;
-  notes?: string;
-  nearbyAttractions?: string;
+  googleMapUrl?: string | null;
+  notes?: string | null;
+  nearbyAttractions?: string | null;
   referenceWebsites?: string[];
 }
 
 export interface TravelConnection {
-  id: string;
-  fromAttractionId: string;
-  toAttractionId: string;
+  id: number;
+  fromAttractionId: number;
+  toAttractionId: number;
   transportMode: TransportMode;
-  duration?: string;
-  route?: string;
-  notes?: string;
+  duration?: string | null;
+  route?: string | null;
+  notes?: string | null;
 }
 
 export interface DayPlan {
+  id: number;
   day: number;
   date: string;
   attractions: Attraction[];
@@ -43,17 +44,17 @@ export interface DayPlan {
 }
 
 export interface TripContent {
-  tripId: string;
+  tripId: number;
   days: DayPlan[];
 }
 
 export interface ChecklistItem {
-  id: string;
+  id: number;
   name: string;
 }
 
 export interface ChecklistCategory {
-  id: string;
+  id: number;
   name: string;
   items: ChecklistItem[];
 }
@@ -63,14 +64,14 @@ export interface ChecklistTemplate {
 }
 
 export interface ChecklistOccasion {
-  id: string;
+  id: number;
   name: string;
-  /** Maps itemId to checked state */
-  checks: Record<string, boolean>;
+  /** Maps item ID to checked state */
+  checks: Record<number, boolean>;
 }
 
 export interface TripChecklist {
-  tripId: string;
+  tripId: number;
   categories: ChecklistCategory[];
   occasions: ChecklistOccasion[];
 }
