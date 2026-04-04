@@ -61,6 +61,26 @@ export const tableDefinitions: string[] = [
       FOREIGN KEY (trip_attraction_id_to) REFERENCES trip_attractions(id)
   )`,
 
+  `CREATE TABLE IF NOT EXISTS trip_attraction_images (
+    id                   INT          AUTO_INCREMENT PRIMARY KEY,
+    trip_attraction_id   INT          NOT NULL,
+    filename             VARCHAR(255) NOT NULL,
+    title                VARCHAR(255) NOT NULL,
+    sort_order           INT          NOT NULL DEFAULT 0,
+    CONSTRAINT fk_trip_attraction_images_attraction
+      FOREIGN KEY (trip_attraction_id) REFERENCES trip_attractions(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS trip_connection_images (
+    id                   INT          AUTO_INCREMENT PRIMARY KEY,
+    trip_connection_id   INT          NOT NULL,
+    filename             VARCHAR(255) NOT NULL,
+    title                VARCHAR(255) NOT NULL,
+    sort_order           INT          NOT NULL DEFAULT 0,
+    CONSTRAINT fk_trip_connection_images_connection
+      FOREIGN KEY (trip_connection_id) REFERENCES trip_connections(id) ON DELETE CASCADE
+  )`,
+
   `CREATE TABLE IF NOT EXISTS checklist_template_categories (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,

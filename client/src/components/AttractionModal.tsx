@@ -1,9 +1,13 @@
 import { X, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Attraction } from '@/types';
+import type { Attraction, AttractionImage } from '@/types';
+import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
+
+import ImageUploadSection from './ImageUploadSection';
 
 interface Props {
+  tripId?: number;
   attraction?: Attraction;
   onClose: () => void;
   onSave: (attraction: Attraction) => void;
@@ -19,15 +23,20 @@ const empty: Attraction = {
   notes: '',
   nearbyAttractions: '',
   referenceWebsites: [],
+  images: [],
 };
 
 export default function AttractionModal({
+  tripId,
   attraction,
   onClose,
   onSave,
 }: Props) {
   const [form, setForm] = useState<Attraction>(
     attraction ? { ...attraction } : { ...empty },
+  );
+  const [images, setImages] = useState<AttractionImage[]>(
+    attraction?.images ?? [],
   );
   const [newWebsite, setNewWebsite] = useState('');
   const [error, setError] = useState('');
@@ -50,13 +59,36 @@ export default function AttractionModal({
       (form.referenceWebsites ?? []).filter((_, i) => i !== idx),
     );
 
+  const handleUploadImage = async (file: File, title: string) => {
+    if (!tripId || !attraction?.id) {
+      return;
+    }
+    const image = await uploadAttractionImage(
+      tripId,
+      attraction.id,
+      file,
+      title,
+    );
+    setImages(prev => [...prev, image]);
+  };
+
+  const handleDeleteImage = async (imageId: number) => {
+    if (!tripId || !attraction?.id) {
+      return;
+    }
+    await deleteAttractionImage(tripId, attraction.id, imageId);
+    setImages(prev => prev.filter(img => img.id !== imageId));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       return setError('請輸入景點名稱');
     }
-    onSave({ ...form, name: form.name.trim() });
+    onSave({ ...form, name: form.name.trim(), images });
   };
+
+  const isEditing = Boolean(attraction?.id);
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
@@ -191,6 +223,19 @@ export default function AttractionModal({
               </div>
             </div>
           </div>
+
+          {isEditing && (
+            <div>
+              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+                圖片
+              </label>
+              <ImageUploadSection
+                images={images}
+                onUpload={handleUploadImage}
+                onDelete={handleDeleteImage}
+              />
+            </div>
+          )}
 
           {error && <p className='text-destructive text-sm'>{error}</p>}
 

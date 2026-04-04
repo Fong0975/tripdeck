@@ -237,6 +237,7 @@ export default function TripDetail() {
       {/* Modals */}
       {modal.type === 'addAttraction' && (
         <AttractionModal
+          tripId={trip.id}
           onClose={() => setModal({ type: 'none' })}
           onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
         />
@@ -244,6 +245,7 @@ export default function TripDetail() {
 
       {modal.type === 'editAttraction' && (
         <AttractionModal
+          tripId={trip.id}
           attraction={modal.attraction}
           onClose={() => setModal({ type: 'none' })}
           onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
@@ -252,6 +254,7 @@ export default function TripDetail() {
 
       {editConnectionData && (
         <TravelConnectionModal
+          tripId={trip.id}
           connection={editConnectionData.connection}
           fromName={editConnectionData.fromName}
           toName={editConnectionData.toName}

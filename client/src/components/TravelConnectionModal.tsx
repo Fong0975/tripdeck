@@ -1,9 +1,13 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import type { TravelConnection, TransportMode } from '@/types';
+import type { TravelConnection, TransportMode, AttractionImage } from '@/types';
+import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
+
+import ImageUploadSection from './ImageUploadSection';
 
 interface Props {
+  tripId?: number;
   connection: TravelConnection;
   fromName: string;
   toName: string;
@@ -24,7 +28,11 @@ const TRANSPORT_OPTIONS: {
   { value: 'other', label: '其他', icon: '🗺️' },
 ];
 
+const INPUT_CLS =
+  'border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2';
+
 export default function TravelConnectionModal({
+  tripId,
   connection,
   fromName,
   toName,
@@ -32,14 +40,40 @@ export default function TravelConnectionModal({
   onSave,
 }: Props) {
   const [form, setForm] = useState<TravelConnection>({ ...connection });
+  const [images, setImages] = useState<AttractionImage[]>(
+    connection.images ?? [],
+  );
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  const handleUploadImage = async (file: File, title: string) => {
+    if (!tripId || !connection.id) {
+      return;
+    }
+    const image = await uploadConnectionImage(
+      tripId,
+      connection.id,
+      file,
+      title,
+    );
+    setImages(prev => [...prev, image]);
+  };
+
+  const handleDeleteImage = async (imageId: number) => {
+    if (!tripId || !connection.id) {
+      return;
+    }
+    await deleteConnectionImage(tripId, connection.id, imageId);
+    setImages(prev => prev.filter(img => img.id !== imageId));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(form);
+    onSave({ ...form, images });
   };
+
+  const isEditing = connection.id > 0;
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
@@ -48,7 +82,7 @@ export default function TravelConnectionModal({
         onClick={onClose}
       />
 
-      <div className='animate-slide-up border-border bg-card relative w-full max-w-md rounded-2xl border p-6 shadow-2xl'>
+      <div className='animate-slide-up border-border bg-card relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border p-6 shadow-2xl'>
         <div className='mb-6 flex items-center justify-between'>
           <h2 className='text-foreground text-xl font-bold'>移動資訊</h2>
           <button
@@ -101,7 +135,7 @@ export default function TravelConnectionModal({
               value={form.duration ?? ''}
               onChange={e => set('duration', e.target.value)}
               placeholder='例：30 分鐘'
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className={INPUT_CLS}
             />
           </div>
 
@@ -114,7 +148,7 @@ export default function TravelConnectionModal({
               onChange={e => set('route', e.target.value)}
               placeholder='例：搭乘銀座線至上野站...'
               rows={2}
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full resize-none rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className={`${INPUT_CLS} resize-none`}
             />
           </div>
 
@@ -126,9 +160,22 @@ export default function TravelConnectionModal({
               value={form.notes ?? ''}
               onChange={e => set('notes', e.target.value)}
               placeholder='其他注意事項...'
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className={INPUT_CLS}
             />
           </div>
+
+          {isEditing && (
+            <div>
+              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+                圖片
+              </label>
+              <ImageUploadSection
+                images={images}
+                onUpload={handleUploadImage}
+                onDelete={handleDeleteImage}
+              />
+            </div>
+          )}
 
           <div className='flex gap-3 pt-2'>
             <button

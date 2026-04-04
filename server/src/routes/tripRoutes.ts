@@ -1,6 +1,8 @@
 import { Router } from 'express';
 
+import * as imageController from '../controllers/imageController';
 import * as tripController from '../controllers/tripController';
+import { upload } from '../middleware/upload';
 
 import checklistTripRoutes from './checklistTripRoutes';
 
@@ -39,6 +41,28 @@ router.put(
 router.delete(
   '/:tripId/connections/:connectionId',
   tripController.deleteConnection,
+);
+
+// Attraction images
+router.post(
+  '/:tripId/attractions/:attractionId/images',
+  upload.single('image'),
+  imageController.uploadAttractionImage,
+);
+router.delete(
+  '/:tripId/attractions/:attractionId/images/:imageId',
+  imageController.deleteAttractionImage,
+);
+
+// Connection images
+router.post(
+  '/:tripId/connections/:connectionId/images',
+  upload.single('image'),
+  imageController.uploadConnectionImage,
+);
+router.delete(
+  '/:tripId/connections/:connectionId/images/:imageId',
+  imageController.deleteConnectionImage,
 );
 
 // Checklist

@@ -10,6 +10,8 @@ import type {
   TripResponse,
 } from '../types/trip';
 
+import * as imageRepo from './imageRepository';
+
 // --- Row types ---
 
 interface TripRow extends RowDataPacket {
@@ -249,6 +251,14 @@ export async function findContent(
     dayIds,
   );
 
+  // Batch-fetch images for attractions and connections.
+  const attrIds = attractionRows.map(r => r.id);
+  const connIds = connectionRows.map(r => r.id);
+  const [imagesByAttractionId, imagesByConnectionId] = await Promise.all([
+    imageRepo.getAttractionImagesBatch(attrIds),
+    imageRepo.getConnectionImagesBatch(connIds),
+  ]);
+
   // Group attractions and connections by their parent day ID.
   const attractionsByDayId = new Map<number, AttractionResponse[]>();
   for (const row of attractionRows) {
@@ -260,6 +270,7 @@ export async function findContent(
       notes: row.notes,
       nearbyAttractions: row.nearby_attractions,
       referenceWebsites: websitesByAttractionId.get(row.id) ?? [],
+      images: imagesByAttractionId.get(row.id) ?? [],
       sortOrder: row.sort_order,
     });
     attractionsByDayId.set(row.trip_day_id, list);
@@ -276,6 +287,7 @@ export async function findContent(
       duration: row.duration,
       route: row.route,
       notes: row.notes,
+      images: imagesByConnectionId.get(row.id) ?? [],
     });
     connectionsByDayId.set(row.trip_day_id, list);
   }

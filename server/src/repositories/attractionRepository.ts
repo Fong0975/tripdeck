@@ -4,8 +4,11 @@ import pool from '../config/database';
 import type {
   AttractionResponse,
   CreateAttractionBody,
+  ImageResponse,
   UpdateAttractionBody,
 } from '../types/trip';
+
+import * as imageRepo from './imageRepository';
 
 // --- Row types ---
 
@@ -39,6 +42,7 @@ async function getWebsites(attractionId: number): Promise<string[]> {
 function toAttractionResponse(
   row: TripAttractionRow,
   referenceWebsites: string[],
+  images: ImageResponse[],
 ): AttractionResponse {
   return {
     id: row.id,
@@ -47,6 +51,7 @@ function toAttractionResponse(
     notes: row.notes,
     nearbyAttractions: row.nearby_attractions,
     referenceWebsites,
+    images,
     sortOrder: row.sort_order,
   };
 }
@@ -118,6 +123,7 @@ export async function create(
       notes: data.notes ?? null,
       nearbyAttractions: data.nearbyAttractions ?? null,
       referenceWebsites: websites,
+      images: [],
       sortOrder,
     };
   } catch (err) {
@@ -191,8 +197,11 @@ export async function update(
     'SELECT * FROM trip_attractions WHERE id = ?',
     [attractionId],
   );
-  const websites = await getWebsites(attractionId);
-  return toAttractionResponse(updatedRows[0], websites);
+  const [websites, images] = await Promise.all([
+    getWebsites(attractionId),
+    imageRepo.getAttractionImages(attractionId),
+  ]);
+  return toAttractionResponse(updatedRows[0], websites, images);
 }
 
 export async function deleteById(attractionId: number): Promise<boolean> {

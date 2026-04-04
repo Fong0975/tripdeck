@@ -32,6 +32,10 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# Uploaded images (keep directory structure, ignore actual files)
+server/uploads/*
+!server/uploads/.gitkeep
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

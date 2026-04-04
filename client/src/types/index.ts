@@ -6,6 +6,13 @@ export type TransportMode =
   | 'flight'
   | 'other';
 
+export interface AttractionImage {
+  id: number;
+  filename: string;
+  title: string;
+  sortOrder: number;
+}
+
 export interface Trip {
   id: number;
   title: string;
@@ -23,6 +30,7 @@ export interface Attraction {
   notes?: string | null;
   nearbyAttractions?: string | null;
   referenceWebsites?: string[];
+  images?: AttractionImage[];
 }
 
 export interface TravelConnection {
@@ -33,6 +41,7 @@ export interface TravelConnection {
   duration?: string | null;
   route?: string | null;
   notes?: string | null;
+  images?: AttractionImage[];
 }
 
 export interface DayPlan {

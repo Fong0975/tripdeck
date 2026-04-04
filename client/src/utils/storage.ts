@@ -1,5 +1,6 @@
 import type {
   Attraction,
+  AttractionImage,
   ChecklistCategory,
   ChecklistItem,
   ChecklistOccasion,
@@ -176,6 +177,60 @@ export async function deleteConnection(
   });
 }
 
+// --- Images ---
+
+export async function uploadAttractionImage(
+  tripId: number,
+  attractionId: number,
+  file: File,
+  title: string,
+): Promise<AttractionImage> {
+  const form = new FormData();
+  form.append('image', file);
+  form.append('title', title);
+  return api<AttractionImage>(
+    `/api/trips/${tripId}/attractions/${attractionId}/images`,
+    { method: 'POST', body: form },
+  );
+}
+
+export async function deleteAttractionImage(
+  tripId: number,
+  attractionId: number,
+  imageId: number,
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/attractions/${attractionId}/images/${imageId}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function uploadConnectionImage(
+  tripId: number,
+  connectionId: number,
+  file: File,
+  title: string,
+): Promise<AttractionImage> {
+  const form = new FormData();
+  form.append('image', file);
+  form.append('title', title);
+  return api<AttractionImage>(
+    `/api/trips/${tripId}/connections/${connectionId}/images`,
+    { method: 'POST', body: form },
+  );
+}
+
+export async function deleteConnectionImage(
+  tripId: number,
+  connectionId: number,
+  imageId: number,
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/connections/${connectionId}/images/${imageId}`,
+    { method: 'DELETE' },
+  );
+}
+
 // --- Checklist Template ---
 
 export async function getChecklistTemplate(): Promise<ChecklistTemplate> {
@@ -287,4 +342,4 @@ export async function setCheck(
 }
 
 // Re-export types used by consumers so they don't need to import from two places
-export type { TransportMode, Attraction, TravelConnection };
+export type { TransportMode, Attraction, AttractionImage, TravelConnection };
