@@ -1,10 +1,11 @@
+import { format, parseISO } from 'date-fns';
+import { zhTW } from 'date-fns/locale';
 import {
   BorderStyle,
   Document,
   ExternalHyperlink,
   HeadingLevel,
   ImageRun,
-  LineRuleType,
   Packer,
   Paragraph,
   ShadingType,
@@ -15,55 +16,78 @@ import {
   WidthType,
 } from 'docx';
 
-// A4 content width in pixels (8.27in - 2×1in margin = 6.27in × 96dpi ≈ 602px)
+import type {
+  AttractionImage,
+  Attraction,
+  TravelConnection,
+  TransportMode,
+  Trip,
+  TripContent,
+} from '@/types';
+
+// ---------------------------------------------------------------------------
+// Layout constants
+// ---------------------------------------------------------------------------
+
+// A4 content width: 210mm - 2×25.4mm margins = 159.2mm ≈ 9026 twips
+const CONTENT_WIDTH_DXA = 9026;
+
+// Image sizing (pixels at 96 dpi — docx.js converts internally)
 const CONTENT_WIDTH_PX = 602;
-const MIN_IMAGE_WIDTH_PX = Math.ceil(CONTENT_WIDTH_PX / 2) + 1;
+const HALF_WIDTH_PX = Math.ceil(CONTENT_WIDTH_PX / 2) + 1;
 
-type ParagraphChild = TextRun | ExternalHyperlink | ImageRun;
+const FONT = 'Microsoft JhengHei';
+
+// Attraction table: 4 equal columns [25% | 25% | 25% | 25%]
+const COL_W = Math.round(CONTENT_WIDTH_DXA / 4); // 2257 — single column
+const COL_2L = COL_W * 2; // 4514 — left 2 cols (time)
+const COL_2R = CONTENT_WIDTH_DXA - COL_2L; // 4512 — right 2 cols (maps)
+const COL_3R = CONTENT_WIDTH_DXA - COL_W; // 6769 — right 3 cols (value)
 
 // ---------------------------------------------------------------------------
-// Inline markdown parser: handles **bold**, [text](url), plain text
+// Border presets
 // ---------------------------------------------------------------------------
 
-function parseInline(text: string): ParagraphChild[] {
-  const result: ParagraphChild[] = [];
-  let remaining = text;
+const NO_BORDER = {
+  style: BorderStyle.NONE,
+  size: 0,
+  color: 'auto',
+  space: 0,
+} as const;
 
-  while (remaining.length > 0) {
-    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
-    if (boldMatch) {
-      result.push(new TextRun({ text: boldMatch[1], bold: true }));
-      remaining = remaining.slice(boldMatch[0].length);
-      continue;
-    }
+const CELL_BORDER = {
+  style: BorderStyle.SINGLE,
+  size: 6,
+  color: '000000',
+  space: 0,
+} as const;
 
-    const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
-    if (linkMatch) {
-      result.push(
-        new ExternalHyperlink({
-          link: linkMatch[2],
-          children: [new TextRun({ text: linkMatch[1], style: 'Hyperlink' })],
-        }),
-      );
-      remaining = remaining.slice(linkMatch[0].length);
-      continue;
-    }
+const TRANSPORT_BORDER = {
+  style: BorderStyle.SINGLE,
+  size: 18,
+  color: '60A5FA',
+  space: 0,
+} as const;
 
-    const nextSpecial = remaining.search(/\*\*|\[/);
-    if (nextSpecial === -1) {
-      result.push(new TextRun({ text: remaining }));
-      remaining = '';
-    } else if (nextSpecial === 0) {
-      result.push(new TextRun({ text: remaining[0] }));
-      remaining = remaining.slice(1);
-    } else {
-      result.push(new TextRun({ text: remaining.slice(0, nextSpecial) }));
-      remaining = remaining.slice(nextSpecial);
-    }
-  }
+const ALL_BORDERS = {
+  top: CELL_BORDER,
+  bottom: CELL_BORDER,
+  left: CELL_BORDER,
+  right: CELL_BORDER,
+} as const;
 
-  return result;
-}
+// ---------------------------------------------------------------------------
+// Transport mode labels
+// ---------------------------------------------------------------------------
+
+const TRANSPORT_LABELS: Record<TransportMode, string> = {
+  walk: '步行',
+  transit: '大眾運輸',
+  drive: '開車',
+  bike: '騎車',
+  flight: '飛機',
+  other: '其他',
+};
 
 // ---------------------------------------------------------------------------
 // Image helpers
@@ -113,7 +137,6 @@ async function getImageSize(
       ? { width: parseInt(w), height: parseInt(h) }
       : { width: 400, height: 300 };
   }
-
   return new Promise((resolve, reject) => {
     const blob = new Blob([buffer], { type: `image/${imageType}` });
     const objUrl = URL.createObjectURL(blob);
@@ -135,17 +158,15 @@ function calcImageDimensions(
   naturalHeight: number,
 ): { width: number; height: number } {
   const targetWidth = Math.min(
-    Math.max(naturalWidth, MIN_IMAGE_WIDTH_PX),
+    Math.max(naturalWidth, HALF_WIDTH_PX),
     CONTENT_WIDTH_PX,
   );
   const targetHeight = Math.round((targetWidth / naturalWidth) * naturalHeight);
   return { width: targetWidth, height: targetHeight };
 }
 
-async function makeImageParagraphs(
-  title: string,
-  url: string,
-): Promise<Paragraph[]> {
+async function makeImageParagraphs(img: AttractionImage): Promise<Paragraph[]> {
+  const url = `/uploads/${img.filename}`;
   try {
     const { buffer, imageType } = await fetchImageData(url);
     const { width: nw, height: nh } = await getImageSize(buffer, imageType);
@@ -160,21 +181,23 @@ async function makeImageParagraphs(
             type: imageType,
           }),
         ],
+        spacing: { before: 60, after: 40 },
       }),
     ];
 
-    if (title) {
+    if (img.title) {
       paragraphs.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: title,
+              text: img.title,
               italics: true,
               color: '777777',
               size: 18,
-              font: 'Microsoft JhengHei',
+              font: FONT,
             }),
           ],
+          spacing: { before: 0, after: 60 },
         }),
       );
     }
@@ -185,8 +208,9 @@ async function makeImageParagraphs(
       new Paragraph({
         children: [
           new TextRun({
-            text: `[圖片無法載入${title ? `: ${title}` : ''}]`,
+            text: `[圖片無法載入${img.title ? `: ${img.title}` : ''}]`,
             color: 'AA0000',
+            font: FONT,
           }),
         ],
       }),
@@ -195,86 +219,148 @@ async function makeImageParagraphs(
 }
 
 // ---------------------------------------------------------------------------
-// Markdown → docx Paragraph array
+// Inline markdown parser: **bold**, [text](url), plain text
 // ---------------------------------------------------------------------------
 
-// Twips reference: 1 inch = 1440 twips, 1 line ≈ 240 twips at 12pt
-const SPACING_HALF_LINE = 120;
+type InlineChild = TextRun | ExternalHyperlink;
 
-function makeDayHeadingParagraph(text: string, isFirstDay: boolean): Paragraph {
-  return new Paragraph({
-    pageBreakBefore: !isFirstDay,
-    shading: {
-      type: ShadingType.SOLID,
-      fill: '1D4ED8',
-      color: 'auto',
-    },
-    spacing: {
-      before: 0,
-      after: 280,
-      line: 440,
-      lineRule: LineRuleType.AT_LEAST,
-    },
-    indent: { left: 160, right: 160 },
-    children: [
-      new TextRun({
-        text,
-        bold: true,
-        color: 'FFFFFF',
-        size: 28,
-        font: 'Microsoft JhengHei',
-      }),
-    ],
-  });
-}
+function parseInline(text: string): InlineChild[] {
+  const result: InlineChild[] = [];
+  let remaining = text;
 
-const NO_BORDER = {
-  style: BorderStyle.NONE,
-  size: 0,
-  color: 'auto',
-  space: 0,
-} as const;
-
-const ACCENT_BORDER = {
-  style: BorderStyle.SINGLE,
-  size: 24,
-  color: '3B82F6',
-  space: 0,
-} as const;
-
-async function makeTransportTable(contentLines: string[]): Promise<Table> {
-  const cellChildren: Paragraph[] = [];
-
-  for (const line of contentLines) {
-    const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-    if (imageMatch) {
-      const [, title, url] = imageMatch;
-      cellChildren.push(...(await makeImageParagraphs(title, url)));
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      result.push(new TextRun({ text: boldMatch[1], bold: true, font: FONT }));
+      remaining = remaining.slice(boldMatch[0].length);
       continue;
     }
 
-    if (line.trim() === '') {
-      cellChildren.push(
-        new Paragraph({ children: [], spacing: { before: 40, after: 40 } }),
+    const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+    if (linkMatch) {
+      result.push(
+        new ExternalHyperlink({
+          link: linkMatch[2],
+          children: [
+            new TextRun({ text: linkMatch[1], style: 'Hyperlink', font: FONT }),
+          ],
+        }),
       );
+      remaining = remaining.slice(linkMatch[0].length);
       continue;
     }
 
-    cellChildren.push(
-      new Paragraph({
-        children: parseInline(line),
-        spacing: {
-          before: 40,
-          after: 40,
-          line: 320,
-          lineRule: LineRuleType.AT_LEAST,
-        },
-      }),
-    );
+    const nextSpecial = remaining.search(/\*\*|\[/);
+    if (nextSpecial === -1) {
+      result.push(new TextRun({ text: remaining, font: FONT }));
+      remaining = '';
+    } else if (nextSpecial === 0) {
+      result.push(new TextRun({ text: remaining[0], font: FONT }));
+      remaining = remaining.slice(1);
+    } else {
+      result.push(
+        new TextRun({ text: remaining.slice(0, nextSpecial), font: FONT }),
+      );
+      remaining = remaining.slice(nextSpecial);
+    }
   }
 
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Markdown block parser → Paragraph[] (for use inside table cells)
+// ---------------------------------------------------------------------------
+
+function parseMarkdownContent(text: string): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+
+  for (const line of text.split('\n')) {
+    if (line.startsWith('### ')) {
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: line.slice(4),
+              bold: true,
+              size: 24,
+              font: FONT,
+            }),
+          ],
+          spacing: { before: 80, after: 40 },
+        }),
+      );
+    } else if (line.startsWith('## ')) {
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: line.slice(3),
+              bold: true,
+              size: 26,
+              font: FONT,
+            }),
+          ],
+          spacing: { before: 80, after: 40 },
+        }),
+      );
+    } else if (line.startsWith('# ')) {
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: line.slice(2),
+              bold: true,
+              size: 28,
+              font: FONT,
+            }),
+          ],
+          spacing: { before: 80, after: 40 },
+        }),
+      );
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      paragraphs.push(
+        new Paragraph({
+          children: parseInline(line.slice(2)),
+          bullet: { level: 0 },
+          spacing: { before: 40, after: 40 },
+        }),
+      );
+    } else if (/^\d+\. /.test(line)) {
+      const m = line.match(/^(\d+)\. (.*)/);
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${m?.[1] ?? '1'}. `, font: FONT }),
+            ...parseInline(m?.[2] ?? line),
+          ],
+          spacing: { before: 40, after: 40 },
+        }),
+      );
+    } else if (line.trim() === '' || line === '---') {
+      paragraphs.push(
+        new Paragraph({ children: [], spacing: { before: 20, after: 20 } }),
+      );
+    } else {
+      paragraphs.push(
+        new Paragraph({
+          children: parseInline(line),
+          spacing: { before: 40, after: 40 },
+        }),
+      );
+    }
+  }
+
+  return paragraphs.length > 0 ? paragraphs : [new Paragraph({ children: [] })];
+}
+
+// ---------------------------------------------------------------------------
+// Day header table  ─  1×1, dark blue background, white text
+// ---------------------------------------------------------------------------
+
+function makeDayHeaderTable(text: string, isFirstDay: boolean): Table {
   return new Table({
-    width: { size: 9360, type: WidthType.DXA },
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
     borders: {
       top: NO_BORDER,
       bottom: NO_BORDER,
@@ -287,13 +373,338 @@ async function makeTransportTable(contentLines: string[]): Promise<Table> {
       new TableRow({
         children: [
           new TableCell({
+            width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            shading: { type: ShadingType.SOLID, fill: '1D4ED8', color: 'auto' },
+            margins: { top: 160, bottom: 160, left: 200, right: 200 },
             borders: {
-              top: ACCENT_BORDER,
-              bottom: ACCENT_BORDER,
+              top: NO_BORDER,
+              bottom: NO_BORDER,
               left: NO_BORDER,
               right: NO_BORDER,
             },
-            margins: { top: 120, bottom: 120, left: 160, right: 0 },
+            children: [
+              new Paragraph({
+                pageBreakBefore: !isFirstDay,
+                spacing: { before: 0, after: 0 },
+                children: [
+                  new TextRun({
+                    text,
+                    bold: true,
+                    color: 'FFFFFF',
+                    size: 28,
+                    font: FONT,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Attraction table  ─  4 equal columns (25% × 4), all borders
+// ---------------------------------------------------------------------------
+
+async function makeAttractionTable(attraction: Attraction): Promise<Table> {
+  const rows: TableRow[] = [];
+
+  // ── Row 1: Name (spans all 4 columns) ──────────────────────────────────
+  rows.push(
+    new TableRow({
+      children: [
+        new TableCell({
+          columnSpan: 4,
+          width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+          borders: ALL_BORDERS,
+          margins: { top: 120, bottom: 120, left: 160, right: 160 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: attraction.name,
+                  bold: true,
+                  size: 26,
+                  font: FONT,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  );
+
+  // ── Row 2: Time (cols 1+2) | Maps (cols 3+4) ───────────────────────────
+  const hasTime = Boolean(attraction.startTime || attraction.endTime);
+  const hasMap = Boolean(attraction.googleMapUrl);
+
+  if (hasTime || hasMap) {
+    const timeText = hasTime
+      ? `🕐 ${attraction.startTime ?? '–'} – ${attraction.endTime ?? '–'}`
+      : '';
+
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            width: { size: COL_2L, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children: timeText
+                  ? [new TextRun({ text: timeText, font: FONT })]
+                  : [],
+              }),
+            ],
+          }),
+          new TableCell({
+            columnSpan: 2,
+            width: { size: COL_2R, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children: hasMap
+                  ? [
+                      new TextRun({ text: '📍 ', font: FONT }),
+                      new ExternalHyperlink({
+                        link: attraction.googleMapUrl!,
+                        children: [
+                          new TextRun({
+                            text: 'Google Maps',
+                            style: 'Hyperlink',
+                            font: FONT,
+                          }),
+                        ],
+                      }),
+                    ]
+                  : [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+  }
+
+  // ── Row 3: Description + images (spans all 4 columns) ──────────────────
+  const hasNotes = Boolean(attraction.notes?.trim());
+  const hasImages = (attraction.images ?? []).length > 0;
+
+  if (hasNotes || hasImages) {
+    const cellChildren: Paragraph[] = [];
+
+    if (hasNotes) {
+      cellChildren.push(...parseMarkdownContent(attraction.notes!));
+    }
+
+    for (const img of attraction.images ?? []) {
+      cellChildren.push(...(await makeImageParagraphs(img)));
+    }
+
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 4,
+            width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 100, bottom: 100, left: 160, right: 160 },
+            children: cellChildren,
+          }),
+        ],
+      }),
+    );
+  }
+
+  // ── Row 4: Nearby attractions (col 1 | cols 2–4) ───────────────────────
+  if (attraction.nearbyAttractions?.trim()) {
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: COL_W, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: '附近景點',
+                    bold: true,
+                    size: 20,
+                    font: FONT,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            columnSpan: 3,
+            width: { size: COL_3R, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: attraction.nearbyAttractions!,
+                    font: FONT,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+  }
+
+  // ── Row 5+: Reference websites (col 1 | cols 2–4) ──────────────────────
+  const websites = attraction.referenceWebsites ?? [];
+  for (let i = 0; i < websites.length; i++) {
+    const url = websites[i];
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: COL_W, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children:
+                  i === 0
+                    ? [
+                        new TextRun({
+                          text: '參考網站',
+                          bold: true,
+                          size: 20,
+                          font: FONT,
+                        }),
+                      ]
+                    : [],
+              }),
+            ],
+          }),
+          new TableCell({
+            columnSpan: 3,
+            width: { size: COL_3R, type: WidthType.DXA },
+            borders: ALL_BORDERS,
+            margins: { top: 80, bottom: 80, left: 160, right: 160 },
+            children: [
+              new Paragraph({
+                children: [
+                  new ExternalHyperlink({
+                    link: url,
+                    children: [
+                      new TextRun({
+                        text: url,
+                        style: 'Hyperlink',
+                        font: FONT,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+  }
+
+  return new Table({
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths: [COL_W, COL_W, COL_W, CONTENT_WIDTH_DXA - COL_W * 3],
+    borders: {
+      top: CELL_BORDER,
+      bottom: CELL_BORDER,
+      left: CELL_BORDER,
+      right: CELL_BORDER,
+      insideH: CELL_BORDER,
+      insideV: CELL_BORDER,
+    },
+    rows,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Transport table  ─  1×1, top + bottom light-blue thick borders only
+// ---------------------------------------------------------------------------
+
+async function makeTransportTable(
+  conn: TravelConnection,
+  toName: string,
+): Promise<Table> {
+  const cellChildren: Paragraph[] = [];
+
+  const parts = [TRANSPORT_LABELS[conn.transportMode]];
+  if (conn.duration) {
+    parts.push(conn.duration);
+  }
+  const header = `交通方式：${parts.join(' · ')}${toName ? ` → ${toName}` : ''}`;
+
+  cellChildren.push(
+    new Paragraph({
+      children: [new TextRun({ text: header, bold: true, font: FONT })],
+      spacing: { before: 40, after: 40 },
+    }),
+  );
+
+  if (conn.route) {
+    cellChildren.push(
+      new Paragraph({
+        children: [new TextRun({ text: `路線：${conn.route}`, font: FONT })],
+        spacing: { before: 40, after: 40 },
+      }),
+    );
+  }
+
+  if (conn.notes) {
+    for (const line of conn.notes.split('\n')) {
+      cellChildren.push(
+        new Paragraph({
+          children: line.trim()
+            ? [new TextRun({ text: line, font: FONT })]
+            : [],
+          spacing: { before: 20, after: 20 },
+        }),
+      );
+    }
+  }
+
+  for (const img of conn.images ?? []) {
+    cellChildren.push(...(await makeImageParagraphs(img)));
+  }
+
+  return new Table({
+    width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+    borders: {
+      top: TRANSPORT_BORDER,
+      bottom: TRANSPORT_BORDER,
+      left: NO_BORDER,
+      right: NO_BORDER,
+      insideH: NO_BORDER,
+      insideV: NO_BORDER,
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: CONTENT_WIDTH_DXA, type: WidthType.DXA },
+            borders: {
+              top: TRANSPORT_BORDER,
+              bottom: TRANSPORT_BORDER,
+              left: NO_BORDER,
+              right: NO_BORDER,
+            },
+            margins: { top: 120, bottom: 120, left: 0, right: 0 },
             children: cellChildren,
           }),
         ],
@@ -302,127 +713,136 @@ async function makeTransportTable(contentLines: string[]): Promise<Table> {
   });
 }
 
-type DocChild = Paragraph | Table;
-
-async function parseMarkdownToDocx(markdown: string): Promise<DocChild[]> {
-  const lines = markdown.split('\n');
-  const result: DocChild[] = [];
-  let dayHeadingCount = 0;
-  let quoteBuffer: string[] = [];
-
-  async function flushQuote() {
-    if (quoteBuffer.length > 0) {
-      result.push(await makeTransportTable(quoteBuffer));
-      quoteBuffer = [];
-    }
-  }
-
-  for (const line of lines) {
-    if (line.startsWith('> ')) {
-      quoteBuffer.push(line.slice(2));
-      continue;
-    }
-
-    await flushQuote();
-
-    if (line.startsWith('# ')) {
-      result.push(
-        new Paragraph({
-          heading: HeadingLevel.HEADING_1,
-          children: parseInline(line.slice(2)),
-          spacing: { after: 200 },
-          indent: { left: 0, firstLine: 0 },
-        }),
-      );
-      continue;
-    }
-
-    if (line.startsWith('## ')) {
-      dayHeadingCount++;
-      result.push(
-        makeDayHeadingParagraph(line.slice(3), dayHeadingCount === 1),
-      );
-      continue;
-    }
-
-    if (line.startsWith('### ')) {
-      result.push(
-        new Paragraph({
-          heading: HeadingLevel.HEADING_3,
-          children: parseInline(line.slice(4)),
-          spacing: { before: 240, after: SPACING_HALF_LINE },
-          indent: { left: 0, firstLine: 0 },
-        }),
-      );
-      continue;
-    }
-
-    if (line === '---') {
-      result.push(
-        new Paragraph({
-          border: {
-            bottom: {
-              style: BorderStyle.SINGLE,
-              size: 6,
-              color: 'CCCCCC',
-              space: 1,
-            },
-          },
-          spacing: { before: 240, after: 240 },
-          children: [],
-        }),
-      );
-      continue;
-    }
-
-    if (line.startsWith('- ')) {
-      result.push(
-        new Paragraph({
-          children: parseInline(line.slice(2)),
-          bullet: { level: 0 },
-          spacing: { before: 60, after: 60 },
-        }),
-      );
-      continue;
-    }
-
-    const imageMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-    if (imageMatch) {
-      const [, title, url] = imageMatch;
-      result.push(...(await makeImageParagraphs(title, url)));
-      continue;
-    }
-
-    if (line.trim() === '') {
-      result.push(new Paragraph({ children: [] }));
-      continue;
-    }
-
-    result.push(
-      new Paragraph({
-        children: parseInline(line),
-        spacing: { before: 60, after: 60 },
-        indent: { left: 0, firstLine: 0 },
-      }),
-    );
-  }
-
-  await flushQuote();
-
-  return result;
-}
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export async function exportToDocx(
-  markdown: string,
-  filename: string,
+  trip: Trip,
+  content: TripContent,
 ): Promise<void> {
-  const children = await parseMarkdownToDocx(markdown);
+  type DocChild = Paragraph | Table;
+  const children: DocChild[] = [];
 
-  const FONT = 'Microsoft JhengHei';
+  // === Header section =====================================================
+
+  children.push(
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      children: [new TextRun({ text: trip.title, font: FONT })],
+      spacing: { after: 160 },
+    }),
+  );
+
+  children.push(
+    new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
+  );
+
+  if (trip.destination) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: '地點：', bold: true, font: FONT }),
+          new TextRun({ text: trip.destination, font: FONT }),
+        ],
+        spacing: { before: 40, after: 40 },
+      }),
+    );
+  }
+
+  const startDate = format(parseISO(trip.startDate), 'yyyy/MM/dd', {
+    locale: zhTW,
+  });
+  const endDate = format(parseISO(trip.endDate), 'yyyy/MM/dd', {
+    locale: zhTW,
+  });
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: '日期：', bold: true, font: FONT }),
+        new TextRun({
+          text: `${startDate} - ${endDate} ( ${content.days.length} 天 )`,
+          font: FONT,
+        }),
+      ],
+      spacing: { before: 40, after: 40 },
+    }),
+  );
+
+  children.push(
+    new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
+  );
+
+  if (trip.description?.trim()) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: trip.description, font: FONT })],
+        spacing: { before: 40, after: 40 },
+      }),
+    );
+    children.push(
+      new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
+    );
+  }
+
+  children.push(
+    new Paragraph({
+      border: {
+        bottom: {
+          style: BorderStyle.SINGLE,
+          size: 6,
+          color: 'CCCCCC',
+          space: 1,
+        },
+      },
+      spacing: { before: 60, after: 240 },
+      children: [],
+    }),
+  );
+
+  // === Day sections ========================================================
+
+  for (let dayIdx = 0; dayIdx < content.days.length; dayIdx++) {
+    const day = content.days[dayIdx];
+    const isFirstDay = dayIdx === 0;
+
+    const dayLabel = format(parseISO(day.date), 'M月d日 (EEEE)', {
+      locale: zhTW,
+    });
+    children.push(
+      makeDayHeaderTable(`第 ${day.day} 天 · ${dayLabel}`, isFirstDay),
+    );
+    children.push(
+      new Paragraph({ children: [], spacing: { before: 0, after: 200 } }),
+    );
+
+    const connsByFrom = new Map<number, TravelConnection[]>();
+    for (const c of day.connections) {
+      const list = connsByFrom.get(c.fromAttractionId) ?? [];
+      list.push(c);
+      connsByFrom.set(c.fromAttractionId, list);
+    }
+
+    for (const attraction of day.attractions) {
+      children.push(await makeAttractionTable(attraction));
+
+      const outgoing = connsByFrom.get(attraction.id) ?? [];
+      for (const conn of outgoing) {
+        const toName =
+          day.attractions.find(a => a.id === conn.toAttractionId)?.name ?? '';
+        children.push(
+          new Paragraph({ children: [], spacing: { before: 0, after: 120 } }),
+        );
+        children.push(await makeTransportTable(conn, toName));
+      }
+
+      children.push(
+        new Paragraph({ children: [], spacing: { before: 0, after: 200 } }),
+      );
+    }
+  }
+
+  // === Build & download ====================================================
 
   const doc = new Document({
     styles: {
@@ -434,26 +854,13 @@ export async function exportToDocx(
           run: { font: FONT, bold: true, size: 40, color: '111827' },
           paragraph: { indent: { left: 0, firstLine: 0 } },
         },
-        heading2: {
-          run: { font: FONT, bold: true, size: 34, color: '1F2937' },
-          paragraph: { indent: { left: 0, firstLine: 0 } },
-        },
-        heading3: {
-          run: { font: FONT, bold: true, size: 26, color: '374151' },
-          paragraph: { indent: { left: 0, firstLine: 0 } },
-        },
       },
     },
     sections: [
       {
         properties: {
           page: {
-            margin: {
-              top: 1440,
-              right: 1440,
-              bottom: 1440,
-              left: 1440,
-            },
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
           },
         },
         children,
@@ -465,7 +872,7 @@ export async function exportToDocx(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${filename}.docx`;
+  link.download = `${trip.title}.docx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

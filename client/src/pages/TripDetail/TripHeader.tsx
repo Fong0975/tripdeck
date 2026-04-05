@@ -1,6 +1,6 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { ArrowLeft, Download, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, MapPin } from 'lucide-react';
 
 import type { Trip } from '@/types';
 
@@ -8,9 +8,15 @@ interface Props {
   trip: Trip;
   onBack: () => void;
   onExport: () => void;
+  exporting?: boolean;
 }
 
-export default function TripHeader({ trip, onBack, onExport }: Props) {
+export default function TripHeader({
+  trip,
+  onBack,
+  onExport,
+  exporting = false,
+}: Props) {
   const totalDays =
     differenceInCalendarDays(parseISO(trip.endDate), parseISO(trip.startDate)) +
     1;
@@ -45,11 +51,18 @@ export default function TripHeader({ trip, onBack, onExport }: Props) {
 
         <button
           onClick={onExport}
-          className='text-muted-foreground hover:bg-accent hover:text-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors'
+          disabled={exporting}
+          className='text-muted-foreground hover:bg-accent hover:text-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors disabled:opacity-50'
           title='匯出行程'
         >
-          <Download size={16} />
-          <span className='hidden sm:inline'>匯出</span>
+          {exporting ? (
+            <Loader2 size={16} className='animate-spin' />
+          ) : (
+            <Download size={16} />
+          )}
+          <span className='hidden sm:inline'>
+            {exporting ? '匯出中…' : '匯出'}
+          </span>
         </button>
       </div>
     </div>
