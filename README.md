@@ -22,11 +22,13 @@ tripdeck/
 │   │   ├── config/           # Database connection setup
 │   │   ├── controllers/      # Handles API business logic and responses
 │   │   ├── db/               # Schema definitions and table initialization
+│   │   ├── middleware/       # Express middleware (multer file upload)
 │   │   ├── repositories/     # Database query layer (MySQL2)
 │   │   ├── routes/           # Defines API endpoints and URL mapping
 │   │   ├── types/            # Request/response type definitions
 │   │   └── index.ts          # Express server entry point
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
+│   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── package.json
 │   └── tsconfig.json
 ├── package.json              # Workspace root — orchestrates client + server
