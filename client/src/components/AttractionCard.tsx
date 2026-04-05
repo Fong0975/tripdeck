@@ -14,6 +14,7 @@ import { useState } from 'react';
 import type { Attraction } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
+import MarkdownContent from './MarkdownContent';
 
 interface Props {
   attraction: Attraction;
@@ -113,9 +114,9 @@ export default function AttractionCard({
           )}
 
           {attraction.notes && (
-            <p className='text-muted-foreground mt-1 line-clamp-3 text-xs'>
-              {attraction.notes}
-            </p>
+            <div className='text-muted-foreground mt-1 line-clamp-3 text-xs'>
+              <MarkdownContent>{attraction.notes}</MarkdownContent>
+            </div>
           )}
 
           {(attraction.referenceWebsites ?? []).length > 0 && (

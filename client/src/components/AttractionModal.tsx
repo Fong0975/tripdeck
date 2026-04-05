@@ -5,6 +5,7 @@ import type { Attraction, AttractionImage } from '@/types';
 import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
+import MarkdownContent from './MarkdownContent';
 
 interface Props {
   tripId?: number;
@@ -42,6 +43,7 @@ export default function AttractionModal({
   );
   const [newWebsite, setNewWebsite] = useState('');
   const [error, setError] = useState('');
+  const [notesTab, setNotesTab] = useState<'edit' | 'preview'>('edit');
 
   const set = (key: keyof Attraction, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -178,16 +180,54 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
-              補充資訊
-            </label>
-            <textarea
-              value={form.notes ?? ''}
-              onChange={e => set('notes', e.target.value)}
-              placeholder='票價、開放時間、注意事項...'
-              rows={3}
-              className={`${INPUT_CLS} resize-none`}
-            />
+            <div className='mb-1.5 flex items-center justify-between'>
+              <label className='text-foreground text-sm font-medium'>
+                補充資訊
+              </label>
+              <div className='border-border flex overflow-hidden rounded-md border text-xs'>
+                <button
+                  type='button'
+                  onClick={() => setNotesTab('edit')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    notesTab === 'edit'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  編輯
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setNotesTab('preview')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    notesTab === 'preview'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  預覽
+                </button>
+              </div>
+            </div>
+            {notesTab === 'edit' ? (
+              <textarea
+                value={form.notes ?? ''}
+                onChange={e => set('notes', e.target.value)}
+                placeholder='票價、開放時間、注意事項... (支援 Markdown 語法)'
+                rows={4}
+                className={`${INPUT_CLS} resize-none font-mono text-sm`}
+              />
+            ) : (
+              <div className='border-border bg-background text-foreground min-h-24 rounded-lg border px-3 py-2 text-sm'>
+                {form.notes?.trim() ? (
+                  <MarkdownContent>{form.notes}</MarkdownContent>
+                ) : (
+                  <span className='text-muted-foreground text-xs'>
+                    尚無內容
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
