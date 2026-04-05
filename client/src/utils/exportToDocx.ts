@@ -169,6 +169,10 @@ async function makeImageParagraphs(img: AttractionImage): Promise<Paragraph[]> {
   const url = `/uploads/${img.filename}`;
   try {
     const { buffer, imageType } = await fetchImageData(url);
+    if (imageType === 'svg') {
+      return [];
+    }
+
     const { width: nw, height: nh } = await getImageSize(buffer, imageType);
     const { width, height } = calcImageDimensions(nw, nh);
 
@@ -366,8 +370,8 @@ function makeDayHeaderTable(text: string, isFirstDay: boolean): Table {
       bottom: NO_BORDER,
       left: NO_BORDER,
       right: NO_BORDER,
-      insideH: NO_BORDER,
-      insideV: NO_BORDER,
+      insideHorizontal: NO_BORDER,
+      insideVertical: NO_BORDER,
     },
     rows: [
       new TableRow({
@@ -627,8 +631,8 @@ async function makeAttractionTable(attraction: Attraction): Promise<Table> {
       bottom: CELL_BORDER,
       left: CELL_BORDER,
       right: CELL_BORDER,
-      insideH: CELL_BORDER,
-      insideV: CELL_BORDER,
+      insideHorizontal: CELL_BORDER,
+      insideVertical: CELL_BORDER,
     },
     rows,
   });
@@ -690,8 +694,8 @@ async function makeTransportTable(
       bottom: TRANSPORT_BORDER,
       left: NO_BORDER,
       right: NO_BORDER,
-      insideH: NO_BORDER,
-      insideV: NO_BORDER,
+      insideHorizontal: NO_BORDER,
+      insideVertical: NO_BORDER,
     },
     rows: [
       new TableRow({
