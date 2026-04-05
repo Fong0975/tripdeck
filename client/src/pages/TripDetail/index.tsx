@@ -53,6 +53,8 @@ export default function TripDetail() {
         googleMapUrl: attraction.googleMapUrl ?? undefined,
         notes: attraction.notes ?? undefined,
         nearbyAttractions: attraction.nearbyAttractions ?? undefined,
+        startTime: attraction.startTime ?? undefined,
+        endTime: attraction.endTime ?? undefined,
         referenceWebsites: attraction.referenceWebsites,
       });
     } else {
@@ -61,6 +63,8 @@ export default function TripDetail() {
         googleMapUrl: attraction.googleMapUrl ?? null,
         notes: attraction.notes ?? null,
         nearbyAttractions: attraction.nearbyAttractions ?? null,
+        startTime: attraction.startTime ?? null,
+        endTime: attraction.endTime ?? null,
         referenceWebsites: attraction.referenceWebsites,
       });
     }

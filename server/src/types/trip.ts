@@ -23,6 +23,8 @@ export interface AttractionResponse {
   googleMapUrl: string | null;
   notes: string | null;
   nearbyAttractions: string | null;
+  startTime: string | null;
+  endTime: string | null;
   referenceWebsites: string[];
   images: ImageResponse[];
   sortOrder: number;
@@ -67,6 +69,8 @@ export interface CreateAttractionBody {
   googleMapUrl?: string;
   notes?: string;
   nearbyAttractions?: string;
+  startTime?: string;
+  endTime?: string;
   referenceWebsites?: string[];
 }
 
@@ -75,6 +79,8 @@ export interface UpdateAttractionBody {
   googleMapUrl?: string | null;
   notes?: string | null;
   nearbyAttractions?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   referenceWebsites?: string[];
 }
 

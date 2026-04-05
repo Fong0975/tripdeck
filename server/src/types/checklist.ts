@@ -3,6 +3,8 @@
 export interface TemplateItemResponse {
   id: number;
   name: string;
+  quantity: number | null;
+  notes: string | null;
   sortOrder: number;
 }
 
@@ -20,6 +22,8 @@ export interface ChecklistTemplateResponse {
 export interface TripChecklistItemResponse {
   id: number;
   name: string;
+  quantity: number | null;
+  notes: string | null;
   sortOrder: number;
 }
 
@@ -55,10 +59,26 @@ export interface UpdateCategoryBody {
 
 export interface CreateItemBody {
   name: string;
+  quantity?: number | null;
+  notes?: string | null;
 }
 
 export interface UpdateItemBody {
   name: string;
+  quantity?: number | null;
+  notes?: string | null;
+}
+
+export interface CreateTripItemBody {
+  name: string;
+  quantity?: number | null;
+  notes?: string | null;
+}
+
+export interface UpdateTripItemBody {
+  name?: string;
+  quantity?: number | null;
+  notes?: string | null;
 }
 
 export interface CreateOccasionBody {

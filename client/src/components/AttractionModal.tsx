@@ -22,6 +22,8 @@ const empty: Attraction = {
   googleMapUrl: '',
   notes: '',
   nearbyAttractions: '',
+  startTime: '',
+  endTime: '',
   referenceWebsites: [],
   images: [],
 };
@@ -124,6 +126,31 @@ export default function AttractionModal({
               placeholder='例：淺草寺'
               className={INPUT_CLS}
             />
+          </div>
+
+          <div className='flex gap-3'>
+            <div className='flex-1'>
+              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+                開始時間
+              </label>
+              <input
+                type='time'
+                value={form.startTime ?? ''}
+                onChange={e => set('startTime', e.target.value || null)}
+                className={INPUT_CLS}
+              />
+            </div>
+            <div className='flex-1'>
+              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+                結束時間
+              </label>
+              <input
+                type='time'
+                value={form.endTime ?? ''}
+                onChange={e => set('endTime', e.target.value || null)}
+                className={INPUT_CLS}
+              />
+            </div>
           </div>
 
           <div>

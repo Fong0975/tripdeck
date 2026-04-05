@@ -80,6 +80,8 @@ export async function addAttraction(
     googleMapUrl?: string;
     notes?: string;
     nearbyAttractions?: string;
+    startTime?: string;
+    endTime?: string;
     referenceWebsites?: string[];
   },
 ): Promise<Attraction> {
@@ -97,6 +99,8 @@ export async function updateAttraction(
     googleMapUrl?: string | null;
     notes?: string | null;
     nearbyAttractions?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
     referenceWebsites?: string[];
   },
 ): Promise<Attraction> {
@@ -264,23 +268,84 @@ export async function deleteTemplateCategory(catId: number): Promise<void> {
 
 export async function addTemplateItem(
   catId: number,
-  name: string,
+  data: { name: string; quantity?: number | null; notes?: string | null },
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/checklist-template/categories/${catId}/items`,
-    { method: 'POST', ...json({ name }) },
+    { method: 'POST', ...json(data) },
   );
 }
 
 export async function updateTemplateItem(
   catId: number,
   itemId: number,
-  name: string,
+  data: { name: string; quantity?: number | null; notes?: string | null },
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}`,
-    { method: 'PUT', ...json({ name }) },
+    { method: 'PUT', ...json(data) },
   );
+}
+
+export async function addTripCategory(
+  tripId: number,
+  name: string,
+): Promise<ChecklistCategory> {
+  return api<ChecklistCategory>(`/api/trips/${tripId}/checklist/categories`, {
+    method: 'POST',
+    ...json({ name }),
+  });
+}
+
+export async function updateTripCategory(
+  tripId: number,
+  catId: number,
+  name: string,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/checklist/categories/${catId}`, {
+    method: 'PUT',
+    ...json({ name }),
+  });
+}
+
+export async function deleteTripCategory(
+  tripId: number,
+  catId: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/checklist/categories/${catId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function addTripItem(
+  tripId: number,
+  catId: number,
+  data: { name: string; quantity?: number | null; notes?: string | null },
+): Promise<ChecklistItem> {
+  return api<ChecklistItem>(
+    `/api/trips/${tripId}/checklist/categories/${catId}/items`,
+    { method: 'POST', ...json(data) },
+  );
+}
+
+export async function updateTripItem(
+  tripId: number,
+  itemId: number,
+  data: { name?: string; quantity?: number | null; notes?: string | null },
+): Promise<ChecklistItem> {
+  return api<ChecklistItem>(`/api/trips/${tripId}/checklist/items/${itemId}`, {
+    method: 'PUT',
+    ...json(data),
+  });
+}
+
+export async function deleteTripItem(
+  tripId: number,
+  itemId: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/checklist/items/${itemId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function deleteTemplateItem(

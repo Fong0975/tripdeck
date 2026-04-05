@@ -55,6 +55,13 @@ export function generateMarkdown(trip: Trip, content: TripContent): string {
     for (const attraction of day.attractions) {
       lines.push(`### ${attraction.name}`);
 
+      if (attraction.startTime || attraction.endTime) {
+        const start = attraction.startTime ?? '–';
+        const end = attraction.endTime ?? '–';
+        lines.push(`🕐 ${start} – ${end}`);
+        lines.push('');
+      }
+
       if (attraction.googleMapUrl) {
         lines.push(`📍 [Google Maps](${attraction.googleMapUrl})`);
         lines.push('');

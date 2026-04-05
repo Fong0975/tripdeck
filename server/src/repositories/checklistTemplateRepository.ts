@@ -3,8 +3,10 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '../config/database';
 import type {
   ChecklistTemplateResponse,
+  CreateItemBody,
   TemplateCategoryResponse,
   TemplateItemResponse,
+  UpdateItemBody,
 } from '../types/checklist';
 
 // --- Row types ---
@@ -19,6 +21,8 @@ interface TemplateItemRow extends RowDataPacket {
   id: number;
   checklist_template_category_id: number;
   name: string;
+  quantity: number | null;
+  notes: string | null;
   sort_order: number;
 }
 
@@ -32,7 +36,13 @@ function toCategoryResponse(
 }
 
 function toItemResponse(row: TemplateItemRow): TemplateItemResponse {
-  return { id: row.id, name: row.name, sortOrder: row.sort_order };
+  return {
+    id: row.id,
+    name: row.name,
+    quantity: row.quantity,
+    notes: row.notes,
+    sortOrder: row.sort_order,
+  };
 }
 
 function placeholders(count: number): string {
@@ -123,7 +133,7 @@ export async function deleteCategory(catId: number): Promise<boolean> {
 
 export async function createItem(
   catId: number,
-  name: string,
+  data: CreateItemBody,
 ): Promise<TemplateItemResponse | null> {
   const [catRows] = await pool.execute<RowDataPacket[]>(
     'SELECT id FROM checklist_template_categories WHERE id = ?',
@@ -140,16 +150,22 @@ export async function createItem(
   const sortOrder = (countRows[0] as { count: number }).count;
 
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_items (checklist_template_category_id, name, sort_order) VALUES (?, ?, ?)',
-    [catId, name, sortOrder],
+    'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
+    [catId, data.name, data.quantity ?? null, data.notes ?? null, sortOrder],
   );
 
-  return { id: result.insertId, name, sortOrder };
+  return {
+    id: result.insertId,
+    name: data.name,
+    quantity: data.quantity ?? null,
+    notes: data.notes ?? null,
+    sortOrder,
+  };
 }
 
 export async function updateItem(
   itemId: number,
-  name: string,
+  data: UpdateItemBody,
 ): Promise<TemplateItemResponse | null> {
   const [rows] = await pool.execute<TemplateItemRow[]>(
     'SELECT * FROM checklist_template_items WHERE id = ?',
@@ -159,12 +175,16 @@ export async function updateItem(
     return null;
   }
 
+  const cur = rows[0];
+  const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
+  const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
+
   await pool.execute(
-    'UPDATE checklist_template_items SET name = ? WHERE id = ?',
-    [name, itemId],
+    'UPDATE checklist_template_items SET name = ?, quantity = ?, notes = ? WHERE id = ?',
+    [data.name, quantity, notes, itemId],
   );
 
-  return toItemResponse({ ...rows[0], name });
+  return toItemResponse({ ...cur, name: data.name, quantity, notes });
 }
 
 export async function deleteItem(itemId: number): Promise<boolean> {

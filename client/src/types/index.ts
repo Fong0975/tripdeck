@@ -29,6 +29,8 @@ export interface Attraction {
   googleMapUrl?: string | null;
   notes?: string | null;
   nearbyAttractions?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   referenceWebsites?: string[];
   images?: AttractionImage[];
 }
@@ -60,6 +62,8 @@ export interface TripContent {
 export interface ChecklistItem {
   id: number;
   name: string;
+  quantity?: number | null;
+  notes?: string | null;
 }
 
 export interface ChecklistCategory {

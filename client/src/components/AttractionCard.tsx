@@ -7,6 +7,7 @@ import {
   Trash2,
   ExternalLink,
   Images,
+  Clock,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -78,18 +79,6 @@ export default function AttractionCard({
               {attraction.name}
             </h4>
             <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-              {attraction.googleMapUrl && (
-                <a
-                  href={attraction.googleMapUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  onClick={e => e.stopPropagation()}
-                  className='text-muted-foreground hover:text-primary rounded p-1 transition-colors'
-                  title='Google Maps'
-                >
-                  <MapPin size={14} />
-                </a>
-              )}
               <button
                 onClick={e => {
                   e.stopPropagation();
@@ -113,6 +102,15 @@ export default function AttractionCard({
               </button>
             </div>
           </div>
+
+          {(attraction.startTime || attraction.endTime) && (
+            <p className='text-muted-foreground mt-1 flex items-center gap-1 text-xs'>
+              <Clock size={11} className='shrink-0' />
+              {attraction.startTime ?? '–'}
+              {' → '}
+              {attraction.endTime ?? '–'}
+            </p>
+          )}
 
           {attraction.notes && (
             <p className='text-muted-foreground mt-1 line-clamp-3 text-xs'>
@@ -164,6 +162,22 @@ export default function AttractionCard({
                 </span>
               )}
             </button>
+          )}
+
+          {attraction.googleMapUrl && (
+            <div className='mt-2 flex justify-end'>
+              <a
+                href={attraction.googleMapUrl}
+                target='_blank'
+                rel='noopener noreferrer'
+                onClick={e => e.stopPropagation()}
+                className='text-primary/60 hover:text-primary flex items-center gap-1 text-xs transition-colors'
+                title='Google Maps'
+              >
+                <MapPin size={12} />
+                地圖
+              </a>
+            </div>
           )}
         </div>
       </div>
