@@ -17,7 +17,7 @@ const swaggerFile: object = JSON.parse(
 );
 
 const app = express();
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.VITE_API_PORT ?? 3001);
 
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR));

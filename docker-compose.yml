@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      network: host
+    container_name: tripdeck-backend
+    image: fong/tripdeck-backend
+    network_mode: host
+    volumes:
+      - ./server/uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${VITE_API_PORT:-3001}/api/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      network: host
+      args:
+        FRONTEND_PORT: ${FRONTEND_PORT:-3000}
+    container_name: tripdeck-frontend
+    image: fong/tripdeck-frontend
+    network_mode: host
+    environment:
+      FRONTEND_PORT: ${FRONTEND_PORT:-3000}
+      VITE_API_PORT: ${VITE_API_PORT:-3001}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${FRONTEND_PORT:-3000} || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 3

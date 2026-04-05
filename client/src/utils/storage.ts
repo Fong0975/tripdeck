@@ -14,8 +14,13 @@ import type {
 
 // --- Helpers ---
 
+const _apiDomain = import.meta.env.VITE_API_DOMAIN;
+const API_BASE = _apiDomain
+  ? `${_apiDomain}:${import.meta.env.VITE_API_PORT}`
+  : '';
+
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await fetch(`${API_BASE}${url}`, init);
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${url}`);
   }
