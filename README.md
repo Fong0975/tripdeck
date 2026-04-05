@@ -18,7 +18,9 @@ tripdeck/
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── pages/            # Route-level page components
 │   │   ├── types/            # TypeScript type definitions
-│   │   └── utils/            # Backend API client utilities
+│   │   └── utils/            # API client and export utilities
+│   ├── Dockerfile            # Multi-stage build: Vite → nginx
+│   ├── nginx.conf.template   # nginx config template (port + proxy via envsubst)
 │   ├── package.json
 │   └── vite.config.ts
 ├── server/                   # Node.js REST API backend (Express + TypeScript)
@@ -33,8 +35,12 @@ tripdeck/
 │   │   └── index.ts          # Express server entry point
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
 │   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
+│   ├── Dockerfile            # Multi-stage build: tsc → production Node.js
 │   ├── package.json
 │   └── tsconfig.json
+├── docker-compose.yml        # Two-service deployment (backend + frontend, host network)
+├── export_docker.bat         # Copies deployment files to ./docker/ and injects .env.production
+├── .env.example              # Environment variable reference
 ├── package.json              # Workspace root — orchestrates client + server
 └── .github/workflows/        # CI: lint check, automated version bumping
 ```
@@ -49,20 +55,30 @@ Run from the workspace root — npm workspaces installs all packages in one step
 npm install
 ```
 
-### 2. Configure Database Connection
+### 2. Configure Environment
 
-Copy `.env.example` to `.env` at the workspace root and fill in your MySQL credentials:
+Copy `.env.example` to `.env` at the workspace root:
 
 ```bash
 cp .env.example .env
 ```
 
 ```dotenv
+# MySQL connection — required
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=tripdeck
+
+# Backend API endpoint — leave empty in local development (Vite proxy handles routing)
+# Set to the server's domain when the frontend and backend are on different origins
+# Example: http://192.168.1.100
+VITE_API_DOMAIN=
+VITE_API_PORT=3001
+
+# Frontend dev server port
+FRONTEND_PORT=3000
 ```
 
 The database and all tables are created automatically on first server start.

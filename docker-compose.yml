@@ -10,10 +10,10 @@ services:
     image: fong/tripdeck-backend
     network_mode: host
     volumes:
-      - ./server/uploads:/app/uploads
+      - ./.uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${VITE_API_PORT:-3001}/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${VITE_API_PORT:-3001}/api/health || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -38,7 +38,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${FRONTEND_PORT:-3000} || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${FRONTEND_PORT:-3000} || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 3
