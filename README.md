@@ -1,6 +1,10 @@
 # Tripdeck
 
-A travel itinerary planning app with a React frontend and a Node.js REST API backend. Organize your trips day by day with a drag-and-drop kanban board, and track your packing checklist with multi-occasion columns.
+A travel itinerary planning app with a React frontend and a Node.js REST API backend.
+
+- **Itinerary planning** — Organize trips day by day on a drag-and-drop kanban board; add attractions with notes, Google Maps links, reference websites, and photos, then define transport connections between them.
+- **Itinerary export** — Generate a formatted Word (.docx) document from any trip, with an editable Markdown preview step before download. The export includes styled day headers, transport tables, embedded images, and clickable hyperlinks.
+- **Packing checklist** — Manage a reusable packing template; each trip gets its own copy with multiple occasion columns so you can track what to pack for each part of the journey.
 
 ## Project Structure
 
@@ -22,29 +26,18 @@ tripdeck/
 │   │   ├── config/           # Database connection setup
 │   │   ├── controllers/      # Handles API business logic and responses
 │   │   ├── db/               # Schema definitions and table initialization
+│   │   ├── middleware/       # Express middleware (multer file upload)
 │   │   ├── repositories/     # Database query layer (MySQL2)
 │   │   ├── routes/           # Defines API endpoints and URL mapping
 │   │   ├── types/            # Request/response type definitions
 │   │   └── index.ts          # Express server entry point
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
+│   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── package.json
 │   └── tsconfig.json
 ├── package.json              # Workspace root — orchestrates client + server
 └── .github/workflows/        # CI: lint check, automated version bumping
 ```
-
-## Features
-
-- **Trip Management** — Create and delete trips with title, destination, date range, and notes
-- **Day-by-Day Planning** — Each trip is broken into daily columns, one per day
-- **Drag-and-Drop** — Reorder attraction cards within and across day columns
-- **Attraction Cards** — Add, edit, and delete attractions with notes, Google Maps links, and reference websites
-- **Travel Connections** — Define transport mode and duration between two consecutive attractions
-- **Luggage Checklist** — Manage a reusable packing template; each trip gets a snapshot copy with multi-occasion columns for check-off tracking
-- **Light / Dark Mode** — Follows system preference on first load; manually toggleable via the navbar
-- **MySQL Database** — All data is persisted in a MySQL database; tables are created automatically on first server start
-- **PWA Support** — Installable on iOS and Android with full-screen standalone mode
-- **Health API** — `GET /api/health` endpoint exposed by the backend server
 
 ## Getting Started
 

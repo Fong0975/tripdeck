@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import AttractionCard from '@/components/AttractionCard';
 import AttractionModal from '@/components/AttractionModal';
 import DayColumn from '@/components/DayColumn';
+import ExportModal from '@/components/ExportModal';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
@@ -32,6 +33,7 @@ export default function TripDetail() {
   const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
     'itinerary',
   );
+  const [showExport, setShowExport] = useState(false);
 
   const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
 
@@ -152,7 +154,11 @@ export default function TripDetail() {
     <div className='bg-background flex min-h-screen flex-col'>
       <Navbar />
 
-      <TripHeader trip={trip} onBack={() => navigate('/')} />
+      <TripHeader
+        trip={trip}
+        onBack={() => navigate('/')}
+        onExport={() => setShowExport(true)}
+      />
 
       {/* Tab bar */}
       <div className='border-border bg-background border-b'>
@@ -262,6 +268,14 @@ export default function TripDetail() {
           onSave={c =>
             void handleSaveConnection(editConnectionData.dayIndex, c)
           }
+        />
+      )}
+
+      {showExport && (
+        <ExportModal
+          trip={trip}
+          content={content}
+          onClose={() => setShowExport(false)}
         />
       )}
     </div>

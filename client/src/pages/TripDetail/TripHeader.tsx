@@ -1,15 +1,16 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, MapPin } from 'lucide-react';
 
 import type { Trip } from '@/types';
 
 interface Props {
   trip: Trip;
   onBack: () => void;
+  onExport: () => void;
 }
 
-export default function TripHeader({ trip, onBack }: Props) {
+export default function TripHeader({ trip, onBack, onExport }: Props) {
   const totalDays =
     differenceInCalendarDays(parseISO(trip.endDate), parseISO(trip.startDate)) +
     1;
@@ -41,6 +42,15 @@ export default function TripHeader({ trip, onBack }: Props) {
             <span className='text-primary font-medium'>{totalDays} 天</span>
           </div>
         </div>
+
+        <button
+          onClick={onExport}
+          className='text-muted-foreground hover:bg-accent hover:text-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors'
+          title='匯出行程'
+        >
+          <Download size={16} />
+          <span className='hidden sm:inline'>匯出</span>
+        </button>
       </div>
     </div>
   );
