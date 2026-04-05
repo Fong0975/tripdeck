@@ -185,10 +185,12 @@ export default function TripDetail() {
       </div>
 
       {activeTab === 'checklist' ? (
-        <TripChecklistPanel tripId={trip.id} />
+        <div className='flex flex-1 flex-col px-0 sm:px-8 xl:px-16'>
+          <TripChecklistPanel tripId={trip.id} />
+        </div>
       ) : (
         /* Board */
-        <div className='flex-1 overflow-x-auto px-4 py-6'>
+        <div className='flex-1 overflow-x-auto px-4 py-6 sm:px-8 xl:px-16'>
           <DndContext
             sensors={dnd.sensors}
             onDragStart={dnd.handleDragStart}

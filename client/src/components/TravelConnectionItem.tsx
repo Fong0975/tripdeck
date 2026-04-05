@@ -38,9 +38,9 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
       {/* Connection info */}
       <div
         onClick={() => onEdit(connection)}
-        className='bg-muted/50 hover:border-border hover:bg-muted flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-transparent px-3 py-1.5 text-xs transition-all'
+        className='bg-muted/50 hover:border-border hover:bg-muted flex flex-1 cursor-pointer items-center justify-between gap-2 rounded-lg border border-transparent px-3 py-2 text-sm transition-all'
       >
-        <div className='flex items-center gap-1.5'>
+        <div className='flex items-center gap-2'>
           <span>{TRANSPORT_ICONS[connection.transportMode]}</span>
           <span className='text-muted-foreground'>
             {TRANSPORT_LABELS[connection.transportMode]}
@@ -57,14 +57,14 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
             <>
               <span className='text-muted-foreground/50'>·</span>
               <span className='text-muted-foreground flex items-center gap-0.5'>
-                <Images size={10} />
+                <Images size={12} />
                 {connection.images!.length}
               </span>
             </>
           )}
         </div>
         <Pencil
-          size={11}
+          size={12}
           className='text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100'
         />
       </div>

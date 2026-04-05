@@ -32,7 +32,7 @@ export default function TripHeader({ trip, onBack, onExport }: Props) {
           <h1 className='text-foreground truncate text-xl font-bold'>
             {trip.title}
           </h1>
-          <div className='text-muted-foreground mt-0.5 flex items-center gap-3 text-sm'>
+          <div className='text-muted-foreground mt-0.5 flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:gap-3'>
             {trip.destination && (
               <span className='flex items-center gap-1'>
                 <MapPin size={13} /> {trip.destination}

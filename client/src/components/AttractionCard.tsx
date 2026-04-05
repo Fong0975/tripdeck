@@ -115,7 +115,7 @@ export default function AttractionCard({
           </div>
 
           {attraction.notes && (
-            <p className='text-muted-foreground mt-1 line-clamp-2 text-xs'>
+            <p className='text-muted-foreground mt-1 line-clamp-3 text-xs'>
               {attraction.notes}
             </p>
           )}
