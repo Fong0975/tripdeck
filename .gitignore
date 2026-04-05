@@ -40,6 +40,9 @@ Thumbs.db
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Docker uploads volume
+.upload/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
