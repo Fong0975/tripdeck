@@ -2,10 +2,12 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
 import type {
+  CreateTripItemBody,
   OccasionResponse,
   TripChecklistCategoryResponse,
   TripChecklistItemResponse,
   TripChecklistResponse,
+  UpdateTripItemBody,
 } from '../types/checklist';
 
 // --- Row types ---
@@ -21,6 +23,8 @@ interface TripChecklistItemRow extends RowDataPacket {
   id: number;
   checklist_trip_category_id: number;
   name: string;
+  quantity: number | null;
+  notes: string | null;
   sort_order: number;
 }
 
@@ -34,6 +38,8 @@ interface TemplateItemRow extends RowDataPacket {
   id: number;
   checklist_template_category_id: number;
   name: string;
+  quantity: number | null;
+  notes: string | null;
   sort_order: number;
 }
 
@@ -87,7 +93,13 @@ export async function findChecklist(
     );
     for (const row of itemRows) {
       const list = itemsByCatId.get(row.checklist_trip_category_id) ?? [];
-      list.push({ id: row.id, name: row.name, sortOrder: row.sort_order });
+      list.push({
+        id: row.id,
+        name: row.name,
+        quantity: row.quantity,
+        notes: row.notes,
+        sortOrder: row.sort_order,
+      });
       itemsByCatId.set(row.checklist_trip_category_id, list);
     }
   }
@@ -153,8 +165,8 @@ export async function initChecklist(
       );
       for (const item of itemRows) {
         await conn.execute(
-          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, sort_order) VALUES (?, ?, ?)',
-          [tripCatId, item.name, item.sort_order],
+          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
+          [tripCatId, item.name, item.quantity, item.notes, item.sort_order],
         );
       }
     }
@@ -201,6 +213,58 @@ export async function verifyOccasionBelongsToTrip(
   return rows.length > 0;
 }
 
+/** Appends a new category to a trip checklist. */
+export async function createTripCategory(
+  tripId: number,
+  name: string,
+): Promise<TripChecklistCategoryResponse> {
+  const [countRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT COUNT(*) AS count FROM checklist_trip_categories WHERE trip_id = ?',
+    [tripId],
+  );
+  const sortOrder = (countRows[0] as { count: number }).count;
+
+  const [result] = await pool.execute<ResultSetHeader>(
+    'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
+    [tripId, name, sortOrder],
+  );
+
+  return { id: result.insertId, name, sortOrder, items: [] };
+}
+
+/** Updates the name of a trip checklist category. */
+export async function updateTripCategory(
+  catId: number,
+  name: string,
+): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'UPDATE checklist_trip_categories SET name = ? WHERE id = ?',
+    [name, catId],
+  );
+  return result.affectedRows > 0;
+}
+
+/** Deletes a trip checklist category and all its items. */
+export async function deleteTripCategory(catId: number): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'DELETE FROM checklist_trip_categories WHERE id = ?',
+    [catId],
+  );
+  return result.affectedRows > 0;
+}
+
+/** Confirms a trip checklist category belongs to the given trip. */
+export async function verifyCategoryBelongsToTrip(
+  catId: number,
+  tripId: number,
+): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM checklist_trip_categories WHERE id = ? AND trip_id = ?',
+    [catId, tripId],
+  );
+  return rows.length > 0;
+}
+
 /** Confirms a checklist item belongs to the given trip (via its category). */
 export async function verifyItemBelongsToTrip(
   itemId: number,
@@ -213,6 +277,40 @@ export async function verifyItemBelongsToTrip(
     [itemId, tripId],
   );
   return rows.length > 0;
+}
+
+/** Appends a new item to a trip checklist category. */
+export async function createTripItem(
+  catId: number,
+  data: CreateTripItemBody,
+): Promise<TripChecklistItemResponse> {
+  const [countRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT COUNT(*) AS count FROM checklist_trip_items WHERE checklist_trip_category_id = ?',
+    [catId],
+  );
+  const sortOrder = (countRows[0] as { count: number }).count;
+
+  const [result] = await pool.execute<ResultSetHeader>(
+    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
+    [catId, data.name, data.quantity ?? null, data.notes ?? null, sortOrder],
+  );
+
+  return {
+    id: result.insertId,
+    name: data.name,
+    quantity: data.quantity ?? null,
+    notes: data.notes ?? null,
+    sortOrder,
+  };
+}
+
+/** Deletes a trip checklist item by id. */
+export async function deleteTripItem(itemId: number): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'DELETE FROM checklist_trip_items WHERE id = ?',
+    [itemId],
+  );
+  return result.affectedRows > 0;
 }
 
 export async function createOccasion(
@@ -269,6 +367,40 @@ export async function deleteOccasion(occId: number): Promise<boolean> {
     [occId],
   );
   return result.affectedRows > 0;
+}
+
+/**
+ * Updates quantity and/or notes for a single trip checklist item.
+ */
+export async function updateTripItem(
+  itemId: number,
+  data: UpdateTripItemBody,
+): Promise<TripChecklistItemResponse | null> {
+  const [rows] = await pool.execute<TripChecklistItemRow[]>(
+    'SELECT * FROM checklist_trip_items WHERE id = ?',
+    [itemId],
+  );
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const cur = rows[0];
+  const name = 'name' in data && data.name ? data.name : cur.name;
+  const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
+  const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
+
+  await pool.execute(
+    'UPDATE checklist_trip_items SET name = ?, quantity = ?, notes = ? WHERE id = ?',
+    [name, quantity, notes, itemId],
+  );
+
+  return {
+    id: cur.id,
+    name,
+    quantity,
+    notes,
+    sortOrder: cur.sort_order,
+  };
 }
 
 /**

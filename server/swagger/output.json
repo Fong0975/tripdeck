@@ -378,6 +378,16 @@
                                   "nullable": true,
                                   "example": "伏見夢百衆"
                                 },
+                                "startTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": "09:00"
+                                },
+                                "endTime": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": "11:00"
+                                },
                                 "referenceWebsites": {
                                   "type": "array",
                                   "items": {
@@ -503,6 +513,16 @@
                       "nullable": true,
                       "example": "伏見夢百衆"
                     },
+                    "startTime": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "09:00"
+                    },
+                    "endTime": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "11:00"
+                    },
                     "referenceWebsites": {
                       "type": "array",
                       "items": {
@@ -598,6 +618,16 @@
                       "type": "string",
                       "nullable": true,
                       "example": "伏見夢百衆"
+                    },
+                    "startTime": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "09:00"
+                    },
+                    "endTime": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "11:00"
                     },
                     "referenceWebsites": {
                       "type": "array",
@@ -1173,6 +1203,16 @@
                                   "type": "string",
                                   "example": "護照"
                                 },
+                                "quantity": {
+                                  "type": "integer",
+                                  "nullable": true,
+                                  "example": 1
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": null
+                                },
                                 "sortOrder": {
                                   "type": "integer",
                                   "example": 0
@@ -1488,6 +1528,264 @@
         }
       }
     },
+    "/api/trips/{tripId}/checklist/categories": {
+      "post": {
+        "tags": ["Trip Checklist"],
+        "summary": "Add a category to a trip checklist",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/categories/{catId}": {
+      "put": {
+        "tags": ["Trip Checklist"],
+        "summary": "Update a trip checklist category name",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Trip Checklist"],
+        "summary": "Delete a trip checklist category and all its items",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/categories/{catId}/items": {
+      "post": {
+        "tags": ["Trip Checklist"],
+        "summary": "Add an item to a trip checklist category",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  },
+                  "quantity": {
+                    "example": "any"
+                  },
+                  "notes": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/items/{itemId}": {
+      "put": {
+        "tags": ["Trip Checklist"],
+        "summary": "Update name, quantity or notes of a trip checklist item",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Trip Checklist"],
+        "summary": "Delete an item from a trip checklist",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/checklist-template/": {
       "get": {
         "tags": ["Checklist Template"],
@@ -1530,6 +1828,16 @@
                                 "name": {
                                   "type": "string",
                                   "example": "護照"
+                                },
+                                "quantity": {
+                                  "type": "integer",
+                                  "nullable": true,
+                                  "example": 1
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": null
                                 },
                                 "sortOrder": {
                                   "type": "integer",
@@ -1673,6 +1981,16 @@
                             "type": "string",
                             "example": "護照"
                           },
+                          "quantity": {
+                            "type": "integer",
+                            "nullable": true,
+                            "example": 1
+                          },
+                          "notes": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": null
+                          },
                           "sortOrder": {
                             "type": "integer",
                             "example": 0
@@ -1714,6 +2032,12 @@
                     "example": "any"
                   },
                   "items": {
+                    "example": "any"
+                  },
+                  "quantity": {
+                    "example": "any"
+                  },
+                  "notes": {
                     "example": "any"
                   }
                 }
@@ -1780,6 +2104,16 @@
                       "type": "string",
                       "example": "電子簽證"
                     },
+                    "quantity": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "notes": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
                     "sortOrder": {
                       "type": "integer",
                       "example": 5
@@ -1812,6 +2146,12 @@
                     "example": "any"
                   },
                   "name": {
+                    "example": "any"
+                  },
+                  "quantity": {
+                    "example": "any"
+                  },
+                  "notes": {
                     "example": "any"
                   },
                   "sortOrder": {
@@ -1863,6 +2203,16 @@
                       "type": "string",
                       "example": "電子簽證"
                     },
+                    "quantity": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": 2
+                    },
+                    "notes": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "每人一份"
+                    },
                     "sortOrder": {
                       "type": "integer",
                       "example": 0
@@ -1895,6 +2245,12 @@
                     "example": "any"
                   },
                   "name": {
+                    "example": "any"
+                  },
+                  "quantity": {
+                    "example": "any"
+                  },
+                  "notes": {
                     "example": "any"
                   },
                   "sortOrder": {

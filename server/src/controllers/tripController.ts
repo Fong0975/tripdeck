@@ -167,6 +167,8 @@ export async function getTripContent(
                            googleMapUrl: { type: 'string', nullable: true, example: null },
                            notes: { type: 'string', nullable: true, example: '建議早上前往' },
                            nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+                           startTime: { type: 'string', nullable: true, example: '09:00' },
+                           endTime: { type: 'string', nullable: true, example: '11:00' },
                            referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
                            sortOrder: { type: 'integer', example: 0 }
                          }
@@ -228,6 +230,8 @@ export async function addAttraction(
                googleMapUrl: { type: 'string', nullable: true, example: null },
                notes: { type: 'string', nullable: true, example: '建議早上前往' },
                nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+               startTime: { type: 'string', nullable: true, example: '09:00' },
+               endTime: { type: 'string', nullable: true, example: '11:00' },
                referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
                sortOrder: { type: 'integer', example: 0 }
              }
@@ -275,6 +279,8 @@ export async function updateAttraction(
                googleMapUrl: { type: 'string', nullable: true, example: null },
                notes: { type: 'string', nullable: true, example: '建議早上前往' },
                nearbyAttractions: { type: 'string', nullable: true, example: '伏見夢百衆' },
+               startTime: { type: 'string', nullable: true, example: '09:00' },
+               endTime: { type: 'string', nullable: true, example: '11:00' },
                referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
                sortOrder: { type: 'integer', example: 0 }
              }

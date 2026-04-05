@@ -331,6 +331,7 @@ async function parseMarkdownToDocx(markdown: string): Promise<DocChild[]> {
           heading: HeadingLevel.HEADING_1,
           children: parseInline(line.slice(2)),
           spacing: { after: 200 },
+          indent: { left: 0, firstLine: 0 },
         }),
       );
       continue;
@@ -350,6 +351,7 @@ async function parseMarkdownToDocx(markdown: string): Promise<DocChild[]> {
           heading: HeadingLevel.HEADING_3,
           children: parseInline(line.slice(4)),
           spacing: { before: 240, after: SPACING_HALF_LINE },
+          indent: { left: 0, firstLine: 0 },
         }),
       );
       continue;
@@ -400,6 +402,7 @@ async function parseMarkdownToDocx(markdown: string): Promise<DocChild[]> {
       new Paragraph({
         children: parseInline(line),
         spacing: { before: 60, after: 60 },
+        indent: { left: 0, firstLine: 0 },
       }),
     );
   }
@@ -429,12 +432,15 @@ export async function exportToDocx(
         },
         heading1: {
           run: { font: FONT, bold: true, size: 40, color: '111827' },
+          paragraph: { indent: { left: 0, firstLine: 0 } },
         },
         heading2: {
           run: { font: FONT, bold: true, size: 34, color: '1F2937' },
+          paragraph: { indent: { left: 0, firstLine: 0 } },
         },
         heading3: {
           run: { font: FONT, bold: true, size: 26, color: '374151' },
+          paragraph: { indent: { left: 0, firstLine: 0 } },
         },
       },
     },

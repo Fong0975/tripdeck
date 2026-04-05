@@ -2,6 +2,10 @@ import type { Request, Response } from 'express';
 
 import * as templateRepo from '../repositories/checklistTemplateRepository';
 import * as tripRepo from '../repositories/checklistTripRepository';
+import type {
+  CreateTripItemBody,
+  UpdateTripItemBody,
+} from '../types/checklist';
 
 // ── Template ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +34,8 @@ export async function getTemplate(_req: Request, res: Response): Promise<void> {
                          properties: {
                            id: { type: 'integer', example: 1 },
                            name: { type: 'string', example: '護照' },
+                           quantity: { type: 'integer', nullable: true, example: 1 },
+                           notes: { type: 'string', nullable: true, example: null },
                            sortOrder: { type: 'integer', example: 0 }
                          }
                        }
@@ -103,6 +109,8 @@ export async function updateCategory(
                    properties: {
                      id: { type: 'integer', example: 1 },
                      name: { type: 'string', example: '護照' },
+                     quantity: { type: 'integer', nullable: true, example: 1 },
+                     notes: { type: 'string', nullable: true, example: null },
                      sortOrder: { type: 'integer', example: 0 }
                    }
                  }
@@ -161,6 +169,8 @@ export async function addItem(req: Request, res: Response): Promise<void> {
              properties: {
                id: { type: 'integer', example: 32 },
                name: { type: 'string', example: '電子簽證' },
+               quantity: { type: 'integer', nullable: true, example: null },
+               notes: { type: 'string', nullable: true, example: null },
                sortOrder: { type: 'integer', example: 5 }
              }
            }
@@ -169,12 +179,20 @@ export async function addItem(req: Request, res: Response): Promise<void> {
      } */
   try {
     const catId = Number(req.params.catId);
-    const { name } = req.body;
+    const { name, quantity, notes } = req.body as {
+      name: string;
+      quantity?: number | null;
+      notes?: string | null;
+    };
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
     }
-    const item = await templateRepo.createItem(catId, name);
+    const item = await templateRepo.createItem(catId, {
+      name,
+      quantity,
+      notes,
+    });
     if (!item) {
       res.status(404).json({ error: 'Category not found' });
       return;
@@ -197,6 +215,8 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
              properties: {
                id: { type: 'integer', example: 1 },
                name: { type: 'string', example: '電子簽證' },
+               quantity: { type: 'integer', nullable: true, example: 2 },
+               notes: { type: 'string', nullable: true, example: '每人一份' },
                sortOrder: { type: 'integer', example: 0 }
              }
            }
@@ -206,7 +226,11 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
   try {
     const catId = Number(req.params.catId);
     const itemId = Number(req.params.itemId);
-    const { name } = req.body;
+    const { name, quantity, notes } = req.body as {
+      name: string;
+      quantity?: number | null;
+      notes?: string | null;
+    };
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
@@ -219,7 +243,11 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
       res.status(404).json({ error: 'Item not found' });
       return;
     }
-    const item = await templateRepo.updateItem(itemId, name);
+    const item = await templateRepo.updateItem(itemId, {
+      name,
+      quantity,
+      notes,
+    });
     if (!item) {
       res.status(404).json({ error: 'Item not found' });
       return;
@@ -287,6 +315,8 @@ export async function getTripChecklist(
                          properties: {
                            id: { type: 'integer', example: 1 },
                            name: { type: 'string', example: '護照' },
+                           quantity: { type: 'integer', nullable: true, example: 1 },
+                           notes: { type: 'string', nullable: true, example: null },
                            sortOrder: { type: 'integer', example: 0 }
                          }
                        }
@@ -430,6 +460,165 @@ export async function deleteOccasion(
     res.status(204).send();
   } catch {
     res.status(500).json({ error: 'Failed to delete occasion' });
+  }
+}
+
+export async function addTripCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Add a category to a trip checklist' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const { name } = req.body;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    res.status(201).json(await tripRepo.createTripCategory(tripId, name));
+  } catch {
+    res.status(500).json({ error: 'Failed to add category' });
+  }
+}
+
+export async function updateTripCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Update a trip checklist category name' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const catId = Number(req.params.catId);
+    const { name } = req.body;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const belongs = await tripRepo.verifyCategoryBelongsToTrip(catId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Category not found' });
+      return;
+    }
+    const updated = await tripRepo.updateTripCategory(catId, name);
+    if (!updated) {
+      res.status(404).json({ error: 'Category not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: 'Failed to update category' });
+  }
+}
+
+export async function deleteTripCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Delete a trip checklist category and all its items' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const catId = Number(req.params.catId);
+    const belongs = await tripRepo.verifyCategoryBelongsToTrip(catId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Category not found' });
+      return;
+    }
+    const deleted = await tripRepo.deleteTripCategory(catId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Category not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: 'Failed to delete category' });
+  }
+}
+
+export async function addTripItem(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Add an item to a trip checklist category' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const catId = Number(req.params.catId);
+
+    const belongs = await tripRepo.verifyCategoryBelongsToTrip(catId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Category not found' });
+      return;
+    }
+
+    const { name, quantity, notes } = req.body as CreateTripItemBody;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+
+    const item = await tripRepo.createTripItem(catId, {
+      name,
+      quantity,
+      notes,
+    });
+    res.status(201).json(item);
+  } catch {
+    res.status(500).json({ error: 'Failed to add item' });
+  }
+}
+
+export async function deleteTripItem(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Delete an item from a trip checklist' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const itemId = Number(req.params.itemId);
+
+    const belongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+
+    const deleted = await tripRepo.deleteTripItem(itemId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+}
+
+export async function updateTripItem(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Update name, quantity or notes of a trip checklist item' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const itemId = Number(req.params.itemId);
+
+    const belongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+
+    const data = req.body as UpdateTripItemBody;
+    const item = await tripRepo.updateTripItem(itemId, data);
+    if (!item) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.json(item);
+  } catch {
+    res.status(500).json({ error: 'Failed to update item' });
   }
 }
 

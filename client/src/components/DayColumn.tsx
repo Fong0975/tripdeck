@@ -42,7 +42,7 @@ export default function DayColumn({
   })();
 
   return (
-    <div className='flex w-64 shrink-0 flex-col'>
+    <div className='flex w-80 shrink-0 flex-col'>
       {/* Column header */}
       <div className='mb-3 px-1 text-center'>
         <span className='bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold'>

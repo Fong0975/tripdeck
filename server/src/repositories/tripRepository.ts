@@ -38,6 +38,8 @@ interface TripAttractionRow extends RowDataPacket {
   google_map_url: string | null;
   notes: string | null;
   nearby_attractions: string | null;
+  start_time: string | null;
+  end_time: string | null;
   sort_order: number;
 }
 
@@ -269,6 +271,8 @@ export async function findContent(
       googleMapUrl: row.google_map_url,
       notes: row.notes,
       nearbyAttractions: row.nearby_attractions,
+      startTime: row.start_time,
+      endTime: row.end_time,
       referenceWebsites: websitesByAttractionId.get(row.id) ?? [],
       images: imagesByAttractionId.get(row.id) ?? [],
       sortOrder: row.sort_order,

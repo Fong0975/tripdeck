@@ -42,7 +42,7 @@ export default function ChecklistTemplateEditor() {
   };
 
   const handleAddItem = async (catId: number) => {
-    await addTemplateItem(catId, '新項目');
+    await addTemplateItem(catId, { name: '新項目' });
     await reload();
   };
 
@@ -54,13 +54,29 @@ export default function ChecklistTemplateEditor() {
   const handleItemBlur = async (
     catId: number,
     itemId: number,
-    name: string,
+    field: 'name' | 'quantity' | 'notes',
+    value: string,
+    current: { name: string; quantity?: number | null; notes?: string | null },
   ) => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
+    if (field === 'name') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return;
+      }
+      await updateTemplateItem(catId, itemId, { ...current, name: trimmed });
+    } else if (field === 'quantity') {
+      const parsed = value.trim() === '' ? null : Number(value);
+      if (value.trim() !== '' && isNaN(parsed as number)) {
+        return;
+      }
+      await updateTemplateItem(catId, itemId, { ...current, quantity: parsed });
+    } else {
+      await updateTemplateItem(catId, itemId, {
+        ...current,
+        notes: value.trim() || null,
+      });
     }
-    await updateTemplateItem(catId, itemId, trimmed);
+    await reload();
   };
 
   if (!template) {
@@ -99,19 +115,62 @@ export default function ChecklistTemplateEditor() {
           {/* Items */}
           <div className='divide-border divide-y'>
             {cat.items.map(item => (
-              <div key={item.id} className='flex items-center gap-2 px-4 py-2'>
-                <span className='text-muted-foreground text-xs'>•</span>
-                <input
-                  defaultValue={item.name}
-                  onBlur={e =>
-                    void handleItemBlur(cat.id, item.id, e.target.value)
-                  }
-                  className='text-foreground min-w-0 flex-1 bg-transparent text-sm focus:outline-none'
-                  placeholder='項目名稱'
-                />
+              <div key={item.id} className='flex items-start gap-2 px-4 py-2'>
+                <span className='text-muted-foreground mt-1.5 text-xs'>•</span>
+                <div className='min-w-0 flex-1'>
+                  <input
+                    defaultValue={item.name}
+                    onBlur={e =>
+                      void handleItemBlur(
+                        cat.id,
+                        item.id,
+                        'name',
+                        e.target.value,
+                        item,
+                      )
+                    }
+                    className='text-foreground w-full bg-transparent text-sm focus:outline-none'
+                    placeholder='項目名稱'
+                  />
+                  <div className='mt-0.5 flex items-center gap-3'>
+                    <div className='flex items-center gap-1'>
+                      <span className='text-muted-foreground text-xs'>x</span>
+                      <input
+                        type='number'
+                        min={1}
+                        defaultValue={item.quantity ?? ''}
+                        onBlur={e =>
+                          void handleItemBlur(
+                            cat.id,
+                            item.id,
+                            'quantity',
+                            e.target.value,
+                            item,
+                          )
+                        }
+                        placeholder='數量'
+                        className='text-muted-foreground w-16 bg-transparent text-xs focus:outline-none'
+                      />
+                    </div>
+                    <input
+                      defaultValue={item.notes ?? ''}
+                      onBlur={e =>
+                        void handleItemBlur(
+                          cat.id,
+                          item.id,
+                          'notes',
+                          e.target.value,
+                          item,
+                        )
+                      }
+                      placeholder='補充說明'
+                      className='text-muted-foreground min-w-0 flex-1 bg-transparent text-xs focus:outline-none'
+                    />
+                  </div>
+                </div>
                 <button
                   onClick={() => void handleDeleteItem(cat.id, item.id)}
-                  className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1 transition-colors'
+                  className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive mt-0.5 rounded-md p-1 transition-colors'
                   aria-label='刪除項目'
                 >
                   <Trash2 size={12} />

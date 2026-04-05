@@ -19,6 +19,8 @@ interface TripAttractionRow extends RowDataPacket {
   google_map_url: string | null;
   notes: string | null;
   nearby_attractions: string | null;
+  start_time: string | null;
+  end_time: string | null;
   sort_order: number;
 }
 
@@ -50,6 +52,8 @@ function toAttractionResponse(
     googleMapUrl: row.google_map_url,
     notes: row.notes,
     nearbyAttractions: row.nearby_attractions,
+    startTime: row.start_time,
+    endTime: row.end_time,
     referenceWebsites,
     images,
     sortOrder: row.sort_order,
@@ -93,14 +97,16 @@ export async function create(
 
     const [result] = await conn.execute<ResultSetHeader>(
       `INSERT INTO trip_attractions
-         (trip_day_id, name, google_map_url, notes, nearby_attractions, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+         (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dayId,
         data.name,
         data.googleMapUrl ?? null,
         data.notes ?? null,
         data.nearbyAttractions ?? null,
+        data.startTime ?? null,
+        data.endTime ?? null,
         sortOrder,
       ],
     );
@@ -122,6 +128,8 @@ export async function create(
       googleMapUrl: data.googleMapUrl ?? null,
       notes: data.notes ?? null,
       nearbyAttractions: data.nearbyAttractions ?? null,
+      startTime: data.startTime ?? null,
+      endTime: data.endTime ?? null,
       referenceWebsites: websites,
       images: [],
       sortOrder,
@@ -157,7 +165,8 @@ export async function update(
 
     await conn.execute(
       `UPDATE trip_attractions
-       SET name = ?, google_map_url = ?, notes = ?, nearby_attractions = ?
+       SET name = ?, google_map_url = ?, notes = ?, nearby_attractions = ?,
+           start_time = ?, end_time = ?
        WHERE id = ?`,
       [
         data.name ?? cur.name,
@@ -168,6 +177,8 @@ export async function update(
         'nearbyAttractions' in data
           ? (data.nearbyAttractions ?? null)
           : cur.nearby_attractions,
+        'startTime' in data ? (data.startTime ?? null) : cur.start_time,
+        'endTime' in data ? (data.endTime ?? null) : cur.end_time,
         attractionId,
       ],
     );

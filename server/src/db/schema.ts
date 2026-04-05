@@ -30,6 +30,8 @@ export const tableDefinitions: string[] = [
     google_map_url     TEXT,
     notes              TEXT,
     nearby_attractions TEXT,
+    start_time         VARCHAR(10),
+    end_time           VARCHAR(10),
     sort_order         INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_trip_attractions_day
       FOREIGN KEY (trip_day_id) REFERENCES trip_days(id) ON DELETE CASCADE
@@ -91,6 +93,8 @@ export const tableDefinitions: string[] = [
     id                              INT AUTO_INCREMENT PRIMARY KEY,
     checklist_template_category_id  INT          NOT NULL,
     name                            VARCHAR(255) NOT NULL,
+    quantity                        INT,
+    notes                           TEXT,
     sort_order                      INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_template_items_category
       FOREIGN KEY (checklist_template_category_id)
@@ -110,6 +114,8 @@ export const tableDefinitions: string[] = [
     id                          INT AUTO_INCREMENT PRIMARY KEY,
     checklist_trip_category_id  INT          NOT NULL,
     name                        VARCHAR(255) NOT NULL,
+    quantity                    INT,
+    notes                       TEXT,
     sort_order                  INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_checklist_trip_items_category
       FOREIGN KEY (checklist_trip_category_id)
