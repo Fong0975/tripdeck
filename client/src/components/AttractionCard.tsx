@@ -9,7 +9,7 @@ import {
   Images,
   Clock,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 import type { Attraction } from '@/types';
 
@@ -29,6 +29,16 @@ export default function AttractionCard({
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [notesClamped, setNotesClamped] = useState(false);
+  const notesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = notesRef.current;
+    if (el) {
+      setNotesClamped(el.scrollHeight > el.clientHeight);
+    }
+  }, [attraction.notes]);
 
   const {
     attributes,
@@ -76,7 +86,7 @@ export default function AttractionCard({
 
         <div className='min-w-0 flex-1'>
           <div className='flex items-center justify-between gap-2'>
-            <h4 className='text-foreground truncate text-sm font-semibold'>
+            <h4 className='text-foreground truncate text-base font-semibold'>
               {attraction.name}
             </h4>
             <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
@@ -108,14 +118,32 @@ export default function AttractionCard({
             <p className='text-muted-foreground mt-1 flex items-center gap-1 text-xs'>
               <Clock size={11} className='shrink-0' />
               {attraction.startTime ?? '–'}
-              {' → '}
+              {' ～ '}
               {attraction.endTime ?? '–'}
             </p>
           )}
 
           {attraction.notes && (
-            <div className='text-muted-foreground mt-1 line-clamp-3 text-xs'>
-              <MarkdownContent>{attraction.notes}</MarkdownContent>
+            <div className='my-3'>
+              <hr className='border-border mb-3' />
+              <div
+                ref={notesRef}
+                className={`text-muted-foreground text-sm ${notesExpanded ? '' : 'line-clamp-3'}`}
+              >
+                <MarkdownContent>{attraction.notes}</MarkdownContent>
+              </div>
+              {(notesClamped || notesExpanded) && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    setNotesExpanded(prev => !prev);
+                  }}
+                  className='text-primary/60 hover:text-primary mt-0.5 text-sm transition-colors'
+                >
+                  {notesExpanded ? '收起' : '展開'}
+                </button>
+              )}
+              <hr className='border-border mt-3' />
             </div>
           )}
 
@@ -128,7 +156,7 @@ export default function AttractionCard({
                   target='_blank'
                   rel='noopener noreferrer'
                   onClick={e => e.stopPropagation()}
-                  className='text-primary flex items-center gap-0.5 text-xs hover:underline'
+                  className='text-primary flex items-center gap-0.5 text-sm hover:underline'
                 >
                   <ExternalLink size={10} />
                   <span>參考 {i + 1}</span>
@@ -158,7 +186,7 @@ export default function AttractionCard({
                 ))}
               </div>
               {attraction.images!.length > 3 && (
-                <span className='text-muted-foreground flex items-center gap-0.5 text-xs'>
+                <span className='text-muted-foreground flex items-center gap-0.5 text-sm'>
                   <Images size={10} />+{attraction.images!.length - 3}
                 </span>
               )}
@@ -172,7 +200,7 @@ export default function AttractionCard({
                 target='_blank'
                 rel='noopener noreferrer'
                 onClick={e => e.stopPropagation()}
-                className='text-primary/60 hover:text-primary flex items-center gap-1 text-xs transition-colors'
+                className='text-primary/60 hover:text-primary flex items-center gap-1 text-sm transition-colors'
                 title='Google Maps'
               >
                 <MapPin size={12} />
