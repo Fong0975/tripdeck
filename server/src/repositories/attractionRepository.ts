@@ -5,6 +5,7 @@ import type {
   AttractionResponse,
   CreateAttractionBody,
   ImageResponse,
+  ReferenceWebsite,
   UpdateAttractionBody,
 } from '../types/trip';
 
@@ -28,21 +29,22 @@ interface TripAttractionWebsiteRow extends RowDataPacket {
   id: number;
   trip_attraction_id: number;
   url: string;
+  title: string;
 }
 
 // --- Helpers ---
 
-async function getWebsites(attractionId: number): Promise<string[]> {
+async function getWebsites(attractionId: number): Promise<ReferenceWebsite[]> {
   const [rows] = await pool.execute<TripAttractionWebsiteRow[]>(
-    'SELECT url FROM trip_attraction_websites WHERE trip_attraction_id = ? ORDER BY id',
+    'SELECT url, title FROM trip_attraction_websites WHERE trip_attraction_id = ? ORDER BY id',
     [attractionId],
   );
-  return rows.map(r => r.url);
+  return rows.map(r => ({ url: r.url, title: r.title }));
 }
 
 function toAttractionResponse(
   row: TripAttractionRow,
-  referenceWebsites: string[],
+  referenceWebsites: ReferenceWebsite[],
   images: ImageResponse[],
 ): AttractionResponse {
   return {
@@ -111,10 +113,10 @@ export async function create(
     const attractionId = result.insertId;
 
     const websites = data.referenceWebsites ?? [];
-    for (const url of websites) {
+    for (const site of websites) {
       await conn.execute(
-        'INSERT INTO trip_attraction_websites (trip_attraction_id, url) VALUES (?, ?)',
-        [attractionId, url],
+        'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
+        [attractionId, site.url, site.title],
       );
     }
 
@@ -186,10 +188,10 @@ export async function update(
         'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
         [attractionId],
       );
-      for (const url of data.referenceWebsites) {
+      for (const site of data.referenceWebsites) {
         await conn.execute(
-          'INSERT INTO trip_attraction_websites (trip_attraction_id, url) VALUES (?, ?)',
-          [attractionId, url],
+          'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
+          [attractionId, site.url, site.title],
         );
       }
     }

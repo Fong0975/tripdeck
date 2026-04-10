@@ -93,6 +93,7 @@ export const tableDefinitions: TableDef[] = [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
       { name: 'trip_attraction_id', type: 'INT', notNull: true },
       { name: 'url', type: 'TEXT', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true, default: '' },
     ],
     foreignKeys: [
       {

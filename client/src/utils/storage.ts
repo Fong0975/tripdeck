@@ -5,6 +5,7 @@ import type {
   ChecklistItem,
   ChecklistOccasion,
   ChecklistTemplate,
+  ReferenceWebsite,
   TransportMode,
   TravelConnection,
   Trip,
@@ -87,7 +88,7 @@ export async function addAttraction(
     nearbyAttractions?: string;
     startTime?: string;
     endTime?: string;
-    referenceWebsites?: string[];
+    referenceWebsites?: ReferenceWebsite[];
   },
 ): Promise<Attraction> {
   return api<Attraction>(`/api/trips/${tripId}/days/${dayId}/attractions`, {
@@ -106,7 +107,7 @@ export async function updateAttraction(
     nearbyAttractions?: string | null;
     startTime?: string | null;
     endTime?: string | null;
-    referenceWebsites?: string[];
+    referenceWebsites?: ReferenceWebsite[];
   },
 ): Promise<Attraction> {
   return api<Attraction>(`/api/trips/${tripId}/attractions/${attractionId}`, {
@@ -412,4 +413,10 @@ export async function setCheck(
 }
 
 // Re-export types used by consumers so they don't need to import from two places
-export type { TransportMode, Attraction, AttractionImage, TravelConnection };
+export type {
+  TransportMode,
+  Attraction,
+  AttractionImage,
+  ReferenceWebsite,
+  TravelConnection,
+};

@@ -572,7 +572,7 @@ async function makeAttractionTable(attraction: Attraction): Promise<Table> {
   // ── Row 5+: Reference websites (col 1 | cols 2–4) ──────────────────────
   const websites = attraction.referenceWebsites ?? [];
   for (let i = 0; i < websites.length; i++) {
-    const url = websites[i];
+    const site = websites[i];
     rows.push(
       new TableRow({
         children: [
@@ -605,10 +605,10 @@ async function makeAttractionTable(attraction: Attraction): Promise<Table> {
               new Paragraph({
                 children: [
                   new ExternalHyperlink({
-                    link: url,
+                    link: site.url,
                     children: [
                       new TextRun({
-                        text: url,
+                        text: site.title || site.url,
                         style: 'Hyperlink',
                         font: FONT,
                       }),

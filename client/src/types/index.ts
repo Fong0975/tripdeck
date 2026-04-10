@@ -1,3 +1,8 @@
+export interface ReferenceWebsite {
+  url: string;
+  title: string;
+}
+
 export type TransportMode =
   | 'walk'
   | 'drive'
@@ -30,7 +35,7 @@ export interface Attraction {
   nearbyAttractions?: string | null;
   startTime?: string | null;
   endTime?: string | null;
-  referenceWebsites?: string[];
+  referenceWebsites?: ReferenceWebsite[];
   images?: AttractionImage[];
 }
 

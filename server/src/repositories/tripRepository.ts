@@ -6,6 +6,7 @@ import type {
   ConnectionResponse,
   CreateTripBody,
   DayResponse,
+  ReferenceWebsite,
   TripContentResponse,
   TripResponse,
 } from '../types/trip';
@@ -47,7 +48,7 @@ interface TripAttractionWebsiteRow extends RowDataPacket {
   id: number;
   trip_attraction_id: number;
   url: string;
-  sort_order: number;
+  title: string;
 }
 
 interface TripConnectionRow extends RowDataPacket {
@@ -231,20 +232,20 @@ export async function findContent(
   );
 
   // Batch-fetch websites only when there are attractions to look up.
-  const websitesByAttractionId = new Map<number, string[]>();
+  const websitesByAttractionId = new Map<number, ReferenceWebsite[]>();
   if (attractionRows.length > 0) {
     const attrIds = attractionRows.map(r => r.id);
     const attrPh = placeholders(attrIds.length);
     const [websiteRows] = await pool.execute<TripAttractionWebsiteRow[]>(
       `SELECT * FROM trip_attraction_websites
        WHERE trip_attraction_id IN (${attrPh})
-       ORDER BY trip_attraction_id, sort_order`,
+       ORDER BY trip_attraction_id, id`,
       attrIds,
     );
     for (const row of websiteRows) {
-      const urls = websitesByAttractionId.get(row.trip_attraction_id) ?? [];
-      urls.push(row.url);
-      websitesByAttractionId.set(row.trip_attraction_id, urls);
+      const sites = websitesByAttractionId.get(row.trip_attraction_id) ?? [];
+      sites.push({ url: row.url, title: row.title });
+      websitesByAttractionId.set(row.trip_attraction_id, sites);
     }
   }
 
