@@ -10,7 +10,6 @@ export interface AttractionImage {
   id: number;
   filename: string;
   title: string;
-  sortOrder: number;
 }
 
 export interface Trip {

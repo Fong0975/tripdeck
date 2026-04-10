@@ -41,7 +41,6 @@ export const tableDefinitions: string[] = [
     id                   INT AUTO_INCREMENT PRIMARY KEY,
     trip_attraction_id   INT  NOT NULL,
     url                  TEXT NOT NULL,
-    sort_order           INT  NOT NULL DEFAULT 0,
     CONSTRAINT fk_trip_attraction_websites_attraction
       FOREIGN KEY (trip_attraction_id) REFERENCES trip_attractions(id) ON DELETE CASCADE
   )`,
@@ -68,7 +67,6 @@ export const tableDefinitions: string[] = [
     trip_attraction_id   INT          NOT NULL,
     filename             VARCHAR(255) NOT NULL,
     title                VARCHAR(255) NOT NULL,
-    sort_order           INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_trip_attraction_images_attraction
       FOREIGN KEY (trip_attraction_id) REFERENCES trip_attractions(id) ON DELETE CASCADE
   )`,
@@ -78,15 +76,13 @@ export const tableDefinitions: string[] = [
     trip_connection_id   INT          NOT NULL,
     filename             VARCHAR(255) NOT NULL,
     title                VARCHAR(255) NOT NULL,
-    sort_order           INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_trip_connection_images_connection
       FOREIGN KEY (trip_connection_id) REFERENCES trip_connections(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS checklist_template_categories (
     id         INT AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL,
-    sort_order INT          NOT NULL DEFAULT 0
+    name       VARCHAR(255) NOT NULL
   )`,
 
   `CREATE TABLE IF NOT EXISTS checklist_template_items (
@@ -95,7 +91,6 @@ export const tableDefinitions: string[] = [
     name                            VARCHAR(255) NOT NULL,
     quantity                        INT,
     notes                           TEXT,
-    sort_order                      INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_template_items_category
       FOREIGN KEY (checklist_template_category_id)
         REFERENCES checklist_template_categories(id) ON DELETE CASCADE
@@ -105,7 +100,6 @@ export const tableDefinitions: string[] = [
     id         INT AUTO_INCREMENT PRIMARY KEY,
     trip_id    INT          NOT NULL,
     name       VARCHAR(255) NOT NULL,
-    sort_order INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_checklist_trip_categories_trip
       FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
   )`,
@@ -116,7 +110,6 @@ export const tableDefinitions: string[] = [
     name                        VARCHAR(255) NOT NULL,
     quantity                    INT,
     notes                       TEXT,
-    sort_order                  INT          NOT NULL DEFAULT 0,
     CONSTRAINT fk_checklist_trip_items_category
       FOREIGN KEY (checklist_trip_category_id)
         REFERENCES checklist_trip_categories(id) ON DELETE CASCADE

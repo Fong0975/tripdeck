@@ -5,13 +5,11 @@ export interface TemplateItemResponse {
   name: string;
   quantity: number | null;
   notes: string | null;
-  sortOrder: number;
 }
 
 export interface TemplateCategoryResponse {
   id: number;
   name: string;
-  sortOrder: number;
   items: TemplateItemResponse[];
 }
 
@@ -24,13 +22,11 @@ export interface TripChecklistItemResponse {
   name: string;
   quantity: number | null;
   notes: string | null;
-  sortOrder: number;
 }
 
 export interface TripChecklistCategoryResponse {
   id: number;
   name: string;
-  sortOrder: number;
   items: TripChecklistItemResponse[];
 }
 

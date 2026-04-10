@@ -16,7 +16,6 @@ interface TripChecklistCategoryRow extends RowDataPacket {
   id: number;
   trip_id: number;
   name: string;
-  sort_order: number;
 }
 
 interface TripChecklistItemRow extends RowDataPacket {
@@ -25,13 +24,11 @@ interface TripChecklistItemRow extends RowDataPacket {
   name: string;
   quantity: number | null;
   notes: string | null;
-  sort_order: number;
 }
 
 interface TemplateCategoryRow extends RowDataPacket {
   id: number;
   name: string;
-  sort_order: number;
 }
 
 interface TemplateItemRow extends RowDataPacket {
@@ -40,7 +37,6 @@ interface TemplateItemRow extends RowDataPacket {
   name: string;
   quantity: number | null;
   notes: string | null;
-  sort_order: number;
 }
 
 interface OccasionRow extends RowDataPacket {
@@ -78,7 +74,7 @@ export async function findChecklist(
   }
 
   const [catRows] = await pool.execute<TripChecklistCategoryRow[]>(
-    'SELECT * FROM checklist_trip_categories WHERE trip_id = ? ORDER BY sort_order',
+    'SELECT * FROM checklist_trip_categories WHERE trip_id = ? ORDER BY id',
     [tripId],
   );
 
@@ -88,7 +84,7 @@ export async function findChecklist(
     const [itemRows] = await pool.execute<TripChecklistItemRow[]>(
       `SELECT * FROM checklist_trip_items
        WHERE checklist_trip_category_id IN (${placeholders(catIds.length)})
-       ORDER BY checklist_trip_category_id, sort_order`,
+       ORDER BY checklist_trip_category_id, id`,
       catIds,
     );
     for (const row of itemRows) {
@@ -98,7 +94,6 @@ export async function findChecklist(
         name: row.name,
         quantity: row.quantity,
         notes: row.notes,
-        sortOrder: row.sort_order,
       });
       itemsByCatId.set(row.checklist_trip_category_id, list);
     }
@@ -107,7 +102,6 @@ export async function findChecklist(
   const categories: TripChecklistCategoryResponse[] = catRows.map(row => ({
     id: row.id,
     name: row.name,
-    sortOrder: row.sort_order,
     items: itemsByCatId.get(row.id) ?? [],
   }));
 
@@ -149,24 +143,24 @@ export async function initChecklist(
     await conn.beginTransaction();
 
     const [catRows] = await conn.execute<TemplateCategoryRow[]>(
-      'SELECT * FROM checklist_template_categories ORDER BY sort_order',
+      'SELECT * FROM checklist_template_categories ORDER BY id',
     );
 
     for (const cat of catRows) {
       const [catResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
-        [tripId, cat.name, cat.sort_order],
+        'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
+        [tripId, cat.name],
       );
       const tripCatId = catResult.insertId;
 
       const [itemRows] = await conn.execute<TemplateItemRow[]>(
-        'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY sort_order',
+        'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
         [cat.id],
       );
       for (const item of itemRows) {
         await conn.execute(
-          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
-          [tripCatId, item.name, item.quantity, item.notes, item.sort_order],
+          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes) VALUES (?, ?, ?, ?)',
+          [tripCatId, item.name, item.quantity, item.notes],
         );
       }
     }
@@ -218,18 +212,12 @@ export async function createTripCategory(
   tripId: number,
   name: string,
 ): Promise<TripChecklistCategoryResponse> {
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM checklist_trip_categories WHERE trip_id = ?',
-    [tripId],
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
-    [tripId, name, sortOrder],
+    'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
+    [tripId, name],
   );
 
-  return { id: result.insertId, name, sortOrder, items: [] };
+  return { id: result.insertId, name, items: [] };
 }
 
 /** Updates the name of a trip checklist category. */
@@ -284,15 +272,9 @@ export async function createTripItem(
   catId: number,
   data: CreateTripItemBody,
 ): Promise<TripChecklistItemResponse> {
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM checklist_trip_items WHERE checklist_trip_category_id = ?',
-    [catId],
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
-    [catId, data.name, data.quantity ?? null, data.notes ?? null, sortOrder],
+    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes) VALUES (?, ?, ?, ?)',
+    [catId, data.name, data.quantity ?? null, data.notes ?? null],
   );
 
   return {
@@ -300,7 +282,6 @@ export async function createTripItem(
     name: data.name,
     quantity: data.quantity ?? null,
     notes: data.notes ?? null,
-    sortOrder,
   };
 }
 
@@ -399,7 +380,6 @@ export async function updateTripItem(
     name,
     quantity,
     notes,
-    sortOrder: cur.sort_order,
   };
 }
 

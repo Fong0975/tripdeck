@@ -14,7 +14,6 @@ import type {
 interface TemplateCategoryRow extends RowDataPacket {
   id: number;
   name: string;
-  sort_order: number;
 }
 
 interface TemplateItemRow extends RowDataPacket {
@@ -23,7 +22,6 @@ interface TemplateItemRow extends RowDataPacket {
   name: string;
   quantity: number | null;
   notes: string | null;
-  sort_order: number;
 }
 
 // --- Helpers ---
@@ -32,7 +30,7 @@ function toCategoryResponse(
   row: TemplateCategoryRow,
   items: TemplateItemResponse[],
 ): TemplateCategoryResponse {
-  return { id: row.id, name: row.name, sortOrder: row.sort_order, items };
+  return { id: row.id, name: row.name, items };
 }
 
 function toItemResponse(row: TemplateItemRow): TemplateItemResponse {
@@ -41,7 +39,6 @@ function toItemResponse(row: TemplateItemRow): TemplateItemResponse {
     name: row.name,
     quantity: row.quantity,
     notes: row.notes,
-    sortOrder: row.sort_order,
   };
 }
 
@@ -53,7 +50,7 @@ function placeholders(count: number): string {
 
 export async function findTemplate(): Promise<ChecklistTemplateResponse> {
   const [catRows] = await pool.execute<TemplateCategoryRow[]>(
-    'SELECT * FROM checklist_template_categories ORDER BY sort_order',
+    'SELECT * FROM checklist_template_categories ORDER BY id',
   );
 
   if (catRows.length === 0) {
@@ -64,7 +61,7 @@ export async function findTemplate(): Promise<ChecklistTemplateResponse> {
   const [itemRows] = await pool.execute<TemplateItemRow[]>(
     `SELECT * FROM checklist_template_items
      WHERE checklist_template_category_id IN (${placeholders(catIds.length)})
-     ORDER BY checklist_template_category_id, sort_order`,
+     ORDER BY checklist_template_category_id, id`,
     catIds,
   );
 
@@ -85,17 +82,12 @@ export async function findTemplate(): Promise<ChecklistTemplateResponse> {
 export async function createCategory(
   name: string,
 ): Promise<TemplateCategoryResponse> {
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM checklist_template_categories',
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_categories (name, sort_order) VALUES (?, ?)',
-    [name, sortOrder],
+    'INSERT INTO checklist_template_categories (name) VALUES (?)',
+    [name],
   );
 
-  return { id: result.insertId, name, sortOrder, items: [] };
+  return { id: result.insertId, name, items: [] };
 }
 
 export async function updateCategory(
@@ -116,7 +108,7 @@ export async function updateCategory(
   );
 
   const [itemRows] = await pool.execute<TemplateItemRow[]>(
-    'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY sort_order',
+    'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
     [catId],
   );
 
@@ -143,15 +135,9 @@ export async function createItem(
     return null;
   }
 
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM checklist_template_items WHERE checklist_template_category_id = ?',
-    [catId],
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, sort_order) VALUES (?, ?, ?, ?, ?)',
-    [catId, data.name, data.quantity ?? null, data.notes ?? null, sortOrder],
+    'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes) VALUES (?, ?, ?, ?)',
+    [catId, data.name, data.quantity ?? null, data.notes ?? null],
   );
 
   return {
@@ -159,7 +145,6 @@ export async function createItem(
     name: data.name,
     quantity: data.quantity ?? null,
     notes: data.notes ?? null,
-    sortOrder,
   };
 }
 

@@ -28,14 +28,13 @@ interface TripAttractionWebsiteRow extends RowDataPacket {
   id: number;
   trip_attraction_id: number;
   url: string;
-  sort_order: number;
 }
 
 // --- Helpers ---
 
 async function getWebsites(attractionId: number): Promise<string[]> {
   const [rows] = await pool.execute<TripAttractionWebsiteRow[]>(
-    'SELECT url FROM trip_attraction_websites WHERE trip_attraction_id = ? ORDER BY sort_order',
+    'SELECT url FROM trip_attraction_websites WHERE trip_attraction_id = ? ORDER BY id',
     [attractionId],
   );
   return rows.map(r => r.url);
@@ -78,8 +77,7 @@ export async function verifyBelongsToTrip(
 
 /**
  * Appends an attraction to the given day.
- * sort_order is set to the current count of attractions in that day
- * so the new item always appears last.
+ * sort_order is set to the current count of attractions in that day so the new item appears last.
  */
 export async function create(
   dayId: number,
@@ -113,10 +111,10 @@ export async function create(
     const attractionId = result.insertId;
 
     const websites = data.referenceWebsites ?? [];
-    for (let i = 0; i < websites.length; i++) {
+    for (const url of websites) {
       await conn.execute(
-        'INSERT INTO trip_attraction_websites (trip_attraction_id, url, sort_order) VALUES (?, ?, ?)',
-        [attractionId, websites[i], i],
+        'INSERT INTO trip_attraction_websites (trip_attraction_id, url) VALUES (?, ?)',
+        [attractionId, url],
       );
     }
 
@@ -188,10 +186,10 @@ export async function update(
         'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
         [attractionId],
       );
-      for (let i = 0; i < data.referenceWebsites.length; i++) {
+      for (const url of data.referenceWebsites) {
         await conn.execute(
-          'INSERT INTO trip_attraction_websites (trip_attraction_id, url, sort_order) VALUES (?, ?, ?)',
-          [attractionId, data.referenceWebsites[i], i],
+          'INSERT INTO trip_attraction_websites (trip_attraction_id, url) VALUES (?, ?)',
+          [attractionId, url],
         );
       }
     }

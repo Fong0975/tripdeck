@@ -4,7 +4,6 @@ export interface ImageResponse {
   id: number;
   filename: string;
   title: string;
-  sortOrder: number;
 }
 
 export interface TripResponse {
