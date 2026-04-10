@@ -1,146 +1,285 @@
-/**
- * DDL statements for all tables, ordered by foreign key dependency.
- * Each statement uses CREATE TABLE IF NOT EXISTS so only missing tables are created.
- */
-export const tableDefinitions: string[] = [
-  `CREATE TABLE IF NOT EXISTS trips (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    title        VARCHAR(255) NOT NULL,
-    destination  VARCHAR(255),
-    start_date   DATE         NOT NULL,
-    end_date     DATE         NOT NULL,
-    description  TEXT,
-    created_at   DATETIME     NOT NULL
-  )`,
+// --- Type definitions ---
 
-  `CREATE TABLE IF NOT EXISTS trip_days (
-    id       INT AUTO_INCREMENT PRIMARY KEY,
-    trip_id  INT NOT NULL,
-    day      INT NOT NULL,
-    date     DATE NOT NULL,
-    UNIQUE KEY uq_trip_day (trip_id, day),
-    CONSTRAINT fk_trip_days_trip
-      FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
-  )`,
+export interface ColumnDef {
+  name: string;
+  type: string;
+  notNull?: boolean;
+  /** Raw SQL default value. Numbers are emitted as-is; strings are quoted. */
+  default?: number | string;
+  autoIncrement?: boolean;
+  primaryKey?: boolean;
+}
 
-  `CREATE TABLE IF NOT EXISTS trip_attractions (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    trip_day_id        INT          NOT NULL,
-    name               VARCHAR(255) NOT NULL,
-    google_map_url     TEXT,
-    notes              TEXT,
-    nearby_attractions TEXT,
-    start_time         VARCHAR(10),
-    end_time           VARCHAR(10),
-    sort_order         INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_trip_attractions_day
-      FOREIGN KEY (trip_day_id) REFERENCES trip_days(id) ON DELETE CASCADE
-  )`,
+export interface UniqueKeyDef {
+  name: string;
+  columns: string[];
+}
 
-  `CREATE TABLE IF NOT EXISTS trip_attraction_websites (
-    id                   INT AUTO_INCREMENT PRIMARY KEY,
-    trip_attraction_id   INT  NOT NULL,
-    url                  TEXT NOT NULL,
-    sort_order           INT  NOT NULL DEFAULT 0,
-    CONSTRAINT fk_trip_attraction_websites_attraction
-      FOREIGN KEY (trip_attraction_id) REFERENCES trip_attractions(id) ON DELETE CASCADE
-  )`,
+export interface ForeignKeyDef {
+  name: string;
+  column: string;
+  references: { table: string; column: string };
+  onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+}
 
-  `CREATE TABLE IF NOT EXISTS trip_connections (
-    id                       INT AUTO_INCREMENT PRIMARY KEY,
-    trip_day_id              INT         NOT NULL,
-    trip_attraction_id_from  INT         NOT NULL,
-    trip_attraction_id_to    INT         NOT NULL,
-    transport_mode           VARCHAR(50),
-    duration                 VARCHAR(100),
-    route                    TEXT,
-    notes                    TEXT,
-    CONSTRAINT fk_trip_connections_day
-      FOREIGN KEY (trip_day_id) REFERENCES trip_days(id) ON DELETE CASCADE,
-    CONSTRAINT fk_trip_connections_from
-      FOREIGN KEY (trip_attraction_id_from) REFERENCES trip_attractions(id),
-    CONSTRAINT fk_trip_connections_to
-      FOREIGN KEY (trip_attraction_id_to) REFERENCES trip_attractions(id)
-  )`,
+export interface TableDef {
+  name: string;
+  columns: ColumnDef[];
+  uniqueKeys?: UniqueKeyDef[];
+  foreignKeys?: ForeignKeyDef[];
+}
 
-  `CREATE TABLE IF NOT EXISTS trip_attraction_images (
-    id                   INT          AUTO_INCREMENT PRIMARY KEY,
-    trip_attraction_id   INT          NOT NULL,
-    filename             VARCHAR(255) NOT NULL,
-    title                VARCHAR(255) NOT NULL,
-    sort_order           INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_trip_attraction_images_attraction
-      FOREIGN KEY (trip_attraction_id) REFERENCES trip_attractions(id) ON DELETE CASCADE
-  )`,
+// --- Table definitions (ordered by foreign key dependency) ---
 
-  `CREATE TABLE IF NOT EXISTS trip_connection_images (
-    id                   INT          AUTO_INCREMENT PRIMARY KEY,
-    trip_connection_id   INT          NOT NULL,
-    filename             VARCHAR(255) NOT NULL,
-    title                VARCHAR(255) NOT NULL,
-    sort_order           INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_trip_connection_images_connection
-      FOREIGN KEY (trip_connection_id) REFERENCES trip_connections(id) ON DELETE CASCADE
-  )`,
+export const tableDefinitions: TableDef[] = [
+  {
+    name: 'trips',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+      { name: 'destination', type: 'VARCHAR(255)' },
+      { name: 'start_date', type: 'DATE', notNull: true },
+      { name: 'end_date', type: 'DATE', notNull: true },
+      { name: 'description', type: 'TEXT' },
+      { name: 'created_at', type: 'DATETIME', notNull: true },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_template_categories (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL,
-    sort_order INT          NOT NULL DEFAULT 0
-  )`,
+  {
+    name: 'trip_days',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_id', type: 'INT', notNull: true },
+      { name: 'day', type: 'INT', notNull: true },
+      { name: 'date', type: 'DATE', notNull: true },
+    ],
+    uniqueKeys: [{ name: 'uq_trip_day', columns: ['trip_id', 'day'] }],
+    foreignKeys: [
+      {
+        name: 'fk_trip_days_trip',
+        column: 'trip_id',
+        references: { table: 'trips', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_template_items (
-    id                              INT AUTO_INCREMENT PRIMARY KEY,
-    checklist_template_category_id  INT          NOT NULL,
-    name                            VARCHAR(255) NOT NULL,
-    quantity                        INT,
-    notes                           TEXT,
-    sort_order                      INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_template_items_category
-      FOREIGN KEY (checklist_template_category_id)
-        REFERENCES checklist_template_categories(id) ON DELETE CASCADE
-  )`,
+  {
+    name: 'trip_attractions',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_day_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'google_map_url', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' },
+      { name: 'nearby_attractions', type: 'TEXT' },
+      { name: 'start_time', type: 'VARCHAR(10)' },
+      { name: 'end_time', type: 'VARCHAR(10)' },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_attractions_day',
+        column: 'trip_day_id',
+        references: { table: 'trip_days', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_trip_categories (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    trip_id    INT          NOT NULL,
-    name       VARCHAR(255) NOT NULL,
-    sort_order INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_checklist_trip_categories_trip
-      FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
-  )`,
+  {
+    name: 'trip_attraction_websites',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_attraction_id', type: 'INT', notNull: true },
+      { name: 'url', type: 'TEXT', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true, default: '' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_attraction_websites_attraction',
+        column: 'trip_attraction_id',
+        references: { table: 'trip_attractions', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_trip_items (
-    id                          INT AUTO_INCREMENT PRIMARY KEY,
-    checklist_trip_category_id  INT          NOT NULL,
-    name                        VARCHAR(255) NOT NULL,
-    quantity                    INT,
-    notes                       TEXT,
-    sort_order                  INT          NOT NULL DEFAULT 0,
-    CONSTRAINT fk_checklist_trip_items_category
-      FOREIGN KEY (checklist_trip_category_id)
-        REFERENCES checklist_trip_categories(id) ON DELETE CASCADE
-  )`,
+  {
+    name: 'trip_connections',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_day_id', type: 'INT', notNull: true },
+      { name: 'trip_attraction_id_from', type: 'INT', notNull: true },
+      { name: 'trip_attraction_id_to', type: 'INT', notNull: true },
+      { name: 'transport_mode', type: 'VARCHAR(50)' },
+      { name: 'duration', type: 'VARCHAR(100)' },
+      { name: 'route', type: 'TEXT' },
+      { name: 'notes', type: 'TEXT' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_connections_day',
+        column: 'trip_day_id',
+        references: { table: 'trip_days', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+      {
+        name: 'fk_trip_connections_from',
+        column: 'trip_attraction_id_from',
+        references: { table: 'trip_attractions', column: 'id' },
+      },
+      {
+        name: 'fk_trip_connections_to',
+        column: 'trip_attraction_id_to',
+        references: { table: 'trip_attractions', column: 'id' },
+      },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_occasions (
-    id       INT AUTO_INCREMENT PRIMARY KEY,
-    trip_id  INT          NOT NULL,
-    name     VARCHAR(255) NOT NULL,
-    CONSTRAINT fk_checklist_occasions_trip
-      FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
-  )`,
+  {
+    name: 'trip_attraction_images',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_attraction_id', type: 'INT', notNull: true },
+      { name: 'filename', type: 'VARCHAR(255)', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_attraction_images_attraction',
+        column: 'trip_attraction_id',
+        references: { table: 'trip_attractions', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 
-  `CREATE TABLE IF NOT EXISTS checklist_checks (
-    id                       INT AUTO_INCREMENT PRIMARY KEY,
-    checklist_occasion_id    INT         NOT NULL,
-    checklist_trip_item_id   INT         NOT NULL,
-    checked                  TINYINT(1)  NOT NULL DEFAULT 0,
-    UNIQUE KEY uq_occasion_item (checklist_occasion_id, checklist_trip_item_id),
-    CONSTRAINT fk_checklist_checks_occasion
-      FOREIGN KEY (checklist_occasion_id)
-        REFERENCES checklist_occasions(id) ON DELETE CASCADE,
-    CONSTRAINT fk_checklist_checks_item
-      FOREIGN KEY (checklist_trip_item_id)
-        REFERENCES checklist_trip_items(id) ON DELETE CASCADE
-  )`,
+  {
+    name: 'trip_connection_images',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_connection_id', type: 'INT', notNull: true },
+      { name: 'filename', type: 'VARCHAR(255)', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_connection_images_connection',
+        column: 'trip_connection_id',
+        references: { table: 'trip_connections', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_template_categories',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+    ],
+  },
+
+  {
+    name: 'checklist_template_items',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_template_category_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'quantity', type: 'INT' },
+      { name: 'notes', type: 'TEXT' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_template_items_category',
+        column: 'checklist_template_category_id',
+        references: { table: 'checklist_template_categories', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_trip_categories',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_checklist_trip_categories_trip',
+        column: 'trip_id',
+        references: { table: 'trips', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_trip_items',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_trip_category_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'quantity', type: 'INT' },
+      { name: 'notes', type: 'TEXT' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_checklist_trip_items_category',
+        column: 'checklist_trip_category_id',
+        references: { table: 'checklist_trip_categories', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_occasions',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_checklist_occasions_trip',
+        column: 'trip_id',
+        references: { table: 'trips', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_checks',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_occasion_id', type: 'INT', notNull: true },
+      { name: 'checklist_trip_item_id', type: 'INT', notNull: true },
+      { name: 'checked', type: 'TINYINT(1)', notNull: true, default: 0 },
+    ],
+    uniqueKeys: [
+      {
+        name: 'uq_occasion_item',
+        columns: ['checklist_occasion_id', 'checklist_trip_item_id'],
+      },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_checklist_checks_occasion',
+        column: 'checklist_occasion_id',
+        references: { table: 'checklist_occasions', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+      {
+        name: 'fk_checklist_checks_item',
+        column: 'checklist_trip_item_id',
+        references: { table: 'checklist_trip_items', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 ];

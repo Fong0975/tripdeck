@@ -11,7 +11,6 @@ interface AttractionImageRow extends RowDataPacket {
   trip_attraction_id: number;
   filename: string;
   title: string;
-  sort_order: number;
 }
 
 interface ConnectionImageRow extends RowDataPacket {
@@ -19,7 +18,6 @@ interface ConnectionImageRow extends RowDataPacket {
   trip_connection_id: number;
   filename: string;
   title: string;
-  sort_order: number;
 }
 
 // --- Helpers ---
@@ -31,7 +29,6 @@ function toImageResponse(
     id: row.id,
     filename: row.filename,
     title: row.title,
-    sortOrder: row.sort_order,
   };
 }
 
@@ -41,7 +38,7 @@ export async function getAttractionImages(
   attractionId: number,
 ): Promise<ImageResponse[]> {
   const [rows] = await pool.execute<AttractionImageRow[]>(
-    'SELECT * FROM trip_attraction_images WHERE trip_attraction_id = ? ORDER BY sort_order',
+    'SELECT * FROM trip_attraction_images WHERE trip_attraction_id = ? ORDER BY id',
     [attractionId],
   );
   return rows.map(toImageResponse);
@@ -63,7 +60,7 @@ export async function getAttractionImagesBatch(
   const [rows] = await pool.execute<AttractionImageRow[]>(
     `SELECT * FROM trip_attraction_images
      WHERE trip_attraction_id IN (${ph})
-     ORDER BY trip_attraction_id, sort_order`,
+     ORDER BY trip_attraction_id, id`,
     attractionIds,
   );
 
@@ -81,18 +78,12 @@ export async function addAttractionImage(
   filename: string,
   title: string,
 ): Promise<ImageResponse> {
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM trip_attraction_images WHERE trip_attraction_id = ?',
-    [attractionId],
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO trip_attraction_images (trip_attraction_id, filename, title, sort_order) VALUES (?, ?, ?, ?)',
-    [attractionId, filename, title, sortOrder],
+    'INSERT INTO trip_attraction_images (trip_attraction_id, filename, title) VALUES (?, ?, ?)',
+    [attractionId, filename, title],
   );
 
-  return { id: result.insertId, filename, title, sortOrder };
+  return { id: result.insertId, filename, title };
 }
 
 export async function deleteAttractionImage(
@@ -122,7 +113,7 @@ export async function getConnectionImages(
   connectionId: number,
 ): Promise<ImageResponse[]> {
   const [rows] = await pool.execute<ConnectionImageRow[]>(
-    'SELECT * FROM trip_connection_images WHERE trip_connection_id = ? ORDER BY sort_order',
+    'SELECT * FROM trip_connection_images WHERE trip_connection_id = ? ORDER BY id',
     [connectionId],
   );
   return rows.map(toImageResponse);
@@ -144,7 +135,7 @@ export async function getConnectionImagesBatch(
   const [rows] = await pool.execute<ConnectionImageRow[]>(
     `SELECT * FROM trip_connection_images
      WHERE trip_connection_id IN (${ph})
-     ORDER BY trip_connection_id, sort_order`,
+     ORDER BY trip_connection_id, id`,
     connectionIds,
   );
 
@@ -162,18 +153,12 @@ export async function addConnectionImage(
   filename: string,
   title: string,
 ): Promise<ImageResponse> {
-  const [countRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM trip_connection_images WHERE trip_connection_id = ?',
-    [connectionId],
-  );
-  const sortOrder = (countRows[0] as { count: number }).count;
-
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO trip_connection_images (trip_connection_id, filename, title, sort_order) VALUES (?, ?, ?, ?)',
-    [connectionId, filename, title, sortOrder],
+    'INSERT INTO trip_connection_images (trip_connection_id, filename, title) VALUES (?, ?, ?)',
+    [connectionId, filename, title],
   );
 
-  return { id: result.insertId, filename, title, sortOrder };
+  return { id: result.insertId, filename, title };
 }
 
 export async function deleteConnectionImage(

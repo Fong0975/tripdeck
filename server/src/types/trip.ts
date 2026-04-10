@@ -1,10 +1,16 @@
+// --- Shared sub-types ---
+
+export interface ReferenceWebsite {
+  url: string;
+  title: string;
+}
+
 // --- Response shapes returned to the client ---
 
 export interface ImageResponse {
   id: number;
   filename: string;
   title: string;
-  sortOrder: number;
 }
 
 export interface TripResponse {
@@ -25,7 +31,7 @@ export interface AttractionResponse {
   nearbyAttractions: string | null;
   startTime: string | null;
   endTime: string | null;
-  referenceWebsites: string[];
+  referenceWebsites: ReferenceWebsite[];
   images: ImageResponse[];
   sortOrder: number;
 }
@@ -71,7 +77,7 @@ export interface CreateAttractionBody {
   nearbyAttractions?: string;
   startTime?: string;
   endTime?: string;
-  referenceWebsites?: string[];
+  referenceWebsites?: ReferenceWebsite[];
 }
 
 export interface UpdateAttractionBody {
@@ -81,7 +87,7 @@ export interface UpdateAttractionBody {
   nearbyAttractions?: string | null;
   startTime?: string | null;
   endTime?: string | null;
-  referenceWebsites?: string[];
+  referenceWebsites?: ReferenceWebsite[];
 }
 
 export interface ReorderAttractionsBody {

@@ -149,17 +149,17 @@ export default function AttractionCard({
 
           {(attraction.referenceWebsites ?? []).length > 0 && (
             <div className='mt-2 flex flex-wrap gap-1'>
-              {attraction.referenceWebsites!.map((url, i) => (
+              {attraction.referenceWebsites!.map((site, i) => (
                 <a
                   key={i}
-                  href={url}
+                  href={site.url}
                   target='_blank'
                   rel='noopener noreferrer'
                   onClick={e => e.stopPropagation()}
                   className='text-primary flex items-center gap-0.5 text-sm hover:underline'
                 >
                   <ExternalLink size={10} />
-                  <span>參考 {i + 1}</span>
+                  <span>{site.title || site.url}</span>
                 </a>
               ))}
             </div>

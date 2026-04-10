@@ -1,7 +1,7 @@
-import { X, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { X, Plus, Trash2, ExternalLink, Wand2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-import type { Attraction, AttractionImage } from '@/types';
+import type { Attraction, AttractionImage, ReferenceWebsite } from '@/types';
 import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
@@ -41,20 +41,51 @@ export default function AttractionModal({
   const [images, setImages] = useState<AttractionImage[]>(
     attraction?.images ?? [],
   );
-  const [newWebsite, setNewWebsite] = useState('');
+  const [newWebsite, setNewWebsite] = useState<ReferenceWebsite>({
+    url: '',
+    title: '',
+  });
+  const [suggestedTitle, setSuggestedTitle] = useState('');
   const [error, setError] = useState('');
   const [notesTab, setNotesTab] = useState<'edit' | 'preview'>('edit');
+
+  useEffect(() => {
+    const url = newWebsite.url.trim();
+    if (!url) {
+      setSuggestedTitle('');
+      return;
+    }
+    setSuggestedTitle('');
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        const html = await res.text();
+        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (match?.[1]) {
+          setSuggestedTitle(match[1].trim());
+        }
+      } catch {
+        // CORS or network error — silently ignore
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [newWebsite.url]);
 
   const set = (key: keyof Attraction, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
   const addWebsite = () => {
-    const url = newWebsite.trim();
-    if (!url) {
+    const url = newWebsite.url.trim();
+    const title = newWebsite.title.trim();
+    if (!url || !title) {
       return;
     }
-    set('referenceWebsites', [...(form.referenceWebsites ?? []), url]);
-    setNewWebsite('');
+    set('referenceWebsites', [
+      ...(form.referenceWebsites ?? []),
+      { url, title },
+    ]);
+    setNewWebsite({ url: '', title: '' });
+    setSuggestedTitle('');
   };
 
   const removeWebsite = (idx: number) =>
@@ -248,15 +279,15 @@ export default function AttractionModal({
               參考網站
             </label>
             <div className='space-y-2'>
-              {(form.referenceWebsites ?? []).map((url, idx) => (
+              {(form.referenceWebsites ?? []).map((site, idx) => (
                 <div key={idx} className='flex items-center gap-2'>
                   <a
-                    href={url}
+                    href={site.url}
                     target='_blank'
                     rel='noopener noreferrer'
                     className='text-primary flex-1 truncate text-sm hover:underline'
                   >
-                    {url}
+                    {site.title || site.url}
                   </a>
                   <button
                     type='button'
@@ -267,26 +298,56 @@ export default function AttractionModal({
                   </button>
                 </div>
               ))}
-              <div className='flex gap-2'>
+              <div className='space-y-1.5'>
                 <input
-                  value={newWebsite}
-                  onChange={e => setNewWebsite(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addWebsite();
-                    }
-                  }}
+                  value={newWebsite.url}
+                  onChange={e =>
+                    setNewWebsite(prev => ({ ...prev, url: e.target.value }))
+                  }
                   placeholder='https://...'
-                  className={`${INPUT_CLS} flex-1 text-sm`}
+                  className={`${INPUT_CLS} text-sm`}
                 />
-                <button
-                  type='button'
-                  onClick={addWebsite}
-                  className='text-primary hover:bg-primary/10 rounded-lg p-2 transition-colors'
-                >
-                  <Plus size={18} />
-                </button>
+                <div className='flex gap-2'>
+                  <input
+                    value={newWebsite.title}
+                    onChange={e =>
+                      setNewWebsite(prev => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addWebsite();
+                      }
+                    }}
+                    placeholder='標題 *'
+                    className={`${INPUT_CLS} flex-1 text-sm`}
+                  />
+                  {suggestedTitle && (
+                    <button
+                      type='button'
+                      title={`帶入：${suggestedTitle}`}
+                      onClick={() =>
+                        setNewWebsite(prev => ({
+                          ...prev,
+                          title: suggestedTitle,
+                        }))
+                      }
+                      className='text-primary hover:bg-primary/10 shrink-0 rounded-lg p-2 transition-colors'
+                    >
+                      <Wand2 size={16} />
+                    </button>
+                  )}
+                  <button
+                    type='button'
+                    onClick={addWebsite}
+                    className='text-primary hover:bg-primary/10 shrink-0 rounded-lg p-2 transition-colors'
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
