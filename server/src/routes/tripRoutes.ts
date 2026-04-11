@@ -27,6 +27,10 @@ router.delete(
   '/:tripId/attractions/:attractionId',
   tripController.deleteAttraction,
 );
+router.post(
+  '/:tripId/attractions/:attractionId/duplicate',
+  tripController.duplicateAttraction,
+);
 router.patch(
   '/:tripId/days/:dayId/attractions/order',
   tripController.reorderAttractions,

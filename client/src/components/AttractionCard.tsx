@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Images,
   Clock,
+  Copy,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -20,12 +21,14 @@ interface Props {
   attraction: Attraction;
   onEdit: (attraction: Attraction) => void;
   onDelete: (id: number) => void;
+  onDuplicate?: (attraction: Attraction) => void;
 }
 
 export default function AttractionCard({
   attraction,
   onEdit,
   onDelete,
+  onDuplicate,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -117,6 +120,18 @@ export default function AttractionCard({
               >
                 <Pencil size={14} />
               </button>
+              {onDuplicate && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    onDuplicate(attraction);
+                  }}
+                  className='text-muted-foreground hover:text-foreground rounded p-1 transition-colors'
+                  title='複製'
+                >
+                  <Copy size={14} />
+                </button>
+              )}
               <button
                 onClick={handleDelete}
                 className={`rounded p-1 transition-colors ${

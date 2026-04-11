@@ -341,6 +341,33 @@ export async function deleteAttraction(
   }
 }
 
+export async function duplicateAttraction(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Duplicate an attraction to the end of its day' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const attractionId = Number(req.params.attractionId);
+
+    const belongs = await attractionRepo.verifyBelongsToTrip(
+      attractionId,
+      tripId,
+    );
+    if (!belongs) {
+      res.status(404).json({ error: 'Attraction not found' });
+      return;
+    }
+
+    const dayId = await attractionRepo.getDayIdForAttraction(attractionId);
+    const copy = await attractionRepo.duplicate(attractionId, dayId);
+    res.status(201).json(copy);
+  } catch {
+    res.status(500).json({ error: 'Failed to duplicate attraction' });
+  }
+}
+
 export async function reorderAttractions(
   req: Request,
   res: Response,
