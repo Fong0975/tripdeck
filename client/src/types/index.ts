@@ -8,6 +8,7 @@ export type TransportMode =
   | 'drive'
   | 'transit'
   | 'bike'
+  | 'taxi'
   | 'flight'
   | 'other';
 
