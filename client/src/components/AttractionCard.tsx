@@ -147,24 +147,6 @@ export default function AttractionCard({
             </div>
           )}
 
-          {(attraction.referenceWebsites ?? []).length > 0 && (
-            <div className='mt-2 flex flex-wrap gap-1'>
-              {attraction.referenceWebsites!.map((site, i) => (
-                <a
-                  key={i}
-                  href={site.url}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  onClick={e => e.stopPropagation()}
-                  className='text-primary flex items-center gap-0.5 text-sm hover:underline'
-                >
-                  <ExternalLink size={10} />
-                  <span>{site.title || site.url}</span>
-                </a>
-              ))}
-            </div>
-          )}
-
           {(attraction.images ?? []).length > 0 && (
             <button
               type='button'
@@ -191,6 +173,27 @@ export default function AttractionCard({
                 </span>
               )}
             </button>
+          )}
+
+          {(attraction.referenceWebsites ?? []).length > 0 && (
+            <>
+              <hr className='border-border mt-3' />
+              <div className='mt-2 flex flex-wrap gap-1'>
+                {attraction.referenceWebsites!.map((site, i) => (
+                  <a
+                    key={i}
+                    href={site.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    onClick={e => e.stopPropagation()}
+                    className='text-primary flex items-center gap-0.5 text-sm hover:underline'
+                  >
+                    <ExternalLink size={10} />
+                    <span>{site.title || site.url}</span>
+                  </a>
+                ))}
+              </div>
+            </>
           )}
 
           {attraction.googleMapUrl && (
