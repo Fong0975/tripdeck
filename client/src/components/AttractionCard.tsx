@@ -85,11 +85,23 @@ export default function AttractionCard({
         </button>
 
         <div className='min-w-0 flex-1'>
-          <div className='flex items-center justify-between gap-2'>
-            <h4 className='text-foreground truncate text-base font-semibold'>
+          <div className='relative'>
+            <h4 className='text-foreground text-base font-semibold'>
               {attraction.name}
+              {attraction.googleMapUrl && (
+                <a
+                  href={attraction.googleMapUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  onClick={e => e.stopPropagation()}
+                  className='text-primary/60 hover:text-primary ml-1.5 inline-flex align-middle transition-colors'
+                  title='Google Maps'
+                >
+                  <MapPin size={14} />
+                </a>
+              )}
             </h4>
-            <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+            <div className='bg-card absolute right-0 top-0 flex items-center gap-1 rounded opacity-0 transition-opacity group-hover:opacity-100'>
               <button
                 onClick={e => {
                   e.stopPropagation();
@@ -194,22 +206,6 @@ export default function AttractionCard({
                 ))}
               </div>
             </>
-          )}
-
-          {attraction.googleMapUrl && (
-            <div className='mt-2 flex justify-end'>
-              <a
-                href={attraction.googleMapUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                onClick={e => e.stopPropagation()}
-                className='text-primary/60 hover:text-primary flex items-center gap-1 text-sm transition-colors'
-                title='Google Maps'
-              >
-                <MapPin size={12} />
-                地圖
-              </a>
-            </div>
           )}
         </div>
       </div>
