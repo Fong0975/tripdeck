@@ -688,6 +688,42 @@
         }
       }
     },
+    "/api/trips/{tripId}/attractions/{attractionId}/duplicate": {
+      "post": {
+        "tags": ["Attractions"],
+        "summary": "Duplicate an attraction to the end of its day",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/trips/{tripId}/days/{dayId}/attractions/order": {
       "patch": {
         "tags": ["Attractions"],

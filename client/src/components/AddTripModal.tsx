@@ -22,7 +22,16 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'startDate' && value) {
+        const end = new Date(value);
+        end.setDate(end.getDate() + 3);
+        updated.endDate = end.toISOString().slice(0, 10);
+      }
+      return updated;
+    });
     setError('');
   };
 

@@ -87,6 +87,23 @@ export function saveImageToDisk(buffer: Buffer, mimetype: string): string {
 }
 
 /**
+ * Copies an existing image file to a new UUID-based filename.
+ * Returns the new filename, or null if the source file is missing.
+ */
+export function copyImageFile(filename: string): string | null {
+  const srcPath = path.join(UPLOADS_DIR, filename);
+  const ext = path.extname(filename);
+  const newFilename = `${uuidv4()}${ext}`;
+  const destPath = path.join(UPLOADS_DIR, newFilename);
+  try {
+    fs.copyFileSync(srcPath, destPath);
+    return newFilename;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Removes an uploaded image file from disk.
  * Silently ignores missing files.
  */

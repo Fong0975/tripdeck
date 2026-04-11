@@ -85,6 +85,7 @@ const TRANSPORT_LABELS: Record<TransportMode, string> = {
   transit: '大眾運輸',
   drive: '開車',
   bike: '騎車',
+  taxi: '計程車／Uber',
   flight: '飛機',
   other: '其他',
 };

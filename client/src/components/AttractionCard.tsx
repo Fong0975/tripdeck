@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Images,
   Clock,
+  Copy,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -20,18 +21,25 @@ interface Props {
   attraction: Attraction;
   onEdit: (attraction: Attraction) => void;
   onDelete: (id: number) => void;
+  onDuplicate?: (attraction: Attraction) => void;
 }
 
 export default function AttractionCard({
   attraction,
   onEdit,
   onDelete,
+  onDuplicate,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [notesClamped, setNotesClamped] = useState(false);
   const notesRef = useRef<HTMLDivElement>(null);
+
+  const hasImages = (attraction.images ?? []).length > 0;
+  const hasReferences = (attraction.referenceWebsites ?? []).length > 0;
+  const showNotesBottomDivider =
+    !!attraction.notes && (hasImages || hasReferences);
 
   useEffect(() => {
     const el = notesRef.current;
@@ -85,11 +93,23 @@ export default function AttractionCard({
         </button>
 
         <div className='min-w-0 flex-1'>
-          <div className='flex items-center justify-between gap-2'>
-            <h4 className='text-foreground truncate text-base font-semibold'>
+          <div className='relative'>
+            <h4 className='text-foreground text-base font-semibold'>
               {attraction.name}
+              {attraction.googleMapUrl && (
+                <a
+                  href={attraction.googleMapUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  onClick={e => e.stopPropagation()}
+                  className='text-primary/60 hover:text-primary ml-1.5 inline-flex align-middle transition-colors'
+                  title='Google Maps'
+                >
+                  <MapPin size={14} />
+                </a>
+              )}
             </h4>
-            <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+            <div className='bg-card absolute right-0 top-0 flex items-center gap-1 rounded opacity-0 transition-opacity group-hover:opacity-100'>
               <button
                 onClick={e => {
                   e.stopPropagation();
@@ -100,6 +120,18 @@ export default function AttractionCard({
               >
                 <Pencil size={14} />
               </button>
+              {onDuplicate && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    onDuplicate(attraction);
+                  }}
+                  className='text-muted-foreground hover:text-foreground rounded p-1 transition-colors'
+                  title='複製'
+                >
+                  <Copy size={14} />
+                </button>
+              )}
               <button
                 onClick={handleDelete}
                 className={`rounded p-1 transition-colors ${
@@ -143,29 +175,11 @@ export default function AttractionCard({
                   {notesExpanded ? '收起' : '展開'}
                 </button>
               )}
-              <hr className='border-border mt-3' />
+              {showNotesBottomDivider && <hr className='border-border mt-3' />}
             </div>
           )}
 
-          {(attraction.referenceWebsites ?? []).length > 0 && (
-            <div className='mt-2 flex flex-wrap gap-1'>
-              {attraction.referenceWebsites!.map((site, i) => (
-                <a
-                  key={i}
-                  href={site.url}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  onClick={e => e.stopPropagation()}
-                  className='text-primary flex items-center gap-0.5 text-sm hover:underline'
-                >
-                  <ExternalLink size={10} />
-                  <span>{site.title || site.url}</span>
-                </a>
-              ))}
-            </div>
-          )}
-
-          {(attraction.images ?? []).length > 0 && (
+          {hasImages && (
             <button
               type='button'
               onClick={e => {
@@ -193,20 +207,25 @@ export default function AttractionCard({
             </button>
           )}
 
-          {attraction.googleMapUrl && (
-            <div className='mt-2 flex justify-end'>
-              <a
-                href={attraction.googleMapUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                onClick={e => e.stopPropagation()}
-                className='text-primary/60 hover:text-primary flex items-center gap-1 text-sm transition-colors'
-                title='Google Maps'
-              >
-                <MapPin size={12} />
-                地圖
-              </a>
-            </div>
+          {hasReferences && (
+            <>
+              {hasImages && <hr className='border-border mt-3' />}
+              <div className='mt-2 flex flex-wrap gap-1'>
+                {attraction.referenceWebsites!.map((site, i) => (
+                  <a
+                    key={i}
+                    href={site.url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    onClick={e => e.stopPropagation()}
+                    className='text-primary flex items-center gap-0.5 text-sm hover:underline'
+                  >
+                    <ExternalLink size={10} />
+                    <span>{site.title || site.url}</span>
+                  </a>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

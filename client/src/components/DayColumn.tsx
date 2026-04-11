@@ -18,6 +18,7 @@ interface Props {
   onAddAttraction: (dayIndex: number) => void;
   onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
+  onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
   onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
   onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
 }
@@ -28,6 +29,7 @@ export default function DayColumn({
   onAddAttraction,
   onEditAttraction,
   onDeleteAttraction,
+  onDuplicateAttraction,
   onEditConnection,
   onAddConnection,
 }: Props) {
@@ -80,6 +82,7 @@ export default function DayColumn({
                   attraction={attraction}
                   onEdit={a => onEditAttraction(dayIndex, a)}
                   onDelete={id => onDeleteAttraction(dayIndex, id)}
+                  onDuplicate={a => onDuplicateAttraction(dayIndex, a)}
                 />
                 {nextAttraction &&
                   (conn ? (

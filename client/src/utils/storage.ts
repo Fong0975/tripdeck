@@ -125,6 +125,16 @@ export async function deleteAttraction(
   });
 }
 
+export async function duplicateAttraction(
+  tripId: number,
+  attractionId: number,
+): Promise<Attraction> {
+  return api<Attraction>(
+    `/api/trips/${tripId}/attractions/${attractionId}/duplicate`,
+    { method: 'POST' },
+  );
+}
+
 export async function reorderAttractions(
   tripId: number,
   dayId: number,

@@ -14,6 +14,7 @@ import {
   addAttraction,
   addConnection,
   deleteAttraction,
+  duplicateAttraction,
   updateAttraction,
   updateConnection,
 } from '@/utils/storage';
@@ -94,6 +95,17 @@ export default function TripDetail() {
       return;
     }
     await deleteAttraction(trip.id, attractionId);
+    await reloadContent();
+  };
+
+  const handleDuplicateAttraction = async (
+    _dayIndex: number,
+    attraction: Attraction,
+  ) => {
+    if (!trip) {
+      return;
+    }
+    await duplicateAttraction(trip.id, attraction.id);
     await reloadContent();
   };
 
@@ -233,6 +245,9 @@ export default function TripDetail() {
                   }
                   onDeleteAttraction={(di, aId) =>
                     void handleDeleteAttraction(di, aId)
+                  }
+                  onDuplicateAttraction={(di, a) =>
+                    void handleDuplicateAttraction(di, a)
                   }
                   onEditConnection={(di, c) =>
                     setModal({

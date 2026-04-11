@@ -24,6 +24,7 @@ const TRANSPORT_OPTIONS: {
   { value: 'transit', label: '大眾運輸', icon: '🚇' },
   { value: 'drive', label: '開車', icon: '🚗' },
   { value: 'bike', label: '騎車', icon: '🚲' },
+  { value: 'taxi', label: '計程車', icon: '🚕' },
   { value: 'flight', label: '飛機', icon: '✈️' },
   { value: 'other', label: '其他', icon: '🗺️' },
 ];
