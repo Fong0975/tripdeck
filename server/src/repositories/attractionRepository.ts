@@ -1,7 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
-import { copyImageFile } from '../middleware/upload';
+import { copyImageFile, deleteImageFromDisk } from '../middleware/upload';
 import type {
   AttractionResponse,
   CreateAttractionBody,
@@ -231,10 +231,16 @@ export async function update(
 }
 
 export async function deleteById(attractionId: number): Promise<boolean> {
+  const images = await imageRepo.getAttractionImages(attractionId);
   const [result] = await pool.execute<ResultSetHeader>(
     'DELETE FROM trip_attractions WHERE id = ?',
     [attractionId],
   );
+  if (result.affectedRows > 0) {
+    for (const img of images) {
+      deleteImageFromDisk(img.filename);
+    }
+  }
   return result.affectedRows > 0;
 }
 

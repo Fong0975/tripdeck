@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
+import { deleteImageFromDisk } from '../middleware/upload';
 import type {
   ConnectionResponse,
   CreateConnectionBody,
@@ -129,9 +130,15 @@ export async function update(
 }
 
 export async function deleteById(connectionId: number): Promise<boolean> {
+  const images = await imageRepo.getConnectionImages(connectionId);
   const [result] = await pool.execute<ResultSetHeader>(
     'DELETE FROM trip_connections WHERE id = ?',
     [connectionId],
   );
+  if (result.affectedRows > 0) {
+    for (const img of images) {
+      deleteImageFromDisk(img.filename);
+    }
+  }
   return result.affectedRows > 0;
 }
