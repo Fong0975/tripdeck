@@ -33,6 +33,11 @@ export default function AttractionCard({
   const [notesClamped, setNotesClamped] = useState(false);
   const notesRef = useRef<HTMLDivElement>(null);
 
+  const hasImages = (attraction.images ?? []).length > 0;
+  const hasReferences = (attraction.referenceWebsites ?? []).length > 0;
+  const showNotesBottomDivider =
+    !!attraction.notes && (hasImages || hasReferences);
+
   useEffect(() => {
     const el = notesRef.current;
     if (el) {
@@ -155,11 +160,11 @@ export default function AttractionCard({
                   {notesExpanded ? '收起' : '展開'}
                 </button>
               )}
-              <hr className='border-border mt-3' />
+              {showNotesBottomDivider && <hr className='border-border mt-3' />}
             </div>
           )}
 
-          {(attraction.images ?? []).length > 0 && (
+          {hasImages && (
             <button
               type='button'
               onClick={e => {
@@ -187,9 +192,9 @@ export default function AttractionCard({
             </button>
           )}
 
-          {(attraction.referenceWebsites ?? []).length > 0 && (
+          {hasReferences && (
             <>
-              <hr className='border-border mt-3' />
+              {hasImages && <hr className='border-border mt-3' />}
               <div className='mt-2 flex flex-wrap gap-1'>
                 {attraction.referenceWebsites!.map((site, i) => (
                   <a
