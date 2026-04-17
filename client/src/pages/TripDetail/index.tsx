@@ -17,6 +17,7 @@ import {
   duplicateAttraction,
   updateAttraction,
   updateConnection,
+  uploadAttractionImage,
 } from '@/utils/storage';
 
 import TripHeader from './TripHeader';
@@ -57,13 +58,14 @@ export default function TripDetail() {
   const handleSaveAttraction = async (
     dayIndex: number,
     attraction: Attraction,
+    stagedImages?: { file: File; title: string }[],
   ) => {
     if (!trip || !content) {
       return;
     }
     const day = content.days[dayIndex];
     if (attraction.id === 0) {
-      await addAttraction(trip.id, day.id, {
+      const created = await addAttraction(trip.id, day.id, {
         name: attraction.name,
         googleMapUrl: attraction.googleMapUrl ?? undefined,
         notes: attraction.notes ?? undefined,
@@ -72,6 +74,11 @@ export default function TripDetail() {
         endTime: attraction.endTime ?? undefined,
         referenceWebsites: attraction.referenceWebsites,
       });
+      if (stagedImages?.length) {
+        for (const { file, title } of stagedImages) {
+          await uploadAttractionImage(trip.id, created.id, file, title);
+        }
+      }
     } else {
       await updateAttraction(trip.id, attraction.id, {
         name: attraction.name,
@@ -281,7 +288,9 @@ export default function TripDetail() {
         <AttractionModal
           tripId={trip.id}
           onClose={() => setModal({ type: 'none' })}
-          onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
+          onSave={(a, staged) =>
+            void handleSaveAttraction(modal.dayIndex, a, staged)
+          }
         />
       )}
 
