@@ -310,6 +310,7 @@ export default function AttractionModal({
                   href={form.googleMapUrl}
                   target='_blank'
                   rel='noopener noreferrer'
+                  tabIndex={-1}
                   className='text-primary hover:bg-primary/10 rounded-lg p-2 transition-colors'
                 >
                   <ExternalLink size={18} />
@@ -326,6 +327,7 @@ export default function AttractionModal({
               <div className='border-border flex overflow-hidden rounded-md border text-xs'>
                 <button
                   type='button'
+                  tabIndex={-1}
                   onClick={() => setNotesTab('edit')}
                   className={`px-2.5 py-0.5 transition-colors ${
                     notesTab === 'edit'
@@ -337,6 +339,7 @@ export default function AttractionModal({
                 </button>
                 <button
                   type='button'
+                  tabIndex={-1}
                   onClick={() => setNotesTab('preview')}
                   className={`px-2.5 py-0.5 transition-colors ${
                     notesTab === 'preview'
@@ -399,6 +402,7 @@ export default function AttractionModal({
                   </a>
                   <button
                     type='button'
+                    tabIndex={-1}
                     onClick={() => removeWebsite(idx)}
                     className='text-muted-foreground hover:text-destructive p-1 transition-colors'
                   >
@@ -436,6 +440,7 @@ export default function AttractionModal({
                   {titleFetchStatus !== 'idle' && (
                     <button
                       type='button'
+                      tabIndex={-1}
                       disabled={titleFetchStatus !== 'found'}
                       title={
                         titleFetchStatus === 'found'
@@ -502,6 +507,7 @@ export default function AttractionModal({
                         </div>
                         <button
                           type='button'
+                          tabIndex={-1}
                           onClick={() => removeStagedImage(img.localId)}
                           className='hover:bg-destructive absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100'
                           title='移除圖片'
@@ -523,6 +529,7 @@ export default function AttractionModal({
                         />
                         <button
                           type='button'
+                          tabIndex={-1}
                           onClick={clearPendingStage}
                           className='absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
                         >

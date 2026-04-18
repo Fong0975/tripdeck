@@ -110,6 +110,7 @@ export default function ImageUploadSection({
               </div>
               <button
                 type='button'
+                tabIndex={-1}
                 onClick={() => handleDelete(img.id)}
                 disabled={deletingId === img.id}
                 className='hover:bg-destructive absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity disabled:opacity-50 group-hover:opacity-100'
@@ -134,6 +135,7 @@ export default function ImageUploadSection({
               />
               <button
                 type='button'
+                tabIndex={-1}
                 onClick={clearPending}
                 className='absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
               >
