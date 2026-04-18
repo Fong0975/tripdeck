@@ -27,6 +27,12 @@ interface Props {
 const INPUT_CLS =
   'w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors';
 
+const decodeHtmlEntities = (str: string): string => {
+  const el = document.createElement('textarea');
+  el.innerHTML = str;
+  return el.value.replace(/\s+/g, ' ').trim();
+};
+
 const empty: Attraction = {
   id: 0,
   name: '',
@@ -62,6 +68,9 @@ export default function AttractionModal({
     title: '',
   });
   const [suggestedTitle, setSuggestedTitle] = useState('');
+  const [titleFetchStatus, setTitleFetchStatus] = useState<
+    'idle' | 'loading' | 'found' | 'not-found'
+  >('idle');
   const [error, setError] = useState('');
   const [notesTab, setNotesTab] = useState<'edit' | 'preview'>('edit');
 
@@ -141,19 +150,24 @@ export default function AttractionModal({
     const url = newWebsite.url.trim();
     if (!url) {
       setSuggestedTitle('');
+      setTitleFetchStatus('idle');
       return;
     }
     setSuggestedTitle('');
+    setTitleFetchStatus('loading');
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         const html = await res.text();
         const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         if (match?.[1]) {
-          setSuggestedTitle(match[1].trim());
+          setSuggestedTitle(decodeHtmlEntities(match[1]));
+          setTitleFetchStatus('found');
+        } else {
+          setTitleFetchStatus('not-found');
         }
       } catch {
-        // CORS or network error — silently ignore
+        setTitleFetchStatus('not-found');
       }
     }, 600);
     return () => clearTimeout(timer);
@@ -174,6 +188,7 @@ export default function AttractionModal({
     ]);
     setNewWebsite({ url: '', title: '' });
     setSuggestedTitle('');
+    setTitleFetchStatus('idle');
   };
 
   const removeWebsite = (idx: number) =>
@@ -418,17 +433,28 @@ export default function AttractionModal({
                     placeholder='標題 *'
                     className={`${INPUT_CLS} flex-1 text-sm`}
                   />
-                  {suggestedTitle && (
+                  {titleFetchStatus !== 'idle' && (
                     <button
                       type='button'
-                      title={`帶入：${suggestedTitle}`}
+                      disabled={titleFetchStatus !== 'found'}
+                      title={
+                        titleFetchStatus === 'found'
+                          ? `帶入：${suggestedTitle}`
+                          : titleFetchStatus === 'loading'
+                            ? '正在取得網頁標題...'
+                            : '無法取得網頁標題'
+                      }
                       onClick={() =>
                         setNewWebsite(prev => ({
                           ...prev,
                           title: suggestedTitle,
                         }))
                       }
-                      className='text-primary hover:bg-primary/10 shrink-0 rounded-lg p-2 transition-colors'
+                      className={`shrink-0 rounded-lg p-2 transition-colors ${
+                        titleFetchStatus === 'found'
+                          ? 'text-primary hover:bg-primary/10'
+                          : 'text-muted-foreground cursor-not-allowed'
+                      }`}
                     >
                       <Wand2 size={16} />
                     </button>
