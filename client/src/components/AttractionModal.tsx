@@ -158,11 +158,13 @@ export default function AttractionModal({
     setTitleFetchStatus('loading');
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-        const html = await res.text();
-        const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (match?.[1]) {
-          setSuggestedTitle(decodeHtmlEntities(match[1]));
+        const res = await fetch(
+          `/api/fetch-title?url=${encodeURIComponent(url)}`,
+          { signal: AbortSignal.timeout(10000) },
+        );
+        const data = (await res.json()) as { title: string | null };
+        if (data.title) {
+          setSuggestedTitle(decodeHtmlEntities(data.title));
           setTitleFetchStatus('found');
         } else {
           setTitleFetchStatus('not-found');

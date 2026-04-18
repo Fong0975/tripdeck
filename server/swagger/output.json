@@ -71,6 +71,44 @@
         }
       }
     },
+    "/api/fetch-title": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Fetch page title via server-side proxy",
+        "description": "",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page title or null if unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
     "/api/trips/": {
       "get": {
         "tags": ["Trips"],

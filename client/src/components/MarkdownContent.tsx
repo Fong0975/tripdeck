@@ -13,7 +13,7 @@ interface Props {
  */
 export default function MarkdownContent({ children, className = '' }: Props) {
   return (
-    <div className={`markdown-content ${className}`}>
+    <div className={`markdown-content break-words ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
