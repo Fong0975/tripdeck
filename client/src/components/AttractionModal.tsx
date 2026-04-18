@@ -73,6 +73,7 @@ export default function AttractionModal({
   >('idle');
   const [error, setError] = useState('');
   const [notesTab, setNotesTab] = useState<'edit' | 'preview'>('edit');
+  const [nearbyTab, setNearbyTab] = useState<'edit' | 'preview'>('edit');
 
   useEffect(() => {
     return () => {
@@ -373,16 +374,56 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
-              附近景點
-            </label>
-            <textarea
-              value={form.nearbyAttractions ?? ''}
-              onChange={e => set('nearbyAttractions', e.target.value)}
-              placeholder='附近可順遊的景點...'
-              rows={2}
-              className={`${INPUT_CLS} resize-none`}
-            />
+            <div className='mb-1.5 flex items-center justify-between'>
+              <label className='text-foreground text-sm font-medium'>
+                附近景點
+              </label>
+              <div className='border-border flex overflow-hidden rounded-md border text-xs'>
+                <button
+                  type='button'
+                  tabIndex={-1}
+                  onClick={() => setNearbyTab('edit')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    nearbyTab === 'edit'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  編輯
+                </button>
+                <button
+                  type='button'
+                  tabIndex={-1}
+                  onClick={() => setNearbyTab('preview')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    nearbyTab === 'preview'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  預覽
+                </button>
+              </div>
+            </div>
+            {nearbyTab === 'edit' ? (
+              <textarea
+                value={form.nearbyAttractions ?? ''}
+                onChange={e => set('nearbyAttractions', e.target.value)}
+                placeholder='附近可順遊的景點... (支援 Markdown 語法)'
+                rows={2}
+                className={`${INPUT_CLS} resize-none font-mono text-sm`}
+              />
+            ) : (
+              <div className='border-border bg-background text-foreground min-h-16 rounded-lg border px-3 py-2 text-sm'>
+                {form.nearbyAttractions?.trim() ? (
+                  <MarkdownContent>{form.nearbyAttractions}</MarkdownContent>
+                ) : (
+                  <span className='text-muted-foreground text-xs'>
+                    尚無內容
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
