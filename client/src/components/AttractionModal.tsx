@@ -33,6 +33,9 @@ const decodeHtmlEntities = (str: string): string => {
   return el.value.replace(/\s+/g, ' ').trim();
 };
 
+const generateId = (): string =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
 const empty: Attraction = {
   id: 0,
   name: '',
@@ -125,7 +128,7 @@ export default function AttractionModal({
     setStagedImages(prev => [
       ...prev,
       {
-        localId: crypto.randomUUID(),
+        localId: generateId(),
         file: pendingFile,
         title,
         previewUrl: pendingPreview,
