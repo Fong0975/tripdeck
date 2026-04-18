@@ -35,11 +35,15 @@ export default function AttractionCard({
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [notesClamped, setNotesClamped] = useState(false);
   const notesRef = useRef<HTMLDivElement>(null);
+  const [nearbyExpanded, setNearbyExpanded] = useState(false);
+  const [nearbyClamped, setNearbyClamped] = useState(false);
+  const nearbyRef = useRef<HTMLDivElement>(null);
 
   const hasImages = (attraction.images ?? []).length > 0;
   const hasReferences = (attraction.referenceWebsites ?? []).length > 0;
+  const hasNearby = !!attraction.nearbyAttractions?.trim();
   const showNotesBottomDivider =
-    !!attraction.notes && (hasImages || hasReferences);
+    !!attraction.notes && (hasNearby || hasImages || hasReferences);
 
   useEffect(() => {
     const el = notesRef.current;
@@ -47,6 +51,13 @@ export default function AttractionCard({
       setNotesClamped(el.scrollHeight > el.clientHeight);
     }
   }, [attraction.notes]);
+
+  useEffect(() => {
+    const el = nearbyRef.current;
+    if (el) {
+      setNearbyClamped(el.scrollHeight > el.clientHeight);
+    }
+  }, [attraction.nearbyAttractions]);
 
   const {
     attributes,
@@ -176,6 +187,37 @@ export default function AttractionCard({
                 </button>
               )}
               {showNotesBottomDivider && <hr className='border-border mt-3' />}
+            </div>
+          )}
+
+          {hasNearby && (
+            <div className='my-3'>
+              <hr className='border-border mb-3' />
+              <p className='text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide'>
+                附近景點
+              </p>
+              <div
+                ref={nearbyRef}
+                className={`text-muted-foreground text-sm ${nearbyExpanded ? '' : 'line-clamp-3'}`}
+              >
+                <MarkdownContent>
+                  {attraction.nearbyAttractions!}
+                </MarkdownContent>
+              </div>
+              {(nearbyClamped || nearbyExpanded) && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    setNearbyExpanded(prev => !prev);
+                  }}
+                  className='text-primary/60 hover:text-primary mt-0.5 text-sm transition-colors'
+                >
+                  {nearbyExpanded ? '收起' : '展開'}
+                </button>
+              )}
+              {(hasImages || hasReferences) && (
+                <hr className='border-border mt-3' />
+              )}
             </div>
           )}
 
