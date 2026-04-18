@@ -43,7 +43,7 @@ export default function AttractionCard({
   const hasReferences = (attraction.referenceWebsites ?? []).length > 0;
   const hasNearby = !!attraction.nearbyAttractions?.trim();
   const showNotesBottomDivider =
-    !!attraction.notes && (hasNearby || hasImages || hasReferences);
+    !!attraction.notes && !hasNearby && (hasImages || hasReferences);
 
   useEffect(() => {
     const el = notesRef.current;
