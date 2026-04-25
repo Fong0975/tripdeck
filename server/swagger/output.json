@@ -1258,11 +1258,7 @@
                           },
                           "name": {
                             "type": "string",
-                            "example": "證件"
-                          },
-                          "sortOrder": {
-                            "type": "integer",
-                            "example": 0
+                            "example": "3C 電子"
                           },
                           "items": {
                             "type": "array",
@@ -1271,25 +1267,47 @@
                               "properties": {
                                 "id": {
                                   "type": "integer",
-                                  "example": 1
+                                  "example": 7
                                 },
                                 "name": {
                                   "type": "string",
-                                  "example": "護照"
+                                  "example": "充電器"
                                 },
                                 "quantity": {
                                   "type": "integer",
                                   "nullable": true,
-                                  "example": 1
+                                  "example": 2
                                 },
                                 "notes": {
                                   "type": "string",
                                   "nullable": true,
-                                  "example": null
+                                  "example": "手機＋相機充電器各一"
                                 },
-                                "sortOrder": {
-                                  "type": "integer",
-                                  "example": 0
+                                "storage_location": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": "後背包"
+                                },
+                                "specs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "integer",
+                                        "example": 1
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "example": "Type-C 充電器"
+                                      },
+                                      "storage_location": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "後背包"
+                                      }
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -1756,7 +1774,44 @@
         ],
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Item created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 63
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "頸枕"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": 1
+                    },
+                    "notes": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "storage_location": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "specs": {
+                      "type": "array",
+                      "items": {},
+                      "example": []
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
@@ -1774,6 +1829,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "description": {
+                    "example": "any"
+                  },
+                  "content": {
+                    "example": "any"
+                  },
                   "name": {
                     "example": "any"
                   },
@@ -1781,6 +1842,15 @@
                     "example": "any"
                   },
                   "notes": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  },
+                  "specs": {
+                    "example": "any"
+                  },
+                  "example": {
                     "example": "any"
                   }
                 }
@@ -1793,7 +1863,7 @@
     "/api/trips/{tripId}/checklist/items/{itemId}": {
       "put": {
         "tags": ["Trip Checklist"],
-        "summary": "Update name, quantity or notes of a trip checklist item",
+        "summary": "Update name, quantity, notes or storage_location of a trip checklist item",
         "description": "",
         "parameters": [
           {
@@ -1815,7 +1885,60 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Item updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 7
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "充電器"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "nullable": true,
+                      "example": 2
+                    },
+                    "notes": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "手機＋相機充電器各一"
+                    },
+                    "storage_location": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "後背包"
+                    },
+                    "specs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Type-C 充電器"
+                          },
+                          "storage_location": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "後背包"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found"
@@ -1840,6 +1963,168 @@
           },
           {
             "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/items/{itemId}/specs": {
+      "post": {
+        "tags": ["Trip Checklist"],
+        "summary": "Add a spec to a trip checklist item",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/items/{itemId}/specs/{specId}": {
+      "put": {
+        "tags": ["Trip Checklist"],
+        "summary": "Update a trip checklist item spec",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "specId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Trip Checklist"],
+        "summary": "Delete a trip checklist item spec",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "specId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1886,10 +2171,6 @@
                             "type": "string",
                             "example": "證件"
                           },
-                          "sortOrder": {
-                            "type": "integer",
-                            "example": 0
-                          },
                           "items": {
                             "type": "array",
                             "items": {
@@ -1901,21 +2182,43 @@
                                 },
                                 "name": {
                                   "type": "string",
-                                  "example": "護照"
+                                  "example": "充電器"
                                 },
                                 "quantity": {
                                   "type": "integer",
                                   "nullable": true,
-                                  "example": 1
+                                  "example": 2
                                 },
                                 "notes": {
                                   "type": "string",
                                   "nullable": true,
-                                  "example": null
+                                  "example": "手機＋相機充電器各一"
                                 },
-                                "sortOrder": {
-                                  "type": "integer",
-                                  "example": 0
+                                "storage_location": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "example": "後背包"
+                                },
+                                "specs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "integer",
+                                        "example": 1
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "example": "Type-C 充電器"
+                                      },
+                                      "storage_location": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "後背包"
+                                      }
+                                    }
+                                  }
                                 }
                               }
                             }
@@ -1955,10 +2258,6 @@
                       "type": "string",
                       "example": "運動用品"
                     },
-                    "sortOrder": {
-                      "type": "integer",
-                      "example": 6
-                    },
                     "items": {
                       "type": "array",
                       "items": {},
@@ -1989,9 +2288,6 @@
                     "example": "any"
                   },
                   "name": {
-                    "example": "any"
-                  },
-                  "sortOrder": {
                     "example": "any"
                   },
                   "items": {
@@ -2038,10 +2334,6 @@
                       "type": "string",
                       "example": "重要證件"
                     },
-                    "sortOrder": {
-                      "type": "integer",
-                      "example": 0
-                    },
                     "items": {
                       "type": "array",
                       "items": {
@@ -2065,9 +2357,15 @@
                             "nullable": true,
                             "example": null
                           },
-                          "sortOrder": {
-                            "type": "integer",
-                            "example": 0
+                          "storage_location": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "隨身包"
+                          },
+                          "specs": {
+                            "type": "array",
+                            "items": {},
+                            "example": []
                           }
                         }
                       }
@@ -2102,9 +2400,6 @@
                   "name": {
                     "example": "any"
                   },
-                  "sortOrder": {
-                    "example": "any"
-                  },
                   "items": {
                     "example": "any"
                   },
@@ -2112,6 +2407,15 @@
                     "example": "any"
                   },
                   "notes": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  },
+                  "specs": {
+                    "example": "any"
+                  },
+                  "example": {
                     "example": "any"
                   }
                 }
@@ -2188,9 +2492,15 @@
                       "nullable": true,
                       "example": null
                     },
-                    "sortOrder": {
-                      "type": "integer",
-                      "example": 5
+                    "storage_location": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": null
+                    },
+                    "specs": {
+                      "type": "array",
+                      "items": {},
+                      "example": []
                     }
                   }
                 }
@@ -2228,7 +2538,13 @@
                   "notes": {
                     "example": "any"
                   },
-                  "sortOrder": {
+                  "storage_location": {
+                    "example": "any"
+                  },
+                  "specs": {
+                    "example": "any"
+                  },
+                  "example": {
                     "example": "any"
                   }
                 }
@@ -2241,7 +2557,7 @@
     "/api/checklist-template/categories/{catId}/items/{itemId}": {
       "put": {
         "tags": ["Checklist Template"],
-        "summary": "Update a template item name",
+        "summary": "Update a template item",
         "description": "",
         "parameters": [
           {
@@ -2287,9 +2603,31 @@
                       "nullable": true,
                       "example": "每人一份"
                     },
-                    "sortOrder": {
-                      "type": "integer",
-                      "example": 0
+                    "storage_location": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "隨身包"
+                    },
+                    "specs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Type-C 充電器"
+                          },
+                          "storage_location": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "後背包"
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -2327,7 +2665,10 @@
                   "notes": {
                     "example": "any"
                   },
-                  "sortOrder": {
+                  "storage_location": {
+                    "example": "any"
+                  },
+                  "specs": {
                     "example": "any"
                   }
                 }
@@ -2351,6 +2692,168 @@
           },
           {
             "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/checklist-template/categories/{catId}/items/{itemId}/specs": {
+      "post": {
+        "tags": ["Checklist Template"],
+        "summary": "Add a spec to a template item",
+        "description": "",
+        "parameters": [
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/checklist-template/categories/{catId}/items/{itemId}/specs/{specId}": {
+      "put": {
+        "tags": ["Checklist Template"],
+        "summary": "Update a template item spec",
+        "description": "",
+        "parameters": [
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "specId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "example": "any"
+                  },
+                  "storage_location": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Checklist Template"],
+        "summary": "Delete a template item spec",
+        "description": "",
+        "parameters": [
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "specId",
             "in": "path",
             "required": true,
             "schema": {

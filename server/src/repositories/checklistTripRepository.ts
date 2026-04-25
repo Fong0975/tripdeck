@@ -2,11 +2,14 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
 import type {
+  CreateSpecBody,
   CreateTripItemBody,
+  ItemSpecResponse,
   OccasionResponse,
   TripChecklistCategoryResponse,
   TripChecklistItemResponse,
   TripChecklistResponse,
+  UpdateSpecBody,
   UpdateTripItemBody,
 } from '../types/checklist';
 
@@ -24,6 +27,14 @@ interface TripChecklistItemRow extends RowDataPacket {
   name: string;
   quantity: number | null;
   notes: string | null;
+  storage_location: string | null;
+}
+
+interface TripItemSpecRow extends RowDataPacket {
+  id: number;
+  checklist_trip_item_id: number;
+  name: string;
+  storage_location: string | null;
 }
 
 interface TemplateCategoryRow extends RowDataPacket {
@@ -37,6 +48,14 @@ interface TemplateItemRow extends RowDataPacket {
   name: string;
   quantity: number | null;
   notes: string | null;
+  storage_location: string | null;
+}
+
+interface TemplateItemSpecRow extends RowDataPacket {
+  id: number;
+  checklist_template_item_id: number;
+  name: string;
+  storage_location: string | null;
 }
 
 interface OccasionRow extends RowDataPacket {
@@ -54,6 +73,35 @@ interface CheckRow extends RowDataPacket {
 
 function placeholders(count: number): string {
   return Array.from({ length: count }, () => '?').join(', ');
+}
+
+function toSpecResponse(row: TripItemSpecRow): ItemSpecResponse {
+  return {
+    id: row.id,
+    name: row.name,
+    storage_location: row.storage_location,
+  };
+}
+
+async function fetchSpecsByItemIds(
+  itemIds: number[],
+): Promise<Map<number, ItemSpecResponse[]>> {
+  const map = new Map<number, ItemSpecResponse[]>();
+  if (itemIds.length === 0) {
+    return map;
+  }
+  const [rows] = await pool.execute<TripItemSpecRow[]>(
+    `SELECT * FROM checklist_trip_item_specs
+     WHERE checklist_trip_item_id IN (${placeholders(itemIds.length)})
+     ORDER BY checklist_trip_item_id, id`,
+    itemIds,
+  );
+  for (const row of rows) {
+    const list = map.get(row.checklist_trip_item_id) ?? [];
+    list.push(toSpecResponse(row));
+    map.set(row.checklist_trip_item_id, list);
+  }
+  return map;
 }
 
 // --- Repository functions ---
@@ -87,6 +135,9 @@ export async function findChecklist(
        ORDER BY checklist_trip_category_id, id`,
       catIds,
     );
+
+    const specsByItemId = await fetchSpecsByItemIds(itemRows.map(r => r.id));
+
     for (const row of itemRows) {
       const list = itemsByCatId.get(row.checklist_trip_category_id) ?? [];
       list.push({
@@ -94,6 +145,8 @@ export async function findChecklist(
         name: row.name,
         quantity: row.quantity,
         notes: row.notes,
+        storage_location: row.storage_location,
+        specs: specsByItemId.get(row.id) ?? [],
       });
       itemsByCatId.set(row.checklist_trip_category_id, list);
     }
@@ -158,10 +211,28 @@ export async function initChecklist(
         [cat.id],
       );
       for (const item of itemRows) {
-        await conn.execute(
-          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes) VALUES (?, ?, ?, ?)',
-          [tripCatId, item.name, item.quantity, item.notes],
+        const [itemResult] = await conn.execute<ResultSetHeader>(
+          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+          [
+            tripCatId,
+            item.name,
+            item.quantity,
+            item.notes,
+            item.storage_location,
+          ],
         );
+        const tripItemId = itemResult.insertId;
+
+        const [specRows] = await conn.execute<TemplateItemSpecRow[]>(
+          'SELECT * FROM checklist_template_item_specs WHERE checklist_template_item_id = ? ORDER BY id',
+          [item.id],
+        );
+        for (const spec of specRows) {
+          await conn.execute(
+            'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
+            [tripItemId, spec.name, spec.storage_location],
+          );
+        }
       }
     }
 
@@ -273,8 +344,14 @@ export async function createTripItem(
   data: CreateTripItemBody,
 ): Promise<TripChecklistItemResponse> {
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes) VALUES (?, ?, ?, ?)',
-    [catId, data.name, data.quantity ?? null, data.notes ?? null],
+    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+    [
+      catId,
+      data.name,
+      data.quantity ?? null,
+      data.notes ?? null,
+      data.storage_location ?? null,
+    ],
   );
 
   return {
@@ -282,6 +359,8 @@ export async function createTripItem(
     name: data.name,
     quantity: data.quantity ?? null,
     notes: data.notes ?? null,
+    storage_location: data.storage_location ?? null,
+    specs: [],
   };
 }
 
@@ -369,17 +448,25 @@ export async function updateTripItem(
   const name = 'name' in data && data.name ? data.name : cur.name;
   const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
   const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
+  const storage_location =
+    'storage_location' in data
+      ? (data.storage_location ?? null)
+      : cur.storage_location;
 
   await pool.execute(
-    'UPDATE checklist_trip_items SET name = ?, quantity = ?, notes = ? WHERE id = ?',
-    [name, quantity, notes, itemId],
+    'UPDATE checklist_trip_items SET name = ?, quantity = ?, notes = ?, storage_location = ? WHERE id = ?',
+    [name, quantity, notes, storage_location, itemId],
   );
+
+  const specsByItemId = await fetchSpecsByItemIds([itemId]);
 
   return {
     id: cur.id,
     name,
     quantity,
     notes,
+    storage_location,
+    specs: specsByItemId.get(itemId) ?? [],
   };
 }
 
@@ -406,4 +493,75 @@ export async function setCheck(
       [occId, itemId],
     );
   }
+}
+
+// --- Spec functions ---
+
+export async function createTripItemSpec(
+  itemId: number,
+  data: CreateSpecBody,
+): Promise<ItemSpecResponse | null> {
+  const [itemRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM checklist_trip_items WHERE id = ?',
+    [itemId],
+  );
+  if (itemRows.length === 0) {
+    return null;
+  }
+
+  const [result] = await pool.execute<ResultSetHeader>(
+    'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
+    [itemId, data.name, data.storage_location ?? null],
+  );
+
+  return {
+    id: result.insertId,
+    name: data.name,
+    storage_location: data.storage_location ?? null,
+  };
+}
+
+export async function updateTripItemSpec(
+  specId: number,
+  data: UpdateSpecBody,
+): Promise<ItemSpecResponse | null> {
+  const [rows] = await pool.execute<TripItemSpecRow[]>(
+    'SELECT * FROM checklist_trip_item_specs WHERE id = ?',
+    [specId],
+  );
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const cur = rows[0];
+  const storage_location =
+    'storage_location' in data
+      ? (data.storage_location ?? null)
+      : cur.storage_location;
+
+  await pool.execute(
+    'UPDATE checklist_trip_item_specs SET name = ?, storage_location = ? WHERE id = ?',
+    [data.name, storage_location, specId],
+  );
+
+  return toSpecResponse({ ...cur, name: data.name, storage_location });
+}
+
+export async function deleteTripItemSpec(specId: number): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'DELETE FROM checklist_trip_item_specs WHERE id = ?',
+    [specId],
+  );
+  return result.affectedRows > 0;
+}
+
+export async function verifyTripSpecBelongsToItem(
+  specId: number,
+  itemId: number,
+): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM checklist_trip_item_specs WHERE id = ? AND checklist_trip_item_id = ?',
+    [specId, itemId],
+  );
+  return rows.length > 0;
 }

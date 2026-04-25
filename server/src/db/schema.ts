@@ -189,12 +189,31 @@ export const tableDefinitions: TableDef[] = [
       { name: 'name', type: 'VARCHAR(255)', notNull: true },
       { name: 'quantity', type: 'INT' },
       { name: 'notes', type: 'TEXT' },
+      { name: 'storage_location', type: 'VARCHAR(255)' },
     ],
     foreignKeys: [
       {
         name: 'fk_template_items_category',
         column: 'checklist_template_category_id',
         references: { table: 'checklist_template_categories', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_template_item_specs',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_template_item_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'storage_location', type: 'VARCHAR(255)' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_template_item_specs_item',
+        column: 'checklist_template_item_id',
+        references: { table: 'checklist_template_items', column: 'id' },
         onDelete: 'CASCADE',
       },
     ],
@@ -225,12 +244,31 @@ export const tableDefinitions: TableDef[] = [
       { name: 'name', type: 'VARCHAR(255)', notNull: true },
       { name: 'quantity', type: 'INT' },
       { name: 'notes', type: 'TEXT' },
+      { name: 'storage_location', type: 'VARCHAR(255)' },
     ],
     foreignKeys: [
       {
         name: 'fk_checklist_trip_items_category',
         column: 'checklist_trip_category_id',
         references: { table: 'checklist_trip_categories', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'checklist_trip_item_specs',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_trip_item_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'storage_location', type: 'VARCHAR(255)' },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_item_specs_item',
+        column: 'checklist_trip_item_id',
+        references: { table: 'checklist_trip_items', column: 'id' },
         onDelete: 'CASCADE',
       },
     ],
