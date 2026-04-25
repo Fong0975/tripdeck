@@ -64,11 +64,19 @@ export interface TripContent {
   days: DayPlan[];
 }
 
+export interface ItemSpec {
+  id: number;
+  name: string;
+  storage_location: string | null;
+}
+
 export interface ChecklistItem {
   id: number;
   name: string;
   quantity?: number | null;
   notes?: string | null;
+  storage_location?: string | null;
+  specs?: ItemSpec[];
 }
 
 export interface ChecklistCategory {

@@ -1,10 +1,18 @@
 // --- Response shapes returned to the client ---
 
+export interface ItemSpecResponse {
+  id: number;
+  name: string;
+  storage_location: string | null;
+}
+
 export interface TemplateItemResponse {
   id: number;
   name: string;
   quantity: number | null;
   notes: string | null;
+  storage_location: string | null;
+  specs: ItemSpecResponse[];
 }
 
 export interface TemplateCategoryResponse {
@@ -22,6 +30,8 @@ export interface TripChecklistItemResponse {
   name: string;
   quantity: number | null;
   notes: string | null;
+  storage_location: string | null;
+  specs: ItemSpecResponse[];
 }
 
 export interface TripChecklistCategoryResponse {
@@ -57,24 +67,28 @@ export interface CreateItemBody {
   name: string;
   quantity?: number | null;
   notes?: string | null;
+  storage_location?: string | null;
 }
 
 export interface UpdateItemBody {
   name: string;
   quantity?: number | null;
   notes?: string | null;
+  storage_location?: string | null;
 }
 
 export interface CreateTripItemBody {
   name: string;
   quantity?: number | null;
   notes?: string | null;
+  storage_location?: string | null;
 }
 
 export interface UpdateTripItemBody {
   name?: string;
   quantity?: number | null;
   notes?: string | null;
+  storage_location?: string | null;
 }
 
 export interface CreateOccasionBody {
@@ -87,4 +101,14 @@ export interface UpdateOccasionBody {
 
 export interface SetCheckBody {
   checked: boolean;
+}
+
+export interface CreateSpecBody {
+  name: string;
+  storage_location?: string | null;
+}
+
+export interface UpdateSpecBody {
+  name: string;
+  storage_location?: string | null;
 }

@@ -5,6 +5,7 @@ import type {
   ChecklistItem,
   ChecklistOccasion,
   ChecklistTemplate,
+  ItemSpec,
   ReferenceWebsite,
   TransportMode,
   TravelConnection,
@@ -284,7 +285,12 @@ export async function deleteTemplateCategory(catId: number): Promise<void> {
 
 export async function addTemplateItem(
   catId: number,
-  data: { name: string; quantity?: number | null; notes?: string | null },
+  data: {
+    name: string;
+    quantity?: number | null;
+    notes?: string | null;
+    storage_location?: string | null;
+  },
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/checklist-template/categories/${catId}/items`,
@@ -295,11 +301,50 @@ export async function addTemplateItem(
 export async function updateTemplateItem(
   catId: number,
   itemId: number,
-  data: { name: string; quantity?: number | null; notes?: string | null },
+  data: {
+    name: string;
+    quantity?: number | null;
+    notes?: string | null;
+    storage_location?: string | null;
+  },
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}`,
     { method: 'PUT', ...json(data) },
+  );
+}
+
+export async function addTemplateItemSpec(
+  catId: number,
+  itemId: number,
+  data: { name: string; storage_location?: string | null },
+): Promise<ItemSpec> {
+  return api<ItemSpec>(
+    `/api/checklist-template/categories/${catId}/items/${itemId}/specs`,
+    { method: 'POST', ...json(data) },
+  );
+}
+
+export async function updateTemplateItemSpec(
+  catId: number,
+  itemId: number,
+  specId: number,
+  data: { name: string; storage_location?: string | null },
+): Promise<void> {
+  await api<void>(
+    `/api/checklist-template/categories/${catId}/items/${itemId}/specs/${specId}`,
+    { method: 'PUT', ...json(data) },
+  );
+}
+
+export async function deleteTemplateItemSpec(
+  catId: number,
+  itemId: number,
+  specId: number,
+): Promise<void> {
+  await api<void>(
+    `/api/checklist-template/categories/${catId}/items/${itemId}/specs/${specId}`,
+    { method: 'DELETE' },
   );
 }
 
@@ -336,7 +381,12 @@ export async function deleteTripCategory(
 export async function addTripItem(
   tripId: number,
   catId: number,
-  data: { name: string; quantity?: number | null; notes?: string | null },
+  data: {
+    name: string;
+    quantity?: number | null;
+    notes?: string | null;
+    storage_location?: string | null;
+  },
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/trips/${tripId}/checklist/categories/${catId}/items`,
@@ -347,12 +397,51 @@ export async function addTripItem(
 export async function updateTripItem(
   tripId: number,
   itemId: number,
-  data: { name?: string; quantity?: number | null; notes?: string | null },
+  data: {
+    name?: string;
+    quantity?: number | null;
+    notes?: string | null;
+    storage_location?: string | null;
+  },
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(`/api/trips/${tripId}/checklist/items/${itemId}`, {
     method: 'PUT',
     ...json(data),
   });
+}
+
+export async function addTripItemSpec(
+  tripId: number,
+  itemId: number,
+  data: { name: string; storage_location?: string | null },
+): Promise<ItemSpec> {
+  return api<ItemSpec>(`/api/trips/${tripId}/checklist/items/${itemId}/specs`, {
+    method: 'POST',
+    ...json(data),
+  });
+}
+
+export async function updateTripItemSpec(
+  tripId: number,
+  itemId: number,
+  specId: number,
+  data: { name: string; storage_location?: string | null },
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/checklist/items/${itemId}/specs/${specId}`,
+    { method: 'PUT', ...json(data) },
+  );
+}
+
+export async function deleteTripItemSpec(
+  tripId: number,
+  itemId: number,
+  specId: number,
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/checklist/items/${itemId}/specs/${specId}`,
+    { method: 'DELETE' },
+  );
 }
 
 export async function deleteTripItem(
@@ -427,6 +516,7 @@ export type {
   TransportMode,
   Attraction,
   AttractionImage,
+  ItemSpec,
   ReferenceWebsite,
   TravelConnection,
 };

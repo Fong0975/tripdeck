@@ -3,7 +3,9 @@ import type { Request, Response } from 'express';
 import * as templateRepo from '../repositories/checklistTemplateRepository';
 import * as tripRepo from '../repositories/checklistTripRepository';
 import type {
+  CreateSpecBody,
   CreateTripItemBody,
+  UpdateSpecBody,
   UpdateTripItemBody,
 } from '../types/checklist';
 
@@ -26,17 +28,27 @@ export async function getTemplate(_req: Request, res: Response): Promise<void> {
                    properties: {
                      id: { type: 'integer', example: 1 },
                      name: { type: 'string', example: '證件' },
-                     sortOrder: { type: 'integer', example: 0 },
                      items: {
                        type: 'array',
                        items: {
                          type: 'object',
                          properties: {
                            id: { type: 'integer', example: 1 },
-                           name: { type: 'string', example: '護照' },
-                           quantity: { type: 'integer', nullable: true, example: 1 },
-                           notes: { type: 'string', nullable: true, example: null },
-                           sortOrder: { type: 'integer', example: 0 }
+                           name: { type: 'string', example: '充電器' },
+                           quantity: { type: 'integer', nullable: true, example: 2 },
+                           notes: { type: 'string', nullable: true, example: '手機＋相機充電器各一' },
+                           storage_location: { type: 'string', nullable: true, example: '後背包' },
+                           specs: {
+                             type: 'array',
+                             items: {
+                               type: 'object',
+                               properties: {
+                                 id: { type: 'integer', example: 1 },
+                                 name: { type: 'string', example: 'Type-C 充電器' },
+                                 storage_location: { type: 'string', nullable: true, example: '後背包' }
+                               }
+                             }
+                           }
                          }
                        }
                      }
@@ -67,7 +79,6 @@ export async function addCategory(req: Request, res: Response): Promise<void> {
              properties: {
                id: { type: 'integer', example: 7 },
                name: { type: 'string', example: '運動用品' },
-               sortOrder: { type: 'integer', example: 6 },
                items: { type: 'array', items: {}, example: [] }
              }
            }
@@ -101,7 +112,6 @@ export async function updateCategory(
              properties: {
                id: { type: 'integer', example: 1 },
                name: { type: 'string', example: '重要證件' },
-               sortOrder: { type: 'integer', example: 0 },
                items: {
                  type: 'array',
                  items: {
@@ -111,7 +121,8 @@ export async function updateCategory(
                      name: { type: 'string', example: '護照' },
                      quantity: { type: 'integer', nullable: true, example: 1 },
                      notes: { type: 'string', nullable: true, example: null },
-                     sortOrder: { type: 'integer', example: 0 }
+                     storage_location: { type: 'string', nullable: true, example: '隨身包' },
+                     specs: { type: 'array', items: {}, example: [] }
                    }
                  }
                }
@@ -171,7 +182,8 @@ export async function addItem(req: Request, res: Response): Promise<void> {
                name: { type: 'string', example: '電子簽證' },
                quantity: { type: 'integer', nullable: true, example: null },
                notes: { type: 'string', nullable: true, example: null },
-               sortOrder: { type: 'integer', example: 5 }
+               storage_location: { type: 'string', nullable: true, example: null },
+               specs: { type: 'array', items: {}, example: [] }
              }
            }
          }
@@ -179,10 +191,11 @@ export async function addItem(req: Request, res: Response): Promise<void> {
      } */
   try {
     const catId = Number(req.params.catId);
-    const { name, quantity, notes } = req.body as {
+    const { name, quantity, notes, storage_location } = req.body as {
       name: string;
       quantity?: number | null;
       notes?: string | null;
+      storage_location?: string | null;
     };
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
@@ -192,6 +205,7 @@ export async function addItem(req: Request, res: Response): Promise<void> {
       name,
       quantity,
       notes,
+      storage_location,
     });
     if (!item) {
       res.status(404).json({ error: 'Category not found' });
@@ -205,7 +219,7 @@ export async function addItem(req: Request, res: Response): Promise<void> {
 
 export async function updateItem(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
-     #swagger.summary = 'Update a template item name'
+     #swagger.summary = 'Update a template item'
      #swagger.responses[200] = {
        description: 'Item updated',
        content: {
@@ -217,7 +231,18 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
                name: { type: 'string', example: '電子簽證' },
                quantity: { type: 'integer', nullable: true, example: 2 },
                notes: { type: 'string', nullable: true, example: '每人一份' },
-               sortOrder: { type: 'integer', example: 0 }
+               storage_location: { type: 'string', nullable: true, example: '隨身包' },
+               specs: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: 'Type-C 充電器' },
+                     storage_location: { type: 'string', nullable: true, example: '後背包' }
+                   }
+                 }
+               }
              }
            }
          }
@@ -226,10 +251,11 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
   try {
     const catId = Number(req.params.catId);
     const itemId = Number(req.params.itemId);
-    const { name, quantity, notes } = req.body as {
+    const { name, quantity, notes, storage_location } = req.body as {
       name: string;
       quantity?: number | null;
       notes?: string | null;
+      storage_location?: string | null;
     };
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
@@ -247,6 +273,7 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
       name,
       quantity,
       notes,
+      storage_location,
     });
     if (!item) {
       res.status(404).json({ error: 'Item not found' });
@@ -306,18 +333,28 @@ export async function getTripChecklist(
                    type: 'object',
                    properties: {
                      id: { type: 'integer', example: 1 },
-                     name: { type: 'string', example: '證件' },
-                     sortOrder: { type: 'integer', example: 0 },
+                     name: { type: 'string', example: '3C 電子' },
                      items: {
                        type: 'array',
                        items: {
                          type: 'object',
                          properties: {
-                           id: { type: 'integer', example: 1 },
-                           name: { type: 'string', example: '護照' },
-                           quantity: { type: 'integer', nullable: true, example: 1 },
-                           notes: { type: 'string', nullable: true, example: null },
-                           sortOrder: { type: 'integer', example: 0 }
+                           id: { type: 'integer', example: 7 },
+                           name: { type: 'string', example: '充電器' },
+                           quantity: { type: 'integer', nullable: true, example: 2 },
+                           notes: { type: 'string', nullable: true, example: '手機＋相機充電器各一' },
+                           storage_location: { type: 'string', nullable: true, example: '後背包' },
+                           specs: {
+                             type: 'array',
+                             items: {
+                               type: 'object',
+                               properties: {
+                                 id: { type: 'integer', example: 1 },
+                                 name: { type: 'string', example: 'Type-C 充電器' },
+                                 storage_location: { type: 'string', nullable: true, example: '後背包' }
+                               }
+                             }
+                           }
                          }
                        }
                      }
@@ -539,7 +576,25 @@ export async function deleteTripCategory(
 
 export async function addTripItem(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Add an item to a trip checklist category' */
+     #swagger.summary = 'Add an item to a trip checklist category'
+     #swagger.responses[201] = {
+       description: 'Item created',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 63 },
+               name: { type: 'string', example: '頸枕' },
+               quantity: { type: 'integer', nullable: true, example: 1 },
+               notes: { type: 'string', nullable: true, example: null },
+               storage_location: { type: 'string', nullable: true, example: null },
+               specs: { type: 'array', items: {}, example: [] }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const catId = Number(req.params.catId);
@@ -550,7 +605,8 @@ export async function addTripItem(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const { name, quantity, notes } = req.body as CreateTripItemBody;
+    const { name, quantity, notes, storage_location } =
+      req.body as CreateTripItemBody;
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name is required' });
       return;
@@ -560,6 +616,7 @@ export async function addTripItem(req: Request, res: Response): Promise<void> {
       name,
       quantity,
       notes,
+      storage_location,
     });
     res.status(201).json(item);
   } catch {
@@ -599,7 +656,35 @@ export async function updateTripItem(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Update name, quantity or notes of a trip checklist item' */
+     #swagger.summary = 'Update name, quantity, notes or storage_location of a trip checklist item'
+     #swagger.responses[200] = {
+       description: 'Item updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 7 },
+               name: { type: 'string', example: '充電器' },
+               quantity: { type: 'integer', nullable: true, example: 2 },
+               notes: { type: 'string', nullable: true, example: '手機＋相機充電器各一' },
+               storage_location: { type: 'string', nullable: true, example: '後背包' },
+               specs: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     id: { type: 'integer', example: 1 },
+                     name: { type: 'string', example: 'Type-C 充電器' },
+                     storage_location: { type: 'string', nullable: true, example: '後背包' }
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     const tripId = Number(req.params.tripId);
     const itemId = Number(req.params.itemId);
@@ -651,5 +736,236 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
     res.status(204).send();
   } catch {
     res.status(500).json({ error: 'Failed to set check' });
+  }
+}
+
+// ── Template item specs ───────────────────────────────────────────────────────
+
+export async function addTemplateItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Add a spec to a template item' */
+  try {
+    const catId = Number(req.params.catId);
+    const itemId = Number(req.params.itemId);
+    const { name, storage_location } = req.body as CreateSpecBody;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const belongs = await templateRepo.verifyItemBelongsToCategory(
+      itemId,
+      catId,
+    );
+    if (!belongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const spec = await templateRepo.createItemSpec(itemId, {
+      name,
+      storage_location,
+    });
+    if (!spec) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.status(201).json(spec);
+  } catch {
+    res.status(500).json({ error: 'Failed to add spec' });
+  }
+}
+
+export async function updateTemplateItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Update a template item spec' */
+  try {
+    const catId = Number(req.params.catId);
+    const itemId = Number(req.params.itemId);
+    const specId = Number(req.params.specId);
+    const { name, storage_location } = req.body as UpdateSpecBody;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const itemBelongs = await templateRepo.verifyItemBelongsToCategory(
+      itemId,
+      catId,
+    );
+    if (!itemBelongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const specBelongs = await templateRepo.verifySpecBelongsToItem(
+      specId,
+      itemId,
+    );
+    if (!specBelongs) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    const spec = await templateRepo.updateItemSpec(specId, {
+      name,
+      storage_location,
+    });
+    if (!spec) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    res.json(spec);
+  } catch {
+    res.status(500).json({ error: 'Failed to update spec' });
+  }
+}
+
+export async function deleteTemplateItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Delete a template item spec' */
+  try {
+    const catId = Number(req.params.catId);
+    const itemId = Number(req.params.itemId);
+    const specId = Number(req.params.specId);
+    const itemBelongs = await templateRepo.verifyItemBelongsToCategory(
+      itemId,
+      catId,
+    );
+    if (!itemBelongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const specBelongs = await templateRepo.verifySpecBelongsToItem(
+      specId,
+      itemId,
+    );
+    if (!specBelongs) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    const deleted = await templateRepo.deleteItemSpec(specId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: 'Failed to delete spec' });
+  }
+}
+
+// ── Trip item specs ───────────────────────────────────────────────────────────
+
+export async function addTripItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Add a spec to a trip checklist item' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const itemId = Number(req.params.itemId);
+    const { name, storage_location } = req.body as CreateSpecBody;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const belongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
+    if (!belongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const spec = await tripRepo.createTripItemSpec(itemId, {
+      name,
+      storage_location,
+    });
+    if (!spec) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    res.status(201).json(spec);
+  } catch {
+    res.status(500).json({ error: 'Failed to add spec' });
+  }
+}
+
+export async function updateTripItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Update a trip checklist item spec' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const itemId = Number(req.params.itemId);
+    const specId = Number(req.params.specId);
+    const { name, storage_location } = req.body as UpdateSpecBody;
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const itemBelongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
+    if (!itemBelongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const specBelongs = await tripRepo.verifyTripSpecBelongsToItem(
+      specId,
+      itemId,
+    );
+    if (!specBelongs) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    const spec = await tripRepo.updateTripItemSpec(specId, {
+      name,
+      storage_location,
+    });
+    if (!spec) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    res.json(spec);
+  } catch {
+    res.status(500).json({ error: 'Failed to update spec' });
+  }
+}
+
+export async function deleteTripItemSpec(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Delete a trip checklist item spec' */
+  try {
+    const tripId = Number(req.params.tripId);
+    const itemId = Number(req.params.itemId);
+    const specId = Number(req.params.specId);
+    const itemBelongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
+    if (!itemBelongs) {
+      res.status(404).json({ error: 'Item not found' });
+      return;
+    }
+    const specBelongs = await tripRepo.verifyTripSpecBelongsToItem(
+      specId,
+      itemId,
+    );
+    if (!specBelongs) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    const deleted = await tripRepo.deleteTripItemSpec(specId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Spec not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch {
+    res.status(500).json({ error: 'Failed to delete spec' });
   }
 }
