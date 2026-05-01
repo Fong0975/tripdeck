@@ -9,8 +9,10 @@ import { MapPin, Plus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
+import { isWeatherEnabled } from '@/utils/weatherApi';
 
 import AttractionCard from './AttractionCard';
+import DayWeather from './DayWeather';
 import TravelConnectionItem from './TravelConnectionItem';
 
 interface Props {
@@ -60,6 +62,12 @@ export default function DayColumn({
     } catch {
       return day.date;
     }
+  })();
+
+  const isPastDate = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(`${day.date}T00:00:00`) < today;
   })();
 
   const startEditing = (locationId: number, currentName: string) => {
@@ -169,6 +177,10 @@ export default function DayColumn({
             </button>
           )}
         </div>
+
+        {isWeatherEnabled && !isPastDate && day.locations.length > 0 && (
+          <DayWeather locations={day.locations} date={day.date} />
+        )}
       </div>
 
       {/* Drop zone */}

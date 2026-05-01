@@ -10,6 +10,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
 
 export default defineConfig({
   plugins: [react()],
+  envDir: path.resolve(__dirname, '..'),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
