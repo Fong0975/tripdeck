@@ -24,6 +24,7 @@ import type {
   Trip,
   TripContent,
 } from '@/types';
+import { fetchDailyWeather, isWeatherEnabled } from '@/utils/weatherApi';
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -817,6 +818,36 @@ export async function exportToDocx(
     children.push(
       makeDayHeaderTable(`第 ${day.day} 天 · ${dayLabel}`, isFirstDay),
     );
+
+    if (isWeatherEnabled && day.locations.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffDays = Math.round(
+        (new Date(`${day.date}T00:00:00`).getTime() - today.getTime()) /
+          86_400_000,
+      );
+      if (diffDays >= 0 && diffDays <= 4) {
+        for (const loc of day.locations) {
+          const weather = await fetchDailyWeather(loc.name, day.date);
+          if (weather.status === 'success') {
+            const d = weather.data;
+            let text = `${loc.name}：${d.description} | ${d.tempMin}° / ${d.tempMax}°C | 💧 ${d.humidity}%`;
+            if (d.pop > 0) {
+              text += ` | ☂ ${d.pop}%`;
+            }
+            children.push(
+              new Paragraph({
+                children: [
+                  new TextRun({ text, color: '445566', size: 20, font: FONT }),
+                ],
+                spacing: { before: 100, after: 0 },
+              }),
+            );
+          }
+        }
+      }
+    }
+
     children.push(
       new Paragraph({ children: [], spacing: { before: 0, after: 200 } }),
     );
