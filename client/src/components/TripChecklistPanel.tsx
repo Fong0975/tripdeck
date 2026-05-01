@@ -1,65 +1,29 @@
-import { Package, Plus, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Package, Pencil, Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ItemSpec, TripChecklist } from '@/types';
 import {
-  addOccasion,
-  addTripCategory,
-  addTripItem,
-  addTripItemSpec,
-  deleteOccasion,
-  deleteTripCategory,
-  deleteTripItem,
-  deleteTripItemSpec,
-  getTripChecklist,
-  setCheck,
-  updateOccasion,
-  updateTripCategory,
-  updateTripItem,
-  updateTripItemSpec,
-} from '@/utils/storage';
+  STORAGE_OPTIONS,
+  hasStorageOption,
+} from '@/components/checklist/checklistUtils';
+import type { TripChecklist } from '@/types';
+import { getTripChecklist, setCheck } from '@/utils/storage';
 
-type StorageOption = '託運' | '隨身';
-const STORAGE_OPTIONS: StorageOption[] = ['託運', '隨身'];
-
-function hasStorageOption(
-  value: string | null | undefined,
-  option: StorageOption,
-): boolean {
-  if (!value) {
-    return false;
-  }
-  return value
-    .split(',')
-    .map(s => s.trim())
-    .includes(option);
-}
-
-function toggleStorageOption(
-  current: string | null | undefined,
-  option: StorageOption,
-): string | null {
-  const parts = current
-    ? current
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean)
-    : [];
-  if (parts.includes(option)) {
-    const next = parts.filter(p => p !== option);
-    return next.length > 0 ? next.join(',') : null;
-  }
-  parts.push(option);
-  return parts.join(',');
-}
+import CheckSaveBar from './tripChecklist/CheckSaveBar';
+import TripChecklistEditModal from './tripChecklist/TripChecklistEditModal';
 
 interface Props {
   tripId: number;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function TripChecklistPanel({ tripId }: Props) {
+export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   const [checklist, setChecklist] = useState<TripChecklist | null>(null);
   const [loading, setLoading] = useState(true);
+  const [localChecks, setLocalChecks] = useState<
+    Record<number, Record<number, boolean>>
+  >({});
+  const [saving, setSaving] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const reload = useCallback(async () => {
     setChecklist(await getTripChecklist(tripId));
@@ -70,143 +34,87 @@ export default function TripChecklistPanel({ tripId }: Props) {
     void reload().finally(() => setLoading(false));
   }, [reload]);
 
-  const handleToggleCheck = async (occId: number, itemId: number) => {
+  const isDirty = useMemo(() => {
+    if (!checklist) {
+      return false;
+    }
+    for (const occ of checklist.occasions) {
+      const local = localChecks[occ.id] ?? {};
+      for (const [itemIdStr, localVal] of Object.entries(local)) {
+        const savedVal = !!occ.checks[Number(itemIdStr)];
+        if (localVal !== savedVal) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [checklist, localChecks]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) {
+      return;
+    }
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const getCheck = useCallback(
+    (occId: number, itemId: number): boolean => {
+      const local = localChecks[occId]?.[itemId];
+      if (local !== undefined) {
+        return local;
+      }
+      const occ = checklist?.occasions.find(o => o.id === occId);
+      return !!occ?.checks[itemId];
+    },
+    [checklist, localChecks],
+  );
+
+  const handleToggleCheck = (occId: number, itemId: number) => {
+    const current = getCheck(occId, itemId);
+    setLocalChecks(prev => ({
+      ...prev,
+      [occId]: { ...(prev[occId] ?? {}), [itemId]: !current },
+    }));
+  };
+
+  const handleSaveChecks = async () => {
     if (!checklist) {
       return;
     }
-    const occ = checklist.occasions.find(o => o.id === occId);
-    if (!occ) {
-      return;
+    setSaving(true);
+    try {
+      const updates: Promise<void>[] = [];
+      for (const occ of checklist.occasions) {
+        const local = localChecks[occ.id] ?? {};
+        for (const [itemIdStr, localVal] of Object.entries(local)) {
+          const itemId = Number(itemIdStr);
+          if (localVal !== !!occ.checks[itemId]) {
+            updates.push(setCheck(tripId, occ.id, itemId, localVal));
+          }
+        }
+      }
+      await Promise.all(updates);
+      setLocalChecks({});
+      await reload();
+    } finally {
+      setSaving(false);
     }
-    const newChecked = !occ.checks[itemId];
-    setChecklist({
-      ...checklist,
-      occasions: checklist.occasions.map(o =>
-        o.id === occId
-          ? { ...o, checks: { ...o.checks, [itemId]: newChecked } }
-          : o,
-      ),
-    });
-    await setCheck(tripId, occId, itemId, newChecked);
   };
 
-  const handleOccasionBlur = async (occId: number, name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
-    }
-    await updateOccasion(tripId, occId, trimmed);
+  const handleDiscardChecks = () => {
+    setLocalChecks({});
   };
 
-  const handleAddOccasion = async () => {
-    await addOccasion(tripId, '新時機');
-    await reload();
-  };
-
-  const handleDeleteOccasion = async (occId: number) => {
-    await deleteOccasion(tripId, occId);
-    await reload();
-  };
-
-  const handleAddItem = async (catId: number) => {
-    await addTripItem(tripId, catId, { name: '新項目' });
-    await reload();
-  };
-
-  const handleDeleteItem = async (itemId: number) => {
-    await deleteTripItem(tripId, itemId);
-    await reload();
-  };
-
-  const handleItemNameBlur = async (itemId: number, value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
-    await updateTripItem(tripId, itemId, { name: trimmed });
-    await reload();
-  };
-
-  const handleItemQuantityBlur = async (itemId: number, value: string) => {
-    const parsed = value.trim() === '' ? null : Number(value);
-    if (value.trim() !== '' && isNaN(parsed as number)) {
-      return;
-    }
-    await updateTripItem(tripId, itemId, { quantity: parsed });
-    await reload();
-  };
-
-  const handleItemNotesBlur = async (itemId: number, value: string) => {
-    await updateTripItem(tripId, itemId, { notes: value.trim() || null });
-    await reload();
-  };
-
-  const handleItemStorageToggle = async (
-    itemId: number,
-    option: StorageOption,
-    currentStorage: string | null | undefined,
-  ) => {
-    const newValue = toggleStorageOption(currentStorage, option);
-    await updateTripItem(tripId, itemId, { storage_location: newValue });
-    await reload();
-  };
-
-  const handleAddCategory = async () => {
-    await addTripCategory(tripId, '新分類');
-    await reload();
-  };
-
-  const handleDeleteCategory = async (catId: number) => {
-    await deleteTripCategory(tripId, catId);
-    await reload();
-  };
-
-  const handleCategoryNameBlur = async (catId: number, value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
-    await updateTripCategory(tripId, catId, trimmed);
-  };
-
-  const handleAddSpec = async (itemId: number) => {
-    await addTripItemSpec(tripId, itemId, { name: '新規格' });
-    await reload();
-  };
-
-  const handleDeleteSpec = async (itemId: number, specId: number) => {
-    await deleteTripItemSpec(tripId, itemId, specId);
-    await reload();
-  };
-
-  const handleSpecBlur = async (
-    itemId: number,
-    specId: number,
-    value: string,
-    current: Pick<ItemSpec, 'name' | 'storage_location'>,
-  ) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
-    await updateTripItemSpec(tripId, itemId, specId, {
-      ...current,
-      name: trimmed,
-    });
-    await reload();
-  };
-
-  const handleSpecStorageToggle = async (
-    itemId: number,
-    specId: number,
-    option: StorageOption,
-    current: Pick<ItemSpec, 'name' | 'storage_location'>,
-  ) => {
-    const newValue = toggleStorageOption(current.storage_location, option);
-    await updateTripItemSpec(tripId, itemId, specId, {
-      ...current,
-      storage_location: newValue,
-    });
+  const handleEditSaved = async () => {
+    setLocalChecks({});
     await reload();
   };
 
@@ -224,16 +132,24 @@ export default function TripChecklistPanel({ tripId }: Props) {
         <div>
           <p className='mb-2 text-4xl'>🧳</p>
           <p className='text-muted-foreground mb-4 text-sm'>
-            尚未有任何分類，請新增分類以開始建立行李清單。
+            尚未有任何分類，請點擊「編輯清單」以開始建立行李清單。
           </p>
           <button
-            onClick={() => void handleAddCategory()}
+            onClick={() => setShowEditModal(true)}
             className='border-border text-muted-foreground hover:border-primary hover:text-primary inline-flex items-center gap-1 rounded-lg border border-dashed px-3 py-1.5 text-xs transition-colors'
           >
             <Plus size={12} />
-            新增分類
+            編輯清單
           </button>
         </div>
+        {showEditModal && (
+          <TripChecklistEditModal
+            tripId={tripId}
+            checklist={checklist}
+            onClose={() => setShowEditModal(false)}
+            onSaved={() => void handleEditSaved()}
+          />
+        )}
       </div>
     );
   }
@@ -244,336 +160,209 @@ export default function TripChecklistPanel({ tripId }: Props) {
   );
 
   return (
-    <div className='flex-1 overflow-auto'>
-      <div className='min-w-max'>
-        <table className='w-full border-collapse text-sm'>
-          <thead>
-            <tr className='border-border border-b'>
-              {/* Fixed left header */}
-              <th className='bg-background text-foreground sticky left-0 z-20 min-w-[220px] px-4 py-3 text-left font-semibold'>
-                項目
-              </th>
+    <div className='flex flex-1 flex-col overflow-hidden'>
+      {/* Toolbar */}
+      <div className='border-border flex shrink-0 items-center justify-between border-b px-4 py-2'>
+        <span className='text-muted-foreground text-xs'>
+          共 {totalItems} 項
+        </span>
+        <button
+          onClick={() => setShowEditModal(true)}
+          className='text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors'
+        >
+          <Pencil size={14} />
+          編輯清單
+        </button>
+      </div>
 
-              {/* Occasion columns */}
-              {checklist.occasions.map(occ => {
-                const checked = Object.values(occ.checks).filter(
-                  Boolean,
-                ).length;
-                const pct = totalItems > 0 ? (checked / totalItems) * 100 : 0;
-                return (
-                  <th
-                    key={occ.id}
-                    className='min-w-[120px] px-4 py-2 text-center align-top'
-                  >
-                    <div className='flex flex-col items-center gap-1'>
-                      <div className='flex items-center gap-1'>
-                        <input
-                          defaultValue={occ.name}
-                          onBlur={e =>
-                            void handleOccasionBlur(occ.id, e.target.value)
-                          }
-                          className='text-foreground w-20 bg-transparent text-center text-sm font-semibold focus:outline-none'
-                        />
-                        {checklist.occasions.length > 1 && (
-                          <button
-                            onClick={() => void handleDeleteOccasion(occ.id)}
-                            className='text-muted-foreground hover:text-destructive rounded p-0.5'
-                            aria-label='刪除時機'
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
+      {/* Table */}
+      <div className='flex-1 overflow-auto'>
+        <div className='min-w-max'>
+          <table className='w-full border-collapse text-sm'>
+            <thead>
+              <tr className='border-border border-b'>
+                <th className='bg-background text-foreground sticky left-0 z-20 min-w-[220px] px-4 py-3 text-left font-semibold'>
+                  項目
+                </th>
+                {checklist.occasions.map(occ => {
+                  const checked = checklist.categories
+                    .flatMap(c => c.items)
+                    .filter(item => getCheck(occ.id, item.id)).length;
+                  const pct = totalItems > 0 ? (checked / totalItems) * 100 : 0;
+                  return (
+                    <th
+                      key={occ.id}
+                      className='min-w-[120px] px-4 py-2 text-center align-top'
+                    >
+                      <div className='flex flex-col items-center gap-1'>
+                        <span className='text-foreground text-sm font-semibold'>
+                          {occ.name}
+                        </span>
+                        <span className='text-muted-foreground text-xs'>
+                          {checked} / {totalItems}
+                        </span>
+                        <div className='bg-muted h-1 w-full overflow-hidden rounded-full'>
+                          <div
+                            className='bg-primary h-full rounded-full transition-all duration-300'
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className='text-muted-foreground text-xs'>
-                        {checked} / {totalItems}
-                      </span>
-                      <div className='bg-muted h-1 w-full overflow-hidden rounded-full'>
-                        <div
-                          className='bg-primary h-full rounded-full transition-all duration-300'
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  </th>
-                );
-              })}
+                    </th>
+                  );
+                })}
+                <th className='w-0' />
+              </tr>
+            </thead>
 
-              {/* Add occasion button */}
-              <th className='p-3'>
-                <button
-                  onClick={() => void handleAddOccasion()}
-                  className='border-border text-muted-foreground hover:border-primary hover:text-primary flex items-center gap-1 rounded-lg border border-dashed px-2 py-1 text-xs transition-colors'
-                >
-                  <Plus size={12} />
-                  新增時機
-                </button>
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {checklist.categories.map(cat => (
-              <>
-                {/* Category header row */}
-                <tr
-                  key={`cat-${cat.id}`}
-                  className='border-border bg-muted/40 group/cat border-b'
-                >
-                  <td
-                    colSpan={checklist.occasions.length + 2}
-                    className='bg-muted/40 sticky left-0 z-10 px-4 py-2'
-                  >
-                    <div className='flex items-center gap-2'>
-                      <input
-                        defaultValue={cat.name}
-                        onBlur={e =>
-                          void handleCategoryNameBlur(cat.id, e.target.value)
-                        }
-                        className='text-muted-foreground min-w-0 flex-1 bg-transparent text-xs font-semibold uppercase tracking-wide focus:outline-none'
-                      />
-                      <button
-                        onClick={() => void handleDeleteCategory(cat.id)}
-                        className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 opacity-0 transition-all group-hover/cat:opacity-100'
-                        aria-label='刪除分類'
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Item rows */}
-                {cat.items.map((item, idx) => (
+            <tbody>
+              {checklist.categories.map(cat => (
+                <>
+                  {/* Category row */}
                   <tr
-                    key={item.id}
-                    className={`border-border hover:bg-accent/40 group border-b transition-colors ${
-                      idx % 2 === 0 ? '' : 'bg-muted/10'
-                    }`}
+                    key={`cat-${cat.id}`}
+                    className='border-border bg-muted/40 border-b'
                   >
-                    {/* Item info - sticky left */}
-                    <td className='bg-background text-foreground group-hover:bg-accent/40 sticky left-0 z-10 px-4 py-3'>
-                      <div className='flex flex-col gap-1'>
-                        {/* Name + delete */}
-                        <div className='flex items-center gap-1'>
-                          <input
-                            defaultValue={item.name}
-                            onFocus={e => e.target.select()}
-                            onBlur={e =>
-                              void handleItemNameBlur(item.id, e.target.value)
-                            }
-                            className='text-foreground min-w-0 flex-1 bg-transparent text-base font-medium focus:outline-none'
-                          />
-                          <button
-                            onClick={() => void handleDeleteItem(item.id)}
-                            className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100'
-                            aria-label='刪除項目'
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                    <td
+                      colSpan={checklist.occasions.length + 2}
+                      className='bg-muted/40 sticky left-0 z-10 px-4 py-2'
+                    >
+                      <span className='text-muted-foreground text-xs font-semibold uppercase tracking-wide'>
+                        {cat.name}
+                      </span>
+                    </td>
+                  </tr>
 
-                        {/* Quantity + Notes */}
-                        <div className='flex items-center gap-2'>
-                          <div className='flex items-center gap-1'>
-                            <span className='text-muted-foreground text-sm'>
-                              x
+                  {/* Item rows */}
+                  {cat.items.map((item, idx) => (
+                    <tr
+                      key={item.id}
+                      className={`border-border hover:bg-accent/40 border-b transition-colors ${
+                        idx % 2 === 0 ? '' : 'bg-muted/10'
+                      }`}
+                    >
+                      <td className='bg-background group-hover:bg-accent/40 sticky left-0 z-10 px-4 py-3'>
+                        <div className='flex flex-col gap-0.5'>
+                          <div className='flex items-baseline gap-2'>
+                            <span className='text-foreground text-sm font-medium'>
+                              {item.name}
                             </span>
-                            <input
-                              type='number'
-                              min={1}
-                              defaultValue={item.quantity ?? ''}
-                              onBlur={e =>
-                                void handleItemQuantityBlur(
-                                  item.id,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder='數量'
-                              className='text-muted-foreground w-14 bg-transparent text-sm focus:outline-none focus:ring-0'
-                            />
+                            <span className='text-muted-foreground text-xs'>
+                              {item.quantity ? `× ${item.quantity}` : '些許'}
+                            </span>
                           </div>
-                          <input
-                            defaultValue={item.notes ?? ''}
-                            onBlur={e =>
-                              void handleItemNotesBlur(item.id, e.target.value)
-                            }
-                            placeholder='補充說明'
-                            className='text-muted-foreground min-w-0 flex-1 bg-transparent text-sm focus:outline-none focus:ring-0'
-                          />
-                        </div>
-
-                        {/* Storage location */}
-                        <div className='flex items-center gap-3'>
-                          <Package
-                            size={13}
-                            className='text-muted-foreground shrink-0'
-                          />
-                          {STORAGE_OPTIONS.map(option => (
-                            <label
-                              key={option}
-                              className='flex cursor-pointer items-center gap-1'
-                            >
-                              <input
-                                type='checkbox'
-                                checked={hasStorageOption(
-                                  item.storage_location,
-                                  option,
-                                )}
-                                onChange={() =>
-                                  void handleItemStorageToggle(
-                                    item.id,
-                                    option,
-                                    item.storage_location,
-                                  )
-                                }
-                                className='accent-primary size-3.5 cursor-pointer'
-                              />
-                              <span className='text-muted-foreground text-sm'>
-                                {option}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-
-                        {/* Specs */}
-                        <div className='border-border mt-1 space-y-2 border-l-2 pl-3'>
-                          {(item.specs ?? []).map((spec, specIdx) => (
-                            <div
-                              key={spec.id}
-                              className='flex items-center gap-2'
-                            >
-                              <span className='text-muted-foreground w-5 shrink-0 text-xs'>
-                                {specIdx + 1}.
-                              </span>
-                              <input
-                                defaultValue={spec.name}
-                                onFocus={e => e.target.select()}
-                                onBlur={e =>
-                                  void handleSpecBlur(
-                                    item.id,
-                                    spec.id,
-                                    e.target.value,
-                                    spec,
-                                  )
-                                }
-                                placeholder='規格名稱'
-                                className='text-foreground/80 min-w-0 flex-1 bg-transparent text-sm focus:outline-none focus:ring-0'
-                              />
+                          {item.notes && (
+                            <p className='text-muted-foreground text-xs'>
+                              {item.notes}
+                            </p>
+                          )}
+                          {item.storage_location && (
+                            <div className='flex items-center gap-1.5'>
                               <Package
                                 size={11}
-                                className='text-muted-foreground shrink-0'
+                                className='text-muted-foreground'
                               />
-                              {STORAGE_OPTIONS.map(option => (
-                                <label
-                                  key={option}
-                                  className='flex cursor-pointer items-center gap-1'
+                              {STORAGE_OPTIONS.filter(opt =>
+                                hasStorageOption(item.storage_location, opt),
+                              ).map(opt => (
+                                <span
+                                  key={opt}
+                                  className='bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs'
                                 >
-                                  <input
-                                    type='checkbox'
-                                    checked={hasStorageOption(
-                                      spec.storage_location,
-                                      option,
-                                    )}
-                                    onChange={() =>
-                                      void handleSpecStorageToggle(
-                                        item.id,
-                                        spec.id,
-                                        option,
-                                        spec,
-                                      )
-                                    }
-                                    className='accent-primary size-3 cursor-pointer'
-                                  />
-                                  <span className='text-muted-foreground text-xs'>
-                                    {option}
-                                  </span>
-                                </label>
+                                  {opt}
+                                </span>
                               ))}
-                              <button
-                                onClick={() =>
-                                  void handleDeleteSpec(item.id, spec.id)
-                                }
-                                className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 opacity-0 transition-all group-hover:opacity-100'
-                                aria-label='刪除規格'
-                              >
-                                <Trash2 size={11} />
-                              </button>
                             </div>
-                          ))}
-                          <button
-                            onClick={() => void handleAddSpec(item.id)}
-                            className='text-muted-foreground hover:text-primary flex items-center gap-0.5 text-xs opacity-0 transition-colors group-hover:opacity-100'
-                          >
-                            <Plus size={11} />
-                            新增規格
-                          </button>
+                          )}
+                          {(item.specs ?? []).length > 0 && (
+                            <div className='border-border mt-0.5 space-y-0.5 border-l-2 pl-3'>
+                              {(item.specs ?? []).map((spec, specIdx) => (
+                                <div
+                                  key={spec.id}
+                                  className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5'
+                                >
+                                  <span className='text-muted-foreground text-xs'>
+                                    {specIdx + 1}.
+                                  </span>
+                                  <span className='text-foreground/80 text-xs'>
+                                    {spec.name}
+                                  </span>
+                                  {spec.storage_location && (
+                                    <>
+                                      <Package
+                                        size={9}
+                                        className='text-muted-foreground'
+                                      />
+                                      {STORAGE_OPTIONS.filter(opt =>
+                                        hasStorageOption(
+                                          spec.storage_location,
+                                          opt,
+                                        ),
+                                      ).map(opt => (
+                                        <span
+                                          key={opt}
+                                          className='bg-primary/10 text-primary rounded px-1 py-0.5 text-xs'
+                                        >
+                                          {opt}
+                                        </span>
+                                      ))}
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Checkboxes per occasion */}
-                    {checklist.occasions.map(occ => (
-                      <td
-                        key={occ.id}
-                        className='px-4 py-2.5 text-center'
-                        onClick={() => void handleToggleCheck(occ.id, item.id)}
-                      >
-                        <label className='flex cursor-pointer items-center justify-center'>
-                          <input
-                            type='checkbox'
-                            checked={!!occ.checks[item.id]}
-                            onChange={() =>
-                              void handleToggleCheck(occ.id, item.id)
-                            }
-                            onClick={e => e.stopPropagation()}
-                            className='border-border accent-primary size-4 cursor-pointer rounded'
-                          />
-                        </label>
                       </td>
-                    ))}
 
-                    {/* Empty cell for the add-occasion column */}
-                    <td />
-                  </tr>
-                ))}
+                      {checklist.occasions.map(occ => (
+                        <td
+                          key={occ.id}
+                          className='cursor-pointer px-4 py-2.5 text-center'
+                          onClick={() => handleToggleCheck(occ.id, item.id)}
+                        >
+                          <label className='flex cursor-pointer items-center justify-center'>
+                            <input
+                              type='checkbox'
+                              checked={getCheck(occ.id, item.id)}
+                              onChange={() =>
+                                handleToggleCheck(occ.id, item.id)
+                              }
+                              onClick={e => e.stopPropagation()}
+                              className='border-border accent-primary size-4 cursor-pointer rounded'
+                            />
+                          </label>
+                        </td>
+                      ))}
 
-                {/* Add item row per category */}
-                <tr key={`add-${cat.id}`} className='border-border border-b'>
-                  <td className='bg-background sticky left-0 z-10 px-4 py-1.5'>
-                    <button
-                      onClick={() => void handleAddItem(cat.id)}
-                      className='text-muted-foreground hover:text-primary flex items-center gap-1 text-xs transition-colors'
-                    >
-                      <Plus size={12} />
-                      新增項目
-                    </button>
-                  </td>
-                  {checklist.occasions.map(occ => (
-                    <td key={occ.id} />
+                      <td />
+                    </tr>
                   ))}
-                  <td />
-                </tr>
-              </>
-            ))}
-
-            {/* Add category row */}
-            <tr>
-              <td
-                colSpan={checklist.occasions.length + 2}
-                className='bg-background sticky left-0 z-10 px-4 py-2'
-              >
-                <button
-                  onClick={() => void handleAddCategory()}
-                  className='border-border text-muted-foreground hover:border-primary hover:text-primary flex items-center gap-1 rounded-lg border border-dashed px-2 py-1 text-xs transition-colors'
-                >
-                  <Plus size={12} />
-                  新增分類
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Floating save/discard bar */}
+      {isDirty && (
+        <CheckSaveBar
+          saving={saving}
+          onSave={() => void handleSaveChecks()}
+          onDiscard={handleDiscardChecks}
+        />
+      )}
+
+      {/* Edit modal */}
+      {showEditModal && (
+        <TripChecklistEditModal
+          tripId={tripId}
+          checklist={checklist}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => void handleEditSaved()}
+        />
+      )}
     </div>
   );
 }

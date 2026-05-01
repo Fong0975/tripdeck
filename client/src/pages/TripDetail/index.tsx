@@ -1,5 +1,5 @@
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import AttractionCard from '@/components/AttractionCard';
@@ -36,8 +36,37 @@ export default function TripDetail() {
     'itinerary',
   );
   const [exporting, setExporting] = useState(false);
+  const [checklistDirty, setChecklistDirty] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
+
+  // Guard browser back button when checklist has unsaved changes
+  useEffect(() => {
+    if (!checklistDirty) {
+      return;
+    }
+    window.history.pushState(null, '');
+    const onPopstate = () => {
+      window.history.pushState(null, '');
+      setShowLeaveConfirm(true);
+    };
+    window.addEventListener('popstate', onPopstate);
+    return () => window.removeEventListener('popstate', onPopstate);
+  }, [checklistDirty]);
+
+  const handleBack = () => {
+    if (checklistDirty) {
+      setShowLeaveConfirm(true);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleConfirmLeave = () => {
+    setShowLeaveConfirm(false);
+    navigate('/');
+  };
 
   // --- Export ---
 
@@ -193,7 +222,7 @@ export default function TripDetail() {
 
       <TripHeader
         trip={trip}
-        onBack={() => navigate('/')}
+        onBack={handleBack}
         onExport={() => void handleExport()}
         exporting={exporting}
       />
@@ -224,7 +253,10 @@ export default function TripDetail() {
 
       {activeTab === 'checklist' ? (
         <div className='flex flex-1 flex-col px-0 sm:px-8 xl:px-16'>
-          <TripChecklistPanel tripId={trip.id} />
+          <TripChecklistPanel
+            tripId={trip.id}
+            onDirtyChange={setChecklistDirty}
+          />
         </div>
       ) : (
         /* Board */
@@ -314,6 +346,33 @@ export default function TripDetail() {
             void handleSaveConnection(editConnectionData.dayIndex, c)
           }
         />
+      )}
+
+      {/* Leave confirmation when checklist has unsaved changes */}
+      {showLeaveConfirm && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+          <div className='absolute inset-0 bg-black/50' />
+          <div className='bg-card border-border relative w-full max-w-sm rounded-2xl border p-6 shadow-xl'>
+            <p className='text-foreground font-semibold'>確定要離開嗎？</p>
+            <p className='text-muted-foreground mt-1 text-sm'>
+              行李清單有未儲存的勾選變更，離開後將會遺失。
+            </p>
+            <div className='mt-5 flex items-center justify-end gap-3'>
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className='text-muted-foreground hover:text-foreground px-4 py-2 text-sm transition-colors'
+              >
+                留下
+              </button>
+              <button
+                onClick={handleConfirmLeave}
+                className='bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors'
+              >
+                確定離開
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

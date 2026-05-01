@@ -1,7 +1,7 @@
 import { Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
-import ChecklistTemplateEditor from '@/components/ChecklistTemplateEditor';
+import ChecklistTemplateView from '@/components/checklist/ChecklistTemplateView';
 
 export default function ChecklistSection() {
   const [expanded, setExpanded] = useState(false);
@@ -32,7 +32,7 @@ export default function ChecklistSection() {
 
         {expanded && (
           <div className='border-border border-t px-6 py-5'>
-            <ChecklistTemplateEditor />
+            <ChecklistTemplateView />
           </div>
         )}
       </div>
