@@ -36,6 +36,14 @@ router.patch(
   tripController.reorderAttractions,
 );
 
+// Day locations
+router.post('/:tripId/days/:dayId/locations', tripController.addDayLocation);
+router.put('/:tripId/locations/:locationId', tripController.updateDayLocation);
+router.delete(
+  '/:tripId/locations/:locationId',
+  tripController.deleteDayLocation,
+);
+
 // Connections
 router.post('/:tripId/days/:dayId/connections', tripController.addConnection);
 router.put(
