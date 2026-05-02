@@ -1,4 +1,17 @@
-import { ChevronLeft, ChevronRight, Droplets, Umbrella } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
+  Droplets,
+  Sun,
+  Umbrella,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { DayLocation } from '@/types';
@@ -7,6 +20,39 @@ import { fetchDailyWeather, type WeatherResult } from '@/utils/weatherApi';
 interface Props {
   locations: DayLocation[];
   date: string;
+}
+
+function WeatherIcon({ code, size = 36 }: { code: string; size?: number }) {
+  const id = parseInt(code.slice(0, 2), 10);
+
+  if (id === 1) {
+    return <Sun size={size} className='text-yellow-400' />;
+  }
+  if (id === 2) {
+    return <CloudSun size={size} className='text-yellow-400' />;
+  }
+  if (id === 3) {
+    return <Cloud size={size} className='text-slate-400' />;
+  }
+  if (id === 4) {
+    return <Cloud size={size} className='text-slate-500' />;
+  }
+  if (id === 9) {
+    return <CloudDrizzle size={size} className='text-blue-400' />;
+  }
+  if (id === 10) {
+    return <CloudRain size={size} className='text-blue-500' />;
+  }
+  if (id === 11) {
+    return <CloudLightning size={size} className='text-violet-400' />;
+  }
+  if (id === 13) {
+    return <CloudSnow size={size} className='text-sky-300' />;
+  }
+  if (id === 50) {
+    return <CloudFog size={size} className='text-slate-400' />;
+  }
+  return <Cloud size={size} className='text-slate-400' />;
 }
 
 export default function DayWeather({ locations, date }: Props) {
@@ -121,11 +167,7 @@ export default function DayWeather({ locations, date }: Props) {
 
         {current?.status === 'success' && (
           <div className='flex flex-col items-center gap-1'>
-            <img
-              src={`https://openweathermap.org/img/wn/${current.data.icon}@2x.png`}
-              alt={current.data.description}
-              className='size-10'
-            />
+            <WeatherIcon code={current.data.icon} />
             <div className='text-center'>
               <p className='text-foreground text-xs font-medium capitalize'>
                 {current.data.description}
