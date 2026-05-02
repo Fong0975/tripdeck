@@ -1,7 +1,7 @@
 {
   "name": "@tripdeck/server",
   "private": true,
-  "version": "1.0.21",
+  "version": "1.0.22",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
