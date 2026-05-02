@@ -826,7 +826,7 @@ export async function exportToDocx(
         (new Date(`${day.date}T00:00:00`).getTime() - today.getTime()) /
           86_400_000,
       );
-      if (diffDays >= 0 && diffDays <= 4) {
+      if (diffDays >= 0) {
         for (const loc of day.locations) {
           const weather = await fetchDailyWeather(loc.name, day.date);
           if (weather.status === 'success') {

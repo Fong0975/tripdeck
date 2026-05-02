@@ -15,42 +15,47 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import type { DayLocation } from '@/types';
-import { fetchDailyWeather, type WeatherResult } from '@/utils/weatherApi';
+import {
+  fetchDailyWeather,
+  type WeatherIconCode,
+  type WeatherResult,
+} from '@/utils/weatherApi';
 
 interface Props {
   locations: DayLocation[];
   date: string;
 }
 
-function WeatherIcon({ code, size = 36 }: { code: string; size?: number }) {
-  const id = parseInt(code.slice(0, 2), 10);
-
-  if (id === 1) {
+function WeatherIcon({
+  code,
+  size = 36,
+}: {
+  code: WeatherIconCode;
+  size?: number;
+}) {
+  if (code === 'clear') {
     return <Sun size={size} className='text-yellow-400' />;
   }
-  if (id === 2) {
+  if (code === 'partly-cloudy') {
     return <CloudSun size={size} className='text-yellow-400' />;
   }
-  if (id === 3) {
+  if (code === 'cloudy') {
     return <Cloud size={size} className='text-slate-400' />;
   }
-  if (id === 4) {
-    return <Cloud size={size} className='text-slate-500' />;
+  if (code === 'fog') {
+    return <CloudFog size={size} className='text-slate-400' />;
   }
-  if (id === 9) {
+  if (code === 'drizzle') {
     return <CloudDrizzle size={size} className='text-blue-400' />;
   }
-  if (id === 10) {
+  if (code === 'rain') {
     return <CloudRain size={size} className='text-blue-500' />;
   }
-  if (id === 11) {
-    return <CloudLightning size={size} className='text-violet-400' />;
-  }
-  if (id === 13) {
+  if (code === 'snow') {
     return <CloudSnow size={size} className='text-sky-300' />;
   }
-  if (id === 50) {
-    return <CloudFog size={size} className='text-slate-400' />;
+  if (code === 'thunder') {
+    return <CloudLightning size={size} className='text-violet-400' />;
   }
   return <Cloud size={size} className='text-slate-400' />;
 }

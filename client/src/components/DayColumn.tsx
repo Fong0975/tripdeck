@@ -6,7 +6,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { MapPin, Plus, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isWeatherEnabled } from '@/utils/weatherApi';
@@ -69,6 +69,23 @@ export default function DayColumn({
     today.setHours(0, 0, 0, 0);
     return new Date(`${day.date}T00:00:00`) < today;
   })();
+
+  useEffect(() => {
+    if (isWeatherEnabled && !isPastDate && day.locations.length > 0) {
+      return;
+    }
+    const tag = `[Weather] Day ${day.day} (${day.date})`;
+    if (!isWeatherEnabled) {
+      // eslint-disable-next-line no-console
+      console.log(`${tag}: hidden — no API key configured`);
+    } else if (isPastDate) {
+      // eslint-disable-next-line no-console
+      console.log(`${tag}: hidden — past date`);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(`${tag}: hidden — no locations set`);
+    }
+  }, [day.day, day.date, day.locations.length, isPastDate]);
 
   const startEditing = (locationId: number, currentName: string) => {
     setEditingLocationId(locationId);
