@@ -65,6 +65,24 @@ export const tableDefinitions: TableDef[] = [
   },
 
   {
+    name: 'trip_day_locations',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_day_id', type: 'INT', notNull: true },
+      { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_day_locations_day',
+        column: 'trip_day_id',
+        references: { table: 'trip_days', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
     name: 'trip_attractions',
     columns: [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },

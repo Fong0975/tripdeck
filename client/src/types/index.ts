@@ -51,10 +51,16 @@ export interface TravelConnection {
   images?: AttractionImage[];
 }
 
+export interface DayLocation {
+  id: number;
+  name: string;
+}
+
 export interface DayPlan {
   id: number;
   day: number;
   date: string;
+  locations: DayLocation[];
   attractions: Attraction[];
   connections: TravelConnection[];
 }

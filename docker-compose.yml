@@ -27,6 +27,7 @@ services:
       network: host
       args:
         FRONTEND_PORT: ${FRONTEND_PORT:-3000}
+        VITE_OWM_API_KEY: ${VITE_OWM_API_KEY:-}
     container_name: tripdeck-frontend
     image: fong/tripdeck-frontend
     network_mode: host

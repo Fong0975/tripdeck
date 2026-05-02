@@ -7,6 +7,7 @@ COPY package.json ./
 RUN npm install --verbose
 
 COPY . .
+ARG VITE_OWM_API_KEY=
 RUN npm run build
 
 # Final stage

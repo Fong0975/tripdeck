@@ -13,10 +13,13 @@ import { exportToDocx } from '@/utils/exportToDocx';
 import {
   addAttraction,
   addConnection,
+  addDayLocation,
   deleteAttraction,
+  deleteDayLocation,
   duplicateAttraction,
   updateAttraction,
   updateConnection,
+  updateDayLocation,
   uploadAttractionImage,
 } from '@/utils/storage';
 
@@ -190,6 +193,39 @@ export default function TripDetail() {
     setModal({ type: 'none' });
   };
 
+  // --- Day Locations ---
+
+  const handleAddLocation = async (dayIndex: number, name: string) => {
+    if (!trip || !content) {
+      return;
+    }
+    await addDayLocation(trip.id, content.days[dayIndex].id, name);
+    await reloadContent();
+  };
+
+  const handleUpdateLocation = async (
+    _dayIndex: number,
+    locationId: number,
+    name: string,
+  ) => {
+    if (!trip) {
+      return;
+    }
+    await updateDayLocation(trip.id, locationId, name);
+    await reloadContent();
+  };
+
+  const handleDeleteLocation = async (
+    _dayIndex: number,
+    locationId: number,
+  ) => {
+    if (!trip) {
+      return;
+    }
+    await deleteDayLocation(trip.id, locationId);
+    await reloadContent();
+  };
+
   // --- Derived modal data ---
 
   const editConnectionData =
@@ -296,6 +332,13 @@ export default function TripDetail() {
                     })
                   }
                   onAddConnection={handleAddConnection}
+                  onAddLocation={(di, name) => void handleAddLocation(di, name)}
+                  onUpdateLocation={(di, locId, name) =>
+                    void handleUpdateLocation(di, locId, name)
+                  }
+                  onDeleteLocation={(di, locId) =>
+                    void handleDeleteLocation(di, locId)
+                  }
                 />
               ))}
             </div>

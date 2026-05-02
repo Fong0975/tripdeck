@@ -47,10 +47,16 @@ export interface ConnectionResponse {
   images: ImageResponse[];
 }
 
+export interface DayLocation {
+  id: number;
+  name: string;
+}
+
 export interface DayResponse {
   id: number;
   day: number;
   date: string;
+  locations: DayLocation[];
   attractions: AttractionResponse[];
   connections: ConnectionResponse[];
 }
@@ -110,4 +116,12 @@ export interface UpdateConnectionBody {
   duration?: string | null;
   route?: string | null;
   notes?: string | null;
+}
+
+export interface CreateLocationBody {
+  name: string;
+}
+
+export interface UpdateLocationBody {
+  name: string;
 }

@@ -4,11 +4,14 @@ import pool from '../config/database';
 import type {
   AttractionResponse,
   ConnectionResponse,
+  CreateLocationBody,
   CreateTripBody,
+  DayLocation,
   DayResponse,
   ReferenceWebsite,
   TripContentResponse,
   TripResponse,
+  UpdateLocationBody,
 } from '../types/trip';
 
 import * as imageRepo from './imageRepository';
@@ -60,6 +63,13 @@ interface TripConnectionRow extends RowDataPacket {
   duration: string | null;
   route: string | null;
   notes: string | null;
+}
+
+interface TripDayLocationRow extends RowDataPacket {
+  id: number;
+  trip_day_id: number;
+  name: string;
+  sort_order: number;
 }
 
 // --- Helpers ---
@@ -257,6 +267,11 @@ export async function findContent(
     dayIds,
   );
 
+  const [locationRows] = await pool.execute<TripDayLocationRow[]>(
+    `SELECT * FROM trip_day_locations WHERE trip_day_id IN (${dayPh}) ORDER BY trip_day_id, sort_order`,
+    dayIds,
+  );
+
   // Batch-fetch images for attractions and connections.
   const attrIds = attractionRows.map(r => r.id);
   const connIds = connectionRows.map(r => r.id);
@@ -265,7 +280,14 @@ export async function findContent(
     imageRepo.getConnectionImagesBatch(connIds),
   ]);
 
-  // Group attractions and connections by their parent day ID.
+  // Group locations, attractions, and connections by their parent day ID.
+  const locationsByDayId = new Map<number, DayLocation[]>();
+  for (const row of locationRows) {
+    const list = locationsByDayId.get(row.trip_day_id) ?? [];
+    list.push({ id: row.id, name: row.name });
+    locationsByDayId.set(row.trip_day_id, list);
+  }
+
   const attractionsByDayId = new Map<number, AttractionResponse[]>();
   for (const row of attractionRows) {
     const list = attractionsByDayId.get(row.trip_day_id) ?? [];
@@ -304,9 +326,46 @@ export async function findContent(
     id: row.id,
     day: row.day,
     date: toDateString(row.date),
+    locations: locationsByDayId.get(row.id) ?? [],
     attractions: attractionsByDayId.get(row.id) ?? [],
     connections: connectionsByDayId.get(row.id) ?? [],
   }));
 
   return { tripId, days };
+}
+
+export async function addLocation(
+  dayId: number,
+  data: CreateLocationBody,
+): Promise<DayLocation> {
+  const [countRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT COUNT(*) AS cnt FROM trip_day_locations WHERE trip_day_id = ?',
+    [dayId],
+  );
+  const sortOrder = (countRows[0].cnt as number) ?? 0;
+
+  const [result] = await pool.execute<ResultSetHeader>(
+    'INSERT INTO trip_day_locations (trip_day_id, name, sort_order) VALUES (?, ?, ?)',
+    [dayId, data.name.trim(), sortOrder],
+  );
+  return { id: result.insertId, name: data.name.trim() };
+}
+
+export async function updateLocation(
+  locationId: number,
+  data: UpdateLocationBody,
+): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'UPDATE trip_day_locations SET name = ? WHERE id = ?',
+    [data.name.trim(), locationId],
+  );
+  return result.affectedRows > 0;
+}
+
+export async function deleteLocation(locationId: number): Promise<boolean> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    'DELETE FROM trip_day_locations WHERE id = ?',
+    [locationId],
+  );
+  return result.affectedRows > 0;
 }
