@@ -1,6 +1,7 @@
 import { Images, Pencil } from 'lucide-react';
 
 import type { TravelConnection, TransportMode } from '@/types';
+import { formatDurationDisplay } from '@/utils/duration';
 
 interface Props {
   connection: TravelConnection;
@@ -28,6 +29,8 @@ const TRANSPORT_LABELS: Record<TransportMode, string> = {
 };
 
 export default function TravelConnectionItem({ connection, onEdit }: Props) {
+  const durationDisplay = formatDurationDisplay(connection.duration);
+
   return (
     <div className='group my-1 flex items-center gap-2 px-3'>
       {/* Vertical line */}
@@ -47,12 +50,10 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
           <span className='text-muted-foreground'>
             {TRANSPORT_LABELS[connection.transportMode]}
           </span>
-          {connection.duration && (
+          {durationDisplay && (
             <>
               <span className='text-muted-foreground/50'>·</span>
-              <span className='text-muted-foreground'>
-                {connection.duration}
-              </span>
+              <span className='text-muted-foreground'>{durationDisplay}</span>
             </>
           )}
           {(connection.images ?? []).length > 0 && (

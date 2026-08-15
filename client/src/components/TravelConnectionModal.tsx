@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { TravelConnection, TransportMode, AttractionImage } from '@/types';
+import { parseDurationMinutes } from '@/utils/duration';
 import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
@@ -44,6 +45,9 @@ export default function TravelConnectionModal({
   const [images, setImages] = useState<AttractionImage[]>(
     connection.images ?? [],
   );
+  const initialDurationMinutes = parseDurationMinutes(connection.duration) ?? 0;
+  const [hours, setHours] = useState(Math.floor(initialDurationMinutes / 60));
+  const [minutes, setMinutes] = useState(initialDurationMinutes % 60);
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -71,7 +75,12 @@ export default function TravelConnectionModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...form, images });
+    const totalMinutes = hours * 60 + minutes;
+    onSave({
+      ...form,
+      duration: totalMinutes > 0 ? String(totalMinutes) : null,
+      images,
+    });
   };
 
   const isEditing = connection.id > 0;
@@ -132,12 +141,37 @@ export default function TravelConnectionModal({
             <label className='text-foreground mb-1.5 block text-sm font-medium'>
               所需時間
             </label>
-            <input
-              value={form.duration ?? ''}
-              onChange={e => set('duration', e.target.value)}
-              placeholder='例：30 分鐘'
-              className={INPUT_CLS}
-            />
+            <div className='flex items-center gap-2'>
+              <input
+                type='number'
+                inputMode='numeric'
+                min={0}
+                value={hours}
+                onChange={e =>
+                  setHours(Math.max(0, Number(e.target.value) || 0))
+                }
+                className={INPUT_CLS}
+              />
+              <span className='text-muted-foreground shrink-0 text-sm'>
+                小時
+              </span>
+              <input
+                type='number'
+                inputMode='numeric'
+                min={0}
+                max={59}
+                value={minutes}
+                onChange={e =>
+                  setMinutes(
+                    Math.min(59, Math.max(0, Number(e.target.value) || 0)),
+                  )
+                }
+                className={INPUT_CLS}
+              />
+              <span className='text-muted-foreground shrink-0 text-sm'>
+                分鐘
+              </span>
+            </div>
           </div>
 
           <div>
