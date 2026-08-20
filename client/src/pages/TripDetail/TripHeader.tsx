@@ -1,8 +1,9 @@
-import { differenceInCalendarDays, format, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { ArrowLeft, Download, Loader2, MapPin } from 'lucide-react';
 
 import type { Trip } from '@/types';
+import { getTripTotalDays } from '@/utils/date';
 
 interface Props {
   trip: Trip;
@@ -17,9 +18,7 @@ export default function TripHeader({
   onExport,
   exporting = false,
 }: Props) {
-  const totalDays =
-    differenceInCalendarDays(parseISO(trip.endDate), parseISO(trip.startDate)) +
-    1;
+  const totalDays = getTripTotalDays(trip);
 
   const dateRange = `${format(parseISO(trip.startDate), 'yyyy/MM/dd', { locale: zhTW })} – ${format(parseISO(trip.endDate), 'yyyy/MM/dd', { locale: zhTW })}`;
 

@@ -1,15 +1,13 @@
 import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { INPUT_CLS } from '@/components/formStyles';
 import type { ReferenceWebsite } from '@/types';
 
 interface Props {
   websites: ReferenceWebsite[];
   onChange: (websites: ReferenceWebsite[]) => void;
 }
-
-const INPUT_CLS =
-  'w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors';
 
 const decodeHtmlEntities = (str: string): string => {
   const el = document.createElement('textarea');

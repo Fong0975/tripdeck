@@ -1,6 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
+import { INPUT_CLS } from '@/components/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import type { Attraction } from '@/types';
 import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
@@ -22,9 +23,6 @@ interface Props {
     stagedImages?: { file: File; title: string }[],
   ) => void;
 }
-
-const INPUT_CLS =
-  'w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors';
 
 const empty: Attraction = {
   id: 0,

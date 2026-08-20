@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { exportToDocx } from '@/utils/exportToDocx';
 
@@ -97,7 +98,7 @@ export default function TripDetail() {
   if (!trip || !content) {
     return (
       <div className='bg-background flex min-h-screen items-center justify-center'>
-        <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
+        <LoadingIndicator />
       </div>
     );
   }

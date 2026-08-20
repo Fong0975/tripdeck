@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -176,9 +177,7 @@ export default function ChecklistTemplateView() {
   };
 
   if (!template) {
-    return (
-      <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
-    );
+    return <LoadingIndicator />;
   }
 
   return (

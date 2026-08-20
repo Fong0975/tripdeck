@@ -1,6 +1,8 @@
 import { Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import LoadingIndicator from '@/components/ui/LoadingIndicator';
+
 import CheckSaveBar from '../checklist/trip/CheckSaveBar';
 import TripChecklistEditModal from '../checklist/trip/TripChecklistEditModal';
 
@@ -29,7 +31,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   if (loading || !checklist) {
     return (
       <div className='flex flex-1 items-center justify-center py-24'>
-        <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
+        <LoadingIndicator />
       </div>
     );
   }

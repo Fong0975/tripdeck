@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { INPUT_CLS } from '@/components/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import type { TravelConnection, TransportMode } from '@/types';
 import { parseDurationMinutes } from '@/utils/duration';
@@ -32,9 +33,6 @@ const TRANSPORT_OPTIONS: {
   { value: 'flight', label: '飛機', icon: '✈️' },
   { value: 'other', label: '其他', icon: '🗺️' },
 ];
-
-const INPUT_CLS =
-  'border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2';
 
 export default function TravelConnectionModal({
   tripId,
