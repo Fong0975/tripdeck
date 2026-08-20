@@ -13,6 +13,7 @@ on:
       - 'client/postcss.config.js'
       - 'client/tsconfig.json'
       - 'client/tsconfig.app.json'
+      - 'client/vite.config.ts'
       - 'server/src/**/*.ts'
       - 'server/.eslintrc.json'
       - 'server/tsconfig.json'
@@ -32,6 +33,7 @@ on:
       - 'client/postcss.config.js'
       - 'client/tsconfig.json'
       - 'client/tsconfig.app.json'
+      - 'client/vite.config.ts'
       - 'server/src/**/*.ts'
       - 'server/.eslintrc.json'
       - 'server/tsconfig.json'
@@ -78,6 +80,9 @@ jobs:
 
       - name: Run ESLint on server (includes Prettier checks)
         run: npm run lint:check -w server
+
+      - name: Run client unit tests
+        run: npm run test -w client
 
       - name: Run Prettier format check (CSS, JSON and all non-TS files)
         run: npm run format:check

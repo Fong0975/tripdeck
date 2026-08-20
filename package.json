@@ -13,6 +13,7 @@
     "lint": "npm run lint -w client && npm run lint -w server",
     "lint:fix": "npm run lint:fix -w client && npm run lint:fix -w server",
     "lint:check": "npm run lint:check -w client && npm run lint:check -w server",
+    "test": "npm run test -w client",
     "format": "prettier --write \"**/*.{ts,tsx,json,css}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,css}\" --ignore-path .prettierignore",
     "swagger": "npm run swagger -w server"

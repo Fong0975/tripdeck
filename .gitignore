@@ -6,6 +6,9 @@ client/dist/
 client/dist-ssr/
 server/dist/
 
+# Test coverage reports
+client/coverage/
+
 # TypeScript
 *.tsbuildinfo
 

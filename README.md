@@ -43,7 +43,7 @@ tripdeck/
 ├── export_docker.bat         # Copies deployment files to ./docker/ and injects .env.production
 ├── .env.example              # Environment variable reference
 ├── package.json              # Workspace root — orchestrates client + server
-└── .github/workflows/        # CI: lint check, automated version bumping
+└── .github/workflows/        # CI: lint/test check, automated version bumping
 ```
 
 ## Getting Started
@@ -133,6 +133,7 @@ npm run start
 | `npm run lint` | Run ESLint across client and server |
 | `npm run lint:fix` | Auto-fix all fixable ESLint issues across client and server |
 | `npm run lint:check` | ESLint strict check — fails on any warning (used in CI) |
+| `npm run test` | Run the client unit test suite once (used in CI) |
 | `npm run format` | Format all files with Prettier |
 | `npm run format:check` | Check formatting without making changes (used in CI) |
 
@@ -144,6 +145,9 @@ npm run build -w client
 npm run lint -w client
 npm run lint:fix -w client
 npm run lint:check -w client       # Fails on any warning
+npm run test -w client             # Runs the Vitest suite once
+npm run test:watch -w client       # Vitest in watch mode
+npm run test:coverage -w client    # Vitest with a coverage report
 npm run format -w client
 npm run format:check -w client
 npm run format:diff -w client
@@ -184,6 +188,18 @@ http://localhost:3001/api/docs
 
 > The `server/swagger/output.json` file is committed to the repository so the server can start without requiring a prior `npm run swagger` call. Re-run the command after any route changes to keep it in sync.
 
+### Testing
+
+The client uses [Vitest](https://vitest.dev) with [React Testing Library](https://testing-library.com/react) and jsdom. Test files are co-located next to the code they cover (`Foo.ts` → `Foo.test.ts`), and prefer table-driven cases (`it.each`/`describe.each`) over one-off single-case tests where the assertions are uniform.
+
+```bash
+npm run test -w client             # Run once (used in CI)
+npm run test:watch -w client       # Watch mode
+npm run test:coverage -w client    # Run once with a coverage report
+```
+
+The server currently has no test suite.
+
 ### Code Quality
 
 Both client and server have full ESLint + Prettier coverage:
@@ -193,10 +209,11 @@ Both client and server have full ESLint + Prettier coverage:
 | ESLint | TypeScript, React hooks, Tailwind CSS, import order, Prettier | TypeScript, import order, Prettier |
 | Prettier | All `.ts`, `.tsx`, `.css`, `.json` | All `.ts` |
 
-The CI workflow (`lint.yml`) runs three checks on every push or PR to `main`:
+The CI workflow (`ci.yml`) runs four checks on every push or PR to `main`:
 1. **Client ESLint** — `npm run lint:check -w client` (zero warnings allowed)
 2. **Server ESLint** — `npm run lint:check -w server` (zero warnings allowed)
-3. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
+3. **Client unit tests** — `npm run test -w client`
+4. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
 
 ## API Reference
 
