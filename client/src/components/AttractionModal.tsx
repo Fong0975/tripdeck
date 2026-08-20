@@ -415,11 +415,11 @@ export default function AttractionModal({
                 value={form.nearbyAttractions ?? ''}
                 onChange={e => set('nearbyAttractions', e.target.value)}
                 placeholder='附近可順遊的景點... (支援 Markdown 語法)'
-                rows={2}
+                rows={6}
                 className={`${INPUT_CLS} resize-none font-mono text-sm`}
               />
             ) : (
-              <div className='border-border bg-background text-foreground min-h-16 rounded-lg border px-3 py-2 text-sm'>
+              <div className='border-border bg-background text-foreground min-h-48 rounded-lg border px-3 py-2 text-sm'>
                 {form.nearbyAttractions?.trim() ? (
                   <MarkdownContent>{form.nearbyAttractions}</MarkdownContent>
                 ) : (

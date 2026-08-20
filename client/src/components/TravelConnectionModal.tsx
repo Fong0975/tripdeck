@@ -2,9 +2,11 @@ import { X } from 'lucide-react';
 import { useState } from 'react';
 
 import type { TravelConnection, TransportMode, AttractionImage } from '@/types';
+import { parseDurationMinutes } from '@/utils/duration';
 import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
+import MarkdownContent from './MarkdownContent';
 
 interface Props {
   tripId?: number;
@@ -44,6 +46,10 @@ export default function TravelConnectionModal({
   const [images, setImages] = useState<AttractionImage[]>(
     connection.images ?? [],
   );
+  const initialDurationMinutes = parseDurationMinutes(connection.duration) ?? 0;
+  const [hours, setHours] = useState(Math.floor(initialDurationMinutes / 60));
+  const [minutes, setMinutes] = useState(initialDurationMinutes % 60);
+  const [routeTab, setRouteTab] = useState<'edit' | 'preview'>('edit');
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -71,7 +77,12 @@ export default function TravelConnectionModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...form, images });
+    const totalMinutes = hours * 60 + minutes;
+    onSave({
+      ...form,
+      duration: totalMinutes > 0 ? String(totalMinutes) : null,
+      images,
+    });
   };
 
   const isEditing = connection.id > 0;
@@ -132,36 +143,102 @@ export default function TravelConnectionModal({
             <label className='text-foreground mb-1.5 block text-sm font-medium'>
               所需時間
             </label>
-            <input
-              value={form.duration ?? ''}
-              onChange={e => set('duration', e.target.value)}
-              placeholder='例：30 分鐘'
-              className={INPUT_CLS}
-            />
+            <div className='flex items-center gap-2'>
+              <input
+                type='number'
+                inputMode='numeric'
+                min={0}
+                value={hours}
+                onChange={e =>
+                  setHours(Math.max(0, Number(e.target.value) || 0))
+                }
+                className={INPUT_CLS}
+              />
+              <span className='text-muted-foreground shrink-0 text-sm'>
+                小時
+              </span>
+              <input
+                type='number'
+                inputMode='numeric'
+                min={0}
+                max={59}
+                value={minutes}
+                onChange={e =>
+                  setMinutes(
+                    Math.min(59, Math.max(0, Number(e.target.value) || 0)),
+                  )
+                }
+                className={INPUT_CLS}
+              />
+              <span className='text-muted-foreground shrink-0 text-sm'>
+                分鐘
+              </span>
+            </div>
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
-              路線說明
-            </label>
-            <textarea
-              value={form.route ?? ''}
-              onChange={e => set('route', e.target.value)}
-              placeholder='例：搭乘銀座線至上野站...'
-              rows={2}
-              className={`${INPUT_CLS} resize-none`}
-            />
+            <div className='mb-1.5 flex items-center justify-between'>
+              <label className='text-foreground text-sm font-medium'>
+                路線說明
+              </label>
+              <div className='border-border flex overflow-hidden rounded-md border text-xs'>
+                <button
+                  type='button'
+                  tabIndex={-1}
+                  onClick={() => setRouteTab('edit')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    routeTab === 'edit'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  編輯
+                </button>
+                <button
+                  type='button'
+                  tabIndex={-1}
+                  onClick={() => setRouteTab('preview')}
+                  className={`px-2.5 py-0.5 transition-colors ${
+                    routeTab === 'preview'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  預覽
+                </button>
+              </div>
+            </div>
+            {routeTab === 'edit' ? (
+              <textarea
+                value={form.route ?? ''}
+                onChange={e => set('route', e.target.value)}
+                placeholder='例：搭乘銀座線至上野站...（支援 Markdown 語法）'
+                rows={4}
+                className={`${INPUT_CLS} resize-none font-mono text-sm`}
+              />
+            ) : (
+              <div className='border-border bg-background text-foreground min-h-24 rounded-lg border px-3 py-2 text-sm'>
+                {form.route?.trim() ? (
+                  <MarkdownContent>{form.route}</MarkdownContent>
+                ) : (
+                  <span className='text-muted-foreground text-xs'>
+                    尚無內容
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
             <label className='text-foreground mb-1.5 block text-sm font-medium'>
               備註
             </label>
-            <input
+            <textarea
               value={form.notes ?? ''}
               onChange={e => set('notes', e.target.value)}
               placeholder='其他注意事項...'
-              className={INPUT_CLS}
+              rows={3}
+              className={`${INPUT_CLS} resize-none`}
             />
           </div>
 

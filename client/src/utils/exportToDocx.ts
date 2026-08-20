@@ -24,6 +24,7 @@ import type {
   Trip,
   TripContent,
 } from '@/types';
+import { formatDurationDisplay } from '@/utils/duration';
 import { fetchDailyWeather, isWeatherEnabled } from '@/utils/weatherApi';
 
 // ---------------------------------------------------------------------------
@@ -651,8 +652,9 @@ async function makeTransportTable(
   const cellChildren: Paragraph[] = [];
 
   const parts = [TRANSPORT_LABELS[conn.transportMode]];
-  if (conn.duration) {
-    parts.push(conn.duration);
+  const durationDisplay = formatDurationDisplay(conn.duration);
+  if (durationDisplay) {
+    parts.push(durationDisplay);
   }
   const header = `交通方式：${parts.join(' · ')}${toName ? ` → ${toName}` : ''}`;
 
