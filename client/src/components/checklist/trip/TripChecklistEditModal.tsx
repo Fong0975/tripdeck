@@ -8,8 +8,6 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { nextTempId } from '@/components/checklist/checklistUtils';
-import StorageCheckboxes from '@/components/checklist/StorageCheckboxes';
 import type { TripChecklist } from '@/types';
 import {
   addOccasion,
@@ -26,7 +24,21 @@ import {
   updateTripItemSpec,
 } from '@/utils/storage';
 
-import type { EditCategory, EditItem, EditOccasion, EditSpec } from './types';
+import {
+  itemFieldsChanged,
+  itemPayload,
+  specFieldsChanged,
+  specPayload,
+  syncEditableList,
+} from '../shared/checklistDiffSync';
+import { nextTempId } from '../shared/checklistUtils';
+import EditableItemRow from '../shared/EditableItemRow';
+import type {
+  EditCategory,
+  EditItem,
+  EditOccasion,
+  EditSpec,
+} from '../shared/types';
 
 type EditState = {
   occasions: EditOccasion[];
@@ -299,160 +311,53 @@ export default function TripChecklistEditModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      // ── Occasions ──
-      const origOccs = checklist.occasions;
-      const keptOccIds = new Set(
-        edit.occasions.filter(o => !o._deleted && o.id > 0).map(o => o.id),
-      );
-      for (const orig of origOccs) {
-        if (!keptOccIds.has(orig.id)) {
-          await deleteOccasion(tripId, orig.id);
-        }
-      }
-      for (const o of edit.occasions.filter(o => !o._deleted && o.id > 0)) {
-        const orig = origOccs.find(x => x.id === o.id);
-        if (orig && o.name.trim() !== orig.name) {
-          await updateOccasion(tripId, o.id, o.name.trim() || orig.name);
-        }
-      }
-      for (const o of edit.occasions.filter(o => !o._deleted && o.id < 0)) {
-        await addOccasion(tripId, o.name.trim() || '新時機');
-      }
+      await syncEditableList(checklist.occasions, edit.occasions, {
+        isChanged: (editOcc, origOcc) => editOcc.name.trim() !== origOcc.name,
+        update: (id, editOcc, origOcc) =>
+          updateOccasion(tripId, id, editOcc.name.trim() || origOcc.name),
+        add: editOcc => addOccasion(tripId, editOcc.name.trim() || '新時機'),
+        remove: id => deleteOccasion(tripId, id),
+      });
 
-      // ── Categories ──
-      const origCats = checklist.categories;
-      const keptCatIds = new Set(
-        edit.categories.filter(c => !c._deleted && c.id > 0).map(c => c.id),
-      );
-      for (const orig of origCats) {
-        if (!keptCatIds.has(orig.id)) {
-          await deleteTripCategory(tripId, orig.id);
-        }
-      }
-
-      for (const editCat of edit.categories.filter(
-        c => !c._deleted && c.id > 0,
-      )) {
-        const origCat = origCats.find(c => c.id === editCat.id);
-        if (!origCat) {
-          continue;
-        }
-
-        if (editCat.name.trim() !== origCat.name) {
-          await updateTripCategory(
+      await syncEditableList(checklist.categories, edit.categories, {
+        isChanged: (editCat, origCat) => editCat.name.trim() !== origCat.name,
+        update: (catId, editCat, origCat) =>
+          updateTripCategory(
             tripId,
-            editCat.id,
+            catId,
             editCat.name.trim() || origCat.name,
-          );
-        }
-
-        const origItems = origCat.items;
-        const keptItemIds = new Set(
-          editCat.items.filter(i => !i._deleted && i.id > 0).map(i => i.id),
-        );
-        for (const origItem of origItems) {
-          if (!keptItemIds.has(origItem.id)) {
-            await deleteTripItem(tripId, origItem.id);
-          }
-        }
-
-        for (const editItem of editCat.items.filter(
-          i => !i._deleted && i.id > 0,
-        )) {
-          const origItem = origItems.find(i => i.id === editItem.id);
-          if (!origItem) {
-            continue;
-          }
-
-          const changed =
-            editItem.name.trim() !== origItem.name ||
-            editItem.quantity !== (origItem.quantity ?? null) ||
-            (editItem.notes ?? null) !== (origItem.notes ?? null) ||
-            (editItem.storage_location ?? null) !==
-              (origItem.storage_location ?? null);
-
-          if (changed) {
-            await updateTripItem(tripId, editItem.id, {
-              name: editItem.name.trim() || origItem.name,
-              quantity: editItem.quantity,
-              notes: editItem.notes ?? null,
-              storage_location: editItem.storage_location,
-            });
-          }
-
-          const origSpecs = origItem.specs ?? [];
-          const keptSpecIds = new Set(
-            editItem.specs.filter(s => s.id > 0).map(s => s.id),
-          );
-          for (const origSpec of origSpecs) {
-            if (!keptSpecIds.has(origSpec.id)) {
-              await deleteTripItemSpec(tripId, editItem.id, origSpec.id);
-            }
-          }
-          for (const editSpec of editItem.specs.filter(s => s.id > 0)) {
-            const origSpec = origSpecs.find(s => s.id === editSpec.id);
-            if (!origSpec) {
-              continue;
-            }
-            if (
-              editSpec.name.trim() !== origSpec.name ||
-              (editSpec.storage_location ?? null) !==
-                (origSpec.storage_location ?? null)
-            ) {
-              await updateTripItemSpec(tripId, editItem.id, editSpec.id, {
-                name: editSpec.name.trim() || origSpec.name,
-                storage_location: editSpec.storage_location,
-              });
-            }
-          }
-          for (const editSpec of editItem.specs.filter(s => s.id < 0)) {
-            await addTripItemSpec(tripId, editItem.id, {
-              name: editSpec.name.trim() || '新規格',
-              storage_location: editSpec.storage_location,
-            });
-          }
-        }
-
-        for (const editItem of editCat.items.filter(
-          i => !i._deleted && i.id < 0,
-        )) {
-          const newItem = await addTripItem(tripId, editCat.id, {
-            name: editItem.name.trim() || '新項目',
-            quantity: editItem.quantity,
-            notes: editItem.notes ?? null,
-            storage_location: editItem.storage_location,
-          });
-          for (const spec of editItem.specs) {
-            await addTripItemSpec(tripId, newItem.id, {
-              name: spec.name.trim() || '新規格',
-              storage_location: spec.storage_location,
-            });
-          }
-        }
-      }
-
-      for (const editCat of edit.categories.filter(
-        c => !c._deleted && c.id < 0,
-      )) {
-        const newCat = await addTripCategory(
-          tripId,
-          editCat.name.trim() || '新分類',
-        );
-        for (const editItem of editCat.items.filter(i => !i._deleted)) {
-          const newItem = await addTripItem(tripId, newCat.id, {
-            name: editItem.name.trim() || '新項目',
-            quantity: editItem.quantity,
-            notes: editItem.notes ?? null,
-            storage_location: editItem.storage_location,
-          });
-          for (const spec of editItem.specs) {
-            await addTripItemSpec(tripId, newItem.id, {
-              name: spec.name.trim() || '新規格',
-              storage_location: spec.storage_location,
-            });
-          }
-        }
-      }
+          ),
+        add: editCat =>
+          addTripCategory(tripId, editCat.name.trim() || '新分類'),
+        remove: catId => deleteTripCategory(tripId, catId),
+        syncChildren: (editCat, catId, origCat) =>
+          syncEditableList(origCat?.items ?? [], editCat.items, {
+            isChanged: itemFieldsChanged,
+            update: (itemId, editItem, origItem) =>
+              updateTripItem(
+                tripId,
+                itemId,
+                itemPayload(editItem, origItem.name),
+              ),
+            add: editItem =>
+              addTripItem(tripId, catId, itemPayload(editItem, '新項目')),
+            remove: itemId => deleteTripItem(tripId, itemId),
+            syncChildren: (editItem, itemId, origItem) =>
+              syncEditableList(origItem?.specs ?? [], editItem.specs, {
+                isChanged: specFieldsChanged,
+                update: (specId, editSpec, origSpec) =>
+                  updateTripItemSpec(
+                    tripId,
+                    itemId,
+                    specId,
+                    specPayload(editSpec, origSpec.name),
+                  ),
+                add: editSpec =>
+                  addTripItemSpec(tripId, itemId, specPayload(editSpec)),
+                remove: specId => deleteTripItemSpec(tripId, itemId, specId),
+              }),
+          }),
+      });
 
       onSaved();
       onClose();
@@ -582,136 +487,25 @@ export default function TripChecklistEditModal({
                       <div className='divide-border divide-y px-3 py-2'>
                         <div className='space-y-3 pb-2'>
                           {visibleItems.map((item, itemIdx) => (
-                            <div
+                            <EditableItemRow
                               key={item.id}
-                              className='bg-muted/20 border-border rounded-xl border p-3'
-                            >
-                              <div className='flex items-start gap-2'>
-                                <span className='text-muted-foreground mt-1.5 w-5 shrink-0 text-xs'>
-                                  {itemIdx + 1}.
-                                </span>
-                                <div className='min-w-0 flex-1 space-y-1.5'>
-                                  <input
-                                    value={item.name}
-                                    onFocus={e => e.target.select()}
-                                    onChange={e =>
-                                      updateItem(cat.id, item.id, {
-                                        name: e.target.value,
-                                      })
-                                    }
-                                    className='text-foreground w-full bg-transparent text-sm font-medium focus:outline-none'
-                                    placeholder='項目名稱'
-                                  />
-                                  <div className='flex items-center gap-3'>
-                                    <div className='flex items-center gap-1'>
-                                      <span className='text-muted-foreground text-xs'>
-                                        x
-                                      </span>
-                                      <input
-                                        type='number'
-                                        min={1}
-                                        value={item.quantity ?? ''}
-                                        onChange={e => {
-                                          const v = e.target.value;
-                                          updateItem(cat.id, item.id, {
-                                            quantity:
-                                              v === '' ? null : Number(v),
-                                          });
-                                        }}
-                                        placeholder='數量'
-                                        className='text-muted-foreground w-14 bg-transparent text-xs focus:outline-none'
-                                      />
-                                    </div>
-                                    <input
-                                      value={item.notes ?? ''}
-                                      onChange={e =>
-                                        updateItem(cat.id, item.id, {
-                                          notes: e.target.value || null,
-                                        })
-                                      }
-                                      placeholder='補充說明'
-                                      className='text-muted-foreground min-w-0 flex-1 bg-transparent text-xs focus:outline-none'
-                                    />
-                                  </div>
-                                  <div className='flex items-center gap-3'>
-                                    <StorageCheckboxes
-                                      value={item.storage_location}
-                                      onChange={loc =>
-                                        updateItem(cat.id, item.id, {
-                                          storage_location: loc,
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                  {/* Specs */}
-                                  <div className='border-border mt-0.5 space-y-1.5 border-l-2 pl-3'>
-                                    {item.specs.map((spec, specIdx) => (
-                                      <div
-                                        key={spec.id}
-                                        className='flex items-center gap-2'
-                                      >
-                                        <span className='text-muted-foreground w-4 shrink-0 text-xs'>
-                                          {specIdx + 1}.
-                                        </span>
-                                        <input
-                                          value={spec.name}
-                                          onFocus={e => e.target.select()}
-                                          onChange={e =>
-                                            updateSpec(
-                                              cat.id,
-                                              item.id,
-                                              spec.id,
-                                              { name: e.target.value },
-                                            )
-                                          }
-                                          placeholder='規格名稱'
-                                          className='text-foreground/80 min-w-0 flex-1 bg-transparent text-xs focus:outline-none'
-                                        />
-                                        <StorageCheckboxes
-                                          value={spec.storage_location}
-                                          onChange={loc =>
-                                            updateSpec(
-                                              cat.id,
-                                              item.id,
-                                              spec.id,
-                                              {
-                                                storage_location: loc,
-                                              },
-                                            )
-                                          }
-                                          compact
-                                        />
-                                        <button
-                                          onClick={() =>
-                                            removeSpec(cat.id, item.id, spec.id)
-                                          }
-                                          className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 transition-colors'
-                                          aria-label='刪除規格'
-                                        >
-                                          <Trash2 size={11} />
-                                        </button>
-                                      </div>
-                                    ))}
-                                    <button
-                                      onClick={() =>
-                                        addSpecLocal(cat.id, item.id)
-                                      }
-                                      className='text-muted-foreground hover:text-primary flex items-center gap-1 text-xs transition-colors'
-                                    >
-                                      <Plus size={11} />
-                                      新增規格
-                                    </button>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => removeItem(cat.id, item.id)}
-                                  className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive mt-0.5 shrink-0 rounded-md p-1 transition-colors'
-                                  aria-label='刪除項目'
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </div>
+                              item={item}
+                              index={itemIdx}
+                              compact
+                              onUpdateItem={(itemId, fields) =>
+                                updateItem(cat.id, itemId, fields)
+                              }
+                              onDeleteItem={itemId =>
+                                removeItem(cat.id, itemId)
+                              }
+                              onUpdateSpec={(itemId, specId, fields) =>
+                                updateSpec(cat.id, itemId, specId, fields)
+                              }
+                              onDeleteSpec={(itemId, specId) =>
+                                removeSpec(cat.id, itemId, specId)
+                              }
+                              onAddSpec={itemId => addSpecLocal(cat.id, itemId)}
+                            />
                           ))}
                         </div>
                         <div className='pt-2'>

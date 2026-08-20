@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   STORAGE_OPTIONS,
   hasStorageOption,
-} from '@/components/checklist/checklistUtils';
+} from '@/components/checklist/shared/checklistUtils';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 
-import CheckSaveBar from './tripChecklist/CheckSaveBar';
-import TripChecklistEditModal from './tripChecklist/TripChecklistEditModal';
+import CheckSaveBar from './checklist/trip/CheckSaveBar';
+import TripChecklistEditModal from './checklist/trip/TripChecklistEditModal';
 
 interface Props {
   tripId: number;

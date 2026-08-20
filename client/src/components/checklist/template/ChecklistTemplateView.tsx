@@ -15,8 +15,9 @@ import {
   getChecklistTemplate,
 } from '@/utils/storage';
 
+import { STORAGE_OPTIONS, hasStorageOption } from '../shared/checklistUtils';
+
 import CategoryEditModal from './CategoryEditModal';
-import { STORAGE_OPTIONS, hasStorageOption } from './checklistUtils';
 
 function CategoryCard({
   category,

@@ -1,7 +1,7 @@
 import { Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
-import ChecklistTemplateView from '@/components/checklist/ChecklistTemplateView';
+import ChecklistTemplateView from '@/components/checklist/template/ChecklistTemplateView';
 
 export default function ChecklistSection() {
   const [expanded, setExpanded] = useState(false);
