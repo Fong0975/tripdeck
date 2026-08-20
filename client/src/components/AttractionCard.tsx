@@ -10,8 +10,10 @@ import {
   Clock,
   Copy,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
+import { useClampedText } from '@/hooks/useClampedText';
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { Attraction } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
@@ -30,34 +32,27 @@ export default function AttractionCard({
   onDelete,
   onDuplicate,
 }: Props) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [notesExpanded, setNotesExpanded] = useState(false);
-  const [notesClamped, setNotesClamped] = useState(false);
-  const notesRef = useRef<HTMLDivElement>(null);
-  const [nearbyExpanded, setNearbyExpanded] = useState(false);
-  const [nearbyClamped, setNearbyClamped] = useState(false);
-  const nearbyRef = useRef<HTMLDivElement>(null);
+  const {
+    ref: notesRef,
+    expanded: notesExpanded,
+    clamped: notesClamped,
+    toggle: toggleNotes,
+  } = useClampedText(attraction.notes);
+  const {
+    ref: nearbyRef,
+    expanded: nearbyExpanded,
+    clamped: nearbyClamped,
+    toggle: toggleNearby,
+  } = useClampedText(attraction.nearbyAttractions);
+  const { confirming: confirmDelete, handleClick: handleDelete } =
+    useConfirmDelete(() => onDelete(attraction.id));
 
   const hasImages = (attraction.images ?? []).length > 0;
   const hasReferences = (attraction.referenceWebsites ?? []).length > 0;
   const hasNearby = !!attraction.nearbyAttractions?.trim();
   const showNotesBottomDivider =
     !!attraction.notes && !hasNearby && (hasImages || hasReferences);
-
-  useEffect(() => {
-    const el = notesRef.current;
-    if (el) {
-      setNotesClamped(el.scrollHeight > el.clientHeight);
-    }
-  }, [attraction.notes]);
-
-  useEffect(() => {
-    const el = nearbyRef.current;
-    if (el) {
-      setNearbyClamped(el.scrollHeight > el.clientHeight);
-    }
-  }, [attraction.nearbyAttractions]);
 
   const {
     attributes,
@@ -74,16 +69,6 @@ export default function AttractionCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirmDelete) {
-      onDelete(attraction.id);
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
   };
 
   return (
@@ -179,7 +164,7 @@ export default function AttractionCard({
                 <button
                   onClick={e => {
                     e.stopPropagation();
-                    setNotesExpanded(prev => !prev);
+                    toggleNotes();
                   }}
                   className='text-primary/60 hover:text-primary mt-0.5 text-sm transition-colors'
                 >
@@ -208,7 +193,7 @@ export default function AttractionCard({
                 <button
                   onClick={e => {
                     e.stopPropagation();
-                    setNearbyExpanded(prev => !prev);
+                    toggleNearby();
                   }}
                   className='text-primary/60 hover:text-primary mt-0.5 text-sm transition-colors'
                 >
