@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -15,8 +16,9 @@ import {
   getChecklistTemplate,
 } from '@/utils/storage';
 
+import { STORAGE_OPTIONS, hasStorageOption } from '../shared/checklistUtils';
+
 import CategoryEditModal from './CategoryEditModal';
-import { STORAGE_OPTIONS, hasStorageOption } from './checklistUtils';
 
 function CategoryCard({
   category,
@@ -175,9 +177,7 @@ export default function ChecklistTemplateView() {
   };
 
   if (!template) {
-    return (
-      <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
-    );
+    return <LoadingIndicator />;
   }
 
   return (

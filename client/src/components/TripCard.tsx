@@ -1,10 +1,11 @@
-import { format, parseISO, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { MapPin, Calendar, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { Trip } from '@/types';
+import { getTripTotalDays } from '@/utils/date';
 
 interface Props {
   trip: Trip;
@@ -13,24 +14,14 @@ interface Props {
 
 export default function TripCard({ trip, onDelete }: Props) {
   const navigate = useNavigate();
-  const [confirming, setConfirming] = useState(false);
+  const { confirming, handleClick: handleDelete } = useConfirmDelete(() =>
+    onDelete(trip.id),
+  );
 
-  const totalDays =
-    differenceInCalendarDays(parseISO(trip.endDate), parseISO(trip.startDate)) +
-    1;
+  const totalDays = getTripTotalDays(trip);
 
   const formatDate = (iso: string) =>
     format(parseISO(iso), 'yyyy/MM/dd', { locale: zhTW });
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirming) {
-      onDelete(trip.id);
-    } else {
-      setConfirming(true);
-      setTimeout(() => setConfirming(false), 3000);
-    }
-  };
 
   return (
     <div

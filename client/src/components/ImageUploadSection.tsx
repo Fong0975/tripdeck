@@ -1,6 +1,7 @@
 import { ImagePlus, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { INPUT_CLS } from '@/components/formStyles';
 import type { AttractionImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
@@ -10,9 +11,6 @@ interface Props {
   onUpload: (file: File, title: string) => Promise<void>;
   onDelete: (imageId: number) => Promise<void>;
 }
-
-const INPUT_CLS =
-  'w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-sm';
 
 export default function ImageUploadSection({
   images,
@@ -150,7 +148,7 @@ export default function ImageUploadSection({
               setError('');
             }}
             placeholder='圖片標題（必填）'
-            className={INPUT_CLS}
+            className={`${INPUT_CLS} text-sm`}
           />
           {error && <p className='text-destructive text-xs'>{error}</p>}
           <button

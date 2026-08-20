@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 
 import TripCard from '@/components/TripCard';
+import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import type { Trip } from '@/types';
 
 interface Props {
@@ -26,7 +27,7 @@ export default function TripList({ trips, loading, onAdd, onDelete }: Props) {
 
       {loading ? (
         <div className='py-24 text-center'>
-          <p className='text-muted-foreground animate-pulse text-sm'>載入中…</p>
+          <LoadingIndicator />
         </div>
       ) : trips.length === 0 ? (
         <div className='py-24 text-center'>
