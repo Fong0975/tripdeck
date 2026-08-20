@@ -13,12 +13,13 @@ tripdeck/
 ├── client/                   # React frontend (Vite + TypeScript + Tailwind)
 │   ├── public/
 │   ├── src/
+│   │   ├── api/              # Backend API client (per domain: trips, attractions, images, etc.)
 │   │   ├── components/       # Reusable UI components
 │   │   ├── context/          # React context (theme)
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── pages/            # Route-level page components
 │   │   ├── types/            # TypeScript type definitions
-│   │   └── utils/            # API client and export utilities
+│   │   └── utils/            # Docx export, weather API, and other shared helpers
 │   ├── Dockerfile            # Multi-stage build: Vite → nginx
 │   ├── nginx.conf.template   # nginx config template (port + proxy via envsubst)
 │   ├── package.json
