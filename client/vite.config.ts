@@ -32,9 +32,11 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     css: false,
     include: ['src/**/*.test.{ts,tsx}'],
+    reporters: process.env.CI ? ['default', 'json'] : ['default'],
+    outputFile: process.env.CI ? { json: './test-results.json' } : undefined,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json-summary', 'json'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
@@ -49,6 +51,12 @@ export default defineConfig({
         'src/components/formStyles.ts',
         'src/utils/storage.ts',
       ],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
     },
   },
 });

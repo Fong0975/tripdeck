@@ -43,6 +43,10 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   lint:
     name: Run Code Quality Checks
@@ -66,6 +70,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Detect changed areas
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            client:
+              - 'client/src/**/*.ts'
+              - 'client/src/**/*.tsx'
+              - 'client/src/**/*.json'
+              - 'client/src/**/*.css'
+              - 'client/.eslintrc.json'
+              - 'client/tailwind.config.js'
+              - 'client/postcss.config.js'
+              - 'client/tsconfig.json'
+              - 'client/tsconfig.app.json'
+              - 'client/vite.config.ts'
+            server:
+              - 'server/src/**/*.ts'
+              - 'server/.eslintrc.json'
+              - 'server/tsconfig.json'
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -76,13 +101,72 @@ jobs:
         run: npm ci
 
       - name: Run ESLint on client (includes Prettier and Tailwind CSS checks)
+        if: steps.filter.outputs.client == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run lint:check -w client
 
       - name: Run ESLint on server (includes Prettier checks)
+        if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run lint:check -w server
 
-      - name: Run client unit tests
-        run: npm run test -w client
+      - name: Run client unit tests with coverage
+        id: client-tests
+        if: steps.filter.outputs.client == 'true' || github.event_name == 'workflow_dispatch'
+        run: npm run test:coverage -w client
+        continue-on-error: true
+
+      - name: Comment unit test results on PR
+        if: always() && github.event_name == 'pull_request' && steps.filter.outputs.client == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'client/test-results.json';
+            if (!fs.existsSync(path)) return;
+
+            const results = JSON.parse(fs.readFileSync(path, 'utf-8'));
+            const marker = '<!-- client-unit-test-results -->';
+            const status = results.success ? '✅ All tests passed' : '❌ Some tests failed';
+            const body = [
+              marker,
+              `## Client Unit Test Results — ${status}`,
+              '',
+              `| Total | Passed | Failed | Skipped |`,
+              `| --- | --- | --- | --- |`,
+              `| ${results.numTotalTests} | ${results.numPassedTests} | ${results.numFailedTests} | ${results.numPendingTests} |`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Comment coverage report on PR
+        if: always() && github.event_name == 'pull_request' && steps.filter.outputs.client == 'true'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: client
+
+      - name: Fail workflow if client tests or coverage threshold failed
+        if: steps.client-tests.outcome == 'failure'
+        run: exit 1
 
       - name: Run Prettier format check (CSS, JSON and all non-TS files)
         run: npm run format:check
