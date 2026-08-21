@@ -29,6 +29,7 @@ export function useDragAndDrop(
   );
 
   const findDayIndexByAttractionId = (attractionId: number): number => {
+    /* v8 ignore next 3 -- defensive guard; content is always loaded before drag-and-drop is interactive */
     if (!content) {
       return -1;
     }
@@ -39,6 +40,7 @@ export function useDragAndDrop(
 
   const findDayIndexByDroppableId = (droppableId: string): number => {
     const match = droppableId.match(/^day-(\d+)$/);
+    /* v8 ignore next -- droppableId is always internally generated as `day-N`; non-matching fallback is defensive */
     return match ? parseInt(match[1], 10) : -1;
   };
 
@@ -88,6 +90,7 @@ export function useDragAndDrop(
       const attraction = content.days[sourceDayIdx].attractions.find(
         a => a.id === activeId,
       );
+      /* v8 ignore next 3 -- defensive guard; the attraction was just dragged from this day so it is always found */
       if (!attraction) {
         return;
       }

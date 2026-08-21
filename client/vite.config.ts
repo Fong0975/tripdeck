@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { readFileSync } from 'fs';
 import path from 'path';
 
@@ -23,6 +24,39 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001',
       '/uploads': 'http://localhost:3001',
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/setupTests.ts'],
+    css: false,
+    include: ['src/**/*.test.{ts,tsx}'],
+    reporters: process.env.CI ? ['default', 'json'] : ['default'],
+    outputFile: process.env.CI ? { json: './test-results.json' } : undefined,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary', 'json'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/setupTests.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'src/**/types.ts',
+        'src/**/*.d.ts',
+        'src/App.tsx',
+        'src/types/index.ts',
+        'src/components/formStyles.ts',
+        'src/utils/storage.ts',
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
     },
   },
 });

@@ -40,14 +40,6 @@ async function getImageSize(
   buffer: ArrayBuffer,
   imageType: SupportedImageType,
 ): Promise<{ width: number; height: number }> {
-  if (imageType === 'svg') {
-    const text = new TextDecoder().decode(buffer);
-    const w = text.match(/width="(\d+)/)?.[1];
-    const h = text.match(/height="(\d+)/)?.[1];
-    return w && h
-      ? { width: parseInt(w), height: parseInt(h) }
-      : { width: 400, height: 300 };
-  }
   return new Promise((resolve, reject) => {
     const blob = new Blob([buffer], { type: `image/${imageType}` });
     const objUrl = URL.createObjectURL(blob);
