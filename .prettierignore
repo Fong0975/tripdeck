@@ -3,3 +3,5 @@ dist
 public
 records
 docker
+client/coverage
+client/test-results.json

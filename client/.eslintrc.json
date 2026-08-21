@@ -80,7 +80,10 @@
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "env": { "es2020": true, "node": true },
-      "extends": ["plugin:testing-library/react", "plugin:jest-dom/recommended"],
+      "extends": [
+        "plugin:testing-library/react",
+        "plugin:jest-dom/recommended"
+      ],
       "rules": {
         "@typescript-eslint/no-explicit-any": "off",
         "import/order": "warn"
