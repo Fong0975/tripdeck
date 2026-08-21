@@ -25,3 +25,13 @@ if (!window.matchMedia) {
     })),
   });
 }
+
+// jsdom does not implement Element.scrollTo/scrollIntoView; components that
+// auto-scroll a container ref (e.g. after adding a new row) call these on
+// real DOM elements during tests.
+if (!Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = vi.fn();
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = vi.fn();
+}
