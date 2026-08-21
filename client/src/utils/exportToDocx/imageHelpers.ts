@@ -40,6 +40,10 @@ async function getImageSize(
   buffer: ArrayBuffer,
   imageType: SupportedImageType,
 ): Promise<{ width: number; height: number }> {
+  /* v8 ignore start -- currently unreachable: makeImageParagraphs() short-circuits
+     `imageType === 'svg'` and returns [] before calling getImageSize(), so this branch
+     never executes with the current caller logic. Kept for potential future SVG support;
+     flagged for a dev decision on whether to remove it or wire up the caller to use it. */
   if (imageType === 'svg') {
     const text = new TextDecoder().decode(buffer);
     const w = text.match(/width="(\d+)/)?.[1];
@@ -48,6 +52,7 @@ async function getImageSize(
       ? { width: parseInt(w), height: parseInt(h) }
       : { width: 400, height: 300 };
   }
+  /* v8 ignore stop */
   return new Promise((resolve, reject) => {
     const blob = new Blob([buffer], { type: `image/${imageType}` });
     const objUrl = URL.createObjectURL(blob);

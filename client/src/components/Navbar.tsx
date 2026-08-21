@@ -10,6 +10,7 @@ export default function Navbar() {
 
   useEffect(() => {
     const domain = import.meta.env.VITE_API_DOMAIN;
+    /* v8 ignore next -- domain truthy branch depends on VITE_API_DOMAIN env var, not set in test env */
     const apiBase = domain ? `${domain}:${import.meta.env.VITE_API_PORT}` : '';
     fetch(`${apiBase}/api/info`)
       .then(res => res.json())

@@ -70,6 +70,7 @@ export default function CategoryEditList({
                 </button>
                 <input
                   value={cat.name}
+                  /* v8 ignore next -- select-all-on-focus convenience UX, low risk */
                   onFocus={e => e.target.select()}
                   onChange={e => onUpdateName(cat.id, e.target.value)}
                   className='text-foreground min-w-0 flex-1 bg-transparent text-sm font-semibold focus:outline-none'

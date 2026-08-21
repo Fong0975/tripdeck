@@ -86,6 +86,7 @@ export default function DayColumn({
       <div
         ref={setNodeRef}
         className={`flex min-h-[200px] flex-1 flex-col gap-0 rounded-2xl p-3 transition-colors ${
+          /* v8 ignore next 3 -- isOver drag-over styling requires simulating an active dnd-kit drag state */
           isOver
             ? 'border-primary/30 bg-primary/5 border-2 border-dashed'
             : 'bg-muted/30 border-2 border-transparent'

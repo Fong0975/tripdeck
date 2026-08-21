@@ -22,6 +22,7 @@ export default function EditSpecRow({
   return (
     <div className='flex items-center gap-2'>
       <span
+        /* v8 ignore next -- compact/regular are both purely cosmetic width variants */
         className={`text-muted-foreground shrink-0 text-xs ${compact ? 'w-4' : 'w-5'}`}
       >
         {index + 1}.

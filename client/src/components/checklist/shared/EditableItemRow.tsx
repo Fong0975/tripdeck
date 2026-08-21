@@ -32,10 +32,12 @@ export default function EditableItemRow({
 }: Props) {
   return (
     <div
+      /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
       className={`border-border rounded-xl border ${compact ? 'bg-muted/20 p-3' : 'bg-muted/30 p-4'}`}
     >
       <div className='flex items-start gap-2'>
         <span
+          /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
           className={`text-muted-foreground w-5 shrink-0 text-xs ${compact ? 'mt-1.5' : 'mt-2'}`}
         >
           {index + 1}.
@@ -63,6 +65,7 @@ export default function EditableItemRow({
                   });
                 }}
                 placeholder='數量'
+                /* v8 ignore next -- compact/regular are both purely cosmetic width variants */
                 className={`text-muted-foreground bg-transparent text-xs focus:outline-none ${compact ? 'w-14' : 'w-16'}`}
               />
             </div>
@@ -85,6 +88,7 @@ export default function EditableItemRow({
 
           {/* Specs */}
           <div
+            /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
             className={`border-border space-y-1.5 border-l-2 pl-3 ${compact ? 'mt-0.5' : 'mt-1'}`}
           >
             {item.specs.map((spec, specIdx) => (
@@ -112,6 +116,7 @@ export default function EditableItemRow({
           className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive mt-0.5 shrink-0 rounded-md p-1 transition-colors'
           aria-label='刪除項目'
         >
+          {/* v8 ignore next -- compact/regular are both purely cosmetic icon-size variants */}
           <Trash2 size={compact ? 13 : 14} />
         </button>
       </div>

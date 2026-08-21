@@ -115,6 +115,7 @@ export function parseMarkdownContent(text: string): Paragraph[] {
       paragraphs.push(
         new Paragraph({
           children: [
+            /* v8 ignore next 2 -- the `/^\d+\. /` test above guarantees these capture groups exist */
             new TextRun({ text: `${m?.[1] ?? '1'}. `, font: FONT }),
             ...parseInline(m?.[2] ?? line),
           ],
@@ -135,5 +136,6 @@ export function parseMarkdownContent(text: string): Paragraph[] {
     }
   }
 
+  /* v8 ignore next -- text.split('\n') always yields at least one element, so the empty fallback is unreachable */
   return paragraphs.length > 0 ? paragraphs : [new Paragraph({ children: [] })];
 }

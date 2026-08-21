@@ -1,4 +1,5 @@
 const _apiDomain = import.meta.env.VITE_API_DOMAIN;
+/* v8 ignore next 3 -- domain truthy branch depends on VITE_API_DOMAIN env var, not set in test env */
 const API_BASE = _apiDomain
   ? `${_apiDomain}:${import.meta.env.VITE_API_PORT}`
   : '';
