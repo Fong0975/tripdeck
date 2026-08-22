@@ -167,6 +167,7 @@ npm run lint:fix -w server
 npm run lint:check -w server       # Fails on any warning
 npm run test -w server             # Runs the Vitest suite once
 npm run test:watch -w server       # Vitest in watch mode
+npm run test:coverage -w server    # Vitest with a coverage report
 npm run format -w server
 npm run format:check -w server
 npm run format:diff -w server
@@ -202,11 +203,12 @@ npm run test:watch -w client       # Watch mode
 npm run test:coverage -w client    # Run once with a coverage report
 ```
 
-The server also uses [Vitest](https://vitest.dev), running under Node instead of jsdom. Test files are co-located the same way (`fooRepository.ts` → `fooRepository.test.ts`); the MySQL2 `pool` is mocked with `vi.mock('../config/database')` so tests don't need a real database connection. Coverage is not yet tracked or gated for the server — only the modules touched so far have tests.
+The server also uses [Vitest](https://vitest.dev), running under Node instead of jsdom. Test files are co-located the same way (`fooRepository.ts` → `fooRepository.test.ts`); the MySQL2 `pool` is mocked with `vi.mock('../config/database')` so tests don't need a real database connection. Coverage is tracked the same way as the client, with an 80% threshold gate. Purely declarative files (routes, the static schema/type definitions, the app entry point) are excluded from coverage — see `server/vitest.config.ts` for the exact exclusion list.
 
 ```bash
 npm run test -w server             # Run once (used in CI)
 npm run test:watch -w server       # Watch mode
+npm run test:coverage -w server    # Run once with a coverage report
 ```
 
 ### Code Quality
@@ -221,7 +223,7 @@ Both client and server have full ESLint + Prettier coverage:
 The CI workflow (`ci.yml`) runs on every push or PR to `main`, gating each check on whether the relevant workspace's files actually changed:
 1. **Client ESLint** — `npm run lint:check -w client` (zero warnings allowed)
 2. **Server ESLint** — `npm run lint:check -w server` (zero warnings allowed)
-3. **Server unit tests** — `npm run test -w server`
+3. **Server unit tests** — `npm run test:coverage -w server` (also enforces the server's 80% coverage threshold)
 4. **Client unit tests** — `npm run test:coverage -w client` (also enforces the client's 80% coverage threshold)
 5. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
 
