@@ -253,6 +253,18 @@ export default function TripDetail() {
           onConfirm={handleConfirmLeave}
         />
       )}
+
+      {/* Move confirmation when the dragged card would break an existing connection */}
+      {dnd.showMoveConfirm && (
+        <ConfirmDialog
+          title='確定要移動這張卡片嗎？'
+          message='此景點與相鄰卡片之間已設定交通方式，移動後該筆交通方式將會被移除，確定要繼續嗎？'
+          cancelLabel='取消'
+          confirmLabel='確定移動'
+          onCancel={dnd.cancelMove}
+          onConfirm={dnd.confirmMove}
+        />
+      )}
     </div>
   );
 }

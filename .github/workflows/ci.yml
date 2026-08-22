@@ -17,6 +17,8 @@ on:
       - 'server/src/**/*.ts'
       - 'server/.eslintrc.json'
       - 'server/tsconfig.json'
+      - 'server/tsconfig.build.json'
+      - 'server/vitest.config.ts'
       - '.prettierrc.json'
       - '.prettierignore'
       - '!package.json'
@@ -37,6 +39,8 @@ on:
       - 'server/src/**/*.ts'
       - 'server/.eslintrc.json'
       - 'server/tsconfig.json'
+      - 'server/tsconfig.build.json'
+      - 'server/vitest.config.ts'
       - '.prettierrc.json'
       - '.prettierignore'
       - 'package.json'
@@ -90,6 +94,8 @@ jobs:
               - 'server/src/**/*.ts'
               - 'server/.eslintrc.json'
               - 'server/tsconfig.json'
+              - 'server/tsconfig.build.json'
+              - 'server/vitest.config.ts'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -107,6 +113,11 @@ jobs:
       - name: Run ESLint on server (includes Prettier checks)
         if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run lint:check -w server
+
+      - name: Run server unit tests
+        id: server-tests
+        if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
+        run: npm run test -w server
 
       - name: Run client unit tests with coverage
         id: client-tests
