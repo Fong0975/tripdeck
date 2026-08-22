@@ -232,8 +232,8 @@ vi.mock('@/components/ui/ConfirmDialog', () => ({
   }) => (
     <div>
       <span>{title}</span>
-      <button onClick={onCancel}>cancel-leave</button>
-      <button onClick={onConfirm}>confirm-leave</button>
+      <button onClick={onCancel}>dialog-cancel</button>
+      <button onClick={onConfirm}>dialog-confirm</button>
     </div>
   ),
 }));
@@ -334,6 +334,9 @@ function makeDnd(
     handleDragStart: vi.fn(),
     handleDragEnd: vi.fn(),
     getActiveAttraction: vi.fn(() => undefined),
+    showMoveConfirm: false,
+    confirmMove: vi.fn(),
+    cancelMove: vi.fn(),
     ...overrides,
   };
 }
@@ -753,10 +756,36 @@ describe('TripDetail', () => {
 
     expect(screen.getByText('確定要離開嗎？')).toBeInTheDocument();
 
-    await user.click(screen.getByText('cancel-leave'));
+    await user.click(screen.getByText('dialog-cancel'));
     expect(cancelLeave).toHaveBeenCalledTimes(1);
 
-    await user.click(screen.getByText('confirm-leave'));
+    await user.click(screen.getByText('dialog-confirm'));
     expect(confirmLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render the move confirm dialog when showMoveConfirm is false', () => {
+    renderTripDetail();
+
+    expect(
+      screen.queryByText('確定要移動這張卡片嗎？'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the move confirm dialog and wires cancel/confirm when showMoveConfirm is true', async () => {
+    const cancelMove = vi.fn();
+    const confirmMove = vi.fn();
+    vi.mocked(useDragAndDrop).mockReturnValue(
+      makeDnd({ showMoveConfirm: true, cancelMove, confirmMove }),
+    );
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    expect(screen.getByText('確定要移動這張卡片嗎？')).toBeInTheDocument();
+
+    await user.click(screen.getByText('dialog-cancel'));
+    expect(cancelMove).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByText('dialog-confirm'));
+    expect(confirmMove).toHaveBeenCalledTimes(1);
   });
 });

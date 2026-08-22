@@ -38,7 +38,9 @@ tripdeck/
 │   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── Dockerfile            # Multi-stage build: tsc → production Node.js
 │   ├── package.json
-│   └── tsconfig.json
+│   ├── tsconfig.json         # Used for editor/lint (includes test files)
+│   ├── tsconfig.build.json   # Used by `npm run build` (excludes *.test.ts)
+│   └── vitest.config.ts
 ├── docker-compose.yml        # Two-service deployment (backend + frontend, host network)
 ├── export_docker.bat         # Copies deployment files to ./docker/ and injects .env.production
 ├── .env.example              # Environment variable reference
@@ -163,6 +165,8 @@ npm run swagger -w server          # Generate / update server/swagger/output.jso
 npm run lint -w server
 npm run lint:fix -w server
 npm run lint:check -w server       # Fails on any warning
+npm run test -w server             # Runs the Vitest suite once
+npm run test:watch -w server       # Vitest in watch mode
 npm run format -w server
 npm run format:check -w server
 npm run format:diff -w server
@@ -198,7 +202,12 @@ npm run test:watch -w client       # Watch mode
 npm run test:coverage -w client    # Run once with a coverage report
 ```
 
-The server currently has no test suite.
+The server also uses [Vitest](https://vitest.dev), running under Node instead of jsdom. Test files are co-located the same way (`fooRepository.ts` → `fooRepository.test.ts`); the MySQL2 `pool` is mocked with `vi.mock('../config/database')` so tests don't need a real database connection. Coverage is not yet tracked or gated for the server — only the modules touched so far have tests.
+
+```bash
+npm run test -w server             # Run once (used in CI)
+npm run test:watch -w server       # Watch mode
+```
 
 ### Code Quality
 
@@ -209,11 +218,12 @@ Both client and server have full ESLint + Prettier coverage:
 | ESLint | TypeScript, React hooks, Tailwind CSS, import order, Prettier | TypeScript, import order, Prettier |
 | Prettier | All `.ts`, `.tsx`, `.css`, `.json` | All `.ts` |
 
-The CI workflow (`ci.yml`) runs four checks on every push or PR to `main`:
+The CI workflow (`ci.yml`) runs on every push or PR to `main`, gating each check on whether the relevant workspace's files actually changed:
 1. **Client ESLint** — `npm run lint:check -w client` (zero warnings allowed)
 2. **Server ESLint** — `npm run lint:check -w server` (zero warnings allowed)
-3. **Client unit tests** — `npm run test -w client`
-4. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
+3. **Server unit tests** — `npm run test -w server`
+4. **Client unit tests** — `npm run test:coverage -w client` (also enforces the client's 80% coverage threshold)
+5. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
 
 ## API Reference
 

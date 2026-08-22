@@ -44,6 +44,42 @@ function makeContent(): TripContent {
   };
 }
 
+/** Day 10 has an existing connection between attractions 100 and 101. */
+function makeContentWithConnection(): TripContent {
+  return {
+    tripId: 1,
+    days: [
+      {
+        id: 10,
+        day: 1,
+        date: '2026-01-01',
+        locations: [],
+        attractions: [
+          { id: 100, name: 'A' },
+          { id: 101, name: 'B' },
+          { id: 102, name: 'C' },
+        ],
+        connections: [
+          {
+            id: 5,
+            fromAttractionId: 100,
+            toAttractionId: 101,
+            transportMode: 'walk',
+          },
+        ],
+      },
+      {
+        id: 20,
+        day: 2,
+        date: '2026-01-02',
+        locations: [],
+        attractions: [{ id: 200, name: 'D' }],
+        connections: [],
+      },
+    ],
+  };
+}
+
 function makeDragEndEvent(
   activeId: number,
   overId: number | string | null,
@@ -172,6 +208,125 @@ describe('useDragAndDrop', () => {
         nearbyAttractions: undefined,
         referenceWebsites: undefined,
       });
+    });
+
+    describe('when the move would break an existing connection', () => {
+      it('holds off on reordering and shows the move confirm dialog', async () => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeContentWithConnection(), onReload),
+        );
+
+        // Moving 100 past 102 breaks the 100->101 connection's adjacency.
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(100, 102));
+        });
+
+        expect(reorderAttractions).not.toHaveBeenCalled();
+        expect(onReload).not.toHaveBeenCalled();
+        expect(result.current.showMoveConfirm).toBe(true);
+      });
+
+      it('reorders and reloads once the user calls confirmMove', async () => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeContentWithConnection(), onReload),
+        );
+
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(100, 102));
+        });
+        act(() => {
+          result.current.confirmMove();
+        });
+
+        await vi.waitFor(() => {
+          expect(onReload).toHaveBeenCalled();
+        });
+        expect(reorderAttractions).toHaveBeenCalledWith(1, 10, [101, 102, 100]);
+        expect(result.current.showMoveConfirm).toBe(false);
+      });
+
+      it('does nothing and hides the dialog when the user calls cancelMove', () => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeContentWithConnection(), onReload),
+        );
+
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(100, 102));
+        });
+        act(() => {
+          result.current.cancelMove();
+        });
+
+        expect(reorderAttractions).not.toHaveBeenCalled();
+        expect(onReload).not.toHaveBeenCalled();
+        expect(result.current.showMoveConfirm).toBe(false);
+      });
+
+      it('moves a card to another day without a dialog when it has no connection', () => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeContentWithConnection(), onReload),
+        );
+
+        // Attraction 102 has no connection, so moving it across days is not gated.
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(102, 200));
+        });
+
+        expect(deleteAttraction).toHaveBeenCalledWith(1, 102);
+        expect(result.current.showMoveConfirm).toBe(false);
+      });
+
+      it('shows the dialog before moving a card with a connection to another day', async () => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeContentWithConnection(), onReload),
+        );
+
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(100, 200));
+        });
+
+        expect(deleteAttraction).not.toHaveBeenCalled();
+        expect(result.current.showMoveConfirm).toBe(true);
+
+        act(() => {
+          result.current.confirmMove();
+        });
+
+        await vi.waitFor(() => {
+          expect(onReload).toHaveBeenCalled();
+        });
+        expect(deleteAttraction).toHaveBeenCalledWith(1, 100);
+        expect(addAttraction).toHaveBeenCalledWith(1, 20, {
+          name: 'A',
+          googleMapUrl: undefined,
+          notes: undefined,
+          nearbyAttractions: undefined,
+          referenceWebsites: undefined,
+        });
+      });
+    });
+
+    it('reorders without a dialog when the move keeps the connection adjacent', async () => {
+      const onReload = vi.fn();
+      const { result } = renderHook(() =>
+        useDragAndDrop(1, makeContentWithConnection(), onReload),
+      );
+
+      // Moving 102 to the front still leaves 100 and 101 next to each other.
+      act(() => {
+        result.current.handleDragEnd(makeDragEndEvent(102, 100));
+      });
+
+      await vi.waitFor(() => {
+        expect(onReload).toHaveBeenCalled();
+      });
+      expect(reorderAttractions).toHaveBeenCalledWith(1, 10, [102, 100, 101]);
+      expect(result.current.showMoveConfirm).toBe(false);
     });
 
     it('clears the active attraction id', () => {
