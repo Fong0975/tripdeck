@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import * as imageController from '../controllers/imageController';
-import * as tripController from '../controllers/tripController';
+import * as tripController from '../controllers/trip';
 import { upload } from '../middleware/upload';
 
 import checklistTripRoutes from './checklistTripRoutes';
