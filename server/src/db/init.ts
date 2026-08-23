@@ -10,7 +10,7 @@ import { tableDefinitions, type ColumnDef, type TableDef } from './schema';
  * Builds the column fragment used in both CREATE TABLE and ALTER TABLE ADD COLUMN.
  * Example: "sort_order INT NOT NULL DEFAULT 0"
  */
-function buildColumnSql(col: ColumnDef): string {
+export function buildColumnSql(col: ColumnDef): string {
   const parts: string[] = [col.name, col.type];
   if (col.notNull) {
     parts.push('NOT NULL');
@@ -32,7 +32,7 @@ function buildColumnSql(col: ColumnDef): string {
 /**
  * Builds the full CREATE TABLE statement for a TableDef.
  */
-function buildCreateTableSql(def: TableDef): string {
+export function buildCreateTableSql(def: TableDef): string {
   const parts: string[] = def.columns.map(buildColumnSql);
 
   for (const uk of def.uniqueKeys ?? []) {

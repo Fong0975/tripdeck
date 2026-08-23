@@ -114,10 +114,11 @@ jobs:
         if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run lint:check -w server
 
-      - name: Run server unit tests
+      - name: Run server unit tests with coverage
         id: server-tests
         if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
-        run: npm run test -w server
+        run: npm run test:coverage -w server
+        continue-on-error: true
 
       - name: Run client unit tests with coverage
         id: client-tests
@@ -174,9 +175,65 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           working-directory: client
+          name: Client
 
       - name: Fail workflow if client tests or coverage threshold failed
         if: steps.client-tests.outcome == 'failure'
+        run: exit 1
+
+      - name: Comment server unit test results on PR
+        if: always() && github.event_name == 'pull_request' && steps.filter.outputs.server == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'server/test-results.json';
+            if (!fs.existsSync(path)) return;
+
+            const results = JSON.parse(fs.readFileSync(path, 'utf-8'));
+            const marker = '<!-- server-unit-test-results -->';
+            const status = results.success ? '✅ All tests passed' : '❌ Some tests failed';
+            const body = [
+              marker,
+              `## Server Unit Test Results — ${status}`,
+              '',
+              `| Total | Passed | Failed | Skipped |`,
+              `| --- | --- | --- | --- |`,
+              `| ${results.numTotalTests} | ${results.numPassedTests} | ${results.numFailedTests} | ${results.numPendingTests} |`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Comment server coverage report on PR
+        if: always() && github.event_name == 'pull_request' && steps.filter.outputs.server == 'true'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          working-directory: server
+          name: Server
+
+      - name: Fail workflow if server tests or coverage threshold failed
+        if: steps.server-tests.outcome == 'failure'
         run: exit 1
 
       - name: Run Prettier format check (CSS, JSON and all non-TS files)

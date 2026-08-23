@@ -5,5 +5,28 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.test.ts'],
+    reporters: process.env.CI ? ['default', 'json'] : ['default'],
+    outputFile: process.env.CI ? { json: './test-results.json' } : undefined,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary', 'json'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/test-utils/**',
+        'src/index.ts',
+        'src/routes/**',
+        'src/config/database.ts',
+        'src/db/schema.ts',
+        'src/types/**',
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
+    },
   },
 });
