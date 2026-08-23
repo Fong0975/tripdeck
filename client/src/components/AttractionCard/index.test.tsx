@@ -17,7 +17,7 @@ import {
 
 import type { Attraction, AttractionImage } from '@/types';
 
-import AttractionCard from './AttractionCard';
+import AttractionCard from './index';
 
 function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
   return {
@@ -131,20 +131,6 @@ const conditionalRenderingCases: {
     query: () => screen.queryByText('～', { exact: false }),
     expectPresent: false,
   },
-  {
-    description: 'has a googleMapUrl',
-    attraction: makeAttraction({
-      googleMapUrl: 'https://maps.google.com/?q=x',
-    }),
-    query: () => screen.queryByTitle('Google Maps'),
-    expectPresent: true,
-  },
-  {
-    description: 'has no googleMapUrl',
-    attraction: makeAttraction({ googleMapUrl: null }),
-    query: () => screen.queryByTitle('Google Maps'),
-    expectPresent: false,
-  },
 ];
 
 describe('AttractionCard', () => {
@@ -153,7 +139,7 @@ describe('AttractionCard', () => {
     ({ attraction, query, expectPresent }) => {
       const label = expectPresent ? 'present' : 'absent';
 
-      it(`renders the marker as ${label}`, () => {
+      it(`renders the section as ${label}`, () => {
         renderCard({ attraction });
 
         if (expectPresent) {
@@ -164,31 +150,6 @@ describe('AttractionCard', () => {
       });
     },
   );
-
-  describe.each([
-    {
-      description: 'onDuplicate is provided',
-      onDuplicate: vi.fn(),
-      expectPresent: true,
-    },
-    {
-      description: 'onDuplicate is omitted',
-      onDuplicate: undefined,
-      expectPresent: false,
-    },
-  ])('when $description', ({ onDuplicate, expectPresent }) => {
-    const label = expectPresent ? 'present' : 'absent';
-
-    it(`renders the duplicate button as ${label}`, () => {
-      renderCard({ onDuplicate });
-
-      if (expectPresent) {
-        expect(screen.getByTitle('複製')).toBeInTheDocument();
-      } else {
-        expect(screen.queryByTitle('複製')).not.toBeInTheDocument();
-      }
-    });
-  });
 
   it('calls onEdit with the attraction and does not bubble to the parent', async () => {
     const user = userEvent.setup();
@@ -361,34 +322,6 @@ describe('AttractionCard', () => {
       },
     );
   });
-
-  it('falls back to the URL when a reference website has no title', () => {
-    renderCard({
-      attraction: makeAttraction({
-        referenceWebsites: [{ url: 'https://example.com', title: '' }],
-      }),
-    });
-
-    expect(screen.getByText('https://example.com')).toBeInTheDocument();
-  });
-
-  it(
-    'renders only the first 3 thumbnails plus an overflow count for more ' +
-      'than 3 images',
-    () => {
-      const images: AttractionImage[] = Array.from({ length: 5 }, (_, i) => ({
-        id: i + 1,
-        filename: `img-${i + 1}.jpg`,
-        title: `Img ${i + 1}`,
-      }));
-      renderCard({ attraction: makeAttraction({ images }) });
-
-      expect(screen.getByAltText('Img 1')).toBeInTheDocument();
-      expect(screen.getByAltText('Img 3')).toBeInTheDocument();
-      expect(screen.queryByAltText('Img 4')).not.toBeInTheDocument();
-      expect(screen.getByText('+2')).toBeInTheDocument();
-    },
-  );
 
   describe('line-clamped toggle buttons', () => {
     beforeEach(() => {

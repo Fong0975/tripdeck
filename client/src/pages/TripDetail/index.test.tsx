@@ -1,6 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
@@ -34,29 +33,12 @@ vi.mock('@/hooks/useUnsavedChangesGuard', () => ({
 }));
 vi.mock('@/utils/exportToDocx', () => ({ exportToDocx: vi.fn() }));
 
-// `sensors: []` in `makeDnd()` means no real drag can ever begin, which
-// would otherwise leave `@dnd-kit/core`'s real `DragOverlay` permanently
-// gated behind its own internal (untestable-without-a-real-drag) active
-// state. Only `DragOverlay` is stubbed so the component's own
-// `dnd.activeAttractionId` conditional can be exercised directly.
-vi.mock('@dnd-kit/core', async importOriginal => {
-  const actual = await importOriginal<typeof import('@dnd-kit/core')>();
-  return {
-    ...actual,
-    DragOverlay: ({ children }: { children: ReactNode }) => children,
-  };
-});
-
 vi.mock('@/components/Navbar', () => ({
   default: () => <div>navbar</div>,
 }));
 
 vi.mock('@/components/ui/LoadingIndicator', () => ({
   default: () => <div>loading-indicator</div>,
-}));
-
-vi.mock('@/components/AttractionCard', () => ({
-  default: () => <div>attraction-card</div>,
 }));
 
 vi.mock('./TripHeader', () => ({
@@ -80,10 +62,14 @@ vi.mock('./TripHeader', () => ({
   ),
 }));
 
-vi.mock('@/components/DayColumn', () => ({
+// ItineraryBoard owns the DndContext/DayColumn/DragOverlay rendering itself
+// (see ItineraryBoard.test.tsx); here it's mocked to a flat list of trigger
+// buttons per day so TripDetail's own composition logic (which modal opens,
+// which handler receives which args) can be tested without a real drag
+// context.
+vi.mock('./ItineraryBoard', () => ({
   default: ({
-    day,
-    dayIndex,
+    days,
     onAddAttraction,
     onEditAttraction,
     onDeleteAttraction,
@@ -94,8 +80,7 @@ vi.mock('@/components/DayColumn', () => ({
     onUpdateLocation,
     onDeleteLocation,
   }: {
-    day: DayPlan;
-    dayIndex: number;
+    days: DayPlan[];
     onAddAttraction: (dayIndex: number) => void;
     onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
     onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -111,42 +96,50 @@ vi.mock('@/components/DayColumn', () => ({
     onDeleteLocation: (dayIndex: number, locationId: number) => void;
   }) => (
     <div>
-      <span>day-column-{dayIndex}</span>
-      <button onClick={() => onAddAttraction(dayIndex)}>
-        add-attraction-{dayIndex}
-      </button>
-      <button onClick={() => onEditAttraction(dayIndex, day.attractions[0])}>
-        edit-attraction-{dayIndex}
-      </button>
-      <button
-        onClick={() => onDeleteAttraction(dayIndex, day.attractions[0].id)}
-      >
-        delete-attraction-{dayIndex}
-      </button>
-      <button
-        onClick={() => onDuplicateAttraction(dayIndex, day.attractions[0])}
-      >
-        duplicate-attraction-{dayIndex}
-      </button>
-      {day.connections[0] && (
-        <button onClick={() => onEditConnection(dayIndex, day.connections[0])}>
-          edit-connection-{dayIndex}
-        </button>
-      )}
-      <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
-        add-connection-{dayIndex}
-      </button>
-      <button onClick={() => onAddLocation(dayIndex, 'New Location')}>
-        add-location-{dayIndex}
-      </button>
-      <button
-        onClick={() => onUpdateLocation(dayIndex, 50, 'Updated Location')}
-      >
-        update-location-{dayIndex}
-      </button>
-      <button onClick={() => onDeleteLocation(dayIndex, 50)}>
-        delete-location-{dayIndex}
-      </button>
+      {days.map((day, dayIndex) => (
+        <div key={day.id}>
+          <span>day-column-{dayIndex}</span>
+          <button onClick={() => onAddAttraction(dayIndex)}>
+            add-attraction-{dayIndex}
+          </button>
+          <button
+            onClick={() => onEditAttraction(dayIndex, day.attractions[0])}
+          >
+            edit-attraction-{dayIndex}
+          </button>
+          <button
+            onClick={() => onDeleteAttraction(dayIndex, day.attractions[0].id)}
+          >
+            delete-attraction-{dayIndex}
+          </button>
+          <button
+            onClick={() => onDuplicateAttraction(dayIndex, day.attractions[0])}
+          >
+            duplicate-attraction-{dayIndex}
+          </button>
+          {day.connections[0] && (
+            <button
+              onClick={() => onEditConnection(dayIndex, day.connections[0])}
+            >
+              edit-connection-{dayIndex}
+            </button>
+          )}
+          <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
+            add-connection-{dayIndex}
+          </button>
+          <button onClick={() => onAddLocation(dayIndex, 'New Location')}>
+            add-location-{dayIndex}
+          </button>
+          <button
+            onClick={() => onUpdateLocation(dayIndex, 50, 'Updated Location')}
+          >
+            update-location-{dayIndex}
+          </button>
+          <button onClick={() => onDeleteLocation(dayIndex, 50)}>
+            delete-location-{dayIndex}
+          </button>
+        </div>
+      ))}
     </div>
   ),
 }));
@@ -393,19 +386,6 @@ describe('TripDetail', () => {
     expect(
       screen.queryByText(/^trip-checklist-panel-/),
     ).not.toBeInTheDocument();
-  });
-
-  it('renders the drag overlay attraction card only when a drag is active', () => {
-    vi.mocked(useDragAndDrop).mockReturnValue(
-      makeDnd({
-        activeAttractionId: 10,
-        getActiveAttraction: vi.fn(() => ({ id: 10, name: 'Attraction A' })),
-      }),
-    );
-
-    renderTripDetail();
-
-    expect(screen.getByText('attraction-card')).toBeInTheDocument();
   });
 
   it('switches to the checklist panel and back via the tab bar', async () => {

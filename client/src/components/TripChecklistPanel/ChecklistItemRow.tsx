@@ -1,6 +1,5 @@
+import StorageBadges from '@/components/checklist/shared/StorageBadges';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
-
-import StorageBadges from './StorageBadges';
 
 interface Props {
   item: ChecklistItem;

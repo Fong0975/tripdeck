@@ -1,9 +1,6 @@
 import { Package } from 'lucide-react';
 
-import {
-  STORAGE_OPTIONS,
-  hasStorageOption,
-} from '@/components/checklist/shared/checklistUtils';
+import { STORAGE_OPTIONS, hasStorageOption } from './checklistUtils';
 
 interface Props {
   value: string | null | undefined;
