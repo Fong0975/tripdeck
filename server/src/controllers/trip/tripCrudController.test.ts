@@ -12,6 +12,7 @@ import {
   getTrip,
   getTripContent,
   getTrips,
+  updateTrip,
 } from './tripCrudController';
 
 const sampleTrip: TripResponse = {
@@ -114,6 +115,79 @@ describe('Trips', () => {
     });
   });
 
+  describe('updateTrip', () => {
+    it('returns 404 when the trip is not found', async () => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(null);
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1' },
+        body: { title: 'New Title' },
+      });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 404, { error: 'Trip not found' });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when title is provided but empty', async () => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1' },
+        body: { title: '   ' },
+      });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 400, { error: 'title cannot be empty' });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when the provided endDate is before the provided startDate', async () => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1' },
+        body: { startDate: '2024-05-12', endDate: '2024-05-10' },
+      });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 400, {
+        error: 'endDate cannot be before startDate',
+      });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when a new startDate falls after the existing endDate', async () => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1' },
+        body: { startDate: '2024-05-20' },
+      });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 400, {
+        error: 'endDate cannot be before startDate',
+      });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('updates the trip and responds with 200', async () => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const updated = { ...sampleTrip, title: 'New Title' };
+      vi.mocked(tripRepo.update).mockResolvedValue(updated);
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1' },
+        body: { title: 'New Title' },
+      });
+
+      await updateTrip(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(updated);
+      expect(res.status).not.toHaveBeenCalled();
+    });
+  });
+
   describe('deleteTrip', () => {
     it('returns 404 when the trip is not found', async () => {
       vi.mocked(tripRepo.deleteById).mockResolvedValue(false);
@@ -197,6 +271,16 @@ describe('500 error handling', () => {
       },
       arrange: () => vi.mocked(tripRepo.create).mockRejectedValue(rejection),
       expectedError: 'Failed to create trip',
+    },
+    {
+      name: 'updateTrip',
+      handler: updateTrip,
+      req: { params: { tripId: '1' }, body: { title: 'New Title' } },
+      arrange: () => {
+        vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+        vi.mocked(tripRepo.update).mockRejectedValue(rejection);
+      },
+      expectedError: 'Failed to update trip',
     },
     {
       name: 'deleteTrip',

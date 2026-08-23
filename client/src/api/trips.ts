@@ -24,6 +24,21 @@ export async function createTrip(data: {
   return api<Trip>('/api/trips/', { method: 'POST', ...json(data) });
 }
 
+export interface UpdateTripData {
+  title?: string;
+  destination?: string | null;
+  startDate?: string;
+  endDate?: string;
+  description?: string | null;
+}
+
+export async function updateTrip(
+  id: number,
+  data: UpdateTripData,
+): Promise<Trip> {
+  return api<Trip>(`/api/trips/${id}`, { method: 'PUT', ...json(data) });
+}
+
 export async function deleteTrip(id: number): Promise<void> {
   await api<void>(`/api/trips/${id}`, { method: 'DELETE' });
 }

@@ -23,7 +23,12 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
 describe('TripHeader', () => {
   it('renders the trip title and the formatted date range', () => {
     render(
-      <TripHeader trip={makeTrip()} onBack={vi.fn()} onExport={vi.fn()} />,
+      <TripHeader
+        trip={makeTrip()}
+        onBack={vi.fn()}
+        onExport={vi.fn()}
+        onEdit={vi.fn()}
+      />,
     );
 
     expect(screen.getByText('Japan Trip')).toBeInTheDocument();
@@ -38,7 +43,12 @@ describe('TripHeader', () => {
 
   it('shows the total day count', () => {
     render(
-      <TripHeader trip={makeTrip()} onBack={vi.fn()} onExport={vi.fn()} />,
+      <TripHeader
+        trip={makeTrip()}
+        onBack={vi.fn()}
+        onExport={vi.fn()}
+        onEdit={vi.fn()}
+      />,
     );
 
     expect(screen.getByText('3 天')).toBeInTheDocument();
@@ -53,6 +63,7 @@ describe('TripHeader', () => {
         trip={makeTrip({ destination })}
         onBack={vi.fn()}
         onExport={vi.fn()}
+        onEdit={vi.fn()}
       />,
     );
 
@@ -66,7 +77,14 @@ describe('TripHeader', () => {
   it('calls onBack when the back button is clicked', async () => {
     const onBack = vi.fn();
     const user = userEvent.setup();
-    render(<TripHeader trip={makeTrip()} onBack={onBack} onExport={vi.fn()} />);
+    render(
+      <TripHeader
+        trip={makeTrip()}
+        onBack={onBack}
+        onExport={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByLabelText('返回首頁'));
 
@@ -77,12 +95,34 @@ describe('TripHeader', () => {
     const onExport = vi.fn();
     const user = userEvent.setup();
     render(
-      <TripHeader trip={makeTrip()} onBack={vi.fn()} onExport={onExport} />,
+      <TripHeader
+        trip={makeTrip()}
+        onBack={vi.fn()}
+        onExport={onExport}
+        onEdit={vi.fn()}
+      />,
     );
 
     await user.click(screen.getByText('匯出'));
 
     expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onEdit when the edit button is clicked', async () => {
+    const onEdit = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TripHeader
+        trip={makeTrip()}
+        onBack={vi.fn()}
+        onExport={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    await user.click(screen.getByLabelText('編輯旅程資訊'));
+
+    expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -96,6 +136,7 @@ describe('TripHeader', () => {
           trip={makeTrip()}
           onBack={vi.fn()}
           onExport={vi.fn()}
+          onEdit={vi.fn()}
           exporting={exporting}
         />,
       );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import AttractionModal from '@/components/AttractionModal';
+import EditTripModal from '@/components/EditTripModal';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
@@ -22,7 +23,7 @@ export default function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { trip, content, reloadContent } = useTripData(id);
+  const { trip, content, reloadContent, setTrip } = useTripData(id);
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
@@ -30,6 +31,7 @@ export default function TripDetail() {
   );
   const [exporting, setExporting] = useState(false);
   const [checklistDirty, setChecklistDirty] = useState(false);
+  const [showEditTrip, setShowEditTrip] = useState(false);
 
   const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
 
@@ -109,6 +111,10 @@ export default function TripDetail() {
         trip={trip}
         onBack={handleBack}
         onExport={() => void handleExport()}
+        onEdit={() => {
+          closeModal();
+          setShowEditTrip(true);
+        }}
         exporting={exporting}
       />
 
@@ -210,6 +216,19 @@ export default function TripDetail() {
           onSave={c =>
             void handleSaveConnection(editConnectionData.dayIndex, c)
           }
+        />
+      )}
+
+      {showEditTrip && (
+        <EditTripModal
+          trip={trip}
+          initialContent={content}
+          onClose={() => setShowEditTrip(false)}
+          onUpdated={updated => {
+            setTrip(updated);
+            setShowEditTrip(false);
+          }}
+          onContentChanged={() => void reloadContent()}
         />
       )}
 

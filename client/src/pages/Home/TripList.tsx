@@ -9,9 +9,16 @@ interface Props {
   loading: boolean;
   onAdd: () => void;
   onDelete: (id: number) => void;
+  onEdit: (trip: Trip) => void;
 }
 
-export default function TripList({ trips, loading, onAdd, onDelete }: Props) {
+export default function TripList({
+  trips,
+  loading,
+  onAdd,
+  onDelete,
+  onEdit,
+}: Props) {
   return (
     <main className='mx-auto max-w-screen-xl px-4 pb-20'>
       <div className='mb-8 flex items-center justify-between'>
@@ -39,7 +46,12 @@ export default function TripList({ trips, loading, onAdd, onDelete }: Props) {
       ) : (
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
           {trips.map(trip => (
-            <TripCard key={trip.id} trip={trip} onDelete={onDelete} />
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
           ))}
         </div>
       )}

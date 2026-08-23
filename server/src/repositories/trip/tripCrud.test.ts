@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../attraction/attractionCrud');
+
+import * as attractionCrud from '../attraction/attractionCrud';
+
 import {
   create,
   deleteById,
   findAll,
   findById,
   findDayByIdAndTripId,
+  update,
 } from './tripCrud';
 
 const mockPoolExecute = vi.fn();
@@ -260,6 +265,299 @@ describe('tripCrud', () => {
       expect(mockConnRollback).toHaveBeenCalled();
       expect(mockConnCommit).not.toHaveBeenCalled();
       expect(mockConnRelease).toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    function tripRow(overrides: Partial<Record<string, unknown>> = {}) {
+      return {
+        id: 10,
+        title: 'Old Title',
+        destination: 'Osaka',
+        start_date: '2026-08-01',
+        end_date: '2026-08-03',
+        description: 'old desc',
+        created_at: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      };
+    }
+
+    function dayRow(id: number, day: number, date: string) {
+      return { id, trip_id: 10, day, date };
+    }
+
+    beforeEach(() => {
+      vi.mocked(attractionCrud.deleteById).mockResolvedValue(true);
+      mockConnExecute.mockImplementation(() =>
+        Promise.resolve([{ affectedRows: 1 }]),
+      );
+    });
+
+    it('returns null and does not open a transaction when the trip does not exist', async () => {
+      mockPoolExecute.mockResolvedValueOnce([[]]);
+
+      const result = await update(999, { title: 'New' });
+
+      expect(result).toBeNull();
+      expect(mockGetConnection).not.toHaveBeenCalled();
+      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
+    });
+
+    it('updates non-date fields without touching trip_days when dates are unchanged', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([[tripRow()]]) // initial fetch
+        .mockResolvedValueOnce([
+          [
+            dayRow(101, 1, '2026-08-01'),
+            dayRow(102, 2, '2026-08-02'),
+            dayRow(103, 3, '2026-08-03'),
+          ],
+        ]) // trip_days
+        .mockResolvedValueOnce([
+          [tripRow({ title: 'New Title', destination: 'Kyoto' })],
+        ]); // fresh fetch
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 101 }, { id: 102 }, { id: 103 }],
+      ]);
+
+      const result = await update(10, {
+        title: 'New Title',
+        destination: 'Kyoto',
+      });
+
+      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
+      const dayDeletes = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('DELETE FROM trip_days'),
+      );
+      expect(dayDeletes).toHaveLength(0);
+      const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO trip_days'),
+      );
+      expect(dayInserts).toHaveLength(0);
+
+      const renumbers = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('UPDATE trip_days SET day = ? WHERE id'),
+      );
+      expect(renumbers.map(([, params]) => params)).toEqual([
+        [1, 101],
+        [2, 102],
+        [3, 103],
+      ]);
+
+      const tripUpdate = mockConnExecute.mock.calls.find(([sql]) =>
+        (sql as string).includes('UPDATE trips SET'),
+      );
+      expect(tripUpdate?.[1]).toEqual([
+        'New Title',
+        'Kyoto',
+        '2026-08-01',
+        '2026-08-03',
+        'old desc',
+        10,
+      ]);
+
+      expect(mockConnCommit).toHaveBeenCalled();
+      expect(mockConnRollback).not.toHaveBeenCalled();
+      expect(result?.title).toBe('New Title');
+    });
+
+    it('expands the date range by inserting trip_days for newly added dates', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-09-01', end_date: '2026-09-03' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(201, 1, '2026-09-01'),
+            dayRow(202, 2, '2026-09-02'),
+            dayRow(203, 3, '2026-09-03'),
+          ],
+        ])
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-09-01', end_date: '2026-09-05' })],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 201 }, { id: 202 }, { id: 203 }, { id: 301 }, { id: 302 }],
+      ]);
+
+      await update(10, { endDate: '2026-09-05' });
+
+      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
+      const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO trip_days'),
+      );
+      expect(dayInserts).toHaveLength(2);
+      expect(dayInserts[0][1]).toEqual([10, -1, '2026-09-04']);
+      expect(dayInserts[1][1]).toEqual([10, -2, '2026-09-05']);
+    });
+
+    it('shrinks the date range, deleting attractions/connections/images for removed days before removing them', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-05' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(401, 1, '2026-10-01'),
+            dayRow(402, 2, '2026-10-02'),
+            dayRow(403, 3, '2026-10-03'),
+            dayRow(404, 4, '2026-10-04'),
+            dayRow(405, 5, '2026-10-05'),
+          ],
+        ])
+        .mockResolvedValueOnce([[{ id: 9001 }, { id: 9002 }]]) // attractions for day 404
+        .mockResolvedValueOnce([[{ id: 9003 }]]) // attractions for day 405
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-03' })],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 401 }, { id: 402 }, { id: 403 }],
+      ]);
+
+      await update(10, { endDate: '2026-10-03' });
+
+      expect(vi.mocked(attractionCrud.deleteById).mock.calls).toEqual([
+        [9001],
+        [9002],
+        [9003],
+      ]);
+      const dayDeletes = mockConnExecute.mock.calls
+        .filter(([sql]) => (sql as string).includes('DELETE FROM trip_days'))
+        .map(([, params]) => params);
+      expect(dayDeletes).toEqual([[404], [405]]);
+    });
+
+    it('moves the start date forward, removing leading days and renumbering the rest starting at 1', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-11-01', end_date: '2026-11-05' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(501, 1, '2026-11-01'),
+            dayRow(502, 2, '2026-11-02'),
+            dayRow(503, 3, '2026-11-03'),
+            dayRow(504, 4, '2026-11-04'),
+            dayRow(505, 5, '2026-11-05'),
+          ],
+        ])
+        .mockResolvedValueOnce([[{ id: 8001 }]]) // attractions for day 501
+        .mockResolvedValueOnce([[]]) // no attractions for day 502
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-11-03', end_date: '2026-11-05' })],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 503 }, { id: 504 }, { id: 505 }],
+      ]);
+
+      await update(10, { startDate: '2026-11-03' });
+
+      expect(vi.mocked(attractionCrud.deleteById).mock.calls).toEqual([[8001]]);
+      const renumbers = mockConnExecute.mock.calls
+        .filter(([sql]) =>
+          (sql as string).includes('UPDATE trip_days SET day = ? WHERE id'),
+        )
+        .map(([, params]) => params);
+      expect(renumbers).toEqual([
+        [1, 503],
+        [2, 504],
+        [3, 505],
+      ]);
+    });
+
+    it('shifts both start and end dates so the day count stays the same but the date set changes entirely', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-12-01', end_date: '2026-12-05' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(601, 1, '2026-12-01'),
+            dayRow(602, 2, '2026-12-02'),
+            dayRow(603, 3, '2026-12-03'),
+            dayRow(604, 4, '2026-12-04'),
+            dayRow(605, 5, '2026-12-05'),
+          ],
+        ])
+        .mockResolvedValueOnce([[]]) // attractions for day 601
+        .mockResolvedValueOnce([[]]) // attractions for day 602
+        .mockResolvedValueOnce([
+          [
+            tripRow({
+              start_date: '2026-12-03',
+              end_date: '2026-12-07',
+            }),
+          ],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 603 }, { id: 604 }, { id: 605 }, { id: 701 }, { id: 702 }],
+      ]);
+
+      await update(10, { startDate: '2026-12-03', endDate: '2026-12-07' });
+
+      const dayDeletes = mockConnExecute.mock.calls
+        .filter(([sql]) => (sql as string).includes('DELETE FROM trip_days'))
+        .map(([, params]) => params);
+      expect(dayDeletes).toEqual([[601], [602]]);
+
+      const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO trip_days'),
+      );
+      expect(dayInserts).toHaveLength(2);
+      expect(dayInserts[0][1]).toEqual([10, -1, '2026-12-06']);
+      expect(dayInserts[1][1]).toEqual([10, -2, '2026-12-07']);
+    });
+
+    it('rolls back the transaction and rethrows when a query fails mid-transaction', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([[tripRow()]])
+        .mockResolvedValueOnce([
+          [
+            dayRow(101, 1, '2026-08-01'),
+            dayRow(102, 2, '2026-08-02'),
+            dayRow(103, 3, '2026-08-03'),
+          ],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 101 }, { id: 102 }, { id: 103 }],
+      ]);
+      mockConnExecute.mockImplementation((sql: string) => {
+        if (sql.includes('UPDATE trips SET')) {
+          return Promise.reject(new Error('db error'));
+        }
+        return Promise.resolve([{ affectedRows: 1 }]);
+      });
+
+      await expect(update(10, { title: 'Broken' })).rejects.toThrow('db error');
+
+      expect(mockConnRollback).toHaveBeenCalled();
+      expect(mockConnCommit).not.toHaveBeenCalled();
+      expect(mockConnRelease).toHaveBeenCalled();
+    });
+
+    it('does not open a transaction if deleting an attraction for a removed day fails', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-04' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(401, 1, '2026-10-01'),
+            dayRow(402, 2, '2026-10-02'),
+            dayRow(403, 3, '2026-10-03'),
+            dayRow(404, 4, '2026-10-04'),
+          ],
+        ])
+        .mockResolvedValueOnce([[{ id: 9001 }]]); // attractions for day 404
+      vi.mocked(attractionCrud.deleteById).mockRejectedValueOnce(
+        new Error('delete failed'),
+      );
+
+      await expect(update(10, { endDate: '2026-10-03' })).rejects.toThrow(
+        'delete failed',
+      );
+
+      expect(mockGetConnection).not.toHaveBeenCalled();
     });
   });
 

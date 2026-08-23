@@ -46,11 +46,13 @@ vi.mock('./TripHeader', () => ({
     trip,
     onBack,
     onExport,
+    onEdit,
     exporting,
   }: {
     trip: Trip;
     onBack: () => void;
     onExport: () => void;
+    onEdit: () => void;
     exporting?: boolean;
   }) => (
     <div>
@@ -58,6 +60,7 @@ vi.mock('./TripHeader', () => ({
       <span>exporting:{String(exporting)}</span>
       <button onClick={onBack}>back-trigger</button>
       <button onClick={onExport}>export-trigger</button>
+      <button onClick={onEdit}>edit-trip-trigger</button>
     </div>
   ),
 }));
@@ -210,6 +213,32 @@ vi.mock('@/components/TripChecklistPanel', () => ({
   ),
 }));
 
+vi.mock('@/components/EditTripModal', () => ({
+  default: ({
+    trip,
+    onClose,
+    onUpdated,
+    onContentChanged,
+  }: {
+    trip: Trip;
+    onClose: () => void;
+    onUpdated: (trip: Trip) => void;
+    onContentChanged?: () => void;
+  }) => (
+    <div>
+      <span>edit-trip-modal</span>
+      <span>editing:{trip.title}</span>
+      <button onClick={onClose}>close-edit-trip-modal</button>
+      <button onClick={() => onUpdated({ ...trip, title: 'Updated Trip' })}>
+        save-edit-trip-modal
+      </button>
+      <button onClick={() => onContentChanged?.()}>
+        content-changed-trigger
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock('@/components/ui/ConfirmDialog', () => ({
   default: ({
     title,
@@ -282,6 +311,7 @@ function makeTripData(
     trip: makeTrip(),
     content: { tripId: 1, days: makeDays() },
     reloadContent: vi.fn(),
+    setTrip: vi.fn(),
     ...overrides,
   };
 }
@@ -741,6 +771,65 @@ describe('TripDetail', () => {
 
     await user.click(screen.getByText('dialog-confirm'));
     expect(confirmLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the edit trip modal from the header edit trigger', async () => {
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    await user.click(screen.getByText('edit-trip-trigger'));
+
+    expect(screen.getByText('edit-trip-modal')).toBeInTheDocument();
+    expect(screen.getByText('editing:Trip A')).toBeInTheDocument();
+  });
+
+  it('closes the edit trip modal without touching the loaded trip', async () => {
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('edit-trip-trigger'));
+
+    await user.click(screen.getByText('close-edit-trip-modal'));
+
+    expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('closes any open attraction/connection modal when opening the edit trip modal', async () => {
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('add-attraction-0'));
+    expect(screen.getByText('attraction-modal')).toBeInTheDocument();
+
+    await user.click(screen.getByText('edit-trip-trigger'));
+
+    expect(screen.queryByText('attraction-modal')).not.toBeInTheDocument();
+    expect(screen.getByText('edit-trip-modal')).toBeInTheDocument();
+  });
+
+  it('applies the updated trip and closes the modal when the edit trip modal saves', async () => {
+    const setTrip = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(makeTripData({ setTrip }));
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('edit-trip-trigger'));
+
+    await user.click(screen.getByText('save-edit-trip-modal'));
+
+    expect(setTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, title: 'Updated Trip' }),
+    );
+    expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('reloads content when the edit trip modal reports removed day lanes', async () => {
+    const reloadContent = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(makeTripData({ reloadContent }));
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('edit-trip-trigger'));
+
+    await user.click(screen.getByText('content-changed-trigger'));
+
+    expect(reloadContent).toHaveBeenCalledTimes(1);
   });
 
   it('does not render the move confirm dialog when showMoveConfirm is false', () => {

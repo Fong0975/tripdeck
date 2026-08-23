@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import * as tripRepo from '../../repositories/trip';
-import type { CreateTripBody } from '../../types/trip';
+import type { CreateTripBody, UpdateTripBody } from '../../types/trip';
 
 export async function getTrips(_req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trips']
@@ -103,6 +103,60 @@ export async function createTrip(req: Request, res: Response): Promise<void> {
     res.status(201).json(await tripRepo.create(body));
   } catch {
     res.status(500).json({ error: 'Failed to create trip' });
+  }
+}
+
+export async function updateTrip(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trips']
+     #swagger.summary = 'Update a trip'
+     #swagger.responses[200] = {
+       description: 'Trip updated',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             properties: {
+               id: { type: 'integer', example: 1 },
+               title: { type: 'string', example: '關西之旅' },
+               destination: { type: 'string', nullable: true, example: '大阪、京都、神戶' },
+               startDate: { type: 'string', format: 'date', example: '2024-05-10' },
+               endDate: { type: 'string', format: 'date', example: '2024-05-12' },
+               description: { type: 'string', nullable: true, example: null },
+               createdAt: { type: 'string', format: 'date-time', example: '2024-01-01T00:00:00.000Z' }
+             }
+           }
+         }
+       }
+     } */
+  try {
+    const tripId = Number(req.params.tripId);
+    const existing = await tripRepo.findById(tripId);
+    if (!existing) {
+      res.status(404).json({ error: 'Trip not found' });
+      return;
+    }
+
+    const body = req.body as UpdateTripBody;
+    if ('title' in body && !body.title?.trim()) {
+      res.status(400).json({ error: 'title cannot be empty' });
+      return;
+    }
+
+    const effectiveStart = body.startDate ?? existing.startDate;
+    const effectiveEnd = body.endDate ?? existing.endDate;
+    if (effectiveEnd < effectiveStart) {
+      res.status(400).json({ error: 'endDate cannot be before startDate' });
+      return;
+    }
+
+    const updated = await tripRepo.update(tripId, body);
+    if (!updated) {
+      res.status(404).json({ error: 'Trip not found' });
+      return;
+    }
+    res.json(updated);
+  } catch {
+    res.status(500).json({ error: 'Failed to update trip' });
   }
 }
 

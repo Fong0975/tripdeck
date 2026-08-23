@@ -26,10 +26,10 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
   };
 }
 
-function renderCard(trip: Trip, onDelete = vi.fn()) {
+function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
   return render(
     <MemoryRouter>
-      <TripCard trip={trip} onDelete={onDelete} />
+      <TripCard trip={trip} onDelete={onDelete} onEdit={onEdit} />
     </MemoryRouter>,
   );
 }
@@ -107,6 +107,26 @@ describe('TripCard', () => {
     renderCard(makeTrip());
 
     await user.click(screen.getByTitle('刪除旅程'));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('calls onEdit with the trip when the edit button is clicked', async () => {
+    const onEdit = vi.fn();
+    const user = userEvent.setup();
+    const trip = makeTrip({ id: 9 });
+    renderCard(trip, vi.fn(), onEdit);
+
+    await user.click(screen.getByTitle('編輯旅程'));
+
+    expect(onEdit).toHaveBeenCalledWith(trip);
+  });
+
+  it('does not navigate when the edit button is clicked', async () => {
+    const user = userEvent.setup();
+    renderCard(makeTrip());
+
+    await user.click(screen.getByTitle('編輯旅程'));
 
     expect(mockNavigate).not.toHaveBeenCalled();
   });

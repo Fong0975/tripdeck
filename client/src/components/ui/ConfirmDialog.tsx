@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
+
 interface Props {
   title: string;
-  message: string;
+  message: ReactNode;
   cancelLabel?: string;
   confirmLabel?: string;
   onCancel: () => void;

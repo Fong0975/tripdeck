@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { MapPin, Calendar, Trash2 } from 'lucide-react';
+import { MapPin, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { useConfirmDelete } from '@/hooks/useConfirmDelete';
@@ -10,9 +10,10 @@ import { getTripTotalDays } from '@/utils/date';
 interface Props {
   trip: Trip;
   onDelete: (id: number) => void;
+  onEdit: (trip: Trip) => void;
 }
 
-export default function TripCard({ trip, onDelete }: Props) {
+export default function TripCard({ trip, onDelete, onEdit }: Props) {
   const navigate = useNavigate();
   const { confirming, handleClick: handleDelete } = useConfirmDelete(() =>
     onDelete(trip.id),
@@ -42,17 +43,29 @@ export default function TripCard({ trip, onDelete }: Props) {
           <h3 className='text-foreground pr-8 text-lg font-bold leading-tight'>
             {trip.title}
           </h3>
-          <button
-            onClick={handleDelete}
-            className={`absolute right-0 top-0 rounded-lg p-1.5 transition-all ${
-              confirming
-                ? 'bg-destructive scale-110 text-white'
-                : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100'
-            }`}
-            title={confirming ? '再次點擊確認刪除' : '刪除旅程'}
-          >
-            <Trash2 size={16} />
-          </button>
+          <div className='absolute right-0 top-0 flex gap-1'>
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onEdit(trip);
+              }}
+              className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-1.5 opacity-0 transition-all group-hover:opacity-100'
+              title='編輯旅程'
+            >
+              <Pencil size={16} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className={`rounded-lg p-1.5 transition-all ${
+                confirming
+                  ? 'bg-destructive scale-110 text-white'
+                  : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100'
+              }`}
+              title={confirming ? '再次點擊確認刪除' : '刪除旅程'}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
         {trip.destination && (

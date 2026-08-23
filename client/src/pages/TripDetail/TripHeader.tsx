@@ -1,6 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { ArrowLeft, Download, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, MapPin, Pencil } from 'lucide-react';
 
 import type { Trip } from '@/types';
 import { getTripTotalDays } from '@/utils/date';
@@ -9,6 +9,7 @@ interface Props {
   trip: Trip;
   onBack: () => void;
   onExport: () => void;
+  onEdit: () => void;
   exporting?: boolean;
 }
 
@@ -16,6 +17,7 @@ export default function TripHeader({
   trip,
   onBack,
   onExport,
+  onEdit,
   exporting = false,
 }: Props) {
   const totalDays = getTripTotalDays(trip);
@@ -47,6 +49,15 @@ export default function TripHeader({
             <span className='text-primary font-medium'>{totalDays} 天</span>
           </div>
         </div>
+
+        <button
+          onClick={onEdit}
+          className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors'
+          aria-label='編輯旅程資訊'
+          title='編輯旅程資訊'
+        >
+          <Pencil size={18} />
+        </button>
 
         <button
           onClick={onExport}
