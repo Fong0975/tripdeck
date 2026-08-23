@@ -1,10 +1,7 @@
-import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import AttractionCard from '@/components/AttractionCard';
 import AttractionModal from '@/components/AttractionModal';
-import DayColumn from '@/components/DayColumn';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
@@ -13,6 +10,7 @@ import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { exportToDocx } from '@/utils/exportToDocx';
 
+import ItineraryBoard from './ItineraryBoard';
 import TripHeader from './TripHeader';
 import type { ModalState } from './types';
 import { useAttractionActions } from './useAttractionActions';
@@ -148,64 +146,37 @@ export default function TripDetail() {
       ) : (
         /* Board */
         <div className='flex-1 overflow-x-auto px-4 py-6 sm:px-8 xl:px-16'>
-          <DndContext
+          <ItineraryBoard
+            days={content.days}
             sensors={dnd.sensors}
             onDragStart={dnd.handleDragStart}
             onDragEnd={dnd.handleDragEnd}
-          >
-            <div className='flex min-w-max gap-4 pb-4'>
-              {content.days.map((day, i) => (
-                <DayColumn
-                  key={day.id}
-                  day={day}
-                  dayIndex={i}
-                  onAddAttraction={di =>
-                    setModal({ type: 'addAttraction', dayIndex: di })
-                  }
-                  onEditAttraction={(di, a) =>
-                    setModal({
-                      type: 'editAttraction',
-                      dayIndex: di,
-                      attraction: a,
-                    })
-                  }
-                  onDeleteAttraction={(di, aId) =>
-                    void handleDeleteAttraction(di, aId)
-                  }
-                  onDuplicateAttraction={(di, a) =>
-                    void handleDuplicateAttraction(di, a)
-                  }
-                  onEditConnection={(di, c) =>
-                    setModal({
-                      type: 'editConnection',
-                      dayIndex: di,
-                      connection: c,
-                    })
-                  }
-                  onAddConnection={handleAddConnection}
-                  onAddLocation={(di, name) => void handleAddLocation(di, name)}
-                  onUpdateLocation={(di, locId, name) =>
-                    void handleUpdateLocation(di, locId, name)
-                  }
-                  onDeleteLocation={(di, locId) =>
-                    void handleDeleteLocation(di, locId)
-                  }
-                />
-              ))}
-            </div>
-
-            <DragOverlay>
-              {dnd.activeAttractionId && dnd.getActiveAttraction() && (
-                <div className='rotate-2 opacity-90 shadow-xl'>
-                  <AttractionCard
-                    attraction={dnd.getActiveAttraction()!}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
-                  />
-                </div>
-              )}
-            </DragOverlay>
-          </DndContext>
+            activeAttractionId={dnd.activeAttractionId}
+            getActiveAttraction={dnd.getActiveAttraction}
+            onAddAttraction={di =>
+              setModal({ type: 'addAttraction', dayIndex: di })
+            }
+            onEditAttraction={(di, a) =>
+              setModal({ type: 'editAttraction', dayIndex: di, attraction: a })
+            }
+            onDeleteAttraction={(di, aId) =>
+              void handleDeleteAttraction(di, aId)
+            }
+            onDuplicateAttraction={(di, a) =>
+              void handleDuplicateAttraction(di, a)
+            }
+            onEditConnection={(di, c) =>
+              setModal({ type: 'editConnection', dayIndex: di, connection: c })
+            }
+            onAddConnection={handleAddConnection}
+            onAddLocation={(di, name) => void handleAddLocation(di, name)}
+            onUpdateLocation={(di, locId, name) =>
+              void handleUpdateLocation(di, locId, name)
+            }
+            onDeleteLocation={(di, locId) =>
+              void handleDeleteLocation(di, locId)
+            }
+          />
         </div>
       )}
 
