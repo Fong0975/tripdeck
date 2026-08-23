@@ -2,16 +2,16 @@ import { Images } from 'lucide-react';
 
 import type { AttractionImage } from '@/types';
 
-interface AttractionImageStripProps {
+interface ImageStripProps {
   images: AttractionImage[];
   onOpenLightbox: () => void;
 }
 
 /** Renders up to 3 overlapping image thumbnails plus an overflow count, opening the lightbox on click. */
-export default function AttractionImageStrip({
+export default function ImageStrip({
   images,
   onOpenLightbox,
-}: AttractionImageStripProps) {
+}: ImageStripProps) {
   return (
     <button
       type='button'

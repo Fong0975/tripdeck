@@ -62,27 +62,109 @@ describe('TravelConnectionItem', () => {
     }
   });
 
-  it.each([
-    {
-      description: 'the connection has images',
-      images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
-      expected: '1',
-    },
-    { description: 'the connection has no images', images: [], expected: null },
-  ])('shows the image count when $description', ({ images, expected }) => {
+  describe('route', () => {
+    it('shows the label and renders markdown syntax when route is set', () => {
+      render(
+        <TravelConnectionItem
+          connection={makeConnection({ route: '**搭乘銀座線**' })}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('路線說明')).toBeInTheDocument();
+      const bold = screen.getByText('搭乘銀座線');
+      expect(bold.tagName).toBe('STRONG');
+    });
+
+    it('does not show the label when route is not set', () => {
+      render(
+        <TravelConnectionItem
+          connection={makeConnection({ route: null })}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText('路線說明')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('notes', () => {
+    it('shows the label and renders content as literal text when notes is set', () => {
+      render(
+        <TravelConnectionItem
+          connection={makeConnection({ notes: '**帶雨傘**' })}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('備註')).toBeInTheDocument();
+      expect(screen.getByText('**帶雨傘**')).toBeInTheDocument();
+    });
+
+    it('does not show the label when notes is not set', () => {
+      render(
+        <TravelConnectionItem
+          connection={makeConnection({ notes: null })}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText('備註')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows an image thumbnail when the connection has images', () => {
     render(
       <TravelConnectionItem
-        connection={makeConnection({ images })}
+        connection={makeConnection({
+          images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
+        })}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
-    if (expected) {
-      expect(screen.getByText(expected)).toBeInTheDocument();
-    } else {
-      expect(screen.queryByText('1')).not.toBeInTheDocument();
-    }
+    expect(screen.getByAltText('A')).toBeInTheDocument();
+  });
+
+  it('shows no thumbnail when the connection has no images', () => {
+    render(
+      <TravelConnectionItem
+        connection={makeConnection({ images: [] })}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  describe('image lightbox', () => {
+    it('opens the lightbox and does not trigger onEdit when the thumbnail strip is clicked', async () => {
+      const user = userEvent.setup();
+      const onEdit = vi.fn();
+      render(
+        <TravelConnectionItem
+          connection={makeConnection({
+            images: [
+              { id: 1, filename: 'a.jpg', title: 'Img 1' },
+              { id: 2, filename: 'b.jpg', title: 'Img 2' },
+            ],
+          })}
+          onEdit={onEdit}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /Img 1/ }));
+
+      expect(screen.getByText('1 / 2')).toBeInTheDocument();
+      expect(onEdit).not.toHaveBeenCalled();
+    });
   });
 
   it('calls onEdit with the connection when clicked', async () => {

@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AttractionImage } from '@/types';
 
-import AttractionImageStrip from './AttractionImageStrip';
+import ImageStrip from './ImageStrip';
 
-describe('AttractionImageStrip', () => {
+describe('ImageStrip', () => {
   it('renders only the first 3 thumbnails plus an overflow count for more than 3 images', () => {
     const images: AttractionImage[] = Array.from({ length: 5 }, (_, i) => ({
       id: i + 1,
@@ -14,7 +14,7 @@ describe('AttractionImageStrip', () => {
       title: `Img ${i + 1}`,
     }));
 
-    render(<AttractionImageStrip images={images} onOpenLightbox={vi.fn()} />);
+    render(<ImageStrip images={images} onOpenLightbox={vi.fn()} />);
 
     expect(screen.getByAltText('Img 1')).toBeInTheDocument();
     expect(screen.getByAltText('Img 3')).toBeInTheDocument();
@@ -28,7 +28,7 @@ describe('AttractionImageStrip', () => {
       { id: 2, filename: 'b.jpg', title: 'Img 2' },
     ];
 
-    render(<AttractionImageStrip images={images} onOpenLightbox={vi.fn()} />);
+    render(<ImageStrip images={images} onOpenLightbox={vi.fn()} />);
 
     expect(screen.queryByText('+', { exact: false })).not.toBeInTheDocument();
   });
@@ -39,9 +39,7 @@ describe('AttractionImageStrip', () => {
     const images: AttractionImage[] = [
       { id: 1, filename: 'a.jpg', title: 'Img 1' },
     ];
-    render(
-      <AttractionImageStrip images={images} onOpenLightbox={onOpenLightbox} />,
-    );
+    render(<ImageStrip images={images} onOpenLightbox={onOpenLightbox} />);
 
     await user.click(screen.getByRole('button', { name: /Img 1/ }));
 
@@ -56,7 +54,7 @@ describe('AttractionImageStrip', () => {
     ];
     render(
       <div onClick={onParentClick}>
-        <AttractionImageStrip images={images} onOpenLightbox={vi.fn()} />
+        <ImageStrip images={images} onOpenLightbox={vi.fn()} />
       </div>,
     );
 

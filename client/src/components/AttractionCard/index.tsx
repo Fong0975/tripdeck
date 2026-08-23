@@ -5,12 +5,12 @@ import { useState } from 'react';
 
 import type { Attraction } from '@/types';
 
+import ClampedTextSection from '../ClampedTextSection';
 import ImageLightbox from '../ImageLightbox';
+import ImageStrip from '../ImageStrip';
 
 import AttractionCardHeader from './AttractionCardHeader';
-import AttractionImageStrip from './AttractionImageStrip';
 import AttractionReferenceLinks from './AttractionReferenceLinks';
-import ClampedMarkdownSection from './ClampedMarkdownSection';
 
 interface Props {
   attraction: Attraction;
@@ -85,14 +85,14 @@ export default function AttractionCard({
           )}
 
           {attraction.notes && (
-            <ClampedMarkdownSection
+            <ClampedTextSection
               content={attraction.notes}
               showBottomDivider={showNotesBottomDivider}
             />
           )}
 
           {hasNearby && (
-            <ClampedMarkdownSection
+            <ClampedTextSection
               content={attraction.nearbyAttractions!}
               label='附近景點'
               showBottomDivider={hasImages || hasReferences}
@@ -100,7 +100,7 @@ export default function AttractionCard({
           )}
 
           {hasImages && (
-            <AttractionImageStrip
+            <ImageStrip
               images={attraction.images!}
               onOpenLightbox={() => setLightboxIndex(0)}
             />
