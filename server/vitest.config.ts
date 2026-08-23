@@ -19,7 +19,7 @@ export default defineConfig({
         'src/index.ts',
         'src/routes/**',
         'src/config/database.ts',
-        'src/db/schema.ts',
+        'src/db/schema/**',
         'src/types/**',
       ],
       thresholds: {
