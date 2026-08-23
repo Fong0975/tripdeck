@@ -74,6 +74,29 @@ describe('TripHeader', () => {
     }
   });
 
+  it.each([
+    { description: 'a description is set', tripDescription: '記得帶護照' },
+    { description: 'no description is set', tripDescription: null },
+  ])(
+    'shows the trip description only when $description',
+    ({ tripDescription }) => {
+      render(
+        <TripHeader
+          trip={makeTrip({ description: tripDescription })}
+          onBack={vi.fn()}
+          onExport={vi.fn()}
+          onEdit={vi.fn()}
+        />,
+      );
+
+      if (tripDescription) {
+        expect(screen.getByText(tripDescription)).toBeInTheDocument();
+      } else {
+        expect(screen.queryByText('記得帶護照')).not.toBeInTheDocument();
+      }
+    },
+  );
+
   it('calls onBack when the back button is clicked', async () => {
     const onBack = vi.fn();
     const user = userEvent.setup();

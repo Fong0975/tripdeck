@@ -36,8 +36,10 @@ vi.mock('../ImageUploadSection', () => ({
 vi.mock('./ReferenceWebsitesEditor', () => ({
   default: ({
     onChange,
+    onDraftChange,
   }: {
     onChange: (websites: { url: string; title: string }[]) => void;
+    onDraftChange?: (hasDraft: boolean) => void;
   }) => (
     <div data-testid='reference-websites-editor'>
       <button
@@ -45,6 +47,12 @@ vi.mock('./ReferenceWebsitesEditor', () => ({
         onClick={() => onChange([{ url: 'https://x.example.com', title: 'X' }])}
       >
         change websites
+      </button>
+      <button type='button' onClick={() => onDraftChange?.(true)}>
+        set website draft
+      </button>
+      <button type='button' onClick={() => onDraftChange?.(false)}>
+        clear website draft
       </button>
     </div>
   ),
@@ -328,6 +336,104 @@ describe('AttractionModal', () => {
       }),
       undefined,
     );
+  });
+
+  describe('unsaved reference website draft guard', () => {
+    it('asks for confirmation instead of saving when a website draft is pending', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      render(
+        <AttractionModal
+          attraction={editingAttraction}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'set website draft' }),
+      );
+      await user.click(screen.getByRole('button', { name: '儲存' }));
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByText('尚有未加入的參考網站')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: '捨棄並儲存' }));
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns to the form without saving when the save confirmation is cancelled', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      render(
+        <AttractionModal
+          attraction={editingAttraction}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'set website draft' }),
+      );
+      await user.click(screen.getByRole('button', { name: '儲存' }));
+      await user.click(screen.getByRole('button', { name: '返回修改' }));
+
+      expect(onSave).not.toHaveBeenCalled();
+      expect(
+        screen.queryByText('尚有未加入的參考網站'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('asks for confirmation instead of closing when cancel is clicked with a pending website draft', async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(
+        <AttractionModal
+          attraction={editingAttraction}
+          onClose={onClose}
+          onSave={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'set website draft' }),
+      );
+      await user.click(screen.getByRole('button', { name: '取消' }));
+
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByText('尚有未加入的參考網站')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: '捨棄並離開' }));
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('saves directly without a confirmation once the website draft is cleared', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      render(
+        <AttractionModal
+          attraction={editingAttraction}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'set website draft' }),
+      );
+      await user.click(
+        screen.getByRole('button', { name: 'clear website draft' }),
+      );
+      await user.click(screen.getByRole('button', { name: '儲存' }));
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText('尚有未加入的參考網站'),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('wires the useEntityImages upload and delete handlers to ImageUploadSection when editing', async () => {

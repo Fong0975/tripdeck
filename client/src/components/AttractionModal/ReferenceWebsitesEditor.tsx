@@ -7,6 +7,8 @@ import type { ReferenceWebsite } from '@/types';
 interface Props {
   websites: ReferenceWebsite[];
   onChange: (websites: ReferenceWebsite[]) => void;
+  /** Called whenever the URL/title draft fields have unsaved content that hasn't been added via the "+" button. */
+  onDraftChange?: (hasDraft: boolean) => void;
 }
 
 const decodeHtmlEntities = (str: string): string => {
@@ -19,7 +21,11 @@ const decodeHtmlEntities = (str: string): string => {
  * List editor for an attraction's reference websites, including a debounced
  * fetch of the page title to suggest as the link's display name.
  */
-export default function ReferenceWebsitesEditor({ websites, onChange }: Props) {
+export default function ReferenceWebsitesEditor({
+  websites,
+  onChange,
+  onDraftChange,
+}: Props) {
   const [newWebsite, setNewWebsite] = useState<ReferenceWebsite>({
     url: '',
     title: '',
@@ -28,6 +34,10 @@ export default function ReferenceWebsitesEditor({ websites, onChange }: Props) {
   const [titleFetchStatus, setTitleFetchStatus] = useState<
     'idle' | 'loading' | 'found' | 'not-found'
   >('idle');
+
+  useEffect(() => {
+    onDraftChange?.(Boolean(newWebsite.url.trim() || newWebsite.title.trim()));
+  }, [newWebsite, onDraftChange]);
 
   useEffect(() => {
     const url = newWebsite.url.trim();
