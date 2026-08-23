@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { saveImageToDisk } from '../middleware/upload';
-import * as attractionRepo from '../repositories/attractionRepository';
+import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
 

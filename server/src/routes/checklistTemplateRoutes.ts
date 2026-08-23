@@ -11,7 +11,7 @@ import {
   updateCategory,
   updateItem,
   updateTemplateItemSpec,
-} from '../controllers/checklistController';
+} from '../controllers/checklist';
 
 const router = Router();
 

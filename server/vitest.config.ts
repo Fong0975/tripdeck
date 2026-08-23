@@ -14,11 +14,12 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.test.ts',
+        'src/**/index.ts',
         'src/test-utils/**',
         'src/index.ts',
         'src/routes/**',
         'src/config/database.ts',
-        'src/db/schema.ts',
+        'src/db/schema/**',
         'src/types/**',
       ],
       thresholds: {

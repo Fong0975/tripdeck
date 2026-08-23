@@ -15,7 +15,7 @@ import {
   updateTripCategory,
   updateTripItem,
   updateTripItemSpec,
-} from '../controllers/checklistController';
+} from '../controllers/checklist';
 
 // mergeParams: true allows access to :tripId from the parent trip router
 const router = Router({ mergeParams: true });

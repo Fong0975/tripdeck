@@ -3,7 +3,7 @@ import { expect, vi } from 'vitest';
 
 interface MockReqOverrides {
   params?: Record<string, string>;
-  query?: Record<string, string>;
+  query?: Record<string, string | undefined>;
   body?: unknown;
   file?: Express.Multer.File;
 }
