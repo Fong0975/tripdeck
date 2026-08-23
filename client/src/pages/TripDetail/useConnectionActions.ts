@@ -1,5 +1,9 @@
 import type { Trip, TravelConnection, TripContent } from '@/types';
-import { addConnection, updateConnection } from '@/utils/storage';
+import {
+  addConnection,
+  updateConnection,
+  uploadConnectionImage,
+} from '@/utils/storage';
 
 /**
  * Travel-connection CRUD handlers for the trip board, bound to the current
@@ -29,13 +33,14 @@ export function useConnectionActions(
   const handleSaveConnection = async (
     dayIndex: number,
     connection: TravelConnection,
+    stagedImages?: { file: File; title: string }[],
   ) => {
     if (!trip || !content) {
       return;
     }
     const day = content.days[dayIndex];
     if (connection.id === 0) {
-      await addConnection(trip.id, day.id, {
+      const created = await addConnection(trip.id, day.id, {
         fromAttractionId: connection.fromAttractionId,
         toAttractionId: connection.toAttractionId,
         transportMode: connection.transportMode,
@@ -43,6 +48,11 @@ export function useConnectionActions(
         route: connection.route ?? undefined,
         notes: connection.notes ?? undefined,
       });
+      if (stagedImages?.length) {
+        for (const { file, title } of stagedImages) {
+          await uploadConnectionImage(trip.id, created.id, file, title);
+        }
+      }
     } else {
       await updateConnection(trip.id, connection.id, {
         transportMode: connection.transportMode,

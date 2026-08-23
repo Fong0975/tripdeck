@@ -8,6 +8,7 @@ import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
 import MarkdownField from './MarkdownField';
+import StagedImageUploader from './StagedImageUploader';
 import Modal from './ui/Modal';
 import ModalFooterActions from './ui/ModalFooterActions';
 
@@ -17,7 +18,10 @@ interface Props {
   fromName: string;
   toName: string;
   onClose: () => void;
-  onSave: (connection: TravelConnection) => void;
+  onSave: (
+    connection: TravelConnection,
+    stagedImages?: { file: File; title: string }[],
+  ) => void;
 }
 
 const TRANSPORT_OPTIONS: {
@@ -63,21 +67,27 @@ export default function TravelConnectionModal({
   const initialDurationMinutes = parseDurationMinutes(connection.duration) ?? 0;
   const [hours, setHours] = useState(Math.floor(initialDurationMinutes / 60));
   const [minutes, setMinutes] = useState(initialDurationMinutes % 60);
+  const [stagedImages, setStagedImages] = useState<
+    { file: File; title: string }[]
+  >([]);
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  const isEditing = connection.id > 0;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const totalMinutes = hours * 60 + minutes;
-    onSave({
-      ...form,
-      duration: totalMinutes > 0 ? String(totalMinutes) : null,
-      images,
-    });
+    onSave(
+      {
+        ...form,
+        duration: totalMinutes > 0 ? String(totalMinutes) : null,
+        images,
+      },
+      isEditing ? undefined : stagedImages,
+    );
   };
-
-  const isEditing = connection.id > 0;
 
   return (
     <Modal title='移動資訊' onClose={onClose} maxWidth='max-w-md' scrollable>
@@ -168,18 +178,20 @@ export default function TravelConnectionModal({
           />
         </div>
 
-        {isEditing && (
-          <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
-              圖片
-            </label>
+        <div>
+          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            圖片
+          </label>
+          {isEditing ? (
             <ImageUploadSection
               images={images}
               onUpload={handleUploadImage}
               onDelete={handleDeleteImage}
             />
-          </div>
-        )}
+          ) : (
+            <StagedImageUploader onImagesChange={setStagedImages} />
+          )}
+        </div>
 
         <ModalFooterActions onCancel={onClose} />
       </form>

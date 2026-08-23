@@ -213,8 +213,8 @@ export default function TripDetail() {
           fromName={editConnectionData.fromName}
           toName={editConnectionData.toName}
           onClose={closeModal}
-          onSave={c =>
-            void handleSaveConnection(editConnectionData.dayIndex, c)
+          onSave={(c, staged) =>
+            void handleSaveConnection(editConnectionData.dayIndex, c, staged)
           }
         />
       )}
