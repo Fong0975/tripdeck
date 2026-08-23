@@ -1,21 +1,29 @@
 import { Router } from 'express';
 
+// Import each controller directly from its source file rather than the
+// `controllers/checklist` barrel: swagger-autogen cannot trace a handler
+// through an `export * from` re-export, so it would silently drop that
+// endpoint's #swagger.* documentation.
+import {
+  addTripItem,
+  deleteTripItem,
+  setCheck,
+  updateTripItem,
+} from '../controllers/checklist/tripItemController';
+import {
+  addTripItemSpec,
+  deleteTripItemSpec,
+  updateTripItemSpec,
+} from '../controllers/checklist/tripItemSpecController';
 import {
   addOccasion,
   addTripCategory,
-  addTripItem,
-  addTripItemSpec,
   deleteOccasion,
   deleteTripCategory,
-  deleteTripItem,
-  deleteTripItemSpec,
   getTripChecklist,
-  setCheck,
   updateOccasion,
   updateTripCategory,
-  updateTripItem,
-  updateTripItemSpec,
-} from '../controllers/checklist';
+} from '../controllers/checklist/tripStructureController';
 
 // mergeParams: true allows access to :tripId from the parent trip router
 const router = Router({ mergeParams: true });

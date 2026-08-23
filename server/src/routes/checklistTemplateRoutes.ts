@@ -1,17 +1,25 @@
 import { Router } from 'express';
 
+// Import each controller directly from its source file rather than the
+// `controllers/checklist` barrel: swagger-autogen cannot trace a handler
+// through an `export * from` re-export, so it would silently drop that
+// endpoint's #swagger.* documentation.
 import {
   addCategory,
-  addItem,
-  addTemplateItemSpec,
   deleteCategory,
-  deleteItem,
-  deleteTemplateItemSpec,
   getTemplate,
   updateCategory,
+} from '../controllers/checklist/templateCategoryController';
+import {
+  addItem,
+  deleteItem,
   updateItem,
+} from '../controllers/checklist/templateItemController';
+import {
+  addTemplateItemSpec,
+  deleteTemplateItemSpec,
   updateTemplateItemSpec,
-} from '../controllers/checklist';
+} from '../controllers/checklist/templateItemSpecController';
 
 const router = Router();
 
