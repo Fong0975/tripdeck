@@ -76,6 +76,14 @@ export interface CreateTripBody {
   description?: string;
 }
 
+export interface UpdateTripBody {
+  title?: string;
+  destination?: string | null;
+  startDate?: string;
+  endDate?: string;
+  description?: string | null;
+}
+
 export interface CreateAttractionBody {
   name: string;
   googleMapUrl?: string;

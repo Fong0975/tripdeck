@@ -12,6 +12,7 @@ const router = Router();
 router.get('/', tripController.getTrips);
 router.post('/', tripController.createTrip);
 router.get('/:tripId', tripController.getTrip);
+router.put('/:tripId', tripController.updateTrip);
 router.delete('/:tripId', tripController.deleteTrip);
 
 // Full trip content (days + attractions + connections)
