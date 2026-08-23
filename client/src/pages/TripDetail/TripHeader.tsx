@@ -48,6 +48,11 @@ export default function TripHeader({
             <span>{dateRange}</span>
             <span className='text-primary font-medium'>{totalDays} 天</span>
           </div>
+          {trip.description && (
+            <p className='text-muted-foreground mt-1 line-clamp-1 text-sm'>
+              {trip.description}
+            </p>
+          )}
         </div>
 
         <button
