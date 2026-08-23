@@ -1,4 +1,7 @@
 import pool from '../../config/database';
+import { deleteImageFromDisk } from '../../middleware/upload';
+import type { ImageResponse } from '../../types/trip';
+import * as imageRepo from '../imageRepository';
 
 import { TripConnectionAdjacencyRow } from './shared';
 
@@ -9,7 +12,9 @@ import { TripConnectionAdjacencyRow } from './shared';
  * Any trip_connections in this day whose from/to attractions are no longer
  * adjacent under the new order are deleted, so a connection that disappears
  * from the UI (which only renders connections between adjacent attractions)
- * doesn't linger as an orphaned row in the database.
+ * doesn't linger as an orphaned row in the database. Their images are
+ * removed the same way: the DB rows cascade with the connection, and the
+ * physical files are deleted from disk once the transaction commits.
  */
 export async function updateOrder(
   dayId: number,
@@ -44,6 +49,13 @@ export async function updateOrder(
       })
       .map(row => row.id);
 
+    // Fetched before the delete (whose cascade would otherwise silently wipe
+    // these rows) so the physical files can still be cleaned up afterwards.
+    const staleImages =
+      staleConnectionIds.length > 0
+        ? await imageRepo.getConnectionImagesBatch(staleConnectionIds)
+        : new Map<number, ImageResponse[]>();
+
     if (staleConnectionIds.length > 0) {
       await conn.query('DELETE FROM trip_connections WHERE id IN (?)', [
         staleConnectionIds,
@@ -51,6 +63,14 @@ export async function updateOrder(
     }
 
     await conn.commit();
+
+    // Only delete the physical files once the transaction has actually
+    // committed, so a rollback never leaves an in-use image deleted from disk.
+    for (const images of staleImages.values()) {
+      for (const img of images) {
+        deleteImageFromDisk(img.filename);
+      }
+    }
   } catch (err) {
     await conn.rollback();
     throw err;

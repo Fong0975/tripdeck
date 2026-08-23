@@ -2,18 +2,49 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import ClampedMarkdownSection from './ClampedMarkdownSection';
+import ClampedTextSection from './ClampedTextSection';
 
-describe('ClampedMarkdownSection', () => {
+describe('ClampedTextSection', () => {
   it('renders the markdown content', () => {
     render(
-      <ClampedMarkdownSection
+      <ClampedTextSection
         content='這是一段備註內容'
         showBottomDivider={false}
       />,
     );
 
     expect(screen.getByText('這是一段備註內容')).toBeInTheDocument();
+  });
+
+  it.each([
+    { description: 'markdown is enabled (default)', markdown: undefined },
+    { description: 'markdown is explicitly enabled', markdown: true },
+  ])(
+    'renders markdown syntax as formatted content when $description',
+    ({ markdown }) => {
+      render(
+        <ClampedTextSection
+          content='**bold text**'
+          showBottomDivider={false}
+          markdown={markdown}
+        />,
+      );
+
+      const bold = screen.getByText('bold text');
+      expect(bold.tagName).toBe('STRONG');
+    },
+  );
+
+  it('renders markdown syntax as literal text when markdown is disabled', () => {
+    render(
+      <ClampedTextSection
+        content='**bold text**'
+        showBottomDivider={false}
+        markdown={false}
+      />,
+    );
+
+    expect(screen.getByText('**bold text**')).toBeInTheDocument();
   });
 
   it.each([
@@ -31,7 +62,7 @@ describe('ClampedMarkdownSection', () => {
     'renders the heading only when $description',
     ({ label, expectPresent }) => {
       render(
-        <ClampedMarkdownSection
+        <ClampedTextSection
           content='內容'
           label={label}
           showBottomDivider={false}
@@ -53,7 +84,7 @@ describe('ClampedMarkdownSection', () => {
     'renders $expectedSeparators <hr> when showBottomDivider=$showBottomDivider',
     ({ showBottomDivider, expectedSeparators }) => {
       render(
-        <ClampedMarkdownSection
+        <ClampedTextSection
           content='內容'
           showBottomDivider={showBottomDivider}
         />,
@@ -83,7 +114,7 @@ describe('ClampedMarkdownSection', () => {
     it('shows a toggle button that switches between 展開 and 收起', async () => {
       const user = userEvent.setup();
       render(
-        <ClampedMarkdownSection
+        <ClampedTextSection
           content='很長很長的內容範例文字'
           showBottomDivider={false}
         />,
@@ -101,7 +132,7 @@ describe('ClampedMarkdownSection', () => {
       const onParentClick = vi.fn();
       render(
         <div onClick={onParentClick}>
-          <ClampedMarkdownSection
+          <ClampedTextSection
             content='很長很長的內容範例文字'
             showBottomDivider={false}
           />
@@ -117,11 +148,11 @@ describe('ClampedMarkdownSection', () => {
       const user = userEvent.setup();
       render(
         <>
-          <ClampedMarkdownSection
+          <ClampedTextSection
             content='第一段內容範例文字'
             showBottomDivider={false}
           />
-          <ClampedMarkdownSection
+          <ClampedTextSection
             content='第二段內容範例文字'
             label='附近景點'
             showBottomDivider={false}
@@ -155,9 +186,7 @@ describe('ClampedMarkdownSection', () => {
     });
 
     it('does not show a toggle button', () => {
-      render(
-        <ClampedMarkdownSection content='短內容' showBottomDivider={false} />,
-      );
+      render(<ClampedTextSection content='短內容' showBottomDivider={false} />);
 
       expect(screen.queryByText('展開')).not.toBeInTheDocument();
     });

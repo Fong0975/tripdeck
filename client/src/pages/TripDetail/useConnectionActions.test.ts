@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TravelConnection, Trip, TripContent } from '@/types';
 import {
   addConnection,
+  deleteConnection,
   updateConnection,
   uploadConnectionImage,
 } from '@/utils/storage';
@@ -11,6 +12,7 @@ import { useConnectionActions } from './useConnectionActions';
 
 vi.mock('@/utils/storage', () => ({
   addConnection: vi.fn(),
+  deleteConnection: vi.fn(),
   updateConnection: vi.fn(),
   uploadConnectionImage: vi.fn(),
 }));
@@ -198,6 +200,40 @@ describe('useConnectionActions', () => {
       ]);
 
       expect(uploadConnectionImage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleDeleteConnection', () => {
+    it('does nothing when trip is null', async () => {
+      const reloadContent = vi.fn();
+      const { handleDeleteConnection } = useConnectionActions(
+        null,
+        makeContent(),
+        reloadContent,
+        vi.fn(),
+        vi.fn(),
+      );
+
+      await handleDeleteConnection(0, 5);
+
+      expect(deleteConnection).not.toHaveBeenCalled();
+      expect(reloadContent).not.toHaveBeenCalled();
+    });
+
+    it('deletes the connection and reloads', async () => {
+      const reloadContent = vi.fn();
+      const { handleDeleteConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        vi.fn(),
+        vi.fn(),
+      );
+
+      await handleDeleteConnection(0, 5);
+
+      expect(deleteConnection).toHaveBeenCalledWith(1, 5);
+      expect(reloadContent).toHaveBeenCalledTimes(1);
     });
   });
 });

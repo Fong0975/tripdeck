@@ -46,13 +46,20 @@ vi.mock('../TravelConnectionItem', () => ({
   default: ({
     connection,
     onEdit,
+    onDelete,
   }: {
     connection: TravelConnection;
     onEdit: (c: TravelConnection) => void;
+    onDelete: (id: number) => void;
   }) => (
-    <button onClick={() => onEdit(connection)}>
-      connection-{connection.id}
-    </button>
+    <div>
+      <button onClick={() => onEdit(connection)}>
+        connection-{connection.id}
+      </button>
+      <button onClick={() => onDelete(connection.id)}>
+        delete-connection-{connection.id}
+      </button>
+    </div>
   ),
 }));
 
@@ -83,6 +90,7 @@ function makeCallbacks() {
     onDeleteAttraction: vi.fn(),
     onDuplicateAttraction: vi.fn(),
     onEditConnection: vi.fn(),
+    onDeleteConnection: vi.fn(),
     onAddConnection: vi.fn(),
     onAddLocation: vi.fn(),
     onUpdateLocation: vi.fn(),
@@ -221,6 +229,25 @@ describe('DayColumn', () => {
     await user.click(screen.getByText('connection-5'));
 
     expect(callbacks.onEditConnection).toHaveBeenCalledWith(2, connection);
+  });
+
+  it('wraps the connection delete callback with the dayIndex', async () => {
+    const connection: TravelConnection = {
+      id: 5,
+      fromAttractionId: 1,
+      toAttractionId: 2,
+      transportMode: 'walk',
+    };
+    const day = makeDay({
+      attractions: [makeAttraction(1), makeAttraction(2)],
+      connections: [connection],
+    });
+    const user = userEvent.setup();
+    const callbacks = setupColumn(day, 2);
+
+    await user.click(screen.getByText('delete-connection-5'));
+
+    expect(callbacks.onDeleteConnection).toHaveBeenCalledWith(2, 5);
   });
 
   it('shows DayWeather when enabled, the day is not past, and locations exist', () => {

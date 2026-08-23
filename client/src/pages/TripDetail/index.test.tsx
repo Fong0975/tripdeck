@@ -78,6 +78,7 @@ vi.mock('./ItineraryBoard', () => ({
     onDeleteAttraction,
     onDuplicateAttraction,
     onEditConnection,
+    onDeleteConnection,
     onAddConnection,
     onAddLocation,
     onUpdateLocation,
@@ -89,6 +90,7 @@ vi.mock('./ItineraryBoard', () => ({
     onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
     onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
     onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
+    onDeleteConnection: (dayIndex: number, connectionId: number) => void;
     onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
     onAddLocation: (dayIndex: number, name: string) => void;
     onUpdateLocation: (
@@ -125,6 +127,15 @@ vi.mock('./ItineraryBoard', () => ({
               onClick={() => onEditConnection(dayIndex, day.connections[0])}
             >
               edit-connection-{dayIndex}
+            </button>
+          )}
+          {day.connections[0] && (
+            <button
+              onClick={() =>
+                onDeleteConnection(dayIndex, day.connections[0].id)
+              }
+            >
+              delete-connection-{dayIndex}
             </button>
           )}
           <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
@@ -333,6 +344,7 @@ function makeConnectionActions(
   return {
     handleAddConnection: vi.fn(),
     handleSaveConnection: vi.fn(),
+    handleDeleteConnection: vi.fn(),
     ...overrides,
   };
 }
@@ -600,6 +612,19 @@ describe('TripDetail', () => {
       id: 10,
       name: 'Attraction A',
     });
+  });
+
+  it('calls handleDeleteConnection with the right day and connection id', async () => {
+    const handleDeleteConnection = vi.fn();
+    vi.mocked(useConnectionActions).mockReturnValue(
+      makeConnectionActions({ handleDeleteConnection }),
+    );
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    await user.click(screen.getByText('delete-connection-0'));
+
+    expect(handleDeleteConnection).toHaveBeenCalledWith(0, 100);
   });
 
   it('calls handleAddConnection with the right args from the add-connection trigger', async () => {

@@ -43,14 +43,15 @@ export default function TripDetail() {
     handleDuplicateAttraction,
   } = useAttractionActions(trip, content, reloadContent, closeModal);
 
-  const { handleAddConnection, handleSaveConnection } = useConnectionActions(
-    trip,
-    content,
-    reloadContent,
-    closeModal,
-    (dayIndex, connection) =>
-      setModal({ type: 'editConnection', dayIndex, connection }),
-  );
+  const { handleAddConnection, handleSaveConnection, handleDeleteConnection } =
+    useConnectionActions(
+      trip,
+      content,
+      reloadContent,
+      closeModal,
+      (dayIndex, connection) =>
+        setModal({ type: 'editConnection', dayIndex, connection }),
+    );
 
   const { handleAddLocation, handleUpdateLocation, handleDeleteLocation } =
     useDayLocationActions(trip, content, reloadContent);
@@ -173,6 +174,9 @@ export default function TripDetail() {
             }
             onEditConnection={(di, c) =>
               setModal({ type: 'editConnection', dayIndex: di, connection: c })
+            }
+            onDeleteConnection={(di, cId) =>
+              void handleDeleteConnection(di, cId)
             }
             onAddConnection={handleAddConnection}
             onAddLocation={(di, name) => void handleAddLocation(di, name)}
