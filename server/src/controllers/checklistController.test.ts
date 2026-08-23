@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as templateRepo from '../repositories/checklistTemplateRepository';
-import * as tripRepo from '../repositories/checklistTripRepository';
+import * as templateRepo from '../repositories/checklist/template';
+import * as tripRepo from '../repositories/checklist/trip';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 
 import {
@@ -32,8 +32,8 @@ import {
   updateTripItemSpec,
 } from './checklistController';
 
-vi.mock('../repositories/checklistTemplateRepository');
-vi.mock('../repositories/checklistTripRepository');
+vi.mock('../repositories/checklist/template');
+vi.mock('../repositories/checklist/trip');
 
 const invalidNameCases = [
   { label: 'name is missing', body: {} },

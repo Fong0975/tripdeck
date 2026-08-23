@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
-import * as templateRepo from '../repositories/checklistTemplateRepository';
-import * as tripRepo from '../repositories/checklistTripRepository';
+import * as templateRepo from '../repositories/checklist/template';
+import * as tripRepo from '../repositories/checklist/trip';
 import type {
   CreateSpecBody,
   CreateTripItemBody,
