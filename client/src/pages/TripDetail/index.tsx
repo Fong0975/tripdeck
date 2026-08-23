@@ -8,7 +8,6 @@ import TripChecklistPanel from '@/components/TripChecklistPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { exportToDocx } from '@/utils/exportToDocx';
 
 import ItineraryBoard from './ItineraryBoard';
 import TripHeader from './TripHeader';
@@ -69,6 +68,7 @@ export default function TripDetail() {
     }
     setExporting(true);
     try {
+      const { exportToDocx } = await import('@/utils/exportToDocx');
       await exportToDocx(trip, content);
     } finally {
       setExporting(false);
