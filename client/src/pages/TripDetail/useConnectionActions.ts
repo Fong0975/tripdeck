@@ -1,6 +1,7 @@
 import type { Trip, TravelConnection, TripContent } from '@/types';
 import {
   addConnection,
+  deleteConnection,
   updateConnection,
   uploadConnectionImage,
 } from '@/utils/storage';
@@ -65,5 +66,16 @@ export function useConnectionActions(
     closeModal();
   };
 
-  return { handleAddConnection, handleSaveConnection };
+  const handleDeleteConnection = async (
+    _dayIndex: number,
+    connectionId: number,
+  ) => {
+    if (!trip) {
+      return;
+    }
+    await deleteConnection(trip.id, connectionId);
+    await reloadContent();
+  };
+
+  return { handleAddConnection, handleSaveConnection, handleDeleteConnection };
 }

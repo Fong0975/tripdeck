@@ -25,6 +25,7 @@ interface Props {
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
   onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
   onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
+  onDeleteConnection: (dayIndex: number, connectionId: number) => void;
   onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
   onAddLocation: (dayIndex: number, name: string) => void;
   onUpdateLocation: (
@@ -43,6 +44,7 @@ export default function DayColumn({
   onDeleteAttraction,
   onDuplicateAttraction,
   onEditConnection,
+  onDeleteConnection,
   onAddConnection,
   onAddLocation,
   onUpdateLocation,
@@ -119,6 +121,7 @@ export default function DayColumn({
                     <TravelConnectionItem
                       connection={conn}
                       onEdit={c => onEditConnection(dayIndex, c)}
+                      onDelete={id => onDeleteConnection(dayIndex, id)}
                     />
                   ) : (
                     <div className='my-1 flex items-center gap-2 px-3'>

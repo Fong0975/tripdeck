@@ -33,6 +33,7 @@ vi.mock('@/components/DayColumn', () => ({
     onDeleteAttraction,
     onDuplicateAttraction,
     onEditConnection,
+    onDeleteConnection,
     onAddConnection,
     onAddLocation,
     onUpdateLocation,
@@ -45,6 +46,7 @@ vi.mock('@/components/DayColumn', () => ({
     onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
     onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
     onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
+    onDeleteConnection: (dayIndex: number, connectionId: number) => void;
     onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
     onAddLocation: (dayIndex: number, name: string) => void;
     onUpdateLocation: (
@@ -75,6 +77,13 @@ vi.mock('@/components/DayColumn', () => ({
       {day.connections[0] && (
         <button onClick={() => onEditConnection(dayIndex, day.connections[0])}>
           edit-connection-{dayIndex}
+        </button>
+      )}
+      {day.connections[0] && (
+        <button
+          onClick={() => onDeleteConnection(dayIndex, day.connections[0].id)}
+        >
+          delete-connection-{dayIndex}
         </button>
       )}
       <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
@@ -142,6 +151,7 @@ function renderBoard(
     onDeleteAttraction: vi.fn(),
     onDuplicateAttraction: vi.fn(),
     onEditConnection: vi.fn(),
+    onDeleteConnection: vi.fn(),
     onAddConnection: vi.fn(),
     onAddLocation: vi.fn(),
     onUpdateLocation: vi.fn(),
@@ -219,6 +229,16 @@ describe('ItineraryBoard', () => {
       toAttractionId: 11,
       transportMode: 'walk',
     });
+  });
+
+  it('calls onDeleteConnection with the day index and connection id', async () => {
+    const user = userEvent.setup();
+    const onDeleteConnection = vi.fn();
+    renderBoard({ onDeleteConnection });
+
+    await user.click(screen.getByText('delete-connection-0'));
+
+    expect(onDeleteConnection).toHaveBeenCalledWith(0, 100);
   });
 
   it('calls onAddConnection with the day index and attraction ids', async () => {

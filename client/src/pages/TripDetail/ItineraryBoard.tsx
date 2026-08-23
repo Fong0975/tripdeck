@@ -21,6 +21,7 @@ interface Props {
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
   onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
   onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
+  onDeleteConnection: (dayIndex: number, connectionId: number) => void;
   onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
   onAddLocation: (dayIndex: number, name: string) => void;
   onUpdateLocation: (
@@ -48,6 +49,7 @@ export default function ItineraryBoard({
   onDeleteAttraction,
   onDuplicateAttraction,
   onEditConnection,
+  onDeleteConnection,
   onAddConnection,
   onAddLocation,
   onUpdateLocation,
@@ -70,6 +72,7 @@ export default function ItineraryBoard({
             onDeleteAttraction={onDeleteAttraction}
             onDuplicateAttraction={onDuplicateAttraction}
             onEditConnection={onEditConnection}
+            onDeleteConnection={onDeleteConnection}
             onAddConnection={onAddConnection}
             onAddLocation={onAddLocation}
             onUpdateLocation={onUpdateLocation}

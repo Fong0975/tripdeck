@@ -1,11 +1,13 @@
-import { Images, Pencil } from 'lucide-react';
+import { Images, Pencil, Trash2 } from 'lucide-react';
 
+import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { TravelConnection, TransportMode } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
 interface Props {
   connection: TravelConnection;
   onEdit: (connection: TravelConnection) => void;
+  onDelete: (connectionId: number) => void;
 }
 
 const TRANSPORT_ICONS: Record<TransportMode, string> = {
@@ -28,8 +30,14 @@ const TRANSPORT_LABELS: Record<TransportMode, string> = {
   other: '其他',
 };
 
-export default function TravelConnectionItem({ connection, onEdit }: Props) {
+export default function TravelConnectionItem({
+  connection,
+  onEdit,
+  onDelete,
+}: Props) {
   const durationDisplay = formatDurationDisplay(connection.duration);
+  const { confirming: confirmDelete, handleClick: handleDelete } =
+    useConfirmDelete(() => onDelete(connection.id));
 
   return (
     <div className='group my-1 flex items-center gap-2 px-3'>
@@ -66,10 +74,21 @@ export default function TravelConnectionItem({ connection, onEdit }: Props) {
             </>
           )}
         </div>
-        <Pencil
-          size={12}
-          className='text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100'
-        />
+        <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+          <Pencil size={12} className='text-muted-foreground' />
+          <button
+            type='button'
+            onClick={handleDelete}
+            className={`rounded p-0.5 transition-colors ${
+              confirmDelete
+                ? 'bg-destructive/10 text-destructive'
+                : 'text-muted-foreground hover:text-destructive'
+            }`}
+            title={confirmDelete ? '再次點擊確認' : '刪除'}
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
       </div>
     </div>
   );

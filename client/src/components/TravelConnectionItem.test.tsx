@@ -32,6 +32,7 @@ describe('TravelConnectionItem', () => {
       <TravelConnectionItem
         connection={makeConnection({ transportMode: mode })}
         onEdit={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
@@ -50,6 +51,7 @@ describe('TravelConnectionItem', () => {
       <TravelConnectionItem
         connection={makeConnection({ duration })}
         onEdit={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
@@ -72,6 +74,7 @@ describe('TravelConnectionItem', () => {
       <TravelConnectionItem
         connection={makeConnection({ images })}
         onEdit={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
@@ -86,10 +89,57 @@ describe('TravelConnectionItem', () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
     const connection = makeConnection();
-    render(<TravelConnectionItem connection={connection} onEdit={onEdit} />);
+    render(
+      <TravelConnectionItem
+        connection={connection}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByText('步行'));
 
     expect(onEdit).toHaveBeenCalledWith(connection);
+  });
+
+  describe('delete button', () => {
+    it('arms confirmation on first click without calling onDelete or onEdit', async () => {
+      const onEdit = vi.fn();
+      const onDelete = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <TravelConnectionItem
+          connection={makeConnection()}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />,
+      );
+
+      await user.click(screen.getByTitle('刪除'));
+
+      expect(onDelete).not.toHaveBeenCalled();
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(screen.getByTitle('再次點擊確認')).toBeInTheDocument();
+    });
+
+    it('calls onDelete with the connection id on the second click, without triggering onEdit', async () => {
+      const onEdit = vi.fn();
+      const onDelete = vi.fn();
+      const user = userEvent.setup();
+      const connection = makeConnection({ id: 7 });
+      render(
+        <TravelConnectionItem
+          connection={connection}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />,
+      );
+
+      await user.click(screen.getByTitle('刪除'));
+      await user.click(screen.getByTitle('再次點擊確認'));
+
+      expect(onDelete).toHaveBeenCalledWith(7);
+      expect(onEdit).not.toHaveBeenCalled();
+    });
   });
 });
