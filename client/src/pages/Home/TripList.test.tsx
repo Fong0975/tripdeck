@@ -10,13 +10,16 @@ vi.mock('@/components/TripCard', () => ({
   default: ({
     trip,
     onDelete,
+    onEdit,
   }: {
     trip: Trip;
     onDelete: (id: number) => void;
+    onEdit: (trip: Trip) => void;
   }) => (
     <div>
       <span>{trip.title}</span>
       <button onClick={() => onDelete(trip.id)}>delete-{trip.id}</button>
+      <button onClick={() => onEdit(trip)}>edit-{trip.id}</button>
     </div>
   ),
 }));
@@ -36,7 +39,13 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
 describe('TripList', () => {
   it('shows the loading indicator and no trip cards or empty state while loading', () => {
     render(
-      <TripList trips={[]} loading={true} onAdd={vi.fn()} onDelete={vi.fn()} />,
+      <TripList
+        trips={[]}
+        loading={true}
+        onAdd={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+      />,
     );
 
     expect(screen.getByText('載入中…')).toBeInTheDocument();
@@ -53,6 +62,7 @@ describe('TripList', () => {
         loading={false}
         onAdd={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />,
     );
 
@@ -74,6 +84,7 @@ describe('TripList', () => {
         loading={false}
         onAdd={vi.fn()}
         onDelete={vi.fn()}
+        onEdit={vi.fn()}
       />,
     );
 
@@ -85,7 +96,13 @@ describe('TripList', () => {
     const user = userEvent.setup();
     const onAdd = vi.fn();
     render(
-      <TripList trips={[]} loading={false} onAdd={onAdd} onDelete={vi.fn()} />,
+      <TripList
+        trips={[]}
+        loading={false}
+        onAdd={onAdd}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: /新增旅程/ }));
@@ -103,11 +120,31 @@ describe('TripList', () => {
         loading={false}
         onAdd={vi.fn()}
         onDelete={onDelete}
+        onEdit={vi.fn()}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: 'delete-5' }));
 
     expect(onDelete).toHaveBeenCalledWith(5);
+  });
+
+  it('calls onEdit with the trip when a trip card requests editing', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    const trip = makeTrip({ id: 5, title: 'Trip A' });
+    render(
+      <TripList
+        trips={[trip]}
+        loading={false}
+        onAdd={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'edit-5' }));
+
+    expect(onEdit).toHaveBeenCalledWith(trip);
   });
 });

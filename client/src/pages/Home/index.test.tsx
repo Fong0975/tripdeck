@@ -24,17 +24,28 @@ vi.mock('./ChecklistSection', () => ({
   default: () => <div>checklist-section</div>,
 }));
 
+const sampleTrip: Trip = {
+  id: 1,
+  title: 'Trip A',
+  destination: null,
+  startDate: '2026-01-01',
+  endDate: '2026-01-05',
+  createdAt: '2026-01-01',
+};
+
 vi.mock('./TripList', () => ({
   default: ({
     trips,
     loading,
     onAdd,
     onDelete,
+    onEdit,
   }: {
     trips: Trip[];
     loading: boolean;
     onAdd: () => void;
     onDelete: (id: number) => void;
+    onEdit: (trip: Trip) => void;
   }) => (
     <div>
       <span>trip-list</span>
@@ -42,6 +53,7 @@ vi.mock('./TripList', () => ({
       <span>loading:{String(loading)}</span>
       <button onClick={onAdd}>trigger-add</button>
       <button onClick={() => onDelete(1)}>trigger-delete</button>
+      <button onClick={() => onEdit(sampleTrip)}>trigger-edit</button>
     </div>
   ),
 }));
@@ -75,12 +87,34 @@ vi.mock('@/components/AddTripModal', () => ({
   ),
 }));
 
+vi.mock('@/components/EditTripModal', () => ({
+  default: ({
+    trip,
+    onClose,
+    onUpdated,
+  }: {
+    trip: Trip;
+    onClose: () => void;
+    onUpdated: (trip: Trip) => void;
+  }) => (
+    <div>
+      <span>edit-trip-modal</span>
+      <span>editing:{trip.title}</span>
+      <button onClick={onClose}>trigger-edit-close</button>
+      <button onClick={() => onUpdated({ ...trip, title: 'Updated Trip' })}>
+        trigger-updated
+      </button>
+    </div>
+  ),
+}));
+
 function makeHomeData(overrides: Partial<ReturnType<typeof useHomeData>> = {}) {
   return {
     trips: [],
     loading: false,
     handleTripAdded: vi.fn(),
     handleDeleteTrip: vi.fn(),
+    handleTripUpdated: vi.fn(),
     ...overrides,
   };
 }
@@ -99,6 +133,7 @@ describe('Home', () => {
     expect(screen.getByText('trip-list')).toBeInTheDocument();
     expect(screen.getByText('checklist-section')).toBeInTheDocument();
     expect(screen.queryByText('add-trip-modal')).not.toBeInTheDocument();
+    expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
   });
 
   it('passes loading and trips from useHomeData through to TripList', () => {
@@ -155,5 +190,34 @@ describe('Home', () => {
       expect.objectContaining({ id: 9, title: 'New Trip' }),
     );
     expect(screen.queryByText('add-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('shows the edit modal for the requested trip after triggering edit and hides it after closing', async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    await user.click(screen.getByRole('button', { name: 'trigger-edit' }));
+    expect(screen.getByText('edit-trip-modal')).toBeInTheDocument();
+    expect(screen.getByText('editing:Trip A')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'trigger-edit-close' }),
+    );
+    expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('calls handleTripUpdated with the updated trip and closes the modal on update', async () => {
+    const user = userEvent.setup();
+    const handleTripUpdated = vi.fn();
+    vi.mocked(useHomeData).mockReturnValue(makeHomeData({ handleTripUpdated }));
+    render(<Home />);
+    await user.click(screen.getByRole('button', { name: 'trigger-edit' }));
+
+    await user.click(screen.getByRole('button', { name: 'trigger-updated' }));
+
+    expect(handleTripUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, title: 'Updated Trip' }),
+    );
+    expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
   });
 });

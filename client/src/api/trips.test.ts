@@ -7,6 +7,7 @@ import {
   getTrip,
   getTripContent,
   getTrips,
+  updateTrip,
 } from './trips';
 
 vi.mock('./client', async importOriginal => {
@@ -57,6 +58,20 @@ describe('createTrip', () => {
 
     expect(api).toHaveBeenCalledWith('/api/trips/', {
       method: 'POST',
+      ...json(data),
+    });
+  });
+});
+
+describe('updateTrip', () => {
+  it('PUTs the partial trip payload to the trip endpoint', async () => {
+    const data = { title: 'Renamed Trip', endDate: '2026-01-10' };
+    vi.mocked(api).mockResolvedValue({ id: 1, ...data });
+
+    await updateTrip(1, data);
+
+    expect(api).toHaveBeenCalledWith('/api/trips/1', {
+      method: 'PUT',
       ...json(data),
     });
   });

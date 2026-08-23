@@ -50,6 +50,23 @@ describe('ConfirmDialog', () => {
     },
   );
 
+  it('renders a ReactNode message', () => {
+    render(
+      <ConfirmDialog
+        title='Delete days?'
+        message={
+          <ul>
+            <li>8/25（第 3 天）：2 個景點</li>
+          </ul>
+        }
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('8/25（第 3 天）：2 個景點')).toBeInTheDocument();
+  });
+
   it.each([
     {
       description: 'clicking cancel calls onCancel',

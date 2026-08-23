@@ -121,4 +121,26 @@ describe('useTripData', () => {
       expect(result.current.content).toEqual(refreshedContent);
     });
   });
+
+  describe('setTrip', () => {
+    it('updates the trip in state without refetching', async () => {
+      const trip = makeTrip();
+      const content: TripContent = { tripId: 1, days: [] };
+      vi.mocked(getTrip).mockResolvedValue(trip);
+      vi.mocked(getTripContent).mockResolvedValue(content);
+
+      const { result } = renderHook(() => useTripData('1'));
+      await waitFor(() => {
+        expect(result.current.trip).toEqual(trip);
+      });
+
+      const updatedTrip = { ...trip, title: 'Renamed' };
+      act(() => {
+        result.current.setTrip(updatedTrip);
+      });
+
+      expect(result.current.trip).toEqual(updatedTrip);
+      expect(getTrip).toHaveBeenCalledTimes(1);
+    });
+  });
 });

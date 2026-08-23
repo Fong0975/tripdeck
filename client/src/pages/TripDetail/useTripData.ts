@@ -41,5 +41,5 @@ export function useTripData(id: string | undefined) {
     setContent(fresh);
   };
 
-  return { trip, content, reloadContent };
+  return { trip, content, reloadContent, setTrip };
 }

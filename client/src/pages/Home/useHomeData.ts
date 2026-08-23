@@ -24,10 +24,15 @@ export function useHomeData() {
     setTrips(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleTripUpdated = (trip: Trip) => {
+    setTrips(prev => prev.map(t => (t.id === trip.id ? trip : t)));
+  };
+
   return {
     trips,
     loading,
     handleTripAdded,
     handleDeleteTrip,
+    handleTripUpdated,
   };
 }

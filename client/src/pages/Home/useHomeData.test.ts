@@ -91,4 +91,21 @@ describe('useHomeData', () => {
 
     expect(result.current.trips).toEqual([otherTrip]);
   });
+
+  it('replaces the matching trip in local state without calling the API', async () => {
+    const trip = makeTrip();
+    const otherTrip = makeTrip({ id: 2, title: 'Other' });
+    vi.mocked(getTrips).mockResolvedValue([trip, otherTrip]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([trip, otherTrip]);
+    });
+
+    const updatedTrip = makeTrip({ title: 'Renamed' });
+    act(() => {
+      result.current.handleTripUpdated(updatedTrip);
+    });
+
+    expect(result.current.trips).toEqual([updatedTrip, otherTrip]);
+  });
 });
