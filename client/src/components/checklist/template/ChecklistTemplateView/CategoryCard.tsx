@@ -1,34 +1,20 @@
-import {
-  ChevronDown,
-  ChevronRight,
-  Package,
-  Pencil,
-  Plus,
-  Trash2,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
-import LoadingIndicator from '@/components/ui/LoadingIndicator';
-import type { ChecklistCategory, ChecklistTemplate } from '@/types';
-import {
-  addTemplateCategory,
-  deleteTemplateCategory,
-  getChecklistTemplate,
-} from '@/utils/storage';
+import StorageBadges from '@/components/checklist/shared/StorageBadges';
+import type { ChecklistCategory } from '@/types';
 
-import { STORAGE_OPTIONS, hasStorageOption } from '../shared/checklistUtils';
-
-import CategoryEditModal from './CategoryEditModal';
-
-function CategoryCard({
-  category,
-  onEdit,
-  onDelete,
-}: {
+interface CategoryCardProps {
   category: ChecklistCategory;
   onEdit: () => void;
   onDelete: () => void;
-}) {
+}
+
+export default function CategoryCard({
+  category,
+  onEdit,
+  onDelete,
+}: CategoryCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -96,17 +82,7 @@ function CategoryCard({
                   )}
                   {item.storage_location && (
                     <div className='flex items-center gap-1.5'>
-                      <Package size={11} className='text-muted-foreground' />
-                      {STORAGE_OPTIONS.filter(opt =>
-                        hasStorageOption(item.storage_location, opt),
-                      ).map(opt => (
-                        <span
-                          key={opt}
-                          className='bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs'
-                        >
-                          {opt}
-                        </span>
-                      ))}
+                      <StorageBadges value={item.storage_location} />
                     </div>
                   )}
                   {(item.specs ?? []).length > 0 && (
@@ -123,22 +99,10 @@ function CategoryCard({
                             {spec.name}
                           </span>
                           {spec.storage_location && (
-                            <>
-                              <Package
-                                size={9}
-                                className='text-muted-foreground'
-                              />
-                              {STORAGE_OPTIONS.filter(opt =>
-                                hasStorageOption(spec.storage_location, opt),
-                              ).map(opt => (
-                                <span
-                                  key={opt}
-                                  className='bg-primary/10 text-primary rounded px-1 py-0.5 text-xs'
-                                >
-                                  {opt}
-                                </span>
-                              ))}
-                            </>
+                            <StorageBadges
+                              value={spec.storage_location}
+                              compact
+                            />
                           )}
                         </div>
                       ))}
@@ -149,64 +113,6 @@ function CategoryCard({
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-export default function ChecklistTemplateView() {
-  const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
-  const [editingCat, setEditingCat] = useState<ChecklistCategory | null>(null);
-
-  const reload = async () => {
-    setTemplate(await getChecklistTemplate());
-  };
-
-  useEffect(() => {
-    void reload();
-  }, []);
-
-  const handleAddCategory = async () => {
-    await addTemplateCategory('新分類');
-    await reload();
-  };
-
-  const handleDeleteCategory = async (catId: number) => {
-    await deleteTemplateCategory(catId);
-    await reload();
-  };
-
-  if (!template) {
-    return <LoadingIndicator />;
-  }
-
-  return (
-    <div className='space-y-3'>
-      {template.categories.map(cat => (
-        <CategoryCard
-          key={cat.id}
-          category={cat}
-          onEdit={() => setEditingCat(cat)}
-          onDelete={() => void handleDeleteCategory(cat.id)}
-        />
-      ))}
-
-      <button
-        onClick={() => void handleAddCategory()}
-        className='border-border text-muted-foreground hover:border-primary hover:text-primary flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm transition-colors'
-      >
-        <Plus size={15} />
-        新增分類
-      </button>
-
-      {editingCat && (
-        <CategoryEditModal
-          category={editingCat}
-          onClose={() => setEditingCat(null)}
-          onSaved={() => {
-            void reload();
-          }}
-        />
       )}
     </div>
   );

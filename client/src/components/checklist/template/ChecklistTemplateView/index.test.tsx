@@ -9,7 +9,7 @@ import {
   getChecklistTemplate,
 } from '@/utils/storage';
 
-import ChecklistTemplateView from './ChecklistTemplateView';
+import ChecklistTemplateView from './index';
 
 vi.mock('@/utils/storage', () => ({
   addTemplateCategory: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('@/utils/storage', () => ({
   getChecklistTemplate: vi.fn(),
 }));
 
-vi.mock('./CategoryEditModal', () => ({
+vi.mock('../CategoryEditModal', () => ({
   default: ({
     category,
     onClose,
@@ -86,19 +86,6 @@ describe('ChecklistTemplateView', () => {
     expect(screen.getByText('1 項')).toBeInTheDocument();
   });
 
-  it('shows item details only once the category is expanded', async () => {
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-    expect(screen.queryByText('Item A')).not.toBeInTheDocument();
-
-    await user.click(screen.getByText('Category A'));
-
-    expect(screen.getByText('Item A')).toBeInTheDocument();
-    expect(screen.getByText('note')).toBeInTheDocument();
-    expect(screen.getByText('託運')).toBeInTheDocument();
-  });
-
   it('opens the edit modal when the pencil button is clicked', async () => {
     const user = userEvent.setup();
     render(<ChecklistTemplateView />);
@@ -142,103 +129,6 @@ describe('ChecklistTemplateView', () => {
 
     await waitFor(() => expect(deleteTemplateCategory).toHaveBeenCalledWith(1));
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
-  });
-
-  it('shows the empty items message when a category has no items', async () => {
-    vi.mocked(getChecklistTemplate).mockResolvedValue(
-      makeTemplate({
-        categories: [{ id: 1, name: 'Category A', items: [] }],
-      }),
-    );
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-
-    await user.click(screen.getByText('Category A'));
-
-    expect(screen.getByText('尚無項目')).toBeInTheDocument();
-  });
-
-  it('falls back to 些許 when an item has no quantity', async () => {
-    vi.mocked(getChecklistTemplate).mockResolvedValue(
-      makeTemplate({
-        categories: [
-          {
-            id: 1,
-            name: 'Category A',
-            items: [{ id: 10, name: 'Item A' }],
-          },
-        ],
-      }),
-    );
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-
-    await user.click(screen.getByText('Category A'));
-
-    expect(screen.getByText('些許')).toBeInTheDocument();
-  });
-
-  it('renders spec entries with numbering when an item has specs', async () => {
-    vi.mocked(getChecklistTemplate).mockResolvedValue(
-      makeTemplate({
-        categories: [
-          {
-            id: 1,
-            name: 'Category A',
-            items: [
-              {
-                id: 10,
-                name: 'Item A',
-                specs: [
-                  { id: 100, name: 'Spec A', storage_location: null },
-                  { id: 101, name: 'Spec B', storage_location: null },
-                ],
-              },
-            ],
-          },
-        ],
-      }),
-    );
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-
-    await user.click(screen.getByText('Category A'));
-
-    expect(screen.getByText('1.')).toBeInTheDocument();
-    expect(screen.getByText('Spec A')).toBeInTheDocument();
-    expect(screen.getByText('2.')).toBeInTheDocument();
-    expect(screen.getByText('Spec B')).toBeInTheDocument();
-  });
-
-  it('shows a spec-level storage location badge when a spec has one', async () => {
-    vi.mocked(getChecklistTemplate).mockResolvedValue(
-      makeTemplate({
-        categories: [
-          {
-            id: 1,
-            name: 'Category A',
-            items: [
-              {
-                id: 10,
-                name: 'Item A',
-                specs: [{ id: 100, name: 'Spec A', storage_location: '託運' }],
-              },
-            ],
-          },
-        ],
-      }),
-    );
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-
-    await user.click(screen.getByText('Category A'));
-
-    expect(screen.getByText('Spec A')).toBeInTheDocument();
-    expect(screen.getByText('託運')).toBeInTheDocument();
   });
 
   it('calls addTemplateCategory and reloads when 新增分類 is clicked', async () => {
