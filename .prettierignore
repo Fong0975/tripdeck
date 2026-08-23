@@ -5,3 +5,5 @@ records
 docker
 client/coverage
 client/test-results.json
+server/coverage
+server/test-results.json
