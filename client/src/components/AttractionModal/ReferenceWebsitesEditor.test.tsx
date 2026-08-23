@@ -241,6 +241,55 @@ describe('ReferenceWebsitesEditor', () => {
     });
   });
 
+  it('reports a draft whenever either field has unsaved text', () => {
+    const onDraftChange = vi.fn();
+    render(
+      <ReferenceWebsitesEditor
+        websites={[]}
+        onChange={vi.fn()}
+        onDraftChange={onDraftChange}
+      />,
+    );
+
+    expect(onDraftChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.change(screen.getByPlaceholderText('https://...'), {
+      target: { value: 'https://c.example.com' },
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.change(screen.getByPlaceholderText('https://...'), {
+      target: { value: '' },
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.change(screen.getByPlaceholderText('標題 *'), {
+      target: { value: 'Site C' },
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('reports no draft once the website is added and the inputs are cleared', () => {
+    const onDraftChange = vi.fn();
+    render(
+      <ReferenceWebsitesEditor
+        websites={[]}
+        onChange={vi.fn()}
+        onDraftChange={onDraftChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('https://...'), {
+      target: { value: 'https://c.example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('標題 *'), {
+      target: { value: 'Site C' },
+    });
+    fireEvent.click(getAddButton());
+
+    expect(onDraftChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('fills the title input with the suggested title on click', async () => {
     vi.mocked(fetch).mockResolvedValue(
       makeJsonResponse({ title: 'Suggested Title' }),
