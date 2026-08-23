@@ -14,9 +14,7 @@
   "paths": {
     "/api/health": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Health check",
         "description": "",
         "responses": {
@@ -46,9 +44,7 @@
     },
     "/api/info": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Application info",
         "description": "",
         "responses": {
@@ -77,9 +73,7 @@
     },
     "/api/fetch-title": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Fetch page title via server-side proxy",
         "description": "",
         "parameters": [
@@ -513,9 +507,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for an attraction",
         "description": "",
         "parameters": [
@@ -568,9 +560,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete an attraction image",
         "description": "",
         "parameters": [
@@ -614,9 +604,7 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for a connection",
         "description": "",
         "parameters": [
@@ -669,9 +657,7 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete a connection image",
         "description": "",
         "parameters": [
