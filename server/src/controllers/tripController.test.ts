@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../repositories/attractionRepository');
+vi.mock('../repositories/attraction');
 vi.mock('../repositories/connectionRepository');
-vi.mock('../repositories/tripRepository');
+vi.mock('../repositories/trip');
 
-import * as attractionRepo from '../repositories/attractionRepository';
+import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
-import * as tripRepo from '../repositories/tripRepository';
+import * as tripRepo from '../repositories/trip';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 import type {
   AttractionResponse,

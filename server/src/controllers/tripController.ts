@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 
-import * as attractionRepo from '../repositories/attractionRepository';
+import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
-import * as tripRepo from '../repositories/tripRepository';
+import * as tripRepo from '../repositories/trip';
 import type {
   CreateAttractionBody,
   CreateConnectionBody,

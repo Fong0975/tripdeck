@@ -2,12 +2,12 @@ import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../middleware/upload');
-vi.mock('../repositories/attractionRepository');
+vi.mock('../repositories/attraction');
 vi.mock('../repositories/connectionRepository');
 vi.mock('../repositories/imageRepository');
 
 import { saveImageToDisk } from '../middleware/upload';
-import * as attractionRepo from '../repositories/attractionRepository';
+import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
