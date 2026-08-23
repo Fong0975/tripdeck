@@ -1,7 +1,14 @@
 import { Router } from 'express';
 
 import * as imageController from '../controllers/imageController';
-import * as tripController from '../controllers/trip';
+// Import each controller directly from its source file rather than the
+// `controllers/trip` barrel: swagger-autogen cannot trace a handler through
+// an `export * from` re-export, so it would silently drop that endpoint's
+// #swagger.* documentation.
+import * as attractionController from '../controllers/trip/attractionController';
+import * as connectionController from '../controllers/trip/connectionController';
+import * as dayLocationController from '../controllers/trip/dayLocationController';
+import * as tripCrudController from '../controllers/trip/tripCrudController';
 import { upload } from '../middleware/upload';
 
 import checklistTripRoutes from './checklistTripRoutes';
@@ -9,51 +16,63 @@ import checklistTripRoutes from './checklistTripRoutes';
 const router = Router();
 
 // Trip CRUD
-router.get('/', tripController.getTrips);
-router.post('/', tripController.createTrip);
-router.get('/:tripId', tripController.getTrip);
-router.put('/:tripId', tripController.updateTrip);
-router.delete('/:tripId', tripController.deleteTrip);
+router.get('/', tripCrudController.getTrips);
+router.post('/', tripCrudController.createTrip);
+router.get('/:tripId', tripCrudController.getTrip);
+router.put('/:tripId', tripCrudController.updateTrip);
+router.delete('/:tripId', tripCrudController.deleteTrip);
 
 // Full trip content (days + attractions + connections)
-router.get('/:tripId/content', tripController.getTripContent);
+router.get('/:tripId/content', tripCrudController.getTripContent);
 
 // Attractions
-router.post('/:tripId/days/:dayId/attractions', tripController.addAttraction);
+router.post(
+  '/:tripId/days/:dayId/attractions',
+  attractionController.addAttraction,
+);
 router.put(
   '/:tripId/attractions/:attractionId',
-  tripController.updateAttraction,
+  attractionController.updateAttraction,
 );
 router.delete(
   '/:tripId/attractions/:attractionId',
-  tripController.deleteAttraction,
+  attractionController.deleteAttraction,
 );
 router.post(
   '/:tripId/attractions/:attractionId/duplicate',
-  tripController.duplicateAttraction,
+  attractionController.duplicateAttraction,
 );
 router.patch(
   '/:tripId/days/:dayId/attractions/order',
-  tripController.reorderAttractions,
+  attractionController.reorderAttractions,
 );
 
 // Day locations
-router.post('/:tripId/days/:dayId/locations', tripController.addDayLocation);
-router.put('/:tripId/locations/:locationId', tripController.updateDayLocation);
+router.post(
+  '/:tripId/days/:dayId/locations',
+  dayLocationController.addDayLocation,
+);
+router.put(
+  '/:tripId/locations/:locationId',
+  dayLocationController.updateDayLocation,
+);
 router.delete(
   '/:tripId/locations/:locationId',
-  tripController.deleteDayLocation,
+  dayLocationController.deleteDayLocation,
 );
 
 // Connections
-router.post('/:tripId/days/:dayId/connections', tripController.addConnection);
+router.post(
+  '/:tripId/days/:dayId/connections',
+  connectionController.addConnection,
+);
 router.put(
   '/:tripId/connections/:connectionId',
-  tripController.updateConnection,
+  connectionController.updateConnection,
 );
 router.delete(
   '/:tripId/connections/:connectionId',
-  tripController.deleteConnection,
+  connectionController.deleteConnection,
 );
 
 // Attraction images
