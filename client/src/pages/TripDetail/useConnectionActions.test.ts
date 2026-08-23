@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TravelConnection, Trip, TripContent } from '@/types';
-import { addConnection, updateConnection } from '@/utils/storage';
+import {
+  addConnection,
+  updateConnection,
+  uploadConnectionImage,
+} from '@/utils/storage';
 
 import { useConnectionActions } from './useConnectionActions';
 
 vi.mock('@/utils/storage', () => ({
   addConnection: vi.fn(),
   updateConnection: vi.fn(),
+  uploadConnectionImage: vi.fn(),
 }));
 
 function makeTrip(): Trip {
@@ -144,6 +149,55 @@ describe('useConnectionActions', () => {
         expect(reloadContent).toHaveBeenCalledTimes(1);
         expect(closeModal).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it('uploads each staged image after creating a new connection', async () => {
+      vi.mocked(addConnection).mockResolvedValue(makeConnection({ id: 99 }));
+      const { handleSaveConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+      );
+      const file1 = new File(['a'], 'a.jpg');
+      const file2 = new File(['b'], 'b.jpg');
+
+      await handleSaveConnection(0, makeConnection({ id: 0 }), [
+        { file: file1, title: 'First' },
+        { file: file2, title: 'Second' },
+      ]);
+
+      expect(uploadConnectionImage).toHaveBeenNthCalledWith(
+        1,
+        1,
+        99,
+        file1,
+        'First',
+      );
+      expect(uploadConnectionImage).toHaveBeenNthCalledWith(
+        2,
+        1,
+        99,
+        file2,
+        'Second',
+      );
+    });
+
+    it('does not upload images when updating an existing connection', async () => {
+      const { handleSaveConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+      );
+
+      await handleSaveConnection(0, makeConnection({ id: 7 }), [
+        { file: new File(['a'], 'a.jpg'), title: 'Ignored' },
+      ]);
+
+      expect(uploadConnectionImage).not.toHaveBeenCalled();
     });
   });
 });

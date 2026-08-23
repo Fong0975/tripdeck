@@ -58,7 +58,7 @@ vi.mock('./ReferenceWebsitesEditor', () => ({
   ),
 }));
 
-vi.mock('./StagedImageUploader', () => ({
+vi.mock('../StagedImageUploader', () => ({
   default: ({
     onImagesChange,
   }: {

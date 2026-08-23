@@ -8,12 +8,12 @@ import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
 
 import ImageUploadSection from '../ImageUploadSection';
 import MarkdownField from '../MarkdownField';
+import StagedImageUploader from '../StagedImageUploader';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Modal from '../ui/Modal';
 import ModalFooterActions from '../ui/ModalFooterActions';
 
 import ReferenceWebsitesEditor from './ReferenceWebsitesEditor';
-import StagedImageUploader from './StagedImageUploader';
 
 interface Props {
   tripId?: number;

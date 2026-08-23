@@ -741,12 +741,16 @@ describe('TripDetail', () => {
 
     await user.click(screen.getByText('save-connection-modal'));
 
-    expect(handleSaveConnection).toHaveBeenCalledWith(0, {
-      id: 100,
-      fromAttractionId: 10,
-      toAttractionId: 11,
-      transportMode: 'walk',
-    });
+    expect(handleSaveConnection).toHaveBeenCalledWith(
+      0,
+      {
+        id: 100,
+        fromAttractionId: 10,
+        toAttractionId: 11,
+        transportMode: 'walk',
+      },
+      undefined,
+    );
   });
 
   it('does not render ConfirmDialog when showLeaveConfirm is false', () => {

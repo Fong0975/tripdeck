@@ -33,6 +33,25 @@ vi.mock('./ImageUploadSection', () => ({
   ),
 }));
 
+vi.mock('./StagedImageUploader', () => ({
+  default: ({
+    onImagesChange,
+  }: {
+    onImagesChange: (images: { file: File; title: string }[]) => void;
+  }) => (
+    <div data-testid='staged-image-uploader'>
+      <button
+        type='button'
+        onClick={() =>
+          onImagesChange([{ file: new File(['a'], 'a.jpg'), title: 'Staged' }])
+        }
+      >
+        stage image
+      </button>
+    </div>
+  ),
+}));
+
 const TRANSPORT_LABELS = [
   { value: 'walk', label: '步行' },
   { value: 'transit', label: '大眾運輸' },
@@ -189,7 +208,7 @@ describe('TravelConnectionModal', () => {
     expect(screen.getByTestId('image-upload-section')).toBeInTheDocument();
   });
 
-  it('omits the image upload section for a not-yet-saved connection', () => {
+  it('shows the staged image uploader instead for a not-yet-saved connection', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
@@ -200,6 +219,45 @@ describe('TravelConnectionModal', () => {
     expect(
       screen.queryByTestId('image-upload-section'),
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('staged-image-uploader')).toBeInTheDocument();
+  });
+
+  it('passes the staged images to onSave when creating a new connection', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeConnection({ id: 0 })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'stage image' }));
+    await user.click(screen.getByRole('button', { name: '儲存' }));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ id: 0 }), [
+      { file: expect.any(File), title: 'Staged' },
+    ]);
+  });
+
+  it('does not pass staged images to onSave when editing an existing connection', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeConnection({ id: 5 })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '儲存' }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 5 }),
+      undefined,
+    );
   });
 
   it('updates transportMode when a different transport option is clicked and includes it when saved', async () => {
@@ -218,6 +276,7 @@ describe('TravelConnectionModal', () => {
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ transportMode: 'transit' }),
+      undefined,
     );
   });
 
@@ -250,6 +309,7 @@ describe('TravelConnectionModal', () => {
 
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({ [field]: typed }),
+        undefined,
       );
     },
   );
