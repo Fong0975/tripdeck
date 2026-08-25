@@ -135,9 +135,12 @@ npm run start
 | `npm run lint` | Run ESLint across client and server |
 | `npm run lint:fix` | Auto-fix all fixable ESLint issues across client and server |
 | `npm run lint:check` | ESLint strict check — fails on any warning (used in CI) |
-| `npm run test` | Run the client unit test suite once (used in CI) |
+| `npm run test` | Run the client and server unit test suites once |
+| `npm run test:watch` | Run both suites in watch mode |
+| `npm run test:coverage` | Run both suites once with a coverage report |
 | `npm run format` | Format all files with Prettier |
 | `npm run format:check` | Check formatting without making changes (used in CI) |
+| `npm run format:diff` | List files that would be reformatted, without changing them |
 
 ### Client-Only Scripts
 
@@ -198,17 +201,17 @@ http://localhost:3001/api/docs
 The client uses [Vitest](https://vitest.dev) with [React Testing Library](https://testing-library.com/react) and jsdom. Test files are co-located next to the code they cover (`Foo.ts` → `Foo.test.ts`), and prefer table-driven cases (`it.each`/`describe.each`) over one-off single-case tests where the assertions are uniform.
 
 ```bash
-npm run test -w client             # Run once (used in CI)
+npm run test -w client             # Run once
 npm run test:watch -w client       # Watch mode
-npm run test:coverage -w client    # Run once with a coverage report
+npm run test:coverage -w client    # Run once with a coverage report (used in CI)
 ```
 
 The server also uses [Vitest](https://vitest.dev), running under Node instead of jsdom. Test files are co-located the same way (`fooRepository.ts` → `fooRepository.test.ts`); the MySQL2 `pool` is mocked with `vi.mock('../config/database')` so tests don't need a real database connection. Coverage is tracked the same way as the client, with an 80% threshold gate. Purely declarative files (routes, the static schema/type definitions, the app entry point) are excluded from coverage — see `server/vitest.config.ts` for the exact exclusion list.
 
 ```bash
-npm run test -w server             # Run once (used in CI)
+npm run test -w server             # Run once
 npm run test:watch -w server       # Watch mode
-npm run test:coverage -w server    # Run once with a coverage report
+npm run test:coverage -w server    # Run once with a coverage report (used in CI)
 ```
 
 ### Code Quality

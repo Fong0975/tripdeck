@@ -13,9 +13,12 @@
     "lint": "npm run lint -w client && npm run lint -w server",
     "lint:fix": "npm run lint:fix -w client && npm run lint:fix -w server",
     "lint:check": "npm run lint:check -w client && npm run lint:check -w server",
-    "test": "npm run test -w client",
+    "test": "npm run test -w client && npm run test -w server",
+    "test:watch": "concurrently -k -n client,server -c blue,green \"npm run test:watch -w client\" \"npm run test:watch -w server\"",
+    "test:coverage": "npm run test:coverage -w client && npm run test:coverage -w server",
     "format": "prettier --write \"**/*.{ts,tsx,json,css}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,json,css}\" --ignore-path .prettierignore",
+    "format:diff": "prettier --list-different \"**/*.{ts,tsx,json,css}\" --ignore-path .prettierignore",
     "swagger": "npm run swagger -w server"
   },
   "devDependencies": {
