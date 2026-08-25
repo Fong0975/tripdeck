@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
@@ -20,6 +20,21 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
   };
 }
 
+/**
+ * The collapsed summary and the expanded details section are both kept
+ * mounted at all times (marked via `role='group'`) so the expand/collapse
+ * transition can animate smoothly — only one of the two groups is ever
+ * visible (aria-hidden='false') at a time. `hidden: true` is required
+ * because `getByRole` otherwise excludes elements hidden via aria-hidden.
+ */
+function getSummaryGroup() {
+  return screen.getByRole('group', { name: '旅程摘要資訊', hidden: true });
+}
+
+function getDetailsGroup() {
+  return screen.getByRole('group', { name: '旅程詳細資訊', hidden: true });
+}
+
 describe('TripHeader', () => {
   it('renders the trip title and the formatted date range', () => {
     render(
@@ -38,10 +53,29 @@ describe('TripHeader', () => {
     const end = format(parseISO('2026-08-22'), 'yyyy/MM/dd', {
       locale: zhTW,
     });
-    expect(screen.getByText(`${start} – ${end}`)).toBeInTheDocument();
+    expect(
+      within(getSummaryGroup()).getByText(`${start} – ${end}`),
+    ).toBeInTheDocument();
   });
 
-  it('shows the total day count', () => {
+  it('keeps the details section hidden from assistive tech while collapsed', () => {
+    render(
+      <TripHeader
+        trip={makeTrip({ destination: 'Tokyo' })}
+        onBack={vi.fn()}
+        onExport={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    const detailsGroup = getDetailsGroup();
+    expect(detailsGroup).toHaveAttribute('aria-hidden', 'true');
+    expect(within(detailsGroup).getByText('3 天')).toBeInTheDocument();
+    expect(within(detailsGroup).getByText('Tokyo')).toBeInTheDocument();
+  });
+
+  it('reveals the total day count once the info header is hovered', async () => {
+    const user = userEvent.setup();
     render(
       <TripHeader
         trip={makeTrip()}
@@ -51,27 +85,64 @@ describe('TripHeader', () => {
       />,
     );
 
-    expect(screen.getByText('3 天')).toBeInTheDocument();
+    await user.hover(screen.getByText('Japan Trip'));
+
+    const detailsGroup = getDetailsGroup();
+    expect(detailsGroup).toHaveAttribute('aria-hidden', 'false');
+    expect(within(detailsGroup).getByText('3 天')).toBeInTheDocument();
   });
 
   it.each([
     { description: 'a destination is set', destination: 'Tokyo' },
     { description: 'no destination is set', destination: null },
-  ])('shows the destination only when $description', ({ destination }) => {
+  ])(
+    'shows the destination only when $description, once hovered',
+    async ({ destination }) => {
+      const user = userEvent.setup();
+      render(
+        <TripHeader
+          trip={makeTrip({ destination })}
+          onBack={vi.fn()}
+          onExport={vi.fn()}
+          onEdit={vi.fn()}
+        />,
+      );
+
+      await user.hover(screen.getByText('Japan Trip'));
+
+      const detailsGroup = getDetailsGroup();
+      expect(detailsGroup).toHaveAttribute('aria-hidden', 'false');
+
+      if (destination) {
+        expect(within(detailsGroup).getByText(destination)).toBeInTheDocument();
+      } else {
+        expect(screen.queryByText('Tokyo')).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it('expands on mouse enter and collapses on mouse leave', async () => {
+    const user = userEvent.setup();
     render(
       <TripHeader
-        trip={makeTrip({ destination })}
+        trip={makeTrip({ destination: 'Tokyo' })}
         onBack={vi.fn()}
         onExport={vi.fn()}
         onEdit={vi.fn()}
       />,
     );
 
-    if (destination) {
-      expect(screen.getByText(destination)).toBeInTheDocument();
-    } else {
-      expect(screen.queryByText('Tokyo')).not.toBeInTheDocument();
-    }
+    const title = screen.getByText('Japan Trip');
+
+    expect(getDetailsGroup()).toHaveAttribute('aria-hidden', 'true');
+
+    await user.hover(title);
+
+    expect(getDetailsGroup()).toHaveAttribute('aria-hidden', 'false');
+
+    await user.unhover(title);
+
+    expect(getDetailsGroup()).toHaveAttribute('aria-hidden', 'true');
   });
 
   it.each([
@@ -90,7 +161,9 @@ describe('TripHeader', () => {
       );
 
       if (tripDescription) {
-        expect(screen.getByText(tripDescription)).toBeInTheDocument();
+        expect(
+          within(getSummaryGroup()).getByText(tripDescription),
+        ).toBeInTheDocument();
       } else {
         expect(screen.queryByText('記得帶護照')).not.toBeInTheDocument();
       }
