@@ -114,7 +114,7 @@ export default function TripDetail() {
   }
 
   return (
-    <div className='bg-background flex min-h-screen flex-col'>
+    <div className='bg-background flex h-dvh flex-col overflow-hidden'>
       <Navbar />
 
       <TripHeader
@@ -153,7 +153,7 @@ export default function TripDetail() {
       </div>
 
       {activeTab === 'checklist' ? (
-        <div className='flex flex-1 flex-col px-0 sm:px-8 xl:px-16'>
+        <div className='flex min-h-0 flex-1 flex-col px-0 sm:px-8 xl:px-16'>
           <TripChecklistPanel
             tripId={trip.id}
             onDirtyChange={setChecklistDirty}
@@ -161,44 +161,54 @@ export default function TripDetail() {
         </div>
       ) : (
         /* Board */
-        <div className='flex-1 overflow-x-auto px-4 py-6 sm:px-8 xl:px-16'>
-          <ItineraryBoard
-            days={content.days}
-            sensors={dnd.sensors}
-            onDragStart={dnd.handleDragStart}
-            onDragEnd={dnd.handleDragEnd}
-            activeAttractionId={dnd.activeAttractionId}
-            getActiveAttraction={dnd.getActiveAttraction}
-            onEditDayNote={di =>
-              setModal({ type: 'editDayNote', dayIndex: di })
-            }
-            onAddAttraction={di =>
-              setModal({ type: 'addAttraction', dayIndex: di })
-            }
-            onEditAttraction={(di, a) =>
-              setModal({ type: 'editAttraction', dayIndex: di, attraction: a })
-            }
-            onDeleteAttraction={(di, aId) =>
-              void handleDeleteAttraction(di, aId)
-            }
-            onDuplicateAttraction={(di, a) =>
-              void handleDuplicateAttraction(di, a)
-            }
-            onEditConnection={(di, c) =>
-              setModal({ type: 'editConnection', dayIndex: di, connection: c })
-            }
-            onDeleteConnection={(di, cId) =>
-              void handleDeleteConnection(di, cId)
-            }
-            onAddConnection={handleAddConnection}
-            onAddLocation={(di, name) => void handleAddLocation(di, name)}
-            onUpdateLocation={(di, locId, name) =>
-              void handleUpdateLocation(di, locId, name)
-            }
-            onDeleteLocation={(di, locId) =>
-              void handleDeleteLocation(di, locId)
-            }
-          />
+        <div className='min-h-0 flex-1 overflow-auto'>
+          <div className='px-4 py-6 sm:px-8 xl:px-16'>
+            <ItineraryBoard
+              days={content.days}
+              sensors={dnd.sensors}
+              onDragStart={dnd.handleDragStart}
+              onDragEnd={dnd.handleDragEnd}
+              activeAttractionId={dnd.activeAttractionId}
+              getActiveAttraction={dnd.getActiveAttraction}
+              onEditDayNote={di =>
+                setModal({ type: 'editDayNote', dayIndex: di })
+              }
+              onAddAttraction={di =>
+                setModal({ type: 'addAttraction', dayIndex: di })
+              }
+              onEditAttraction={(di, a) =>
+                setModal({
+                  type: 'editAttraction',
+                  dayIndex: di,
+                  attraction: a,
+                })
+              }
+              onDeleteAttraction={(di, aId) =>
+                void handleDeleteAttraction(di, aId)
+              }
+              onDuplicateAttraction={(di, a) =>
+                void handleDuplicateAttraction(di, a)
+              }
+              onEditConnection={(di, c) =>
+                setModal({
+                  type: 'editConnection',
+                  dayIndex: di,
+                  connection: c,
+                })
+              }
+              onDeleteConnection={(di, cId) =>
+                void handleDeleteConnection(di, cId)
+              }
+              onAddConnection={handleAddConnection}
+              onAddLocation={(di, name) => void handleAddLocation(di, name)}
+              onUpdateLocation={(di, locId, name) =>
+                void handleUpdateLocation(di, locId, name)
+              }
+              onDeleteLocation={(di, locId) =>
+                void handleDeleteLocation(di, locId)
+              }
+            />
+          </div>
         </div>
       )}
 
