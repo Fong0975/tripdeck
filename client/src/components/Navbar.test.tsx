@@ -93,4 +93,14 @@ describe('Navbar', () => {
 
     expect(screen.queryByText(/API v/)).not.toBeInTheDocument();
   });
+
+  it('links to the GitHub repository from the info panel', async () => {
+    renderNavbar();
+    await screen.findByText('Tripdeck');
+
+    expect(screen.getByRole('menuitem', { name: /GitHub/ })).toHaveAttribute(
+      'href',
+      'https://github.com/Fong0975/tripdeck',
+    );
+  });
 });
