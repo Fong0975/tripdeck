@@ -13,6 +13,18 @@ import {
   update,
 } from './tripCrud';
 
+const mockGetTripImages = vi.fn().mockResolvedValue([]);
+const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
+vi.mock('../imageRepository', () => ({
+  getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
+  getTripImagesBatch: (...args: unknown[]) => mockGetTripImagesBatch(...args),
+}));
+
+const mockDeleteImageFromDisk = vi.fn();
+vi.mock('../../middleware/upload', () => ({
+  deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
+}));
+
 const mockPoolExecute = vi.fn();
 const mockConnBeginTransaction = vi.fn();
 const mockConnExecute = vi.fn();
@@ -39,6 +51,8 @@ vi.mock('../../config/database', () => ({
 describe('tripCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetTripImages.mockResolvedValue([]);
+    mockGetTripImagesBatch.mockResolvedValue(new Map());
     mockGetConnection.mockResolvedValue({
       beginTransaction: mockConnBeginTransaction,
       execute: mockConnExecute,
@@ -104,6 +118,7 @@ describe('tripCrud', () => {
             endDate: expected.endDate,
             description: 'desc',
             createdAt: expected.createdAt,
+            images: [],
           },
         ]);
         expect(mockPoolExecute).toHaveBeenCalledWith(
@@ -111,6 +126,28 @@ describe('tripCrud', () => {
         );
       },
     );
+
+    it('attaches batch-fetched images to their matching trip', async () => {
+      const rowA = {
+        id: 1,
+        title: 'Trip A',
+        destination: 'Tokyo',
+        description: null,
+        start_date: '2026-05-01',
+        end_date: '2026-05-03',
+        created_at: '2026-01-01T00:00:00.000Z',
+      };
+      const rowB = { ...rowA, id: 2, title: 'Trip B' };
+      mockPoolExecute.mockResolvedValueOnce([[rowA, rowB]]);
+      const images = [{ id: 9, filename: 'a.jpg', title: 'A' }];
+      mockGetTripImagesBatch.mockResolvedValueOnce(new Map([[1, images]]));
+
+      const result = await findAll();
+
+      expect(mockGetTripImagesBatch).toHaveBeenCalledWith([1, 2]);
+      expect(result[0].images).toEqual(images);
+      expect(result[1].images).toEqual([]);
+    });
   });
 
   describe('findById', () => {
@@ -136,6 +173,7 @@ describe('tripCrud', () => {
           endDate: expected.endDate,
           description: null,
           createdAt: expected.createdAt,
+          images: [],
         });
         expect(mockPoolExecute).toHaveBeenCalledWith(
           'SELECT * FROM trips WHERE id = ?',
@@ -150,6 +188,30 @@ describe('tripCrud', () => {
       const result = await findById(999);
 
       expect(result).toBeNull();
+      expect(mockGetTripImages).not.toHaveBeenCalled();
+    });
+
+    it('attaches images fetched for the trip', async () => {
+      mockPoolExecute.mockResolvedValueOnce([
+        [
+          {
+            id: 7,
+            title: 'Trip B',
+            destination: null,
+            description: null,
+            start_date: '2026-06-01',
+            end_date: '2026-06-05',
+            created_at: '2026-06-01T08:30:00.000Z',
+          },
+        ],
+      ]);
+      const images = [{ id: 9, filename: 'a.jpg', title: 'A' }];
+      mockGetTripImages.mockResolvedValueOnce(images);
+
+      const result = await findById(7);
+
+      expect(mockGetTripImages).toHaveBeenCalledWith(7);
+      expect(result?.images).toEqual(images);
     });
   });
 
@@ -242,6 +304,7 @@ describe('tripCrud', () => {
         endDate: '2026-07-01',
         description: null,
         createdAt: '2026-07-01T00:00:00.000Z',
+        images: [],
       });
       expect(mockConnRelease).toHaveBeenCalled();
     });
@@ -359,6 +422,29 @@ describe('tripCrud', () => {
       expect(mockConnCommit).toHaveBeenCalled();
       expect(mockConnRollback).not.toHaveBeenCalled();
       expect(result?.title).toBe('New Title');
+    });
+
+    it('attaches freshly-fetched images to the updated trip', async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([[tripRow()]]) // initial fetch
+        .mockResolvedValueOnce([
+          [
+            dayRow(101, 1, '2026-08-01'),
+            dayRow(102, 2, '2026-08-02'),
+            dayRow(103, 3, '2026-08-03'),
+          ],
+        ]) // trip_days
+        .mockResolvedValueOnce([[tripRow()]]); // fresh fetch
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 101 }, { id: 102 }, { id: 103 }],
+      ]);
+      const images = [{ id: 9, filename: 'a.jpg', title: 'A' }];
+      mockGetTripImages.mockResolvedValueOnce(images);
+
+      const result = await update(10, { title: 'New Title' });
+
+      expect(mockGetTripImages).toHaveBeenCalledWith(10);
+      expect(result?.images).toEqual(images);
     });
 
     it('expands the date range by inserting trip_days for newly added dates', async () => {
@@ -579,6 +665,32 @@ describe('tripCrud', () => {
         );
       },
     );
+
+    it('deletes every image on disk when the trip is deleted', async () => {
+      mockGetTripImages.mockResolvedValueOnce([
+        { id: 1, filename: 'a.jpg', title: 'A' },
+        { id: 2, filename: 'b.jpg', title: 'B' },
+      ]);
+      mockPoolExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+      const result = await deleteById(5);
+
+      expect(result).toBe(true);
+      expect(mockDeleteImageFromDisk).toHaveBeenNthCalledWith(1, 'a.jpg');
+      expect(mockDeleteImageFromDisk).toHaveBeenNthCalledWith(2, 'b.jpg');
+    });
+
+    it('does not touch disk when the trip does not exist', async () => {
+      mockGetTripImages.mockResolvedValueOnce([
+        { id: 1, filename: 'a.jpg', title: 'A' },
+      ]);
+      mockPoolExecute.mockResolvedValueOnce([{ affectedRows: 0 }]);
+
+      const result = await deleteById(999);
+
+      expect(result).toBe(false);
+      expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
+    });
   });
 
   describe('findDayByIdAndTripId', () => {

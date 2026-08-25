@@ -21,6 +21,7 @@ export interface TripResponse {
   endDate: string;
   description: string | null;
   createdAt: string;
+  images: ImageResponse[];
 }
 
 export interface AttractionResponse {

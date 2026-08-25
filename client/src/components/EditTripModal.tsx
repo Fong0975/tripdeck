@@ -2,9 +2,17 @@ import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { useState } from 'react';
 
-import type { DayPlan, Trip, TripContent } from '@/types';
-import { getTripContent, updateTrip } from '@/utils/storage';
+import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';
+import { useEntityImages } from '@/hooks/useEntityImages';
+import type { Trip, TripContent } from '@/types';
+import {
+  deleteTripImage,
+  getTripContent,
+  updateTrip,
+  uploadTripImage,
+} from '@/utils/storage';
 
+import ImageUploadSection from './ImageUploadSection';
 import ConfirmDialog from './ui/ConfirmDialog';
 import Modal from './ui/Modal';
 import ModalFooterActions from './ui/ModalFooterActions';
@@ -17,13 +25,6 @@ interface Props {
   onUpdated: (trip: Trip) => void;
   /** Called after a successful update that removed day lanes, so the caller can reload its content. */
   onContentChanged?: () => void;
-}
-
-function imageCountOf(day: DayPlan): number {
-  return (
-    day.attractions.reduce((sum, a) => sum + (a.images?.length ?? 0), 0) +
-    day.connections.reduce((sum, c) => sum + (c.images?.length ?? 0), 0)
-  );
 }
 
 export default function EditTripModal({
@@ -40,8 +41,21 @@ export default function EditTripModal({
     endDate: trip.endDate,
     description: trip.description ?? '',
   });
+  const {
+    images,
+    handleUpload: handleUploadImage,
+    handleDelete: handleDeleteImage,
+  } = useEntityImages({
+    initialImages: trip.images ?? [],
+    upload: (file, title) => uploadTripImage(trip.id, file, title),
+    remove: imageId => deleteTripImage(trip.id, imageId),
+  });
   const [error, setError] = useState('');
-  const [pendingImpact, setPendingImpact] = useState<DayPlan[] | null>(null);
+  const { pendingImpact, checkImpact, dismissImpact } = useDateShrinkImpact({
+    tripStartDate: trip.startDate,
+    tripEndDate: trip.endDate,
+    getContent: async () => initialContent ?? (await getTripContent(trip.id)),
+  });
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -79,24 +93,10 @@ export default function EditTripModal({
       return setError('結束日期不能早於開始日期');
     }
 
-    const isPureExpansion =
-      form.startDate <= trip.startDate && form.endDate >= trip.endDate;
-    if (isPureExpansion) {
+    const canProceed = await checkImpact(form.startDate, form.endDate);
+    if (canProceed) {
       return submitUpdate();
     }
-
-    const content = initialContent ?? (await getTripContent(trip.id));
-    if (!content) {
-      return submitUpdate();
-    }
-
-    const impacted = content.days.filter(
-      d => d.date < form.startDate || d.date > form.endDate,
-    );
-    if (impacted.length === 0) {
-      return submitUpdate();
-    }
-    setPendingImpact(impacted);
   };
 
   return (
@@ -171,6 +171,17 @@ export default function EditTripModal({
             />
           </div>
 
+          <div>
+            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+              圖片
+            </label>
+            <ImageUploadSection
+              images={images}
+              onUpload={handleUploadImage}
+              onDelete={handleDeleteImage}
+            />
+          </div>
+
           {error && <p className='text-destructive text-sm'>{error}</p>}
 
           <ModalFooterActions onCancel={onClose} />
@@ -197,9 +208,9 @@ export default function EditTripModal({
           }
           confirmLabel='確定刪除並儲存'
           cancelLabel='返回修改'
-          onCancel={() => setPendingImpact(null)}
+          onCancel={dismissImpact}
           onConfirm={() => {
-            setPendingImpact(null);
+            dismissImpact();
             void submitUpdate();
           }}
         />

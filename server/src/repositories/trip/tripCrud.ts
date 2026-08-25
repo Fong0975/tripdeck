@@ -1,12 +1,14 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import { deleteImageFromDisk } from '../../middleware/upload';
 import type {
   CreateTripBody,
   TripResponse,
   UpdateTripBody,
 } from '../../types/trip';
 import * as attractionCrud from '../attraction/attractionCrud';
+import * as imageRepo from '../imageRepository';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
 import { TripDayRow, TripRow } from './types';
@@ -19,7 +21,8 @@ export async function findAll(): Promise<TripResponse[]> {
   const [rows] = await pool.execute<TripRow[]>(
     'SELECT * FROM trips ORDER BY created_at DESC',
   );
-  return rows.map(toTripResponse);
+  const imagesByTrip = await imageRepo.getTripImagesBatch(rows.map(r => r.id));
+  return rows.map(row => toTripResponse(row, imagesByTrip.get(row.id) ?? []));
 }
 
 export async function findById(id: number): Promise<TripResponse | null> {
@@ -27,7 +30,11 @@ export async function findById(id: number): Promise<TripResponse | null> {
     'SELECT * FROM trips WHERE id = ?',
     [id],
   );
-  return rows.length > 0 ? toTripResponse(rows[0]) : null;
+  if (rows.length === 0) {
+    return null;
+  }
+  const images = await imageRepo.getTripImages(id);
+  return toTripResponse(rows[0], images);
 }
 
 /**
@@ -197,14 +204,27 @@ export async function update(
     'SELECT * FROM trips WHERE id = ?',
     [id],
   );
-  return toTripResponse(freshRows[0]);
+  const images = await imageRepo.getTripImages(id);
+  return toTripResponse(freshRows[0], images);
 }
 
+/**
+ * Deletes a trip and its own images from disk. `ON DELETE CASCADE` on
+ * `trip_images.trip_id` removes the DB rows automatically, but the uploaded
+ * files must be cleaned up explicitly (same tradeoff as
+ * connectionRepository.deleteById).
+ */
 export async function deleteById(id: number): Promise<boolean> {
+  const images = await imageRepo.getTripImages(id);
   const [result] = await pool.execute<ResultSetHeader>(
     'DELETE FROM trips WHERE id = ?',
     [id],
   );
+  if (result.affectedRows > 0) {
+    for (const img of images) {
+      deleteImageFromDisk(img.filename);
+    }
+  }
   return result.affectedRows > 0;
 }
 

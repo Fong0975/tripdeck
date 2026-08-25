@@ -5,19 +5,23 @@ vi.mock('../middleware/upload');
 vi.mock('../repositories/attraction');
 vi.mock('../repositories/connectionRepository');
 vi.mock('../repositories/imageRepository');
+vi.mock('../repositories/trip');
 
 import { saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
+import * as tripRepo from '../repositories/trip';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import type { ImageResponse } from '../types/trip';
+import type { ImageResponse, TripResponse } from '../types/trip';
 
 import {
   deleteAttractionImage,
   deleteConnectionImage,
+  deleteTripImage,
   uploadAttractionImage,
   uploadConnectionImage,
+  uploadTripImage,
 } from './imageController';
 
 const mockFile = {
@@ -25,8 +29,19 @@ const mockFile = {
   mimetype: 'image/jpeg',
 } as Express.Multer.File;
 
+const sampleTrip: TripResponse = {
+  id: 1,
+  title: 'Kyoto Trip',
+  destination: null,
+  startDate: '2026-05-10',
+  endDate: '2026-05-12',
+  description: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  images: [],
+};
+
 interface Variant {
-  kind: 'attraction' | 'connection';
+  kind: 'attraction' | 'connection' | 'trip';
   notFoundError: string;
   parentId: number;
   imageId: number;
@@ -34,15 +49,17 @@ interface Variant {
   deleteParams: Record<string, string>;
   uploadHandler: (req: Request, res: Response) => Promise<void>;
   deleteHandler: (req: Request, res: Response) => Promise<void>;
-  verifyBelongsToTrip:
-    | typeof attractionRepo.verifyBelongsToTrip
-    | typeof connectionRepo.verifyBelongsToTrip;
+  /** Stubs whatever parent-existence check the handler uses. */
+  mockParentFound: (found: boolean) => void;
+  mockParentRejects: (err: Error) => void;
   addImage:
     | typeof imageRepo.addAttractionImage
-    | typeof imageRepo.addConnectionImage;
+    | typeof imageRepo.addConnectionImage
+    | typeof imageRepo.addTripImage;
   deleteImage:
     | typeof imageRepo.deleteAttractionImage
-    | typeof imageRepo.deleteConnectionImage;
+    | typeof imageRepo.deleteConnectionImage
+    | typeof imageRepo.deleteTripImage;
 }
 
 const variants: Variant[] = [
@@ -55,7 +72,10 @@ const variants: Variant[] = [
     deleteParams: { tripId: '1', attractionId: '5', imageId: '7' },
     uploadHandler: uploadAttractionImage,
     deleteHandler: deleteAttractionImage,
-    verifyBelongsToTrip: attractionRepo.verifyBelongsToTrip,
+    mockParentFound: found =>
+      vi.mocked(attractionRepo.verifyBelongsToTrip).mockResolvedValue(found),
+    mockParentRejects: err =>
+      vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(err),
     addImage: imageRepo.addAttractionImage,
     deleteImage: imageRepo.deleteAttractionImage,
   },
@@ -68,9 +88,28 @@ const variants: Variant[] = [
     deleteParams: { tripId: '1', connectionId: '5', imageId: '7' },
     uploadHandler: uploadConnectionImage,
     deleteHandler: deleteConnectionImage,
-    verifyBelongsToTrip: connectionRepo.verifyBelongsToTrip,
+    mockParentFound: found =>
+      vi.mocked(connectionRepo.verifyBelongsToTrip).mockResolvedValue(found),
+    mockParentRejects: err =>
+      vi.mocked(connectionRepo.verifyBelongsToTrip).mockRejectedValue(err),
     addImage: imageRepo.addConnectionImage,
     deleteImage: imageRepo.deleteConnectionImage,
+  },
+  {
+    kind: 'trip',
+    notFoundError: 'Trip not found',
+    parentId: 1,
+    imageId: 7,
+    uploadParams: { tripId: '1' },
+    deleteParams: { tripId: '1', imageId: '7' },
+    uploadHandler: uploadTripImage,
+    deleteHandler: deleteTripImage,
+    mockParentFound: found =>
+      vi.mocked(tripRepo.findById).mockResolvedValue(found ? sampleTrip : null),
+    mockParentRejects: err =>
+      vi.mocked(tripRepo.findById).mockRejectedValue(err),
+    addImage: imageRepo.addTripImage,
+    deleteImage: imageRepo.deleteTripImage,
   },
 ];
 
@@ -83,7 +122,8 @@ describe.each(variants)(
     deleteParams,
     uploadHandler,
     deleteHandler,
-    verifyBelongsToTrip,
+    mockParentFound,
+    mockParentRejects,
     addImage,
     deleteImage,
   }) => {
@@ -93,7 +133,7 @@ describe.each(variants)(
 
     describe('upload', () => {
       it('returns 404 when the parent is not found', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(false);
+        mockParentFound(false);
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body: { title: 'Title' },
@@ -108,7 +148,7 @@ describe.each(variants)(
       });
 
       it('returns 400 when req.file is missing', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body: { title: 'Title' },
@@ -125,7 +165,7 @@ describe.each(variants)(
         { name: 'missing', body: {} },
         { name: 'blank', body: { title: '   ' } },
       ])('returns 400 when title is $name', async ({ body }) => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body,
@@ -140,7 +180,7 @@ describe.each(variants)(
       });
 
       it('returns 400 when saveImageToDisk throws', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         vi.mocked(saveImageToDisk).mockImplementation(() => {
           throw new Error('File content does not match declared image type');
         });
@@ -162,7 +202,7 @@ describe.each(variants)(
           filename: 'generated.jpg',
           title: 'Title',
         };
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         vi.mocked(saveImageToDisk).mockReturnValue('generated.jpg');
         vi.mocked(addImage).mockResolvedValue(image);
         const { req, res } = createMockReqRes({
@@ -182,7 +222,7 @@ describe.each(variants)(
       });
 
       it('returns 500 when an unexpected error occurs', async () => {
-        vi.mocked(verifyBelongsToTrip).mockRejectedValue(new Error('db error'));
+        mockParentRejects(new Error('db error'));
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body: { title: 'Title' },
@@ -197,7 +237,7 @@ describe.each(variants)(
 
     describe('delete', () => {
       it('returns 404 when the parent is not found', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(false);
+        mockParentFound(false);
         const { req, res } = createMockReqRes({ params: deleteParams });
 
         await deleteHandler(req, res);
@@ -207,7 +247,7 @@ describe.each(variants)(
       });
 
       it('returns 404 when the image is not found', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         vi.mocked(deleteImage).mockResolvedValue(false);
         const { req, res } = createMockReqRes({ params: deleteParams });
 
@@ -217,7 +257,7 @@ describe.each(variants)(
       });
 
       it('returns 204 on success', async () => {
-        vi.mocked(verifyBelongsToTrip).mockResolvedValue(true);
+        mockParentFound(true);
         vi.mocked(deleteImage).mockResolvedValue(true);
         const { req, res } = createMockReqRes({ params: deleteParams });
 
@@ -228,7 +268,7 @@ describe.each(variants)(
       });
 
       it('returns 500 when an unexpected error occurs', async () => {
-        vi.mocked(verifyBelongsToTrip).mockRejectedValue(new Error('db error'));
+        mockParentRejects(new Error('db error'));
         const { req, res } = createMockReqRes({ params: deleteParams });
 
         await deleteHandler(req, res);

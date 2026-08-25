@@ -3,12 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addAttractionImage,
   addConnectionImage,
+  addTripImage,
   deleteAttractionImage,
   deleteConnectionImage,
+  deleteTripImage,
   getAttractionImages,
   getAttractionImagesBatch,
   getConnectionImages,
   getConnectionImagesBatch,
+  getTripImages,
+  getTripImagesBatch,
 } from './imageRepository';
 
 const mockPoolExecute = vi.fn();
@@ -25,8 +29,8 @@ vi.mock('../middleware/upload', () => ({
 }));
 
 interface Variant {
-  kind: 'attraction' | 'connection';
-  idColumn: 'trip_attraction_id' | 'trip_connection_id';
+  kind: 'attraction' | 'connection' | 'trip';
+  idColumn: 'trip_attraction_id' | 'trip_connection_id' | 'trip_id';
   getImages: typeof getAttractionImages;
   getImagesBatch: typeof getAttractionImagesBatch;
   addImage: typeof addAttractionImage;
@@ -49,6 +53,14 @@ const variants: Variant[] = [
     getImagesBatch: getConnectionImagesBatch,
     addImage: addConnectionImage,
     deleteImage: deleteConnectionImage,
+  },
+  {
+    kind: 'trip',
+    idColumn: 'trip_id',
+    getImages: getTripImages,
+    getImagesBatch: getTripImagesBatch,
+    addImage: addTripImage,
+    deleteImage: deleteTripImage,
   },
 ];
 

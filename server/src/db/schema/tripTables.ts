@@ -161,4 +161,22 @@ export const tripTables: TableDef[] = [
       },
     ],
   },
+
+  {
+    name: 'trip_images',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_id', type: 'INT', notNull: true },
+      { name: 'filename', type: 'VARCHAR(255)', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_images_trip',
+        column: 'trip_id',
+        references: { table: 'trips', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 ];

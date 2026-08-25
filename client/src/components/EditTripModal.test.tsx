@@ -3,13 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DayPlan, Trip, TripContent } from '@/types';
-import { getTripContent, updateTrip } from '@/utils/storage';
+import {
+  deleteTripImage,
+  getTripContent,
+  updateTrip,
+  uploadTripImage,
+} from '@/utils/storage';
 
 import EditTripModal from './EditTripModal';
 
 vi.mock('@/utils/storage', () => ({
   getTripContent: vi.fn(),
   updateTrip: vi.fn(),
+  uploadTripImage: vi.fn(),
+  deleteTripImage: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -104,7 +111,61 @@ function submitForm(container: HTMLElement) {
   fireEvent.submit(form);
 }
 
+// The upload <input type="file"> has no accessible label, so it can only
+// be reached by its type attribute rather than a testing-library query.
+function getFileInput(container: HTMLElement): HTMLInputElement {
+  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+  return container.querySelector('input[type="file"]') as HTMLInputElement;
+}
+
 describe('EditTripModal', () => {
+  beforeEach(() => {
+    // jsdom does not implement the Blob URL APIs used to preview a pending file.
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it('renders the trip images and deletes one via the image section', async () => {
+    vi.mocked(deleteTripImage).mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <EditTripModal
+        trip={{
+          ...trip,
+          images: [{ id: 1, filename: 'a.jpg', title: 'Cover' }],
+        }}
+        onClose={vi.fn()}
+        onUpdated={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByAltText('Cover')).toBeInTheDocument();
+
+    await user.click(screen.getByTitle('刪除圖片'));
+
+    await waitFor(() => expect(deleteTripImage).toHaveBeenCalledWith(5, 1));
+    expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
+  });
+
+  it('uploads a new image via the image section', async () => {
+    const newImage = { id: 2, filename: 'b.jpg', title: 'New' };
+    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
+    const user = userEvent.setup();
+    const { container } = render(
+      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    );
+    const file = new File(['a'], 'b.jpg');
+    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
+
+    await user.click(screen.getByText('確認上傳'));
+
+    await waitFor(() =>
+      expect(uploadTripImage).toHaveBeenCalledWith(5, file, 'New'),
+    );
+    expect(await screen.findByAltText('New')).toBeInTheDocument();
+  });
+
   it('pre-fills the form with the trip current values', () => {
     const { container } = render(
       <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={vi.fn()} />,

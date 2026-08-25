@@ -4,27 +4,13 @@ import pool from '../config/database';
 import { deleteImageFromDisk } from '../middleware/upload';
 import type { ImageResponse } from '../types/trip';
 
-// --- Row types ---
-
-interface AttractionImageRow extends RowDataPacket {
+interface ImageRow extends RowDataPacket {
   id: number;
-  trip_attraction_id: number;
   filename: string;
   title: string;
 }
 
-interface ConnectionImageRow extends RowDataPacket {
-  id: number;
-  trip_connection_id: number;
-  filename: string;
-  title: string;
-}
-
-// --- Helpers ---
-
-function toImageResponse(
-  row: AttractionImageRow | ConnectionImageRow,
-): ImageResponse {
+function toImageResponse(row: ImageRow): ImageResponse {
   return {
     id: row.id,
     filename: row.filename,
@@ -32,152 +18,114 @@ function toImageResponse(
   };
 }
 
-// --- Attraction images ---
-
-export async function getAttractionImages(
-  attractionId: number,
-): Promise<ImageResponse[]> {
-  const [rows] = await pool.execute<AttractionImageRow[]>(
-    'SELECT * FROM trip_attraction_images WHERE trip_attraction_id = ? ORDER BY id',
-    [attractionId],
-  );
-  return rows.map(toImageResponse);
-}
-
 /**
- * Batch-fetches images for multiple attractions in a single query.
- * Returns a map from attraction ID to its image list.
+ * Builds the CRUD functions for one entity's image table. The three image
+ * tables (`trip_attraction_images`, `trip_connection_images`, `trip_images`)
+ * all share the same shape — one row per image, with a single foreign-key
+ * column pointing back to the parent entity — so this is generated once per
+ * table/column pair instead of being hand-duplicated for each entity.
  */
-export async function getAttractionImagesBatch(
-  attractionIds: number[],
-): Promise<Map<number, ImageResponse[]>> {
-  const result = new Map<number, ImageResponse[]>();
-  if (attractionIds.length === 0) {
+function createImageRepo(table: string, idColumn: string) {
+  async function getImages(parentId: number): Promise<ImageResponse[]> {
+    const [rows] = await pool.execute<ImageRow[]>(
+      `SELECT * FROM ${table} WHERE ${idColumn} = ? ORDER BY id`,
+      [parentId],
+    );
+    return rows.map(toImageResponse);
+  }
+
+  /**
+   * Batch-fetches images for multiple parents in a single query.
+   * Returns a map from parent ID to its image list.
+   */
+  async function getImagesBatch(
+    parentIds: number[],
+  ): Promise<Map<number, ImageResponse[]>> {
+    const result = new Map<number, ImageResponse[]>();
+    if (parentIds.length === 0) {
+      return result;
+    }
+
+    const ph = parentIds.map(() => '?').join(', ');
+    const [rows] = await pool.execute<ImageRow[]>(
+      `SELECT * FROM ${table}
+       WHERE ${idColumn} IN (${ph})
+       ORDER BY ${idColumn}, id`,
+      parentIds,
+    );
+
+    for (const row of rows) {
+      const parentId = row[idColumn] as number;
+      const list = result.get(parentId) ?? [];
+      list.push(toImageResponse(row));
+      result.set(parentId, list);
+    }
+
     return result;
   }
 
-  const ph = attractionIds.map(() => '?').join(', ');
-  const [rows] = await pool.execute<AttractionImageRow[]>(
-    `SELECT * FROM trip_attraction_images
-     WHERE trip_attraction_id IN (${ph})
-     ORDER BY trip_attraction_id, id`,
-    attractionIds,
-  );
+  async function addImage(
+    parentId: number,
+    filename: string,
+    title: string,
+  ): Promise<ImageResponse> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO ${table} (${idColumn}, filename, title) VALUES (?, ?, ?)`,
+      [parentId, filename, title],
+    );
 
-  for (const row of rows) {
-    const list = result.get(row.trip_attraction_id) ?? [];
-    list.push(toImageResponse(row));
-    result.set(row.trip_attraction_id, list);
+    return { id: result.insertId, filename, title };
   }
 
-  return result;
-}
+  async function deleteImage(
+    imageId: number,
+    parentId: number,
+  ): Promise<boolean> {
+    const [rows] = await pool.execute<ImageRow[]>(
+      `SELECT * FROM ${table} WHERE id = ? AND ${idColumn} = ?`,
+      [imageId, parentId],
+    );
 
-export async function addAttractionImage(
-  attractionId: number,
-  filename: string,
-  title: string,
-): Promise<ImageResponse> {
-  const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO trip_attraction_images (trip_attraction_id, filename, title) VALUES (?, ?, ?)',
-    [attractionId, filename, title],
-  );
+    if (rows.length === 0) {
+      return false;
+    }
 
-  return { id: result.insertId, filename, title };
-}
+    await pool.execute(`DELETE FROM ${table} WHERE id = ?`, [imageId]);
 
-export async function deleteAttractionImage(
-  imageId: number,
-  attractionId: number,
-): Promise<boolean> {
-  const [rows] = await pool.execute<AttractionImageRow[]>(
-    'SELECT * FROM trip_attraction_images WHERE id = ? AND trip_attraction_id = ?',
-    [imageId, attractionId],
-  );
-
-  if (rows.length === 0) {
-    return false;
+    deleteImageFromDisk(rows[0].filename);
+    return true;
   }
 
-  await pool.execute('DELETE FROM trip_attraction_images WHERE id = ?', [
-    imageId,
-  ]);
-
-  deleteImageFromDisk(rows[0].filename);
-  return true;
+  return { getImages, getImagesBatch, addImage, deleteImage };
 }
+
+const attractionImages = createImageRepo(
+  'trip_attraction_images',
+  'trip_attraction_id',
+);
+const connectionImages = createImageRepo(
+  'trip_connection_images',
+  'trip_connection_id',
+);
+const tripImages = createImageRepo('trip_images', 'trip_id');
+
+// --- Attraction images ---
+
+export const getAttractionImages = attractionImages.getImages;
+export const getAttractionImagesBatch = attractionImages.getImagesBatch;
+export const addAttractionImage = attractionImages.addImage;
+export const deleteAttractionImage = attractionImages.deleteImage;
 
 // --- Connection images ---
 
-export async function getConnectionImages(
-  connectionId: number,
-): Promise<ImageResponse[]> {
-  const [rows] = await pool.execute<ConnectionImageRow[]>(
-    'SELECT * FROM trip_connection_images WHERE trip_connection_id = ? ORDER BY id',
-    [connectionId],
-  );
-  return rows.map(toImageResponse);
-}
+export const getConnectionImages = connectionImages.getImages;
+export const getConnectionImagesBatch = connectionImages.getImagesBatch;
+export const addConnectionImage = connectionImages.addImage;
+export const deleteConnectionImage = connectionImages.deleteImage;
 
-/**
- * Batch-fetches images for multiple connections in a single query.
- * Returns a map from connection ID to its image list.
- */
-export async function getConnectionImagesBatch(
-  connectionIds: number[],
-): Promise<Map<number, ImageResponse[]>> {
-  const result = new Map<number, ImageResponse[]>();
-  if (connectionIds.length === 0) {
-    return result;
-  }
+// --- Trip images ---
 
-  const ph = connectionIds.map(() => '?').join(', ');
-  const [rows] = await pool.execute<ConnectionImageRow[]>(
-    `SELECT * FROM trip_connection_images
-     WHERE trip_connection_id IN (${ph})
-     ORDER BY trip_connection_id, id`,
-    connectionIds,
-  );
-
-  for (const row of rows) {
-    const list = result.get(row.trip_connection_id) ?? [];
-    list.push(toImageResponse(row));
-    result.set(row.trip_connection_id, list);
-  }
-
-  return result;
-}
-
-export async function addConnectionImage(
-  connectionId: number,
-  filename: string,
-  title: string,
-): Promise<ImageResponse> {
-  const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO trip_connection_images (trip_connection_id, filename, title) VALUES (?, ?, ?)',
-    [connectionId, filename, title],
-  );
-
-  return { id: result.insertId, filename, title };
-}
-
-export async function deleteConnectionImage(
-  imageId: number,
-  connectionId: number,
-): Promise<boolean> {
-  const [rows] = await pool.execute<ConnectionImageRow[]>(
-    'SELECT * FROM trip_connection_images WHERE id = ? AND trip_connection_id = ?',
-    [imageId, connectionId],
-  );
-
-  if (rows.length === 0) {
-    return false;
-  }
-
-  await pool.execute('DELETE FROM trip_connection_images WHERE id = ?', [
-    imageId,
-  ]);
-
-  deleteImageFromDisk(rows[0].filename);
-  return true;
-}
+export const getTripImages = tripImages.getImages;
+export const getTripImagesBatch = tripImages.getImagesBatch;
+export const addTripImage = tripImages.addImage;
+export const deleteTripImage = tripImages.deleteImage;

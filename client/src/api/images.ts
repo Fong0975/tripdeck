@@ -53,3 +53,26 @@ export async function deleteConnectionImage(
     { method: 'DELETE' },
   );
 }
+
+export async function uploadTripImage(
+  tripId: number,
+  file: File,
+  title: string,
+): Promise<AttractionImage> {
+  const form = new FormData();
+  form.append('image', file);
+  form.append('title', title);
+  return api<AttractionImage>(`/api/trips/${tripId}/images`, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function deleteTripImage(
+  tripId: number,
+  imageId: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/images/${imageId}`, {
+    method: 'DELETE',
+  });
+}

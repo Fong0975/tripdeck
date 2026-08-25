@@ -97,6 +97,14 @@ router.delete(
   imageController.deleteConnectionImage,
 );
 
+// Trip images
+router.post(
+  '/:tripId/images',
+  upload.single('image'),
+  imageController.uploadTripImage,
+);
+router.delete('/:tripId/images/:imageId', imageController.deleteTripImage);
+
 // Checklist
 router.use('/:tripId/checklist', checklistTripRoutes);
 

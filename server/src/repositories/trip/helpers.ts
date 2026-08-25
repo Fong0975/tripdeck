@@ -1,4 +1,4 @@
-import type { TripResponse } from '../../types/trip';
+import type { ImageResponse, TripResponse } from '../../types/trip';
 
 import { TripRow } from './types';
 
@@ -19,7 +19,10 @@ export function toISOString(d: Date | string): string {
   return d.toISOString();
 }
 
-export function toTripResponse(row: TripRow): TripResponse {
+export function toTripResponse(
+  row: TripRow,
+  images: ImageResponse[] = [],
+): TripResponse {
   return {
     id: row.id,
     title: row.title,
@@ -28,6 +31,7 @@ export function toTripResponse(row: TripRow): TripResponse {
     endDate: toDateString(row.end_date),
     description: row.description,
     createdAt: toISOString(row.created_at),
+    images,
   };
 }
 

@@ -26,6 +26,7 @@ export interface Trip {
   endDate: string;
   description?: string | null;
   createdAt: string;
+  images?: AttractionImage[];
 }
 
 export interface Attraction {

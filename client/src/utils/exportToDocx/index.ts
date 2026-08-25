@@ -1,14 +1,6 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import {
-  BorderStyle,
-  Document,
-  HeadingLevel,
-  Packer,
-  Paragraph,
-  Table,
-  TextRun,
-} from 'docx';
+import { Document, Packer, Paragraph, Table, TextRun } from 'docx';
 
 import type { Trip, TripContent, TravelConnection } from '@/types';
 import { daysFromToday } from '@/utils/date';
@@ -17,6 +9,7 @@ import { fetchDailyWeather, isWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { FONT } from './constants';
+import { makeHeaderSection } from './headerSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 export async function exportToDocx(
@@ -26,81 +19,7 @@ export async function exportToDocx(
   type DocChild = Paragraph | Table;
   const children: DocChild[] = [];
 
-  // === Header section =====================================================
-
-  children.push(
-    new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      children: [new TextRun({ text: trip.title, font: FONT })],
-      spacing: { after: 160 },
-    }),
-  );
-
-  children.push(
-    new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
-  );
-
-  if (trip.destination) {
-    children.push(
-      new Paragraph({
-        children: [
-          new TextRun({ text: '地點：', bold: true, font: FONT }),
-          new TextRun({ text: trip.destination, font: FONT }),
-        ],
-        spacing: { before: 40, after: 40 },
-      }),
-    );
-  }
-
-  const startDate = format(parseISO(trip.startDate), 'yyyy/MM/dd', {
-    locale: zhTW,
-  });
-  const endDate = format(parseISO(trip.endDate), 'yyyy/MM/dd', {
-    locale: zhTW,
-  });
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({ text: '日期：', bold: true, font: FONT }),
-        new TextRun({
-          text: `${startDate} - ${endDate} ( ${content.days.length} 天 )`,
-          font: FONT,
-        }),
-      ],
-      spacing: { before: 40, after: 40 },
-    }),
-  );
-
-  children.push(
-    new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
-  );
-
-  if (trip.description?.trim()) {
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: trip.description, font: FONT })],
-        spacing: { before: 40, after: 40 },
-      }),
-    );
-    children.push(
-      new Paragraph({ children: [], spacing: { before: 0, after: 80 } }),
-    );
-  }
-
-  children.push(
-    new Paragraph({
-      border: {
-        bottom: {
-          style: BorderStyle.SINGLE,
-          size: 6,
-          color: 'CCCCCC',
-          space: 1,
-        },
-      },
-      spacing: { before: 60, after: 240 },
-      children: [],
-    }),
-  );
+  children.push(...(await makeHeaderSection(trip, content.days.length)));
 
   // === Day sections ========================================================
 

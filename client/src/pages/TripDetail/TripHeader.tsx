@@ -1,10 +1,9 @@
-import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
-import { ArrowLeft, Download, Loader2, MapPin, Pencil } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 import type { Trip } from '@/types';
-import { getTripTotalDays } from '@/utils/date';
+
+import TripHeaderSummary from './TripHeaderSummary';
 
 interface Props {
   trip: Trip;
@@ -23,13 +22,9 @@ export default function TripHeader({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  const totalDays = getTripTotalDays(trip);
-
-  const dateRange = `${format(parseISO(trip.startDate), 'yyyy/MM/dd', { locale: zhTW })} – ${format(parseISO(trip.endDate), 'yyyy/MM/dd', { locale: zhTW })}`;
-
   return (
-    <div className='border-border bg-card/50 border-b'>
-      <div className='mx-auto flex max-w-screen-xl items-start gap-4 p-4'>
+    <div className='border-border bg-card/50 relative border-b'>
+      <div className='mx-auto flex max-w-screen-xl items-center gap-4 p-4'>
         <button
           onClick={onBack}
           className='text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors'
@@ -38,82 +33,13 @@ export default function TripHeader({
           <ArrowLeft size={20} />
         </button>
 
-        <div
-          className='flex min-w-0 flex-1 flex-col gap-2'
+        <TripHeaderSummary
+          trip={trip}
+          expanded={expanded}
           onMouseEnter={() => setExpanded(true)}
           onMouseLeave={() => setExpanded(false)}
-        >
-          <div className='flex min-h-9 items-center gap-2'>
-            <div className='flex min-w-0 flex-1 items-center gap-3'>
-              <h1 className='text-foreground min-w-0 shrink truncate text-xl font-bold'>
-                {trip.title}
-              </h1>
-
-              <div
-                role='group'
-                aria-label='旅程摘要資訊'
-                aria-hidden={expanded}
-                className={`grid min-w-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-in-out ${
-                  expanded ? 'grid-cols-[0fr]' : 'grid-cols-[1fr]'
-                }`}
-              >
-                <div className='min-w-0 overflow-hidden'>
-                  <div
-                    className={`border-border text-muted-foreground flex min-w-0 shrink flex-col justify-center gap-0.5 border-l pl-3 text-xs leading-tight transition-opacity duration-200 ${
-                      expanded ? 'opacity-0' : 'opacity-100 delay-100'
-                    }`}
-                  >
-                    <span className='truncate'>{dateRange}</span>
-                    {trip.description && (
-                      <span className='truncate'>{trip.description}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={onEdit}
-              className='text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors'
-              aria-label='編輯旅程資訊'
-              title='編輯旅程資訊'
-            >
-              <Pencil size={18} />
-            </button>
-          </div>
-
-          <div
-            role='group'
-            aria-label='旅程詳細資訊'
-            aria-hidden={!expanded}
-            className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out ${
-              expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-            }`}
-          >
-            <div className='overflow-hidden'>
-              <div
-                className={`border-border text-muted-foreground flex flex-col gap-1 border-t pt-2 text-sm transition-opacity duration-200 ${
-                  expanded ? 'opacity-100 delay-100' : 'opacity-0'
-                }`}
-              >
-                <div className='flex items-center gap-3'>
-                  <span>{dateRange}</span>
-                  <span className='text-primary font-medium'>
-                    {totalDays} 天
-                  </span>
-                </div>
-                {trip.destination && (
-                  <span className='flex items-center gap-1'>
-                    <MapPin size={13} /> {trip.destination}
-                  </span>
-                )}
-                {trip.description && (
-                  <p className='line-clamp-2'>{trip.description}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+          onEdit={onEdit}
+        />
 
         <button
           onClick={onExport}
@@ -131,6 +57,19 @@ export default function TripHeader({
           </span>
         </button>
       </div>
+
+      <button
+        type='button'
+        onClick={() => setExpanded(v => !v)}
+        aria-label={expanded ? '收合旅程詳細資訊' : '展開旅程詳細資訊'}
+        title={expanded ? '收合旅程詳細資訊' : '展開旅程詳細資訊'}
+        className='border-border bg-card text-muted-foreground hover:text-foreground absolute bottom-0 left-1/2 z-10 flex size-7 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors'
+      >
+        <ChevronDown
+          size={14}
+          className={`transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
     </div>
   );
 }
