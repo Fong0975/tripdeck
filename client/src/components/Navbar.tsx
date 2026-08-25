@@ -42,9 +42,19 @@ export default function Navbar() {
           <button
             onClick={toggle}
             aria-label='切換主題'
-            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors'
+            className='text-muted-foreground hover:bg-accent hover:text-foreground group rounded-lg p-2 transition-colors'
           >
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? (
+              <Sun
+                size={20}
+                className='transition-transform duration-300 ease-out group-hover:rotate-45'
+              />
+            ) : (
+              <Moon
+                size={20}
+                className='transition-transform duration-300 ease-out group-hover:-rotate-12'
+              />
+            )}
           </button>
 
           <div className='group relative'>
@@ -52,7 +62,10 @@ export default function Navbar() {
               aria-label='關於'
               className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors'
             >
-              <Info size={20} />
+              <Info
+                size={20}
+                className='transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:scale-110'
+              />
             </button>
             <div className='border-border bg-card text-card-foreground pointer-events-none absolute right-0 top-full mt-1.5 w-max rounded-lg border px-3 py-2 opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100'>
               <p className='text-xs font-medium'>
