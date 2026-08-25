@@ -1,8 +1,10 @@
-import { Info, Moon, Sun } from 'lucide-react';
+import { Github, Info, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useTheme } from '@/hooks/useTheme';
+
+const GITHUB_URL = 'https://github.com/Fong0975/tripdeck';
 
 export default function Navbar() {
   const { theme, toggle } = useTheme();
@@ -60,26 +62,39 @@ export default function Navbar() {
           <div className='group relative'>
             <button
               aria-label='關於'
-              className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors'
+              aria-haspopup='true'
+              className='text-muted-foreground hover:bg-accent hover:text-foreground group-focus-within:bg-accent group-focus-within:text-foreground rounded-lg p-2 transition-colors focus:outline-none'
             >
               <Info
                 size={20}
-                className='transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:scale-110'
+                className='transition-transform duration-300 ease-out group-focus-within:-translate-y-0.5 group-focus-within:scale-110 group-hover:-translate-y-0.5 group-hover:scale-110'
               />
             </button>
-            <div className='border-border bg-card text-card-foreground pointer-events-none absolute right-0 top-full mt-1.5 w-max rounded-lg border px-3 py-2 opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100'>
-              <p className='text-xs font-medium'>
-                Tripdeck {__APP_VERSION__}
-                {apiVersion && (
-                  <span className='text-muted-foreground ml-1 font-normal'>
-                    (API v{apiVersion})
-                  </span>
-                )}
-              </p>
-              <p className='text-muted-foreground mt-0.5 text-xs'>
-                Copyright © {new Date().getFullYear()} SWind All rights
-                reserved.
-              </p>
+            <div className='absolute right-0 top-full z-10 hidden w-max pt-1.5 group-focus-within:block group-hover:block'>
+              <div className='border-border bg-card text-card-foreground rounded-lg border px-3 py-2 shadow-md'>
+                <p className='text-xs font-medium'>
+                  Tripdeck {__APP_VERSION__}
+                  {apiVersion && (
+                    <span className='text-muted-foreground ml-1 font-normal'>
+                      (API v{apiVersion})
+                    </span>
+                  )}
+                </p>
+                <p className='text-muted-foreground mt-0.5 whitespace-nowrap text-xs'>
+                  Copyright © {new Date().getFullYear()} SWind All rights
+                  reserved.
+                </p>
+                <a
+                  href={GITHUB_URL}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  role='menuitem'
+                  className='text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1.5 text-xs transition-colors'
+                >
+                  <Github size={14} />
+                  GitHub
+                </a>
+              </div>
             </div>
           </div>
         </div>
