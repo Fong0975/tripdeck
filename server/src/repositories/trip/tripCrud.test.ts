@@ -8,9 +8,11 @@ import { create, deleteById, findAll, findById, update } from './tripCrud';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
+const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
 vi.mock('../imageRepository', () => ({
   getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
   getTripImagesBatch: (...args: unknown[]) => mockGetTripImagesBatch(...args),
+  getDayImagesBatch: (...args: unknown[]) => mockGetDayImagesBatch(...args),
 }));
 
 const mockDeleteImageFromDisk = vi.fn();
@@ -46,6 +48,7 @@ describe('tripCrud', () => {
     vi.clearAllMocks();
     mockGetTripImages.mockResolvedValue([]);
     mockGetTripImagesBatch.mockResolvedValue(new Map());
+    mockGetDayImagesBatch.mockResolvedValue(new Map());
     mockGetConnection.mockResolvedValue({
       beginTransaction: mockConnBeginTransaction,
       execute: mockConnExecute,
@@ -504,6 +507,58 @@ describe('tripCrud', () => {
         .filter(([sql]) => (sql as string).includes('DELETE FROM trip_days'))
         .map(([, params]) => params);
       expect(dayDeletes).toEqual([[404], [405]]);
+    });
+
+    it("deletes removed days' own images from disk only after the transaction commits", async () => {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-05' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(401, 1, '2026-10-01'),
+            dayRow(402, 2, '2026-10-02'),
+            dayRow(403, 3, '2026-10-03'),
+            dayRow(404, 4, '2026-10-04'),
+            dayRow(405, 5, '2026-10-05'),
+          ],
+        ])
+        .mockResolvedValueOnce([[]]) // attractions for day 404
+        .mockResolvedValueOnce([[]]) // attractions for day 405
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-03' })],
+        ]);
+      mockConnQuery.mockResolvedValueOnce([
+        [{ id: 401 }, { id: 402 }, { id: 403 }],
+      ]);
+      mockGetDayImagesBatch.mockResolvedValueOnce(
+        new Map([
+          [404, [{ id: 1, filename: 'day404.jpg', title: '' }]],
+          [405, [{ id: 2, filename: 'day405-a.jpg', title: '' }]],
+        ]),
+      );
+
+      const commitOrder: string[] = [];
+      mockConnCommit.mockImplementationOnce(() => {
+        commitOrder.push('commit');
+        return Promise.resolve();
+      });
+      mockDeleteImageFromDisk.mockImplementation(() => {
+        commitOrder.push('deleteFromDisk');
+      });
+
+      await update(10, { endDate: '2026-10-03' });
+
+      expect(mockGetDayImagesBatch).toHaveBeenCalledWith([404, 405]);
+      expect(mockDeleteImageFromDisk.mock.calls).toEqual([
+        ['day404.jpg'],
+        ['day405-a.jpg'],
+      ]);
+      expect(commitOrder).toEqual([
+        'commit',
+        'deleteFromDisk',
+        'deleteFromDisk',
+      ]);
     });
 
     it('moves the start date forward, removing leading days and renumbering the rest starting at 1', async () => {

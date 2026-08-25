@@ -88,7 +88,10 @@ export async function create(data: CreateTripBody): Promise<TripResponse> {
  * if `startDate`/`endDate` change:
  *  - dates no longer within the new range are removed, along with all of
  *    their attractions, connections, and images (cascading through
- *    attractionCrud.deleteById, which also cleans up image files on disk);
+ *    attractionCrud.deleteById, which also cleans up image files on disk),
+ *    plus the day's own images (their trip_day_images rows cascade via
+ *    ON DELETE CASCADE when the trip_days row is removed, but the files on
+ *    disk are cleaned up explicitly below, once that removal has committed);
  *  - dates newly within range that don't already have a trip_day get one;
  *  - all remaining days are renumbered sequentially by date.
  *
@@ -144,6 +147,10 @@ export async function update(
     }
   }
 
+  const dayImagesByDayId = await imageRepo.getDayImagesBatch(
+    daysToRemove.map(d => d.id),
+  );
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -193,6 +200,13 @@ export async function update(
     );
 
     await conn.commit();
+
+    for (const day of daysToRemove) {
+      const dayImages = dayImagesByDayId.get(day.id) ?? [];
+      for (const img of dayImages) {
+        deleteImageFromDisk(img.filename);
+      }
+    }
   } catch (err) {
     await conn.rollback();
     throw err;

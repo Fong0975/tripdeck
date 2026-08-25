@@ -9,11 +9,12 @@ interface Options {
   getContent: () => Promise<TripContent | null>;
 }
 
-/** Total attraction + connection images on a day, shown in the impact confirmation. */
+/** Total attraction + connection + day images, shown in the impact confirmation. */
 export function imageCountOf(day: DayPlan): number {
   return (
     day.attractions.reduce((sum, a) => sum + (a.images?.length ?? 0), 0) +
-    day.connections.reduce((sum, c) => sum + (c.images?.length ?? 0), 0)
+    day.connections.reduce((sum, c) => sum + (c.images?.length ?? 0), 0) +
+    (day.images?.length ?? 0)
   );
 }
 

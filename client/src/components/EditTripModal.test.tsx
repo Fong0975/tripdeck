@@ -90,6 +90,7 @@ const impactedDays: DayPlan[] = [
         images: [],
       },
     ],
+    images: [{ id: 2, filename: 'day.jpg', title: '' }],
   },
 ];
 
@@ -283,7 +284,7 @@ describe('EditTripModal', () => {
       screen.getByText('1/4（第 4 天）：1 個景點、1 張圖片、0 筆交通紀錄'),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('1/5（第 5 天）：0 個景點、0 張圖片、1 筆交通紀錄'),
+      screen.getByText('1/5（第 5 天）：0 個景點、1 張圖片、1 筆交通紀錄'),
     ).toBeInTheDocument();
     expect(updateTrip).not.toHaveBeenCalled();
   });

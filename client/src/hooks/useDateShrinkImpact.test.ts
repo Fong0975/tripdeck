@@ -22,7 +22,7 @@ function content(days: DayPlan[]): TripContent {
 }
 
 describe('imageCountOf', () => {
-  it('sums images across attractions and connections', () => {
+  it('sums images across attractions, connections, and the day itself', () => {
     const day = dayPlan({
       attractions: [
         { id: 1, name: 'A', images: [{ id: 1, filename: 'a.jpg', title: '' }] },
@@ -37,9 +37,10 @@ describe('imageCountOf', () => {
           images: [{ id: 3, filename: 'c.jpg', title: '' }],
         },
       ],
+      images: [{ id: 4, filename: 'd.jpg', title: '' }],
     });
 
-    expect(imageCountOf(day)).toBe(3);
+    expect(imageCountOf(day)).toBe(4);
   });
 
   it('treats missing images arrays as 0', () => {
