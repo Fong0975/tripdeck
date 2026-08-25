@@ -4,9 +4,11 @@ import { api } from './client';
 import {
   deleteAttractionImage,
   deleteConnectionImage,
+  deleteDayImage,
   deleteTripImage,
   uploadAttractionImage,
   uploadConnectionImage,
+  uploadDayImage,
   uploadTripImage,
 } from './images';
 
@@ -103,6 +105,34 @@ describe('deleteTripImage', () => {
     await deleteTripImage(1, 9);
 
     expect(api).toHaveBeenCalledWith('/api/trips/1/images/9', {
+      method: 'DELETE',
+    });
+  });
+});
+
+describe('uploadDayImage', () => {
+  it('POSTs a multipart form containing the image and title', async () => {
+    const file = new File(['d'], 'd.jpg');
+
+    await uploadDayImage(1, 10, file, 'Day title');
+
+    expect(api).toHaveBeenCalledWith(
+      '/api/trips/1/days/10/images',
+      expect.objectContaining({ method: 'POST', body: expect.any(FormData) }),
+    );
+    const [, init] = vi.mocked(api).mock.calls[0];
+    expect(formDataEntries(init?.body as FormData)).toEqual({
+      image: file,
+      title: 'Day title',
+    });
+  });
+});
+
+describe('deleteDayImage', () => {
+  it('DELETEs the day image endpoint', async () => {
+    await deleteDayImage(1, 10, 9);
+
+    expect(api).toHaveBeenCalledWith('/api/trips/1/days/10/images/9', {
       method: 'DELETE',
     });
   });

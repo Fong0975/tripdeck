@@ -57,9 +57,11 @@ export interface DayResponse {
   id: number;
   day: number;
   date: string;
+  notes: string | null;
   locations: DayLocation[];
   attractions: AttractionResponse[];
   connections: ConnectionResponse[];
+  images: ImageResponse[];
 }
 
 export interface TripContentResponse {
@@ -133,4 +135,8 @@ export interface CreateLocationBody {
 
 export interface UpdateLocationBody {
   name: string;
+}
+
+export interface UpdateDayNotesBody {
+  notes?: string | null;
 }

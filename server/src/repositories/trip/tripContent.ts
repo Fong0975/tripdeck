@@ -79,13 +79,15 @@ export async function findContent(
     dayIds,
   );
 
-  // Batch-fetch images for attractions and connections.
+  // Batch-fetch images for attractions, connections, and days.
   const attrIds = attractionRows.map(r => r.id);
   const connIds = connectionRows.map(r => r.id);
-  const [imagesByAttractionId, imagesByConnectionId] = await Promise.all([
-    imageRepo.getAttractionImagesBatch(attrIds),
-    imageRepo.getConnectionImagesBatch(connIds),
-  ]);
+  const [imagesByAttractionId, imagesByConnectionId, imagesByDayId] =
+    await Promise.all([
+      imageRepo.getAttractionImagesBatch(attrIds),
+      imageRepo.getConnectionImagesBatch(connIds),
+      imageRepo.getDayImagesBatch(dayIds),
+    ]);
 
   // Group locations, attractions, and connections by their parent day ID.
   const locationsByDayId = new Map<number, DayLocation[]>();
@@ -133,9 +135,11 @@ export async function findContent(
     id: row.id,
     day: row.day,
     date: toDateString(row.date),
+    notes: row.notes,
     locations: locationsByDayId.get(row.id) ?? [],
     attractions: attractionsByDayId.get(row.id) ?? [],
     connections: connectionsByDayId.get(row.id) ?? [],
+    images: imagesByDayId.get(row.id) ?? [],
   }));
 
   return { tripId, days };

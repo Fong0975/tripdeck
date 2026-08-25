@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import AttractionModal from '@/components/AttractionModal';
+import EditDayNoteModal from '@/components/EditDayNoteModal';
 import EditTripModal from '@/components/EditTripModal';
 import Navbar from '@/components/Navbar';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
@@ -16,6 +17,7 @@ import type { ModalState } from './types';
 import { useAttractionActions } from './useAttractionActions';
 import { useConnectionActions } from './useConnectionActions';
 import { useDayLocationActions } from './useDayLocationActions';
+import { useDayNoteActions } from './useDayNoteActions';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useTripData } from './useTripData';
 
@@ -55,6 +57,13 @@ export default function TripDetail() {
 
   const { handleAddLocation, handleUpdateLocation, handleDeleteLocation } =
     useDayLocationActions(trip, content, reloadContent);
+
+  const { handleSaveDayNotes } = useDayNoteActions(
+    trip,
+    content,
+    reloadContent,
+    closeModal,
+  );
 
   const {
     showLeaveConfirm,
@@ -160,6 +169,9 @@ export default function TripDetail() {
             onDragEnd={dnd.handleDragEnd}
             activeAttractionId={dnd.activeAttractionId}
             getActiveAttraction={dnd.getActiveAttraction}
+            onEditDayNote={di =>
+              setModal({ type: 'editDayNote', dayIndex: di })
+            }
             onAddAttraction={di =>
               setModal({ type: 'addAttraction', dayIndex: di })
             }
@@ -220,6 +232,18 @@ export default function TripDetail() {
           onSave={(c, staged) =>
             void handleSaveConnection(editConnectionData.dayIndex, c, staged)
           }
+        />
+      )}
+
+      {modal.type === 'editDayNote' && (
+        <EditDayNoteModal
+          tripId={trip.id}
+          day={content.days[modal.dayIndex]}
+          onClose={() => {
+            closeModal();
+            void reloadContent();
+          }}
+          onSave={notes => void handleSaveDayNotes(modal.dayIndex, notes)}
         />
       )}
 

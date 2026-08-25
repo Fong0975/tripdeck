@@ -9,6 +9,7 @@ import { exportToDocx } from '@/utils/exportToDocx';
 import { useAttractionActions } from './useAttractionActions';
 import { useConnectionActions } from './useConnectionActions';
 import { useDayLocationActions } from './useDayLocationActions';
+import { useDayNoteActions } from './useDayNoteActions';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useTripData } from './useTripData';
 
@@ -27,6 +28,7 @@ vi.mock('./useConnectionActions', () => ({ useConnectionActions: vi.fn() }));
 vi.mock('./useDayLocationActions', () => ({
   useDayLocationActions: vi.fn(),
 }));
+vi.mock('./useDayNoteActions', () => ({ useDayNoteActions: vi.fn() }));
 vi.mock('./useDragAndDrop', () => ({ useDragAndDrop: vi.fn() }));
 vi.mock('@/hooks/useUnsavedChangesGuard', () => ({
   useUnsavedChangesGuard: vi.fn(),
@@ -73,6 +75,7 @@ vi.mock('./TripHeader', () => ({
 vi.mock('./ItineraryBoard', () => ({
   default: ({
     days,
+    onEditDayNote,
     onAddAttraction,
     onEditAttraction,
     onDeleteAttraction,
@@ -85,6 +88,7 @@ vi.mock('./ItineraryBoard', () => ({
     onDeleteLocation,
   }: {
     days: DayPlan[];
+    onEditDayNote: (dayIndex: number) => void;
     onAddAttraction: (dayIndex: number) => void;
     onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
     onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -104,6 +108,9 @@ vi.mock('./ItineraryBoard', () => ({
       {days.map((day, dayIndex) => (
         <div key={day.id}>
           <span>day-column-{dayIndex}</span>
+          <button onClick={() => onEditDayNote(dayIndex)}>
+            edit-day-note-{dayIndex}
+          </button>
           <button onClick={() => onAddAttraction(dayIndex)}>
             add-attraction-{dayIndex}
           </button>
@@ -220,6 +227,28 @@ vi.mock('@/components/TripChecklistPanel', () => ({
     <div>
       <span>trip-checklist-panel-{tripId}</span>
       <button onClick={() => onDirtyChange?.(true)}>mark-dirty</button>
+    </div>
+  ),
+}));
+
+vi.mock('@/components/EditDayNoteModal', () => ({
+  default: ({
+    day,
+    onClose,
+    onSave,
+  }: {
+    tripId: number;
+    day: DayPlan;
+    onClose: () => void;
+    onSave: (notes: string | null) => void;
+  }) => (
+    <div>
+      <span>edit-day-note-modal</span>
+      <span>editing-day-{day.id}</span>
+      <button onClick={onClose}>close-edit-day-note-modal</button>
+      <button onClick={() => onSave('New notes')}>
+        save-edit-day-note-modal
+      </button>
     </div>
   ),
 }));
@@ -360,6 +389,15 @@ function makeDayLocationActions(
   };
 }
 
+function makeDayNoteActions(
+  overrides: Partial<ReturnType<typeof useDayNoteActions>> = {},
+): ReturnType<typeof useDayNoteActions> {
+  return {
+    handleSaveDayNotes: vi.fn(),
+    ...overrides,
+  };
+}
+
 function makeDnd(
   overrides: Partial<ReturnType<typeof useDragAndDrop>> = {},
 ): ReturnType<typeof useDragAndDrop> {
@@ -398,6 +436,7 @@ beforeEach(() => {
   vi.mocked(useAttractionActions).mockReturnValue(makeAttractionActions());
   vi.mocked(useConnectionActions).mockReturnValue(makeConnectionActions());
   vi.mocked(useDayLocationActions).mockReturnValue(makeDayLocationActions());
+  vi.mocked(useDayNoteActions).mockReturnValue(makeDayNoteActions());
   vi.mocked(useDragAndDrop).mockReturnValue(makeDnd());
   vi.mocked(useUnsavedChangesGuard).mockReturnValue(makeGuard());
   vi.mocked(exportToDocx).mockResolvedValue(undefined);
@@ -859,6 +898,43 @@ describe('TripDetail', () => {
     await user.click(screen.getByText('content-changed-trigger'));
 
     expect(reloadContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the edit day note modal for the clicked day', async () => {
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    await user.click(screen.getByText('edit-day-note-1'));
+
+    expect(screen.getByText('edit-day-note-modal')).toBeInTheDocument();
+    expect(screen.getByText('editing-day-2')).toBeInTheDocument();
+  });
+
+  it('closes the edit day note modal and reloads content via its onClose trigger', async () => {
+    const reloadContent = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(makeTripData({ reloadContent }));
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('edit-day-note-0'));
+
+    await user.click(screen.getByText('close-edit-day-note-modal'));
+
+    expect(screen.queryByText('edit-day-note-modal')).not.toBeInTheDocument();
+    expect(reloadContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls handleSaveDayNotes with the right day index and notes on save', async () => {
+    const handleSaveDayNotes = vi.fn();
+    vi.mocked(useDayNoteActions).mockReturnValue(
+      makeDayNoteActions({ handleSaveDayNotes }),
+    );
+    const user = userEvent.setup();
+    renderTripDetail();
+    await user.click(screen.getByText('edit-day-note-1'));
+
+    await user.click(screen.getByText('save-edit-day-note-modal'));
+
+    expect(handleSaveDayNotes).toHaveBeenCalledWith(1, 'New notes');
   });
 
   it('does not render the move confirm dialog when showMoveConfirm is false', () => {

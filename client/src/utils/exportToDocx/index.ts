@@ -9,6 +9,7 @@ import { fetchDailyWeather, isWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { FONT } from './constants';
+import { makeDayNotesSection } from './dayNotesSection';
 import { makeHeaderSection } from './headerSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
@@ -33,6 +34,8 @@ export async function exportToDocx(
     children.push(
       makeDayHeaderTable(`第 ${day.day} 天 · ${dayLabel}`, isFirstDay),
     );
+
+    children.push(...(await makeDayNotesSection(day)));
 
     if (
       isWeatherEnabled &&

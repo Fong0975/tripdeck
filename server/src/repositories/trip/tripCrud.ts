@@ -227,22 +227,3 @@ export async function deleteById(id: number): Promise<boolean> {
   }
   return result.affectedRows > 0;
 }
-
-/** Finds a day only if it belongs to the given trip. */
-export async function findDayByIdAndTripId(
-  tripId: number,
-  dayId: number,
-): Promise<{ id: number; day: number; date: string } | null> {
-  const [rows] = await pool.execute<TripDayRow[]>(
-    'SELECT * FROM trip_days WHERE id = ? AND trip_id = ?',
-    [dayId, tripId],
-  );
-  if (rows.length === 0) {
-    return null;
-  }
-  return {
-    id: rows[0].id,
-    day: rows[0].day,
-    date: toDateString(rows[0].date),
-  };
-}

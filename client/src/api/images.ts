@@ -76,3 +76,28 @@ export async function deleteTripImage(
     method: 'DELETE',
   });
 }
+
+export async function uploadDayImage(
+  tripId: number,
+  dayId: number,
+  file: File,
+  title: string,
+): Promise<AttractionImage> {
+  const form = new FormData();
+  form.append('image', file);
+  form.append('title', title);
+  return api<AttractionImage>(`/api/trips/${tripId}/days/${dayId}/images`, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function deleteDayImage(
+  tripId: number,
+  dayId: number,
+  imageId: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/days/${dayId}/images/${imageId}`, {
+    method: 'DELETE',
+  });
+}

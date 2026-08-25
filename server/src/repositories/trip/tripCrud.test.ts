@@ -4,14 +4,7 @@ vi.mock('../attraction/attractionCrud');
 
 import * as attractionCrud from '../attraction/attractionCrud';
 
-import {
-  create,
-  deleteById,
-  findAll,
-  findById,
-  findDayByIdAndTripId,
-  update,
-} from './tripCrud';
+import { create, deleteById, findAll, findById, update } from './tripCrud';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
@@ -690,36 +683,6 @@ describe('tripCrud', () => {
 
       expect(result).toBe(false);
       expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('findDayByIdAndTripId', () => {
-    it.each(dateFieldCases)(
-      'returns the day with $label date field formatted via toDateString',
-      async ({ dateFields, expected }) => {
-        const row = { id: 10, trip_id: 5, day: 2, date: dateFields.start_date };
-        mockPoolExecute.mockResolvedValueOnce([[row]]);
-
-        const result = await findDayByIdAndTripId(5, 10);
-
-        expect(result).toEqual({
-          id: 10,
-          day: 2,
-          date: expected.startDate,
-        });
-      },
-    );
-
-    it('returns null when the day does not belong to the trip', async () => {
-      mockPoolExecute.mockResolvedValueOnce([[]]);
-
-      const result = await findDayByIdAndTripId(5, 999);
-
-      expect(result).toBeNull();
-      expect(mockPoolExecute).toHaveBeenCalledWith(
-        'SELECT * FROM trip_days WHERE id = ? AND trip_id = ?',
-        [999, 5],
-      );
     });
   });
 });

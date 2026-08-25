@@ -16,6 +16,7 @@ interface Props {
   onDragEnd: (event: DragEndEvent) => void;
   activeAttractionId: number | null;
   getActiveAttraction: () => Attraction | undefined;
+  onEditDayNote: (dayIndex: number) => void;
   onAddAttraction: (dayIndex: number) => void;
   onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -44,6 +45,7 @@ export default function ItineraryBoard({
   onDragEnd,
   activeAttractionId,
   getActiveAttraction,
+  onEditDayNote,
   onAddAttraction,
   onEditAttraction,
   onDeleteAttraction,
@@ -67,6 +69,7 @@ export default function ItineraryBoard({
             key={day.id}
             day={day}
             dayIndex={i}
+            onEditDayNote={onEditDayNote}
             onAddAttraction={onAddAttraction}
             onEditAttraction={onEditAttraction}
             onDeleteAttraction={onDeleteAttraction}

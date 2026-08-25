@@ -1040,6 +1040,56 @@
         }
       }
     },
+    "/api/trips/{tripId}/days/{dayId}/notes": {
+      "put": {
+        "tags": ["Trips"],
+        "summary": "Update the notes for a day",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dayId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/trips/{tripId}/days/{dayId}/connections": {
       "post": {
         "tags": ["Connections"],
@@ -1417,6 +1467,74 @@
         "parameters": [
           {
             "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "imageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/days/{dayId}/images": {
+      "post": {
+        "tags": ["Images"],
+        "summary": "Upload an image for a day",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dayId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/days/{dayId}/images/{imageId}": {
+      "delete": {
+        "tags": ["Images"],
+        "summary": "Delete a day image",
+        "description": "",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dayId",
             "in": "path",
             "required": true,
             "schema": {

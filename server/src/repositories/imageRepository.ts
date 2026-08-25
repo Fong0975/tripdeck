@@ -108,6 +108,7 @@ const connectionImages = createImageRepo(
   'trip_connection_id',
 );
 const tripImages = createImageRepo('trip_images', 'trip_id');
+const dayImages = createImageRepo('trip_day_images', 'trip_day_id');
 
 // --- Attraction images ---
 
@@ -129,3 +130,10 @@ export const getTripImages = tripImages.getImages;
 export const getTripImagesBatch = tripImages.getImagesBatch;
 export const addTripImage = tripImages.addImage;
 export const deleteTripImage = tripImages.deleteImage;
+
+// --- Day images ---
+
+export const getDayImages = dayImages.getImages;
+export const getDayImagesBatch = dayImages.getImagesBatch;
+export const addDayImage = dayImages.addImage;
+export const deleteDayImage = dayImages.deleteImage;

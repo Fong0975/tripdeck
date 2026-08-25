@@ -125,6 +125,15 @@ const tripConfig: ImageHandlerConfig = {
   deleteImage: imageRepo.deleteTripImage,
 };
 
+const dayConfig: ImageHandlerConfig = {
+  notFoundError: 'Day not found',
+  getParentId: req => Number(req.params.dayId),
+  verifyParent: async (parentId, tripId) =>
+    (await tripRepo.findDayByIdAndTripId(tripId, parentId)) !== null,
+  addImage: imageRepo.addDayImage,
+  deleteImage: imageRepo.deleteDayImage,
+};
+
 // --- Attraction images ---
 
 export async function uploadAttractionImage(
@@ -186,4 +195,25 @@ export async function deleteTripImage(
   /* #swagger.tags = ['Images']
      #swagger.summary = 'Delete a trip image' */
   await handleDelete(req, res, tripConfig);
+}
+
+// --- Day images ---
+
+export async function uploadDayImage(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Images']
+     #swagger.summary = 'Upload an image for a day'
+     #swagger.consumes = ['multipart/form-data'] */
+  await handleUpload(req, res, dayConfig);
+}
+
+export async function deleteDayImage(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Images']
+     #swagger.summary = 'Delete a day image' */
+  await handleDelete(req, res, dayConfig);
 }

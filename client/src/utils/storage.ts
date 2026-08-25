@@ -5,6 +5,7 @@ export * from '@/api/attractions';
 export * from '@/api/checklistTemplate';
 export * from '@/api/connections';
 export * from '@/api/dayLocations';
+export * from '@/api/dayNotes';
 export * from '@/api/images';
 export * from '@/api/tripChecklist';
 export * from '@/api/trips';

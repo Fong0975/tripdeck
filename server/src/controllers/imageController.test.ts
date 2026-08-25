@@ -18,9 +18,11 @@ import type { ImageResponse, TripResponse } from '../types/trip';
 import {
   deleteAttractionImage,
   deleteConnectionImage,
+  deleteDayImage,
   deleteTripImage,
   uploadAttractionImage,
   uploadConnectionImage,
+  uploadDayImage,
   uploadTripImage,
 } from './imageController';
 
@@ -41,7 +43,7 @@ const sampleTrip: TripResponse = {
 };
 
 interface Variant {
-  kind: 'attraction' | 'connection' | 'trip';
+  kind: 'attraction' | 'connection' | 'trip' | 'day';
   notFoundError: string;
   parentId: number;
   imageId: number;
@@ -55,11 +57,13 @@ interface Variant {
   addImage:
     | typeof imageRepo.addAttractionImage
     | typeof imageRepo.addConnectionImage
-    | typeof imageRepo.addTripImage;
+    | typeof imageRepo.addTripImage
+    | typeof imageRepo.addDayImage;
   deleteImage:
     | typeof imageRepo.deleteAttractionImage
     | typeof imageRepo.deleteConnectionImage
-    | typeof imageRepo.deleteTripImage;
+    | typeof imageRepo.deleteTripImage
+    | typeof imageRepo.deleteDayImage;
 }
 
 const variants: Variant[] = [
@@ -110,6 +114,26 @@ const variants: Variant[] = [
       vi.mocked(tripRepo.findById).mockRejectedValue(err),
     addImage: imageRepo.addTripImage,
     deleteImage: imageRepo.deleteTripImage,
+  },
+  {
+    kind: 'day',
+    notFoundError: 'Day not found',
+    parentId: 5,
+    imageId: 7,
+    uploadParams: { tripId: '1', dayId: '5' },
+    deleteParams: { tripId: '1', dayId: '5', imageId: '7' },
+    uploadHandler: uploadDayImage,
+    deleteHandler: deleteDayImage,
+    mockParentFound: found =>
+      vi
+        .mocked(tripRepo.findDayByIdAndTripId)
+        .mockResolvedValue(
+          found ? { id: 5, day: 1, date: '2026-05-10' } : null,
+        ),
+    mockParentRejects: err =>
+      vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(err),
+    addImage: imageRepo.addDayImage,
+    deleteImage: imageRepo.deleteDayImage,
   },
 ];
 

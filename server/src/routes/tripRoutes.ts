@@ -8,6 +8,7 @@ import * as imageController from '../controllers/imageController';
 import * as attractionController from '../controllers/trip/attractionController';
 import * as connectionController from '../controllers/trip/connectionController';
 import * as dayLocationController from '../controllers/trip/dayLocationController';
+import * as dayNoteController from '../controllers/trip/dayNoteController';
 import * as tripCrudController from '../controllers/trip/tripCrudController';
 import { upload } from '../middleware/upload';
 
@@ -61,6 +62,9 @@ router.delete(
   dayLocationController.deleteDayLocation,
 );
 
+// Day notes
+router.put('/:tripId/days/:dayId/notes', dayNoteController.updateDayNotes);
+
 // Connections
 router.post(
   '/:tripId/days/:dayId/connections',
@@ -104,6 +108,17 @@ router.post(
   imageController.uploadTripImage,
 );
 router.delete('/:tripId/images/:imageId', imageController.deleteTripImage);
+
+// Day images
+router.post(
+  '/:tripId/days/:dayId/images',
+  upload.single('image'),
+  imageController.uploadDayImage,
+);
+router.delete(
+  '/:tripId/days/:dayId/images/:imageId',
+  imageController.deleteDayImage,
+);
 
 // Checklist
 router.use('/:tripId/checklist', checklistTripRoutes);

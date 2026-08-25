@@ -14,6 +14,7 @@ import { downloadBlob } from '@/utils/download';
 import { fetchDailyWeather } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
+import { makeDayNotesSection } from './dayNotesSection';
 import { makeHeaderSection } from './headerSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
@@ -50,6 +51,9 @@ vi.mock('./attractionTable', () => ({ makeAttractionTable: vi.fn() }));
 // single sentinel paragraph so this file can focus on orchestration —
 // building the day sections and packing/downloading the final document.
 vi.mock('./headerSection', () => ({ makeHeaderSection: vi.fn() }));
+// Likewise, a day's own notes/images content is unit-tested in
+// dayNotesSection.test.ts; here it's stubbed to a single sentinel paragraph.
+vi.mock('./dayNotesSection', () => ({ makeDayNotesSection: vi.fn() }));
 vi.mock('./transportTable', () => ({
   makeDayHeaderTable: vi.fn(),
   makeTransportTable: vi.fn(),
@@ -107,12 +111,19 @@ function textRuns(): string[] {
 }
 
 const headerSentinel = { type: 'Paragraph', options: { sentinel: 'header' } };
+const dayNotesSentinel = {
+  type: 'Paragraph',
+  options: { sentinel: 'day-notes' },
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(Packer.toBlob).mockResolvedValue(new Blob(['docx']));
   vi.mocked(makeHeaderSection).mockResolvedValue([
     headerSentinel as unknown as Paragraph,
+  ]);
+  vi.mocked(makeDayNotesSection).mockResolvedValue([
+    dayNotesSentinel as unknown as Paragraph,
   ]);
   vi.mocked(makeAttractionTable).mockResolvedValue({
     type: 'Table',
@@ -286,5 +297,37 @@ describe('exportToDocx', () => {
 
     expect(fetchDailyWeather).toHaveBeenCalled();
     expect(textRuns().some(text => text.includes('東京：'))).toBe(false);
+  });
+
+  it('builds the day notes section with the day', async () => {
+    const day = dayPlan({ notes: 'Bring an umbrella' });
+
+    await exportToDocx(trip(), content([day]));
+
+    expect(makeDayNotesSection).toHaveBeenCalledWith(day);
+  });
+
+  it("places the day notes section's paragraphs after the day's header and before its first attraction", async () => {
+    const dayHeader = { type: 'Table', options: { day: 1 } };
+    const attractionTable = { type: 'Table', options: { attraction: 1 } };
+    vi.mocked(makeDayHeaderTable).mockReturnValueOnce(
+      dayHeader as unknown as Table,
+    );
+    vi.mocked(makeAttractionTable).mockResolvedValueOnce(
+      attractionTable as unknown as Table,
+    );
+    const day = dayPlan({ attractions: [attraction()] });
+
+    await exportToDocx(trip(), content([day]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    const children = documentOptions.sections[0].children;
+    const headerIndex = children.indexOf(dayHeader);
+    const notesIndex = children.indexOf(dayNotesSentinel);
+    const attractionIndex = children.indexOf(attractionTable);
+    expect(headerIndex).toBeLessThan(notesIndex);
+    expect(notesIndex).toBeLessThan(attractionIndex);
   });
 });

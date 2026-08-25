@@ -15,6 +15,7 @@ export interface TripDayRow extends RowDataPacket {
   trip_id: number;
   day: number;
   date: Date | string;
+  notes: string | null;
 }
 
 export interface TripAttractionRow extends RowDataPacket {
