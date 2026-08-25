@@ -67,13 +67,15 @@ export default function DayColumn({
 
   return (
     <div className='flex w-80 shrink-0 flex-col'>
-      {/* Column header */}
-      <div className='mb-3 px-1 text-center'>
+      {/* Sticky column header: stays pinned to the top of the scrollable board while the day lane scrolls */}
+      <div className='bg-background sticky top-0 z-10 px-1 pb-2 pt-1 text-center'>
         <span className='bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold'>
           第 {day.day} 天
         </span>
         <p className='text-muted-foreground mt-1 text-sm'>{dateLabel}</p>
+      </div>
 
+      <div className='mb-3 px-1 text-center'>
         <DayNotesSection day={day} onEdit={() => onEditDayNote(dayIndex)} />
 
         <LocationChips
