@@ -12,11 +12,18 @@ vi.mock('../../config/database', () => ({
 
 const mockGetAttractionImagesBatch = vi.fn().mockResolvedValue(new Map());
 const mockGetConnectionImagesBatch = vi.fn().mockResolvedValue(new Map());
+const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
+// findContent() calls tripCrud's findById() first (to confirm the trip
+// exists), which itself fetches the trip's own images — unrelated to the
+// day/attraction/connection images findContent aggregates itself.
+const mockGetTripImages = vi.fn().mockResolvedValue([]);
 vi.mock('../imageRepository', () => ({
   getAttractionImagesBatch: (...args: unknown[]) =>
     mockGetAttractionImagesBatch(...args),
   getConnectionImagesBatch: (...args: unknown[]) =>
     mockGetConnectionImagesBatch(...args),
+  getDayImagesBatch: (...args: unknown[]) => mockGetDayImagesBatch(...args),
+  getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
 }));
 
 /** Wires pool.execute to answer each of findContent's queries by SQL substring. */
@@ -56,6 +63,8 @@ describe('tripContent', () => {
     vi.clearAllMocks();
     mockGetAttractionImagesBatch.mockResolvedValue(new Map());
     mockGetConnectionImagesBatch.mockResolvedValue(new Map());
+    mockGetDayImagesBatch.mockResolvedValue(new Map());
+    mockGetTripImages.mockResolvedValue([]);
   });
 
   describe('findContent', () => {
@@ -99,8 +108,8 @@ describe('tripContent', () => {
         created_at: '2026-07-01T00:00:00.000Z',
       };
       const days = [
-        { id: 10, trip_id: 5, day: 1, date: '2026-07-01' },
-        { id: 20, trip_id: 5, day: 2, date: '2026-07-02' },
+        { id: 10, trip_id: 5, day: 1, date: '2026-07-01', notes: 'day note' },
+        { id: 20, trip_id: 5, day: 2, date: '2026-07-02', notes: null },
       ];
       const attractions = [
         {
@@ -164,6 +173,9 @@ describe('tripContent', () => {
       mockGetConnectionImagesBatch.mockResolvedValueOnce(
         new Map([[500, [{ id: 2, filename: 'c.jpg', title: 'Img C' }]]]),
       );
+      mockGetDayImagesBatch.mockResolvedValueOnce(
+        new Map([[10, [{ id: 3, filename: 'd.jpg', title: 'Img D' }]]]),
+      );
 
       const result = await findContent(5);
 
@@ -174,6 +186,7 @@ describe('tripContent', () => {
             id: 10,
             day: 1,
             date: '2026-07-01',
+            notes: 'day note',
             locations: [{ id: 900, name: 'Place A' }],
             attractions: [
               {
@@ -215,19 +228,23 @@ describe('tripContent', () => {
                 images: [{ id: 2, filename: 'c.jpg', title: 'Img C' }],
               },
             ],
+            images: [{ id: 3, filename: 'd.jpg', title: 'Img D' }],
           },
           {
             id: 20,
             day: 2,
             date: '2026-07-02',
+            notes: null,
             locations: [{ id: 901, name: 'Place B' }],
             attractions: [],
             connections: [],
+            images: [],
           },
         ],
       });
       expect(mockGetAttractionImagesBatch).toHaveBeenCalledWith([100, 101]);
       expect(mockGetConnectionImagesBatch).toHaveBeenCalledWith([500]);
+      expect(mockGetDayImagesBatch).toHaveBeenCalledWith([10, 20]);
       expect(mockPoolExecute).toHaveBeenCalledWith(
         expect.stringContaining('trip_attraction_websites'),
         [100, 101],
@@ -244,7 +261,9 @@ describe('tripContent', () => {
         description: null,
         created_at: '2026-07-01T00:00:00.000Z',
       };
-      const days = [{ id: 10, trip_id: 5, day: 1, date: '2026-07-01' }];
+      const days = [
+        { id: 10, trip_id: 5, day: 1, date: '2026-07-01', notes: null },
+      ];
       mockFindContentQueries({
         trip,
         days,
@@ -259,9 +278,11 @@ describe('tripContent', () => {
         id: 10,
         day: 1,
         date: '2026-07-01',
+        notes: null,
         locations: [],
         attractions: [],
         connections: [],
+        images: [],
       });
       const websiteCalls = mockPoolExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('trip_attraction_websites'),

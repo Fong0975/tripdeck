@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Trip } from '@/types';
-import { createTrip } from '@/utils/storage';
+import { createTrip, uploadTripImage } from '@/utils/storage';
 
 import AddTripModal from './AddTripModal';
 
 vi.mock('@/utils/storage', () => ({
   createTrip: vi.fn(),
+  uploadTripImage: vi.fn(),
 }));
 
 // Pin the timezone so the startDate -> endDate auto-calculation (which round
@@ -17,7 +18,17 @@ process.env.TZ = 'UTC';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // jsdom does not implement the Blob URL APIs used to preview a staged file.
+  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+  URL.revokeObjectURL = vi.fn();
 });
+
+// The staged-image <input type="file"> has no accessible label, so it can
+// only be reached by its type attribute rather than a testing-library query.
+function getFileInput(container: HTMLElement): HTMLInputElement {
+  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+  return container.querySelector('input[type="file"]') as HTMLInputElement;
+}
 
 // The start/end date <input type="date"> fields have no <label htmlFor>
 // association in the source, so they can't be reached via getByLabelText —
@@ -128,8 +139,45 @@ describe('AddTripModal', () => {
       description: undefined,
     });
     await waitFor(() => {
-      expect(onAdded).toHaveBeenCalledWith(trip);
+      expect(onAdded).toHaveBeenCalledWith({ ...trip, images: [] });
     });
+    expect(uploadTripImage).not.toHaveBeenCalled();
+  });
+
+  it('uploads staged images after creating the trip and reports them to the parent', async () => {
+    const trip: Trip = {
+      id: 1,
+      title: 'My Trip',
+      destination: null,
+      startDate: '2026-01-01',
+      endDate: '2026-01-04',
+      createdAt: '2026-01-01',
+    };
+    vi.mocked(createTrip).mockResolvedValue(trip);
+    const newImage = { id: 5, filename: 'a.jpg', title: 'Cover' };
+    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
+    const onAdded = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+      <AddTripModal onClose={vi.fn()} onAdded={onAdded} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('例：東京五日遊'), {
+      target: { value: 'My Trip' },
+    });
+    fillDateField(container, 'startDate', '2026-01-01');
+
+    const file = new File(['a'], 'a.jpg');
+    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'Cover');
+    await user.click(screen.getByText('加入圖片'));
+
+    submitForm(container);
+
+    await waitFor(() =>
+      expect(uploadTripImage).toHaveBeenCalledWith(1, file, 'Cover'),
+    );
+    expect(onAdded).toHaveBeenCalledWith({ ...trip, images: [newImage] });
   });
 
   it('shows an error and does not report to the parent on failure', async () => {

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
-import type { Trip } from '@/types';
-import { createTrip } from '@/utils/storage';
+import type { AttractionImage, Trip } from '@/types';
+import { createTrip, uploadTripImage } from '@/utils/storage';
 
+import StagedImageUploader from './StagedImageUploader';
 import Modal from './ui/Modal';
 import ModalFooterActions from './ui/ModalFooterActions';
 
@@ -19,6 +20,9 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
     endDate: '',
     description: '',
   });
+  const [stagedImages, setStagedImages] = useState<
+    { file: File; title: string }[]
+  >([]);
   const [error, setError] = useState('');
 
   const handleChange = (
@@ -57,7 +61,13 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
         endDate: form.endDate,
         description: form.description.trim() || undefined,
       });
-      onAdded(trip);
+
+      const images: AttractionImage[] = [];
+      for (const { file, title } of stagedImages) {
+        images.push(await uploadTripImage(trip.id, file, title));
+      }
+
+      onAdded({ ...trip, images });
     } catch {
       setError('建立旅程失敗，請稍後再試');
     }
@@ -132,6 +142,13 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
             rows={3}
             className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full resize-none rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
           />
+        </div>
+
+        <div>
+          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            圖片
+          </label>
+          <StagedImageUploader onImagesChange={setStagedImages} />
         </div>
 
         {error && <p className='text-destructive text-sm'>{error}</p>}

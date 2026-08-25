@@ -23,6 +23,7 @@ export const tripTables: TableDef[] = [
       { name: 'trip_id', type: 'INT', notNull: true },
       { name: 'day', type: 'INT', notNull: true },
       { name: 'date', type: 'DATE', notNull: true },
+      { name: 'notes', type: 'TEXT' },
     ],
     uniqueKeys: [{ name: 'uq_trip_day', columns: ['trip_id', 'day'] }],
     foreignKeys: [
@@ -157,6 +158,42 @@ export const tripTables: TableDef[] = [
         name: 'fk_trip_connection_images_connection',
         column: 'trip_connection_id',
         references: { table: 'trip_connections', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'trip_images',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_id', type: 'INT', notNull: true },
+      { name: 'filename', type: 'VARCHAR(255)', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_images_trip',
+        column: 'trip_id',
+        references: { table: 'trips', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
+
+  {
+    name: 'trip_day_images',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'trip_day_id', type: 'INT', notNull: true },
+      { name: 'filename', type: 'VARCHAR(255)', notNull: true },
+      { name: 'title', type: 'VARCHAR(255)', notNull: true },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_trip_day_images_day',
+        column: 'trip_day_id',
+        references: { table: 'trip_days', column: 'id' },
         onDelete: 'CASCADE',
       },
     ],

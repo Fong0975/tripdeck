@@ -15,11 +15,13 @@ import AttractionCard from '../AttractionCard';
 import DayWeather from '../DayWeather';
 import TravelConnectionItem from '../TravelConnectionItem';
 
+import DayNotesSection from './DayNotesSection';
 import LocationChips from './LocationChips';
 
 interface Props {
   day: DayPlan;
   dayIndex: number;
+  onEditDayNote: (dayIndex: number) => void;
   onAddAttraction: (dayIndex: number) => void;
   onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -39,6 +41,7 @@ interface Props {
 export default function DayColumn({
   day,
   dayIndex,
+  onEditDayNote,
   onAddAttraction,
   onEditAttraction,
   onDeleteAttraction,
@@ -70,6 +73,8 @@ export default function DayColumn({
           第 {day.day} 天
         </span>
         <p className='text-muted-foreground mt-1 text-sm'>{dateLabel}</p>
+
+        <DayNotesSection day={day} onEdit={() => onEditDayNote(dayIndex)} />
 
         <LocationChips
           locations={day.locations}

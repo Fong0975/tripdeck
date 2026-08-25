@@ -85,6 +85,7 @@ function makeAttraction(id: number, name = `A${id}`): Attraction {
 
 function makeCallbacks() {
   return {
+    onEditDayNote: vi.fn(),
     onAddAttraction: vi.fn(),
     onEditAttraction: vi.fn(),
     onDeleteAttraction: vi.fn(),
@@ -279,5 +280,14 @@ describe('DayColumn', () => {
     setupColumn(makeDay());
 
     expect(screen.getByText('location-chips')).toBeInTheDocument();
+  });
+
+  it('calls onEditDayNote with the dayIndex when the notes edit button is clicked', async () => {
+    const user = userEvent.setup();
+    const callbacks = setupColumn(makeDay(), 3);
+
+    await user.click(screen.getByLabelText('編輯日備註'));
+
+    expect(callbacks.onEditDayNote).toHaveBeenCalledWith(3);
   });
 });

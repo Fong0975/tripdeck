@@ -1,4 +1,4 @@
-import { Packer, TextRun, type Table } from 'docx';
+import { Document, Packer, TextRun, type Paragraph, type Table } from 'docx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -14,6 +14,8 @@ import { downloadBlob } from '@/utils/download';
 import { fetchDailyWeather } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
+import { makeDayNotesSection } from './dayNotesSection';
+import { makeHeaderSection } from './headerSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 import { exportToDocx } from './index';
@@ -25,7 +27,6 @@ import { exportToDocx } from './index';
 // `BorderStyle` is mocked because `./constants` reads it at module-init time.
 vi.mock('docx', () => ({
   BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  HeadingLevel: { HEADING_1: 'Heading1' },
   Packer: { toBlob: vi.fn() },
   Document: vi.fn().mockImplementation(function (options: unknown) {
     return { type: 'Document', options };
@@ -45,6 +46,14 @@ vi.mock('@/utils/weatherApi', () => ({
   isWeatherEnabled: true,
 }));
 vi.mock('./attractionTable', () => ({ makeAttractionTable: vi.fn() }));
+// The header section's own content (title/destination/date/description/
+// images) is unit-tested in headerSection.test.ts; here it's stubbed to a
+// single sentinel paragraph so this file can focus on orchestration —
+// building the day sections and packing/downloading the final document.
+vi.mock('./headerSection', () => ({ makeHeaderSection: vi.fn() }));
+// Likewise, a day's own notes/images content is unit-tested in
+// dayNotesSection.test.ts; here it's stubbed to a single sentinel paragraph.
+vi.mock('./dayNotesSection', () => ({ makeDayNotesSection: vi.fn() }));
 vi.mock('./transportTable', () => ({
   makeDayHeaderTable: vi.fn(),
   makeTransportTable: vi.fn(),
@@ -101,9 +110,21 @@ function textRuns(): string[] {
     .mock.calls.map(([options]) => (options as { text: string }).text);
 }
 
+const headerSentinel = { type: 'Paragraph', options: { sentinel: 'header' } };
+const dayNotesSentinel = {
+  type: 'Paragraph',
+  options: { sentinel: 'day-notes' },
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(Packer.toBlob).mockResolvedValue(new Blob(['docx']));
+  vi.mocked(makeHeaderSection).mockResolvedValue([
+    headerSentinel as unknown as Paragraph,
+  ]);
+  vi.mocked(makeDayNotesSection).mockResolvedValue([
+    dayNotesSentinel as unknown as Paragraph,
+  ]);
   vi.mocked(makeAttractionTable).mockResolvedValue({
     type: 'Table',
     options: {},
@@ -129,41 +150,26 @@ describe('exportToDocx', () => {
     expect(downloadBlob).toHaveBeenCalledWith(expect.anything(), '東京行.docx');
   });
 
-  it.each([
-    {
-      description: 'set to a non-empty string',
-      value: '東京',
-      expectParagraph: true,
-    },
-    { description: 'null', value: null, expectParagraph: false },
-  ])(
-    'includes the destination paragraph only when destination is $description',
-    async ({ value, expectParagraph }) => {
-      await exportToDocx(trip({ destination: value }), content([]));
+  it('builds the header section with the trip and its total day count', async () => {
+    const days = [
+      dayPlan({ id: 1, day: 1, date: '2026-08-20' }),
+      dayPlan({ id: 2, day: 2, date: '2026-08-21' }),
+    ];
+    const aTrip = trip();
 
-      const matches = textRuns().filter(text => text === value);
-      expect(matches).toHaveLength(expectParagraph ? 1 : 0);
-    },
-  );
+    await exportToDocx(aTrip, content(days));
 
-  it.each([
-    {
-      description: 'set to a non-empty string',
-      value: '第一次去東京',
-      expectParagraph: true,
-    },
-    { description: 'undefined', value: undefined, expectParagraph: false },
-    { description: 'an empty string', value: '', expectParagraph: false },
-    { description: 'whitespace only', value: '   ', expectParagraph: false },
-  ])(
-    'includes the description paragraph only when description is $description',
-    async ({ value, expectParagraph }) => {
-      await exportToDocx(trip({ description: value }), content([]));
+    expect(makeHeaderSection).toHaveBeenCalledWith(aTrip, 2);
+  });
 
-      const matches = textRuns().filter(text => text === value);
-      expect(matches).toHaveLength(expectParagraph ? 1 : 0);
-    },
-  );
+  it('places the header section paragraphs before the day sections', async () => {
+    await exportToDocx(trip(), content([]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    expect(documentOptions.sections[0].children[0]).toBe(headerSentinel);
+  });
 
   it('calls makeDayHeaderTable once per day with isFirstDay true only for the first day', async () => {
     const days = [
@@ -291,5 +297,37 @@ describe('exportToDocx', () => {
 
     expect(fetchDailyWeather).toHaveBeenCalled();
     expect(textRuns().some(text => text.includes('東京：'))).toBe(false);
+  });
+
+  it('builds the day notes section with the day', async () => {
+    const day = dayPlan({ notes: 'Bring an umbrella' });
+
+    await exportToDocx(trip(), content([day]));
+
+    expect(makeDayNotesSection).toHaveBeenCalledWith(day);
+  });
+
+  it("places the day notes section's paragraphs after the day's header and before its first attraction", async () => {
+    const dayHeader = { type: 'Table', options: { day: 1 } };
+    const attractionTable = { type: 'Table', options: { attraction: 1 } };
+    vi.mocked(makeDayHeaderTable).mockReturnValueOnce(
+      dayHeader as unknown as Table,
+    );
+    vi.mocked(makeAttractionTable).mockResolvedValueOnce(
+      attractionTable as unknown as Table,
+    );
+    const day = dayPlan({ attractions: [attraction()] });
+
+    await exportToDocx(trip(), content([day]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    const children = documentOptions.sections[0].children;
+    const headerIndex = children.indexOf(dayHeader);
+    const notesIndex = children.indexOf(dayNotesSentinel);
+    const attractionIndex = children.indexOf(attractionTable);
+    expect(headerIndex).toBeLessThan(notesIndex);
+    expect(notesIndex).toBeLessThan(attractionIndex);
   });
 });

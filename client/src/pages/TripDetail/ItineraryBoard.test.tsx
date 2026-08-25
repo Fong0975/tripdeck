@@ -28,6 +28,7 @@ vi.mock('@/components/DayColumn', () => ({
   default: ({
     day,
     dayIndex,
+    onEditDayNote,
     onAddAttraction,
     onEditAttraction,
     onDeleteAttraction,
@@ -41,6 +42,7 @@ vi.mock('@/components/DayColumn', () => ({
   }: {
     day: DayPlan;
     dayIndex: number;
+    onEditDayNote: (dayIndex: number) => void;
     onAddAttraction: (dayIndex: number) => void;
     onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
     onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -58,6 +60,9 @@ vi.mock('@/components/DayColumn', () => ({
   }) => (
     <div>
       <span>day-column-{dayIndex}</span>
+      <button onClick={() => onEditDayNote(dayIndex)}>
+        edit-day-note-{dayIndex}
+      </button>
       <button onClick={() => onAddAttraction(dayIndex)}>
         add-attraction-{dayIndex}
       </button>
@@ -146,6 +151,7 @@ function renderBoard(
     onDragEnd: vi.fn(),
     activeAttractionId: null,
     getActiveAttraction: vi.fn(() => undefined),
+    onEditDayNote: vi.fn(),
     onAddAttraction: vi.fn(),
     onEditAttraction: vi.fn(),
     onDeleteAttraction: vi.fn(),
@@ -168,6 +174,16 @@ describe('ItineraryBoard', () => {
 
     expect(screen.getByText('day-column-0')).toBeInTheDocument();
     expect(screen.getByText('day-column-1')).toBeInTheDocument();
+  });
+
+  it('calls onEditDayNote with the clicked day index', async () => {
+    const user = userEvent.setup();
+    const onEditDayNote = vi.fn();
+    renderBoard({ onEditDayNote });
+
+    await user.click(screen.getByText('edit-day-note-1'));
+
+    expect(onEditDayNote).toHaveBeenCalledWith(1);
   });
 
   it('calls onAddAttraction with the clicked day index', async () => {

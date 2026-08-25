@@ -3,12 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   addAttractionImage,
   addConnectionImage,
+  addDayImage,
+  addTripImage,
   deleteAttractionImage,
   deleteConnectionImage,
+  deleteDayImage,
+  deleteTripImage,
   getAttractionImages,
   getAttractionImagesBatch,
   getConnectionImages,
   getConnectionImagesBatch,
+  getDayImages,
+  getDayImagesBatch,
+  getTripImages,
+  getTripImagesBatch,
 } from './imageRepository';
 
 const mockPoolExecute = vi.fn();
@@ -25,8 +33,12 @@ vi.mock('../middleware/upload', () => ({
 }));
 
 interface Variant {
-  kind: 'attraction' | 'connection';
-  idColumn: 'trip_attraction_id' | 'trip_connection_id';
+  kind: 'attraction' | 'connection' | 'trip' | 'day';
+  idColumn:
+    | 'trip_attraction_id'
+    | 'trip_connection_id'
+    | 'trip_id'
+    | 'trip_day_id';
   getImages: typeof getAttractionImages;
   getImagesBatch: typeof getAttractionImagesBatch;
   addImage: typeof addAttractionImage;
@@ -49,6 +61,22 @@ const variants: Variant[] = [
     getImagesBatch: getConnectionImagesBatch,
     addImage: addConnectionImage,
     deleteImage: deleteConnectionImage,
+  },
+  {
+    kind: 'trip',
+    idColumn: 'trip_id',
+    getImages: getTripImages,
+    getImagesBatch: getTripImagesBatch,
+    addImage: addTripImage,
+    deleteImage: deleteTripImage,
+  },
+  {
+    kind: 'day',
+    idColumn: 'trip_day_id',
+    getImages: getDayImages,
+    getImagesBatch: getDayImagesBatch,
+    addImage: addDayImage,
+    deleteImage: deleteDayImage,
   },
 ];
 

@@ -23,6 +23,7 @@ const sampleTrip: TripResponse = {
   endDate: '2024-05-12',
   description: null,
   createdAt: '2024-01-01T00:00:00.000Z',
+  images: [],
 };
 
 const sampleTripContent: TripContentResponse = {

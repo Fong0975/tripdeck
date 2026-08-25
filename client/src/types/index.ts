@@ -26,6 +26,7 @@ export interface Trip {
   endDate: string;
   description?: string | null;
   createdAt: string;
+  images?: AttractionImage[];
 }
 
 export interface Attraction {
@@ -60,9 +61,11 @@ export interface DayPlan {
   id: number;
   day: number;
   date: string;
+  notes?: string | null;
   locations: DayLocation[];
   attractions: Attraction[];
   connections: TravelConnection[];
+  images?: AttractionImage[];
 }
 
 export interface TripContent {
