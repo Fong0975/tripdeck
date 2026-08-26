@@ -2,7 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { exportTripsBackup, importTripsBackup } from '@/api/backup';
+import {
+  exportTripsBackup,
+  importTripsBackup,
+  listAutoBackups,
+} from '@/api/backup';
 import { ApiError } from '@/api/client';
 import type { ImportBackupErrorDetails, Trip } from '@/types';
 import { downloadBlob } from '@/utils/download';
@@ -12,6 +16,10 @@ import ImportExportModal from './ImportExportModal';
 vi.mock('@/api/backup', () => ({
   exportTripsBackup: vi.fn(),
   importTripsBackup: vi.fn(),
+  listAutoBackups: vi.fn(),
+  getAutoBackupDownloadUrl: vi.fn(
+    (filename: string) => `/api/backups/${filename}`,
+  ),
 }));
 
 vi.mock('@/utils/download', () => ({
@@ -266,6 +274,7 @@ describe('ImportExportModal import tab', () => {
     vi.mocked(importTripsBackup).mockResolvedValue({
       imported: [{ originalTripId: 1, newTripId: 10, title: 'Kyoto Trip' }],
       failed: [],
+      templateRestored: false,
     });
     const { container } = render(
       <ImportExportModal
@@ -280,7 +289,9 @@ describe('ImportExportModal import tab', () => {
 
     await user.click(screen.getByText('匯入'));
 
-    await waitFor(() => expect(importTripsBackup).toHaveBeenCalledWith(file));
+    await waitFor(() =>
+      expect(importTripsBackup).toHaveBeenCalledWith(file, false),
+    );
     expect(await screen.findByText('Kyoto Trip')).toBeInTheDocument();
     expect(screen.getByText('匯入成功')).toBeInTheDocument();
     expect(onImported).toHaveBeenCalledTimes(1);
@@ -292,6 +303,7 @@ describe('ImportExportModal import tab', () => {
     vi.mocked(importTripsBackup).mockResolvedValue({
       imported: [],
       failed: [{ originalTripId: 1, title: 'Kyoto Trip', error: 'boom' }],
+      templateRestored: false,
     });
     const { container } = render(
       <ImportExportModal
@@ -380,5 +392,110 @@ describe('ImportExportModal import tab', () => {
     await user.click(screen.getByText('匯入'));
 
     expect(await screen.findByText('匯入失敗，請稍後再試')).toBeInTheDocument();
+  });
+
+  it('defaults the restore-template option to off and submits it as false', async () => {
+    const user = userEvent.setup();
+    vi.mocked(importTripsBackup).mockResolvedValue({
+      imported: [],
+      failed: [],
+      templateRestored: false,
+    });
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    await user.click(screen.getByText('匯入旅程'));
+    const file = new File(['zip-bytes'], 'backup.zip');
+    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+
+    await user.click(screen.getByText('匯入'));
+
+    await waitFor(() =>
+      expect(importTripsBackup).toHaveBeenCalledWith(file, false),
+    );
+  });
+
+  it('submits restoreTemplate: true when the checkbox is checked, and shows the restored confirmation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(importTripsBackup).mockResolvedValue({
+      imported: [],
+      failed: [],
+      templateRestored: true,
+    });
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    await user.click(screen.getByText('匯入旅程'));
+    const file = new File(['zip-bytes'], 'backup.zip');
+    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByText('匯入'));
+
+    await waitFor(() =>
+      expect(importTripsBackup).toHaveBeenCalledWith(file, true),
+    );
+    expect(await screen.findByText('已還原打包清單範本。')).toBeInTheDocument();
+  });
+});
+
+describe('ImportExportModal automatic backups tab', () => {
+  it('loads and renders the automatic backup list when the tab is opened', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listAutoBackups).mockResolvedValue([
+      {
+        filename: 'tripdeck-auto-backup-2026-08-26T00-00-00-000Z.zip',
+        sizeBytes: 2048,
+        createdAt: '2026-08-26T00:00:00.000Z',
+      },
+    ]);
+    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
+
+    await user.click(screen.getByText('自動備份'));
+
+    expect(listAutoBackups).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('下載')).toHaveAttribute(
+      'href',
+      '/api/backups/tripdeck-auto-backup-2026-08-26T00-00-00-000Z.zip',
+    );
+    expect(screen.getByText('2.0 KB')).toBeInTheDocument();
+  });
+
+  it('shows an empty-state message when there are no automatic backups', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listAutoBackups).mockResolvedValue([]);
+    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
+
+    await user.click(screen.getByText('自動備份'));
+
+    expect(
+      await screen.findByText('目前還沒有任何自動備份。'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error message when loading the list fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listAutoBackups).mockRejectedValue(new Error('network error'));
+    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
+
+    await user.click(screen.getByText('自動備份'));
+
+    expect(
+      await screen.findByText('讀取自動備份清單失敗，請稍後再試'),
+    ).toBeInTheDocument();
+  });
+
+  it('re-fetches the list when the refresh button is clicked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listAutoBackups).mockResolvedValue([]);
+    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
+    await user.click(screen.getByText('自動備份'));
+    await screen.findByText('目前還沒有任何自動備份。');
+
+    await user.click(screen.getByText('重新整理'));
+
+    await waitFor(() => expect(listAutoBackups).toHaveBeenCalledTimes(2));
   });
 });

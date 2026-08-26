@@ -1,9 +1,15 @@
-import { FileUp } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { FileUp, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { exportTripsBackup, importTripsBackup } from '@/api/backup';
+import {
+  exportTripsBackup,
+  getAutoBackupDownloadUrl,
+  importTripsBackup,
+  listAutoBackups,
+} from '@/api/backup';
 import { ApiError } from '@/api/client';
 import type {
+  AutoBackupFileInfo,
   ImportBackupErrorDetails,
   ImportBackupResult,
   Trip,
@@ -20,7 +26,7 @@ interface Props {
   onImported?: () => void;
 }
 
-type Tab = 'export' | 'import';
+type Tab = 'export' | 'import' | 'auto';
 
 /** Builds a local timestamped filename, e.g. "tripdeck-backup-20260826-153000.zip". */
 function buildExportFilename(now: Date): string {
@@ -29,6 +35,21 @@ function buildExportFilename(now: Date): string {
     `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-` +
     `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `tripdeck-backup-${stamp}.zip`;
+}
+
+/** Formats a byte count as a short human-readable size, e.g. "1.2 MB". */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
+  }
+  return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
 function tabButtonClass(active: boolean): string {
@@ -52,6 +73,7 @@ export default function ImportExportModal({
   const [exportSuccess, setExportSuccess] = useState(false);
 
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [restoreTemplate, setRestoreTemplate] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importErrorDetails, setImportErrorDetails] =
@@ -60,6 +82,10 @@ export default function ImportExportModal({
     null,
   );
   const importFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [autoBackups, setAutoBackups] = useState<AutoBackupFileInfo[]>([]);
+  const [autoBackupsLoading, setAutoBackupsLoading] = useState(false);
+  const [autoBackupsError, setAutoBackupsError] = useState('');
 
   const allSelected = trips.length > 0 && selectedIds.size === trips.length;
 
@@ -128,7 +154,7 @@ export default function ImportExportModal({
     setImportErrorDetails(null);
     setImportResult(null);
     try {
-      const result = await importTripsBackup(importFile);
+      const result = await importTripsBackup(importFile, restoreTemplate);
       setImportResult(result);
       if (result.imported.length > 0) {
         onImported?.();
@@ -144,6 +170,24 @@ export default function ImportExportModal({
       setImporting(false);
     }
   };
+
+  const loadAutoBackups = useCallback(async () => {
+    setAutoBackupsLoading(true);
+    setAutoBackupsError('');
+    try {
+      setAutoBackups(await listAutoBackups());
+    } catch {
+      setAutoBackupsError('讀取自動備份清單失敗，請稍後再試');
+    } finally {
+      setAutoBackupsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'auto') {
+      void loadAutoBackups();
+    }
+  }, [activeTab, loadAutoBackups]);
 
   return (
     <Modal
@@ -167,9 +211,16 @@ export default function ImportExportModal({
         >
           匯入旅程
         </button>
+        <button
+          type='button'
+          onClick={() => setActiveTab('auto')}
+          className={tabButtonClass(activeTab === 'auto')}
+        >
+          自動備份
+        </button>
       </div>
 
-      {activeTab === 'export' ? (
+      {activeTab === 'export' && (
         <form onSubmit={handleExportSubmit} className='space-y-4'>
           {trips.length === 0 ? (
             <p className='text-muted-foreground text-sm'>
@@ -227,7 +278,9 @@ export default function ImportExportModal({
             disabled={exporting || selectedIds.size === 0}
           />
         </form>
-      ) : (
+      )}
+
+      {activeTab === 'import' && (
         <form onSubmit={handleImportSubmit} className='space-y-4'>
           <p className='text-muted-foreground text-xs'>
             選擇備份檔案匯入，一律以新旅程方式建立；若旅程名稱重複，會自動加上流水號。
@@ -263,6 +316,21 @@ export default function ImportExportModal({
             onChange={handleImportFileSelect}
             className='hidden'
           />
+
+          <label className='flex cursor-pointer items-start gap-2'>
+            <input
+              type='checkbox'
+              checked={restoreTemplate}
+              onChange={e => setRestoreTemplate(e.target.checked)}
+              className='accent-primary mt-0.5 size-3.5 cursor-pointer'
+            />
+            <span className='text-foreground text-sm'>
+              同時還原打包清單範本
+              <span className='text-muted-foreground block text-xs'>
+                若備份檔案包含範本快照，將覆蓋目前的範本內容；一般旅程匯出不含範本，此選項無效果。
+              </span>
+            </span>
+          </label>
 
           {importError && (
             <div className='space-y-1'>
@@ -307,6 +375,9 @@ export default function ImportExportModal({
                   </ul>
                 </div>
               )}
+              {importResult.templateRestored && (
+                <p className='text-primary text-sm'>已還原打包清單範本。</p>
+              )}
             </div>
           )}
 
@@ -316,6 +387,68 @@ export default function ImportExportModal({
             disabled={importing || !importFile}
           />
         </form>
+      )}
+
+      {activeTab === 'auto' && (
+        <div className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <p className='text-muted-foreground text-xs'>
+              系統每隔一段時間自動建立的完整備份（所有旅程、打包清單範本與圖片），只保留最新幾份。下載後可至「匯入旅程」分頁上傳還原。
+            </p>
+            <button
+              type='button'
+              onClick={() => void loadAutoBackups()}
+              disabled={autoBackupsLoading}
+              className='text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 pl-2 text-xs disabled:opacity-50'
+            >
+              <RefreshCw size={12} />
+              重新整理
+            </button>
+          </div>
+
+          {autoBackupsError && (
+            <p className='text-destructive text-sm'>{autoBackupsError}</p>
+          )}
+
+          {!autoBackupsError && autoBackupsLoading && (
+            <p className='text-muted-foreground text-sm'>載入中…</p>
+          )}
+
+          {!autoBackupsError &&
+            !autoBackupsLoading &&
+            autoBackups.length === 0 && (
+              <p className='text-muted-foreground text-sm'>
+                目前還沒有任何自動備份。
+              </p>
+            )}
+
+          {!autoBackupsError && autoBackups.length > 0 && (
+            <div className='border-border max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2'>
+              {autoBackups.map(file => (
+                <div
+                  key={file.filename}
+                  className='flex items-center justify-between gap-2 rounded-md px-2 py-1.5'
+                >
+                  <div className='min-w-0 flex-1'>
+                    <p className='text-foreground truncate text-sm'>
+                      {new Date(file.createdAt).toLocaleString()}
+                    </p>
+                    <p className='text-muted-foreground text-xs'>
+                      {formatFileSize(file.sizeBytes)}
+                    </p>
+                  </div>
+                  <a
+                    href={getAutoBackupDownloadUrl(file.filename)}
+                    download={file.filename}
+                    className='text-primary shrink-0 text-sm hover:underline'
+                  >
+                    下載
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </Modal>
   );

@@ -129,6 +129,8 @@ export interface FailedTripSummary {
 export interface ImportBackupResult {
   imported: ImportedTripSummary[];
   failed: FailedTripSummary[];
+  /** True only when template restoration was requested and actually happened. */
+  templateRestored: boolean;
 }
 
 /** Per-trip missing-image detail attached to a backup validation error. */
@@ -138,4 +140,11 @@ export interface ImportBackupErrorDetails {
     title: string;
     missingFilenames: string[];
   }[];
+}
+
+/** One automatic backup file, as listed/downloaded via `/api/backups`. */
+export interface AutoBackupFileInfo {
+  filename: string;
+  sizeBytes: number;
+  createdAt: string;
 }
