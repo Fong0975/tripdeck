@@ -68,7 +68,10 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
          'multipart/form-data': {
            schema: {
              type: 'object',
-             properties: { file: { type: 'string', format: 'binary' } },
+             properties: {
+               file: { type: 'string', format: 'binary' },
+               restoreTemplate: { type: 'string', enum: ['true', 'false'], description: 'When "true" and the backup includes a checklist template snapshot, replaces the current global template with it.' }
+             },
              required: ['file']
            }
          }
@@ -102,7 +105,8 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
                      error: { type: 'string', example: 'Connection 5 references an attraction that was not imported' }
                    }
                  }
-               }
+               },
+               templateRestored: { type: 'boolean', example: false }
              }
            }
          }

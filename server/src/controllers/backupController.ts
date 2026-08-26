@@ -5,6 +5,26 @@ import type { Request, Response } from 'express';
 import * as backupRepo from '../repositories/backup';
 
 export function listAutoBackups(_req: Request, res: Response): void {
+  /* #swagger.tags = ['Backup']
+     #swagger.summary = 'List automatic backups'
+     #swagger.responses[200] = {
+       description: 'Every automatic backup currently on disk, newest first',
+       content: {
+         'application/json': {
+           schema: {
+             type: 'array',
+             items: {
+               type: 'object',
+               properties: {
+                 filename: { type: 'string', example: 'tripdeck-auto-backup-2026-08-26T00-00-00-000Z.zip' },
+                 sizeBytes: { type: 'integer', example: 2048 },
+                 createdAt: { type: 'string', format: 'date-time', example: '2026-08-26T00:00:00.000Z' }
+               }
+             }
+           }
+         }
+       }
+     } */
   try {
     res.json(backupRepo.listAutoBackupFiles());
   } catch {
@@ -13,6 +33,13 @@ export function listAutoBackups(_req: Request, res: Response): void {
 }
 
 export function downloadAutoBackup(req: Request, res: Response): void {
+  /* #swagger.tags = ['Backup']
+     #swagger.summary = 'Download one automatic backup file'
+     #swagger.parameters['filename'] = { in: 'path', required: true, schema: { type: 'string' } }
+     #swagger.responses[200] = {
+       description: 'Backup zip file',
+       content: { 'application/zip': {} }
+     } */
   try {
     const filePath = backupRepo.resolveAutoBackupPath(req.params.filename);
     if (!filePath) {

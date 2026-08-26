@@ -463,6 +463,34 @@ describe('ImportExportModal automatic backups tab', () => {
     expect(screen.getByText('2.0 KB')).toBeInTheDocument();
   });
 
+  it('formats file sizes across the bytes/KB/MB/GB range', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listAutoBackups).mockResolvedValue([
+      {
+        filename: 'tripdeck-auto-backup-2026-08-01T00-00-00-000Z.zip',
+        sizeBytes: 500,
+        createdAt: '2026-08-01T00:00:00.000Z',
+      },
+      {
+        filename: 'tripdeck-auto-backup-2026-08-02T00-00-00-000Z.zip',
+        sizeBytes: 5 * 1024 * 1024,
+        createdAt: '2026-08-02T00:00:00.000Z',
+      },
+      {
+        filename: 'tripdeck-auto-backup-2026-08-03T00-00-00-000Z.zip',
+        sizeBytes: 3 * 1024 * 1024 * 1024,
+        createdAt: '2026-08-03T00:00:00.000Z',
+      },
+    ]);
+    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
+
+    await user.click(screen.getByText('自動備份'));
+
+    expect(await screen.findByText('500 B')).toBeInTheDocument();
+    expect(screen.getByText('5.0 MB')).toBeInTheDocument();
+    expect(screen.getByText('3.0 GB')).toBeInTheDocument();
+  });
+
   it('shows an empty-state message when there are no automatic backups', async () => {
     const user = userEvent.setup();
     vi.mocked(listAutoBackups).mockResolvedValue([]);

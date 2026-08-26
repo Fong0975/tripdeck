@@ -725,6 +725,36 @@ describe('importBackupZip', () => {
     expect(mockConnCommit).toHaveBeenCalled();
   });
 
+  it('restores an empty template (no categories) by just clearing the existing one', async () => {
+    mockTemplateInserts();
+    const parsed: ParsedBackup = {
+      manifest: {
+        formatVersion: 1,
+        exportedAt: '2024-01-01T00:00:00.000Z',
+        tripCount: 0,
+        trips: [],
+        includesTemplate: true,
+      },
+      trips: [],
+      template: { categories: [] },
+    };
+    mockParseBackupZip.mockReturnValue(parsed);
+
+    const result = await importBackupZip(Buffer.from('zip'), {
+      restoreTemplate: true,
+    });
+
+    expect(result.templateRestored).toBe(true);
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      'DELETE FROM checklist_template_categories',
+    );
+    expect(mockConnExecute).not.toHaveBeenCalledWith(
+      'INSERT INTO checklist_template_categories (name) VALUES (?)',
+      expect.anything(),
+    );
+    expect(mockConnCommit).toHaveBeenCalled();
+  });
+
   it('does not restore the template when restoreTemplate is not requested', async () => {
     mockTemplateInserts();
     const parsed: ParsedBackup = {
