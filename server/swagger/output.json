@@ -588,6 +588,50 @@
         }
       }
     },
+    "/api/trips/export": {
+      "post": {
+        "tags": ["Backup"],
+        "summary": "Export one or more trips as a backup zip",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Backup zip file",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tripIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [1, 2]
+                  }
+                },
+                "required": ["tripIds"]
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/trips/{tripId}/days/{dayId}/attractions": {
       "post": {
         "tags": ["Attractions"],
