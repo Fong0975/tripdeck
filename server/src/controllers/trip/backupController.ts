@@ -81,8 +81,28 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
            schema: {
              type: 'object',
              properties: {
-               imported: { type: 'array', items: { type: 'object' } },
-               failed: { type: 'array', items: { type: 'object' } }
+               imported: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     originalTripId: { type: 'integer', example: 1 },
+                     newTripId: { type: 'integer', example: 12 },
+                     title: { type: 'string', example: '東京五日遊' }
+                   }
+                 }
+               },
+               failed: {
+                 type: 'array',
+                 items: {
+                   type: 'object',
+                   properties: {
+                     originalTripId: { type: 'integer', example: 2 },
+                     title: { type: 'string', example: '大阪二日遊' },
+                     error: { type: 'string', example: 'Connection 5 references an attraction that was not imported' }
+                   }
+                 }
+               }
              }
            }
          }

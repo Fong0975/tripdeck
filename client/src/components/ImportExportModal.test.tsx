@@ -65,6 +65,39 @@ describe('ImportExportModal', () => {
     expect(screen.getByText('匯出')).toBeEnabled();
   });
 
+  it('deselects a trip when its checkbox is unchecked again', async () => {
+    const user = userEvent.setup();
+    render(
+      <ImportExportModal
+        trips={[makeTrip({ id: 1, title: 'Trip A' })]}
+        onClose={vi.fn()}
+      />,
+    );
+    const checkbox = screen.getByRole('checkbox');
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    await user.click(checkbox);
+
+    expect(checkbox).not.toBeChecked();
+    expect(screen.getByText('匯出')).toBeDisabled();
+  });
+
+  it('does nothing when the export form is submitted with no trips selected', () => {
+    const { container } = render(
+      <ImportExportModal
+        trips={[makeTrip({ id: 1, title: 'Trip A' })]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const form = container.querySelector('form')!;
+    fireEvent.submit(form);
+
+    expect(exportTripsBackup).not.toHaveBeenCalled();
+  });
+
   it('selects and deselects every trip via the select-all toggle', async () => {
     const user = userEvent.setup();
     const trips = [
@@ -146,6 +179,65 @@ describe('ImportExportModal import tab', () => {
 
     expect(screen.getByText('選擇備份檔案')).toBeInTheDocument();
     expect(screen.queryByText('選擇要匯出的旅程')).not.toBeInTheDocument();
+    expect(screen.getByText('匯入')).toBeDisabled();
+  });
+
+  it('switches back to the export tab', async () => {
+    const user = userEvent.setup();
+    render(
+      <ImportExportModal
+        trips={[makeTrip({ id: 1, title: 'Trip A' })]}
+        onClose={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByText('匯入旅程'));
+    expect(screen.getByText('選擇備份檔案')).toBeInTheDocument();
+
+    await user.click(screen.getByText('匯出旅程'));
+
+    expect(screen.getByText('選擇要匯出的旅程')).toBeInTheDocument();
+    expect(screen.queryByText('選擇備份檔案')).not.toBeInTheDocument();
+  });
+
+  it('triggers the hidden file input when the file picker button is clicked', () => {
+    const clickSpy = vi
+      .spyOn(HTMLInputElement.prototype, 'click')
+      .mockImplementation(() => {});
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByText('匯入旅程'));
+
+    fireEvent.click(screen.getByText('選擇備份檔案'));
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(clickSpy.mock.instances[0]).toBe(getFileInput(container));
+    clickSpy.mockRestore();
+  });
+
+  it('does nothing when the import form is submitted with no file selected', () => {
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByText('匯入旅程'));
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const form = container.querySelector('form')!;
+    fireEvent.submit(form);
+
+    expect(importTripsBackup).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the file input change event carries no files', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    await user.click(screen.getByText('匯入旅程'));
+
+    fireEvent.change(getFileInput(container), { target: { files: [] } });
+
+    expect(screen.getByText('選擇備份檔案')).toBeInTheDocument();
     expect(screen.getByText('匯入')).toBeDisabled();
   });
 
@@ -272,5 +364,21 @@ describe('ImportExportModal import tab', () => {
 
     expect(await screen.findByText('network error')).toBeInTheDocument();
     expect(screen.queryByText(/缺少/)).not.toBeInTheDocument();
+  });
+
+  it('shows a generic message when a non-Error value is thrown', async () => {
+    const user = userEvent.setup();
+    vi.mocked(importTripsBackup).mockRejectedValue('unexpected failure');
+    const { container } = render(
+      <ImportExportModal trips={[]} onClose={vi.fn()} />,
+    );
+    await user.click(screen.getByText('匯入旅程'));
+    fireEvent.change(getFileInput(container), {
+      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
+    });
+
+    await user.click(screen.getByText('匯入'));
+
+    expect(await screen.findByText('匯入失敗，請稍後再試')).toBeInTheDocument();
   });
 });

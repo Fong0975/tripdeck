@@ -228,6 +228,14 @@ describe('generateUniqueTripTitle', () => {
       'Kyoto Trip (3)',
     );
   });
+
+  it('de-duplicates titles containing emoji/CJK characters correctly', async () => {
+    mockPoolExecute.mockResolvedValue([[{ title: '東京 🗼 五日遊' }]]);
+
+    await expect(generateUniqueTripTitle('東京 🗼 五日遊')).resolves.toBe(
+      '東京 🗼 五日遊 (2)',
+    );
+  });
 });
 
 describe('importSingleTrip', () => {
@@ -371,6 +379,42 @@ describe('importSingleTrip', () => {
     expect(checklistCalls).toHaveLength(0);
   });
 
+  it('imports a minimal trip with no days, attractions, or images', async () => {
+    mockNoTitleConflicts();
+    mockSequentialInserts();
+    const minimalData: TripBackupData = {
+      trip: {
+        id: 1,
+        title: 'Empty Trip',
+        destination: null,
+        startDate: '2024-05-10',
+        endDate: '2024-05-10',
+        description: null,
+        images: [],
+      },
+      content: { tripId: 1, days: [] },
+      checklist: null,
+    };
+
+    const result = await importSingleTrip(minimalData, new Map());
+
+    expect(result).toEqual({
+      originalTripId: 1,
+      newTripId: 1000,
+      title: 'Empty Trip',
+    });
+    expect(mockConnCommit).toHaveBeenCalled();
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO trips'),
+      expect.anything(),
+    );
+    expect(mockConnExecute).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO trip_days'),
+      expect.anything(),
+    );
+    expect(mockSaveImportedImageBuffer).not.toHaveBeenCalled();
+  });
+
   it('rolls back and writes no images when a database insert fails', async () => {
     mockNoTitleConflicts();
     let callCount = 0;
@@ -423,6 +467,46 @@ describe('importSingleTrip', () => {
 
     expect(mockConnRollback).toHaveBeenCalled();
     expect(mockConnCommit).not.toHaveBeenCalled();
+  });
+
+  it('rolls back when an occasion check references a checklist item that was never imported', async () => {
+    mockNoTitleConflicts();
+    mockSequentialInserts();
+    const corrupted: TripBackupData = {
+      ...sampleData,
+      checklist: {
+        tripId: 1,
+        categories: [],
+        occasions: [{ id: 600, name: 'Packing', checks: { 999: true } }],
+      },
+    };
+
+    await expect(
+      importSingleTrip(corrupted, sampleImageBuffers()),
+    ).rejects.toThrow(/references checklist item 999 that was not imported/);
+
+    expect(mockConnRollback).toHaveBeenCalled();
+    expect(mockConnCommit).not.toHaveBeenCalled();
+  });
+
+  it('skips a check explicitly set to false without inserting a row', async () => {
+    mockNoTitleConflicts();
+    mockSequentialInserts();
+    const data: TripBackupData = {
+      ...sampleData,
+      checklist: {
+        tripId: 1,
+        categories: [],
+        occasions: [{ id: 600, name: 'Packing', checks: { 400: false } }],
+      },
+    };
+
+    await importSingleTrip(data, sampleImageBuffers());
+
+    expect(mockConnExecute).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO checklist_checks'),
+      expect.anything(),
+    );
   });
 
   it('deletes already-written files and the new trip when an image fails partway through', async () => {
