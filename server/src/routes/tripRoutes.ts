@@ -11,7 +11,7 @@ import * as connectionController from '../controllers/trip/connectionController'
 import * as dayLocationController from '../controllers/trip/dayLocationController';
 import * as dayNoteController from '../controllers/trip/dayNoteController';
 import * as tripCrudController from '../controllers/trip/tripCrudController';
-import { upload } from '../middleware/upload';
+import { backupUpload, upload } from '../middleware/upload';
 
 import checklistTripRoutes from './checklistTripRoutes';
 
@@ -29,6 +29,11 @@ router.get('/:tripId/content', tripCrudController.getTripContent);
 
 // Backup export/import
 router.post('/export', backupController.exportTrips);
+router.post(
+  '/import',
+  backupUpload.single('file'),
+  backupController.importTrips,
+);
 
 // Attractions
 router.post(

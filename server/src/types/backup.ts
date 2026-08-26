@@ -39,3 +39,28 @@ export interface TripBackupData {
   /** Null when the trip's checklist was never initialized. */
   checklist: TripChecklistResponse | null;
 }
+
+/** One trip that was successfully imported as a new trip. */
+export interface ImportedTripResult {
+  originalTripId: number;
+  newTripId: number;
+  /** The (possibly de-duplicated) title the new trip was created with. */
+  title: string;
+}
+
+/** One trip from the backup that failed to import. */
+export interface FailedTripResult {
+  originalTripId: number;
+  title: string;
+  error: string;
+}
+
+/**
+ * Each trip in a backup is imported independently, so one trip failing
+ * (e.g. a data inconsistency not caught by validation) does not prevent
+ * the others from being imported.
+ */
+export interface ImportBackupResult {
+  imported: ImportedTripResult[];
+  failed: FailedTripResult[];
+}
