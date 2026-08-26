@@ -67,16 +67,19 @@ function collectImages(data: TripBackupData): ImageResponse[] {
 }
 
 /**
- * Builds a backup zip for the given trip IDs. Each trip gets its own
- * `trips/trip_<id>/` folder containing `data.json` and an `images/` folder
- * with the actual image files, alongside a top-level `manifest.json`.
- * Duplicate IDs are de-duplicated; a missing image file on disk is skipped
- * (with a console warning) rather than failing the whole export, since a
- * DB image row should never outlive its file under normal operation.
+ * Adds one `trips/trip_<id>/` folder (data.json + images/) per trip ID to
+ * `zip`, de-duplicating IDs first. Returns the manifest entries describing
+ * what was written, so callers (a per-trip export or a system-wide backup)
+ * can build their own `manifest.json` around them. A missing image file on
+ * disk is skipped (with a console warning) rather than failing the whole
+ * export, since a DB image row should never outlive its file under normal
+ * operation.
  */
-export async function buildBackupZip(tripIds: number[]): Promise<Buffer> {
+export async function addTripsToZip(
+  zip: AdmZip,
+  tripIds: number[],
+): Promise<BackupManifest['trips']> {
   const uniqueTripIds = Array.from(new Set(tripIds));
-  const zip = new AdmZip();
   const manifestTrips: BackupManifest['trips'] = [];
 
   for (const tripId of uniqueTripIds) {
@@ -106,10 +109,25 @@ export async function buildBackupZip(tripIds: number[]): Promise<Buffer> {
     });
   }
 
+  return manifestTrips;
+}
+
+/**
+ * Builds a backup zip for the given trip IDs. Each trip gets its own
+ * `trips/trip_<id>/` folder containing `data.json` and an `images/` folder
+ * with the actual image files, alongside a top-level `manifest.json`.
+ * Duplicate IDs are de-duplicated; a missing image file on disk is skipped
+ * (with a console warning) rather than failing the whole export, since a
+ * DB image row should never outlive its file under normal operation.
+ */
+export async function buildBackupZip(tripIds: number[]): Promise<Buffer> {
+  const zip = new AdmZip();
+  const manifestTrips = await addTripsToZip(zip, tripIds);
+
   const manifest: BackupManifest = {
     formatVersion: BACKUP_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
-    tripCount: uniqueTripIds.length,
+    tripCount: manifestTrips.length,
     trips: manifestTrips,
   };
   zip.addFile(

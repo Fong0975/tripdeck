@@ -326,5 +326,5 @@ export async function importBackupZip(
     }
   }
 
-  return { imported, failed };
+  return { imported, failed, templateRestored: false };
 }
