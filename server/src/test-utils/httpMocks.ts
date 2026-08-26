@@ -25,6 +25,7 @@ export function createMockReqRes(overrides: MockReqOverrides = {}) {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
     send: vi.fn().mockReturnThis(),
+    setHeader: vi.fn().mockReturnThis(),
   } as unknown as Response;
 
   return { req, res };

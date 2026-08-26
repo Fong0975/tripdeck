@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import type { Trip } from '@/types';
 import { getTrips, deleteTrip } from '@/utils/storage';
@@ -7,13 +7,14 @@ export function useHomeData() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      setTrips(await getTrips());
-      setLoading(false);
-    };
-    void load();
+  const reloadTrips = useCallback(async () => {
+    setTrips(await getTrips());
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    void reloadTrips();
+  }, [reloadTrips]);
 
   const handleTripAdded = (trip: Trip) => {
     setTrips(prev => [...prev, trip]);
@@ -34,5 +35,6 @@ export function useHomeData() {
     handleTripAdded,
     handleDeleteTrip,
     handleTripUpdated,
+    reloadTrips,
   };
 }

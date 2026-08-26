@@ -6,11 +6,12 @@ import * as imageController from '../controllers/imageController';
 // an `export * from` re-export, so it would silently drop that endpoint's
 // #swagger.* documentation.
 import * as attractionController from '../controllers/trip/attractionController';
+import * as backupController from '../controllers/trip/backupController';
 import * as connectionController from '../controllers/trip/connectionController';
 import * as dayLocationController from '../controllers/trip/dayLocationController';
 import * as dayNoteController from '../controllers/trip/dayNoteController';
 import * as tripCrudController from '../controllers/trip/tripCrudController';
-import { upload } from '../middleware/upload';
+import { backupUpload, upload } from '../middleware/upload';
 
 import checklistTripRoutes from './checklistTripRoutes';
 
@@ -25,6 +26,14 @@ router.delete('/:tripId', tripCrudController.deleteTrip);
 
 // Full trip content (days + attractions + connections)
 router.get('/:tripId/content', tripCrudController.getTripContent);
+
+// Backup export/import
+router.post('/export', backupController.exportTrips);
+router.post(
+  '/import',
+  backupUpload.single('file'),
+  backupController.importTrips,
+);
 
 // Attractions
 router.post(

@@ -68,6 +68,16 @@ export const upload = multer({
 });
 
 /**
+ * Multer instance for backup zip uploads. Zips can bundle many trips' worth
+ * of images, so this allows a much larger payload than a single image
+ * upload; still memory-backed since this is a single-user local app.
+ */
+export const backupUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 300 * 1024 * 1024 },
+});
+
+/**
  * Writes a validated image buffer to disk using a UUID-based filename.
  * Returns the generated filename (with extension) for storage in the database.
  *
@@ -101,6 +111,31 @@ export function copyImageFile(filename: string): string | null {
   } catch {
     return null;
   }
+}
+
+const IMPORT_EXTENSIONS = new Set(Object.values(MIME_TO_EXT));
+
+/**
+ * Writes an image buffer restored from a backup zip to disk under a new
+ * UUID-based filename, so it can never collide with an existing file.
+ * Trusts the original filename's extension rather than re-validating magic
+ * bytes: unlike saveImageToDisk (which handles arbitrary user uploads),
+ * this only ever receives files this server itself wrote during export.
+ *
+ * @throws {Error} When the original filename's extension isn't a supported image type.
+ */
+export function saveImportedImageBuffer(
+  buffer: Buffer,
+  originalFilename: string,
+): string {
+  const ext = path.extname(originalFilename).toLowerCase();
+  if (!IMPORT_EXTENSIONS.has(ext)) {
+    throw new Error(`Unsupported image extension: ${ext}`);
+  }
+
+  const filename = `${uuidv4()}${ext}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+  return filename;
 }
 
 /**

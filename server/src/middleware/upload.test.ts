@@ -13,7 +13,12 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'fixed-uuid'),
 }));
 
-import { copyImageFile, deleteImageFromDisk, saveImageToDisk } from './upload';
+import {
+  copyImageFile,
+  deleteImageFromDisk,
+  saveImageToDisk,
+  saveImportedImageBuffer,
+} from './upload';
 
 const GARBAGE_BUFFER = Buffer.from(new Array(20).fill(0x00));
 
@@ -126,6 +131,43 @@ describe('copyImageFile', () => {
     const result = copyImageFile('original.jpg');
 
     expect(result).toBeNull();
+  });
+});
+
+describe('saveImportedImageBuffer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each(['.jpg', '.png', '.gif', '.webp'])(
+    'writes the buffer to disk under a new UUID filename for %s',
+    ext => {
+      const buffer = Buffer.from('image-bytes');
+
+      const filename = saveImportedImageBuffer(buffer, `original${ext}`);
+
+      expect(filename).toBe(`fixed-uuid${ext}`);
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining(filename),
+        buffer,
+      );
+    },
+  );
+
+  it('is case-insensitive about the source extension', () => {
+    const filename = saveImportedImageBuffer(
+      Buffer.from('image-bytes'),
+      'ORIGINAL.JPG',
+    );
+
+    expect(filename).toBe('fixed-uuid.jpg');
+  });
+
+  it('throws and does not write to disk for an unsupported extension', () => {
+    expect(() =>
+      saveImportedImageBuffer(Buffer.from('bytes'), 'malware.exe'),
+    ).toThrow('Unsupported image extension: .exe');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 });
 
