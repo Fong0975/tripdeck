@@ -18,6 +18,7 @@ export default function Home() {
     handleTripAdded,
     handleDeleteTrip,
     handleTripUpdated,
+    reloadTrips,
   } = useHomeData();
   const [showModal, setShowModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -63,6 +64,7 @@ export default function Home() {
         <ImportExportModal
           trips={trips}
           onClose={() => setShowImportExportModal(false)}
+          onImported={() => void reloadTrips()}
         />
       )}
     </div>

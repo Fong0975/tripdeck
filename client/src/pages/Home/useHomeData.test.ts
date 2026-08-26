@@ -43,6 +43,28 @@ describe('useHomeData', () => {
     expect(result.current.trips).toEqual(trips);
   });
 
+  it('re-fetches trips from the API when reloadTrips is called again', async () => {
+    const initial = [makeTrip({ id: 1, title: 'Trip A' })];
+    const updated = [
+      makeTrip({ id: 1, title: 'Trip A' }),
+      makeTrip({ id: 2, title: 'Trip B' }),
+    ];
+    vi.mocked(getTrips)
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(updated);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual(initial);
+    });
+
+    await act(async () => {
+      await result.current.reloadTrips();
+    });
+
+    expect(getTrips).toHaveBeenCalledTimes(2);
+    expect(result.current.trips).toEqual(updated);
+  });
+
   it('appends a trip to local state without calling the API', async () => {
     vi.mocked(getTrips).mockResolvedValue([]);
     const { result } = renderHook(() => useHomeData());

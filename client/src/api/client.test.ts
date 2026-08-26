@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { api, apiBlob, json } from './client';
+import { api, apiBlob, ApiError, apiJson, json } from './client';
 
 function makeResponse(
   ok: boolean,
@@ -121,5 +121,73 @@ describe('apiBlob', () => {
     await expect(apiBlob('/api/trips/export')).rejects.toThrow(
       'API error 500: /api/trips/export',
     );
+  });
+});
+
+describe('apiJson', () => {
+  it.each([
+    {
+      description: 'a 204 No Content response',
+      status: 204,
+      body: { ignored: true },
+      expected: undefined,
+    },
+    {
+      description: 'a normal 2xx response',
+      status: 200,
+      body: { id: 1 },
+      expected: { id: 1 },
+    },
+  ])(
+    'resolves with $expected for $description',
+    async ({ status, body, expected }) => {
+      vi.mocked(fetch).mockResolvedValue(makeResponse(true, status, body));
+
+      expect(await apiJson('/api/trips/import')).toEqual(expected);
+    },
+  );
+
+  it('forwards the request path and init options to fetch', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeResponse(true, 200, {}));
+
+    await apiJson('/api/trips/import', { method: 'POST' });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/trips/import'),
+      { method: 'POST' },
+    );
+  });
+
+  it('throws an ApiError carrying the message and details from a JSON error body', async () => {
+    const details = {
+      trips: [{ folder: 'trip_1', missingFilenames: ['a.jpg'] }],
+    };
+    vi.mocked(fetch).mockResolvedValue(
+      makeResponse(false, 400, {
+        error: 'Backup file is incomplete',
+        details,
+      }),
+    );
+
+    const promise = apiJson('/api/trips/import');
+    await expect(promise).rejects.toThrow('Backup file is incomplete');
+    await expect(promise).rejects.toBeInstanceOf(ApiError);
+    await promise.catch((err: ApiError) => {
+      expect(err.details).toEqual(details);
+    });
+  });
+
+  it('falls back to a generic message with no details when the error response is not JSON', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeResponse(false, 500, undefined, {
+        json: () => Promise.reject(new Error('not JSON')),
+      }),
+    );
+
+    const promise = apiJson('/api/trips/import');
+    await expect(promise).rejects.toThrow('API error 500: /api/trips/import');
+    await promise.catch((err: ApiError) => {
+      expect(err.details).toBeUndefined();
+    });
   });
 });

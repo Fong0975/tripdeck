@@ -110,3 +110,32 @@ export interface TripChecklist {
   categories: ChecklistCategory[];
   occasions: ChecklistOccasion[];
 }
+
+/** One trip from a backup file that was successfully imported as a new trip. */
+export interface ImportedTripSummary {
+  originalTripId: number;
+  newTripId: number;
+  /** The (possibly de-duplicated) title the new trip was created with. */
+  title: string;
+}
+
+/** One trip from a backup file that failed to import. */
+export interface FailedTripSummary {
+  originalTripId: number;
+  title: string;
+  error: string;
+}
+
+export interface ImportBackupResult {
+  imported: ImportedTripSummary[];
+  failed: FailedTripSummary[];
+}
+
+/** Per-trip missing-image detail attached to a backup validation error. */
+export interface ImportBackupErrorDetails {
+  trips: {
+    folder: string;
+    title: string;
+    missingFilenames: string[];
+  }[];
+}

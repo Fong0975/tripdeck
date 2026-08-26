@@ -91,10 +91,17 @@ vi.mock('@/components/AddTripModal', () => ({
 }));
 
 vi.mock('@/components/ImportExportModal', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
+  default: ({
+    onClose,
+    onImported,
+  }: {
+    onClose: () => void;
+    onImported: () => void;
+  }) => (
     <div>
       <span>import-export-modal</span>
       <button onClick={onClose}>trigger-import-export-close</button>
+      <button onClick={onImported}>trigger-imported</button>
     </div>
   ),
 }));
@@ -127,6 +134,7 @@ function makeHomeData(overrides: Partial<ReturnType<typeof useHomeData>> = {}) {
     handleTripAdded: vi.fn(),
     handleDeleteTrip: vi.fn(),
     handleTripUpdated: vi.fn(),
+    reloadTrips: vi.fn(),
     ...overrides,
   };
 }
@@ -247,5 +255,19 @@ describe('Home', () => {
       screen.getByRole('button', { name: 'trigger-import-export-close' }),
     );
     expect(screen.queryByText('import-export-modal')).not.toBeInTheDocument();
+  });
+
+  it('calls reloadTrips when the import/export modal reports an import', async () => {
+    const user = userEvent.setup();
+    const reloadTrips = vi.fn();
+    vi.mocked(useHomeData).mockReturnValue(makeHomeData({ reloadTrips }));
+    render(<Home />);
+    await user.click(
+      screen.getByRole('button', { name: 'trigger-import-export' }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'trigger-imported' }));
+
+    expect(reloadTrips).toHaveBeenCalledTimes(1);
   });
 });
