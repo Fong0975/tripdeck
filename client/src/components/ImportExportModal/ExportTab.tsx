@@ -5,6 +5,7 @@ import type { Trip } from '@/types';
 import { downloadBlob } from '@/utils/download';
 
 import ModalFooterActions from '../ui/ModalFooterActions';
+import StatusMessage from '../ui/StatusMessage';
 
 interface Props {
   trips: Trip[];
@@ -94,7 +95,7 @@ export default function ExportTab({ trips, onClose }: Props) {
       </label>
 
       {trips.length === 0 ? (
-        <p className='text-muted-foreground text-sm'>目前沒有旅程可以匯出。</p>
+        <StatusMessage variant='info'>目前沒有旅程可以匯出。</StatusMessage>
       ) : (
         <>
           <div className='flex items-center justify-between'>
@@ -134,9 +135,11 @@ export default function ExportTab({ trips, onClose }: Props) {
         </>
       )}
 
-      {exportError && <p className='text-destructive text-sm'>{exportError}</p>}
+      {exportError && (
+        <StatusMessage variant='error'>{exportError}</StatusMessage>
+      )}
       {exportSuccess && (
-        <p className='text-primary text-sm'>已成功下載備份檔案。</p>
+        <StatusMessage variant='success'>已成功下載備份檔案。</StatusMessage>
       )}
 
       <ModalFooterActions

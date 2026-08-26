@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client';
 import type { ImportBackupErrorDetails, ImportBackupResult } from '@/types';
 
 import ModalFooterActions from '../ui/ModalFooterActions';
+import StatusMessage from '../ui/StatusMessage';
 
 interface Props {
   onClose: () => void;
@@ -121,7 +122,7 @@ export default function ImportTab({ onClose, onImported }: Props) {
 
       {importError && (
         <div className='space-y-1'>
-          <p className='text-destructive text-sm'>{importError}</p>
+          <StatusMessage variant='error'>{importError}</StatusMessage>
           {importErrorDetails && (
             <ul className='text-destructive list-disc space-y-0.5 pl-5 text-xs'>
               {importErrorDetails.trips.map(t => (
@@ -137,9 +138,9 @@ export default function ImportTab({ onClose, onImported }: Props) {
       {importResult && (
         <div className='space-y-2'>
           {importResult.imported.length > 0 && (
-            <div>
-              <p className='text-foreground text-sm font-medium'>匯入成功</p>
-              <ul className='text-primary space-y-0.5 text-sm'>
+            <div className='space-y-1'>
+              <StatusMessage variant='success'>匯入成功</StatusMessage>
+              <ul className='text-primary space-y-0.5 pl-[34px] text-sm'>
                 {importResult.imported.map(t => (
                   <li key={t.newTripId}>{t.title}</li>
                 ))}
@@ -147,9 +148,9 @@ export default function ImportTab({ onClose, onImported }: Props) {
             </div>
           )}
           {importResult.failed.length > 0 && (
-            <div>
-              <p className='text-foreground text-sm font-medium'>匯入失敗</p>
-              <ul className='text-destructive space-y-0.5 text-sm'>
+            <div className='space-y-1'>
+              <StatusMessage variant='error'>匯入失敗</StatusMessage>
+              <ul className='text-destructive space-y-0.5 pl-[34px] text-sm'>
                 {importResult.failed.map(t => (
                   <li key={t.originalTripId}>
                     {t.title}：{t.error}
@@ -159,14 +160,16 @@ export default function ImportTab({ onClose, onImported }: Props) {
             </div>
           )}
           {importResult.templateRestored && (
-            <p className='text-primary text-sm'>已還原打包清單範本。</p>
+            <StatusMessage variant='success'>
+              已還原打包清單範本。
+            </StatusMessage>
           )}
           {importResult.imported.length === 0 &&
             importResult.failed.length === 0 &&
             !importResult.templateRestored && (
-              <p className='text-muted-foreground text-sm'>
+              <StatusMessage variant='info'>
                 這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。
-              </p>
+              </StatusMessage>
             )}
         </div>
       )}

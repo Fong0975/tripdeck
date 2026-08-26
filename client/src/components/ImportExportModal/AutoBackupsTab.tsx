@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { getAutoBackupDownloadUrl, listAutoBackups } from '@/api/backup';
 import type { AutoBackupFileInfo } from '@/types';
 
+import LoadingIndicator from '../ui/LoadingIndicator';
+import StatusMessage from '../ui/StatusMessage';
+
 /** Formats a byte count as a short human-readable size, e.g. "1.2 MB". */
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
@@ -60,17 +63,13 @@ export default function AutoBackupsTab() {
       </div>
 
       {autoBackupsError && (
-        <p className='text-destructive text-sm'>{autoBackupsError}</p>
+        <StatusMessage variant='error'>{autoBackupsError}</StatusMessage>
       )}
 
-      {!autoBackupsError && autoBackupsLoading && (
-        <p className='text-muted-foreground text-sm'>載入中…</p>
-      )}
+      {!autoBackupsError && autoBackupsLoading && <LoadingIndicator />}
 
       {!autoBackupsError && !autoBackupsLoading && autoBackups.length === 0 && (
-        <p className='text-muted-foreground text-sm'>
-          目前還沒有任何自動備份。
-        </p>
+        <StatusMessage variant='info'>目前還沒有任何自動備份。</StatusMessage>
       )}
 
       {!autoBackupsError && autoBackups.length > 0 && (
