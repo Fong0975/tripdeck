@@ -161,6 +161,13 @@ export default function ImportTab({ onClose, onImported }: Props) {
           {importResult.templateRestored && (
             <p className='text-primary text-sm'>已還原打包清單範本。</p>
           )}
+          {importResult.imported.length === 0 &&
+            importResult.failed.length === 0 &&
+            !importResult.templateRestored && (
+              <p className='text-muted-foreground text-sm'>
+                這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。
+              </p>
+            )}
         </div>
       )}
 
