@@ -5,6 +5,7 @@ A travel itinerary planning app with a React frontend and a Node.js REST API bac
 - **Itinerary planning** — Organize trips day by day on a drag-and-drop kanban board; add attractions with notes, Google Maps links, reference websites, and photos, then define transport connections between them.
 - **Itinerary export** — Generate a formatted Word (.docx) document from any trip, with an editable Markdown preview step before download. The export includes styled day headers, transport tables, embedded images, and clickable hyperlinks.
 - **Packing checklist** — Manage a reusable packing template; each trip gets its own copy with multiple occasion columns so you can track what to pack for each part of the journey.
+- **Trip backup / import** — Export one or more trips as a self-contained zip (full data plus every uploaded image), and import a backup zip back in as brand-new trips, with automatic title de-duplication and ID remapping so nothing collides with existing data.
 
 ## Project Structure
 
