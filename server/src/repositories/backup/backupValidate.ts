@@ -35,11 +35,30 @@ interface MissingImagesEntry {
   missingFilenames: string[];
 }
 
+/**
+ * Per-entry uncompressed-size cap enforced before any zip entry is
+ * decompressed. Without this, a maliciously crafted entry can declare a
+ * tiny compressed payload that expands to gigabytes on decompression (a
+ * "zip bomb"), exhausting server memory. `entry.header.size` is read
+ * straight from the zip's central directory, so the check happens before
+ * `getData()` ever runs the actual decompression.
+ */
+const MAX_ENTRY_UNCOMPRESSED_BYTES = 20 * 1024 * 1024; // 20 MB
+
+function assertSafeEntrySize(entry: AdmZip.IZipEntry): void {
+  if (entry.header.size > MAX_ENTRY_UNCOMPRESSED_BYTES) {
+    throw new BackupValidationError(
+      `Invalid backup file: "${entry.entryName}" is too large (${entry.header.size} bytes uncompressed)`,
+    );
+  }
+}
+
 function readJsonEntry<T>(zip: AdmZip, entryPath: string): T | null {
   const entry = zip.getEntry(entryPath);
   if (!entry) {
     return null;
   }
+  assertSafeEntrySize(entry);
   try {
     return JSON.parse(entry.getData().toString('utf-8')) as T;
   } catch {
@@ -81,6 +100,10 @@ function collectImages(data: TripBackupData): ImageResponse[] {
  *     reported together in a single error, so an incomplete backup is
  *     rejected as a whole rather than importing some trips with dangling
  *     image references.
+ *
+ * Every entry's declared uncompressed size is also checked against
+ * `MAX_ENTRY_UNCOMPRESSED_BYTES` before it's decompressed, rejecting an
+ * oversized ("zip bomb") entry up front instead of exhausting memory.
  *
  * On success, every referenced image's bytes are already read into
  * `imageBuffers` so the import step never has to re-open the archive.
@@ -152,6 +175,7 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
         missingFilenames.push(image.filename);
         continue;
       }
+      assertSafeEntrySize(entry);
       trip.imageBuffers.set(image.filename, entry.getData());
     }
     if (missingFilenames.length > 0) {

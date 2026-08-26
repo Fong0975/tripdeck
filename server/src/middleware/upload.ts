@@ -21,6 +21,10 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': '.webp',
 };
 
+const EXT_TO_MIME: Record<string, string> = Object.fromEntries(
+  Object.entries(MIME_TO_EXT).map(([mime, ext]) => [ext, mime]),
+);
+
 /**
  * Validates the magic bytes of an image buffer against known image signatures.
  * For WebP, additionally verifies the RIFF...WEBP marker at offset 8.
@@ -113,24 +117,29 @@ export function copyImageFile(filename: string): string | null {
   }
 }
 
-const IMPORT_EXTENSIONS = new Set(Object.values(MIME_TO_EXT));
-
 /**
  * Writes an image buffer restored from a backup zip to disk under a new
  * UUID-based filename, so it can never collide with an existing file.
- * Trusts the original filename's extension rather than re-validating magic
- * bytes: unlike saveImageToDisk (which handles arbitrary user uploads),
- * this only ever receives files this server itself wrote during export.
+ * A backup zip is just another user-supplied upload (nothing verifies it
+ * was actually produced by this server), so its image bytes go through the
+ * same magic-byte validation as a direct upload via saveImageToDisk —
+ * trusting the declared filename's extension alone would let a crafted zip
+ * smuggle arbitrary file content in under an image extension.
  *
- * @throws {Error} When the original filename's extension isn't a supported image type.
+ * @throws {Error} When the original filename's extension isn't a supported
+ *   image type, or the buffer's content doesn't match that type.
  */
 export function saveImportedImageBuffer(
   buffer: Buffer,
   originalFilename: string,
 ): string {
   const ext = path.extname(originalFilename).toLowerCase();
-  if (!IMPORT_EXTENSIONS.has(ext)) {
+  const mimetype = EXT_TO_MIME[ext];
+  if (!mimetype) {
     throw new Error(`Unsupported image extension: ${ext}`);
+  }
+  if (!hasValidMagicBytes(buffer, mimetype)) {
+    throw new Error('File content does not match declared image type');
   }
 
   const filename = `${uuidv4()}${ext}`;
