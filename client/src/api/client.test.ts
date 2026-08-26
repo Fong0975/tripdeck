@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { api, apiBlob, ApiError, apiJson, json } from './client';
+import { api, apiBlob, ApiError, apiJson, apiUrl, json } from './client';
 
 function makeResponse(
   ok: boolean,
@@ -64,6 +64,12 @@ describe('api', () => {
       expect.stringContaining('/api/trips/1'),
       { method: 'DELETE' },
     );
+  });
+});
+
+describe('apiUrl', () => {
+  it('returns the path unchanged when no API domain is configured', () => {
+    expect(apiUrl('/api/backups/foo.zip')).toBe('/api/backups/foo.zip');
   });
 });
 

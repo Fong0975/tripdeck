@@ -20,7 +20,7 @@ mkdir "%DEST_DIR%"
 :: /XF  : Excludes files matching these names/patterns.
 :: /R:1 /W:1 : Retries once on failure with a 1-second wait.
 robocopy "./" "%DEST_DIR%" /E ^
-    /XD .git .github node_modules .vscode .idea .claude coverage .cache "%DEST_DIR%" server\dist server\uploads client\dist client\dist-ssr raw ^
+    /XD .git .github node_modules .vscode .idea .claude coverage .cache "%DEST_DIR%" server\dist server\uploads server\backups client\dist client\dist-ssr raw ^
     /XF .gitignore README.md *.bat *.log .env .env.local .env.*.local .env.example .env.production ^
     .eslintrc* .eslintcache .prettierrc* .prettierignore ^
     *.tsbuildinfo *.code-workspace npm-debug.log* yarn-debug.log* yarn-error.log*
@@ -35,6 +35,13 @@ if %ERRORLEVEL% LEQ 1 (
         echo Cleaning uploads directory...
         del /q "%DEST_DIR%\server\uploads\*" 2>nul
         for /d %%i in ("%DEST_DIR%\server\uploads\*") do rmdir /s /q "%%i"
+    )
+
+    :: Remove all files inside backups directory (keep the directory itself for Docker volume mount)
+    if exist "%DEST_DIR%\server\backups" (
+        echo Cleaning backups directory...
+        del /q "%DEST_DIR%\server\backups\*" 2>nul
+        for /d %%i in ("%DEST_DIR%\server\backups\*") do rmdir /s /q "%%i"
     )
 
     :: Check for production environment file and copy it

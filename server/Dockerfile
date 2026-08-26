@@ -22,7 +22,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/swagger ./swagger
 COPY --from=builder /app/.env .
 
-RUN mkdir -p uploads
+RUN mkdir -p uploads backups
 
 EXPOSE 3001
 

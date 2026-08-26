@@ -684,6 +684,10 @@
                           }
                         }
                       }
+                    },
+                    "templateRestored": {
+                      "type": "boolean",
+                      "example": false
                     }
                   }
                 }
@@ -697,23 +701,7 @@
             "description": "Internal Server Error"
           }
         },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                },
-                "required": ["file"]
-              }
-            }
-          }
-        }
+        "requestBody": {}
       }
     },
     "/api/trips/{tripId}/days/{dayId}/attractions": {
@@ -3329,6 +3317,77 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/backups/": {
+      "get": {
+        "tags": ["Backup"],
+        "summary": "List automatic backups",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Every automatic backup currently on disk, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "filename": {
+                        "type": "string",
+                        "example": "tripdeck-auto-backup-2026-08-26T00-00-00-000Z.zip"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "example": 2048
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-08-26T00:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/backups/{filename}": {
+      "get": {
+        "tags": ["Backup"],
+        "summary": "Download one automatic backup file",
+        "description": "",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backup zip file",
+            "content": {
+              "application/zip": {}
+            }
           },
           "404": {
             "description": "Not Found"

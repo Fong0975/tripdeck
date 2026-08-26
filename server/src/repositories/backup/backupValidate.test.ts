@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import { describe, expect, it } from 'vitest';
 
 import type { BackupManifest, TripBackupData } from '../../types/backup';
+import type { ChecklistTemplateResponse } from '../../types/checklist';
 
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
@@ -86,14 +87,47 @@ interface TripFixture {
   malformedDataJson?: boolean;
 }
 
+function sampleTemplate(): ChecklistTemplateResponse {
+  return {
+    categories: [
+      {
+        id: 1,
+        name: 'Documents',
+        items: [
+          {
+            id: 1,
+            name: 'Passport',
+            quantity: 1,
+            notes: null,
+            storage_location: null,
+            specs: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 interface BuildZipOptions {
   /** A manifest payload to serialize as-is, or a sentinel to corrupt/omit it. */
   manifest?: unknown;
   trips?: TripFixture[];
+  /** When set, the manifest declares `includesTemplate: true`. */
+  includesTemplate?: boolean;
+  template?: ChecklistTemplateResponse;
+  skipTemplateJson?: boolean;
+  malformedTemplateJson?: boolean;
 }
 
 /** Builds a real backup zip buffer (via adm-zip) for exercising parseBackupZip. */
-function buildZip({ manifest, trips }: BuildZipOptions = {}): Buffer {
+function buildZip({
+  manifest,
+  trips,
+  includesTemplate,
+  template,
+  skipTemplateJson,
+  malformedTemplateJson,
+}: BuildZipOptions = {}): Buffer {
   const zip = new AdmZip();
   const tripFixtures = trips ?? [{ folder: 'trip_1', data: sampleTripData() }];
 
@@ -106,6 +140,7 @@ function buildZip({ manifest, trips }: BuildZipOptions = {}): Buffer {
       folder: t.folder,
       title: t.data.trip.title,
     })),
+    ...(includesTemplate ? { includesTemplate: true } : {}),
   };
 
   if (manifest === 'missing') {
@@ -139,6 +174,19 @@ function buildZip({ manifest, trips }: BuildZipOptions = {}): Buffer {
       zip.addFile(
         `trips/${trip.folder}/images/${filename}`,
         Buffer.from(`bytes-${filename}`, 'utf-8'),
+      );
+    }
+  }
+
+  if (includesTemplate) {
+    if (skipTemplateJson) {
+      // Intentionally omit template.json entirely.
+    } else if (malformedTemplateJson) {
+      zip.addFile('template.json', Buffer.from('{not valid json', 'utf-8'));
+    } else {
+      zip.addFile(
+        'template.json',
+        Buffer.from(JSON.stringify(template ?? sampleTemplate()), 'utf-8'),
       );
     }
   }
@@ -264,6 +312,40 @@ describe('parseBackupZip', () => {
         { folder: 'trip_1', title: 'Trip', missingFilenames: ['attr1.jpg'] },
       ],
     });
+  });
+
+  it('leaves template null when manifest.includesTemplate is not set', () => {
+    const result = parseBackupZip(buildZip());
+
+    expect(result.template).toBeNull();
+  });
+
+  it('parses template.json when manifest.includesTemplate is true', () => {
+    const template = sampleTemplate();
+    const result = parseBackupZip(
+      buildZip({ includesTemplate: true, template }),
+    );
+
+    expect(result.template).toEqual(template);
+  });
+
+  it('throws when includesTemplate is true but template.json is missing', () => {
+    const zip = buildZip({ includesTemplate: true, skipTemplateJson: true });
+
+    expect(() => parseBackupZip(zip)).toThrow(
+      /template\.json missing or unreadable/,
+    );
+  });
+
+  it('throws when includesTemplate is true but template.json is malformed JSON', () => {
+    const zip = buildZip({
+      includesTemplate: true,
+      malformedTemplateJson: true,
+    });
+
+    expect(() => parseBackupZip(zip)).toThrow(
+      /template\.json missing or unreadable/,
+    );
   });
 
   it('collects missing images across every trip before throwing, not just the first', () => {

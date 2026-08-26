@@ -46,8 +46,15 @@ Thumbs.db
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Automatic backup files (keep directory structure, ignore actual files)
+server/backups/*
+!server/backups/.gitkeep
+
 # Docker uploads volume
 .upload/
+
+# Docker backups volume
+.backups/
 
 # Editor
 .vscode/*

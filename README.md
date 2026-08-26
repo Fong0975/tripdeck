@@ -6,6 +6,7 @@ A travel itinerary planning app with a React frontend and a Node.js REST API bac
 - **Itinerary export** — Generate a formatted Word (.docx) document from any trip, with an editable Markdown preview step before download. The export includes styled day headers, transport tables, embedded images, and clickable hyperlinks.
 - **Packing checklist** — Manage a reusable packing template; each trip gets its own copy with multiple occasion columns so you can track what to pack for each part of the journey.
 - **Trip backup / import** — Export one or more trips as a self-contained zip (full data plus every uploaded image), and import a backup zip back in as brand-new trips, with automatic title de-duplication and ID remapping so nothing collides with existing data.
+- **Automatic full-system backup** — Every 15 days the server writes a complete backup (every trip, the packing checklist template, and all images) to disk, keeping only the 6 most recent files. Browse and download them from the same import/export modal, then restore one through the regular import flow.
 
 ## Project Structure
 
@@ -33,8 +34,10 @@ tripdeck/
 │   │   ├── middleware/       # Express middleware (multer file upload)
 │   │   ├── repositories/     # Database query layer (MySQL2)
 │   │   ├── routes/           # Defines API endpoints and URL mapping
+│   │   ├── scheduler/        # Periodic automatic full-system backup checker
 │   │   ├── types/            # Request/response type definitions
 │   │   └── index.ts          # Express server entry point
+│   ├── backups/              # Automatic backup files (git-ignored, timestamped filenames)
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
 │   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── Dockerfile            # Multi-stage build: tsc → production Node.js

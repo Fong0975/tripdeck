@@ -9,6 +9,12 @@ export interface BackupManifest {
   exportedAt: string;
   tripCount: number;
   trips: BackupManifestTripEntry[];
+  /**
+   * True when the zip's root also contains a `template.json` snapshot of
+   * the global packing checklist template (only set by the automatic
+   * system-wide backup, never by a manual per-trip export).
+   */
+  includesTemplate?: boolean;
 }
 
 export interface BackupManifestTripEntry {
@@ -63,4 +69,17 @@ export interface FailedTripResult {
 export interface ImportBackupResult {
   imported: ImportedTripResult[];
   failed: FailedTripResult[];
+  /**
+   * True only when template restoration was requested and the backup
+   * actually contained a template snapshot to restore.
+   */
+  templateRestored: boolean;
+}
+
+/** One automatic backup file, as listed/downloaded via `/api/backups`. */
+export interface AutoBackupFileInfo {
+  filename: string;
+  sizeBytes: number;
+  /** The file's last-modified time, as an ISO string. */
+  createdAt: string;
 }

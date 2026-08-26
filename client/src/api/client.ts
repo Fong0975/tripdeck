@@ -4,6 +4,14 @@ const API_BASE = _apiDomain
   ? `${_apiDomain}:${import.meta.env.VITE_API_PORT}`
   : '';
 
+/**
+ * Builds a full request URL for `path`, for callers that need the URL
+ * itself rather than a fetch response (e.g. an `<a href>` download link).
+ */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, init);
   if (!res.ok) {

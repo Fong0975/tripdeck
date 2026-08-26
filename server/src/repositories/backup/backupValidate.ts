@@ -5,6 +5,7 @@ import {
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
+import type { ChecklistTemplateResponse } from '../../types/checklist';
 import type { ImageResponse } from '../../types/trip';
 
 import { BackupValidationError } from './errors';
@@ -21,6 +22,11 @@ export interface ParsedBackupTrip {
 export interface ParsedBackup {
   manifest: BackupManifest;
   trips: ParsedBackupTrip[];
+  /**
+   * The zip's `template.json`, parsed. Null unless
+   * `manifest.includesTemplate` is true (i.e. this is a system-wide backup).
+   */
+  template: ChecklistTemplateResponse | null;
 }
 
 interface MissingImagesEntry {
@@ -66,7 +72,11 @@ function collectImages(data: TripBackupData): ImageResponse[] {
  *  3. Every trip listed in the manifest must have a readable
  *     `trips/<folder>/data.json`. Any of these being wrong indicates a
  *     corrupt or foreign file, so they fail fast on the first problem.
- *  4. Every image referenced anywhere in every trip's data must exist as a
+ *  4. If `manifest.includesTemplate` is true, the zip's root `template.json`
+ *     must also be readable — same "fail fast" treatment as a trip's
+ *     data.json, since a system-wide backup that claims to include a
+ *     template but doesn't is just as corrupt.
+ *  5. Every image referenced anywhere in every trip's data must exist as a
  *     zip entry. Missing images are collected across *all* trips first and
  *     reported together in a single error, so an incomplete backup is
  *     rejected as a whole rather than importing some trips with dangling
@@ -121,6 +131,16 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
     });
   }
 
+  let template: ChecklistTemplateResponse | null = null;
+  if (manifest.includesTemplate) {
+    template = readJsonEntry<ChecklistTemplateResponse>(zip, 'template.json');
+    if (!template) {
+      throw new BackupValidationError(
+        'Invalid backup file: template.json missing or unreadable',
+      );
+    }
+  }
+
   const missingImagesByTrip: MissingImagesEntry[] = [];
   for (const trip of parsedTrips) {
     const missingFilenames: string[] = [];
@@ -154,5 +174,5 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
     );
   }
 
-  return { manifest, trips: parsedTrips };
+  return { manifest, trips: parsedTrips, template };
 }
