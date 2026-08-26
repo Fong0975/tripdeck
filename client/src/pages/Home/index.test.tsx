@@ -40,12 +40,14 @@ vi.mock('./TripList', () => ({
     onAdd,
     onDelete,
     onEdit,
+    onImportExport,
   }: {
     trips: Trip[];
     loading: boolean;
     onAdd: () => void;
     onDelete: (id: number) => void;
     onEdit: (trip: Trip) => void;
+    onImportExport: () => void;
   }) => (
     <div>
       <span>trip-list</span>
@@ -54,6 +56,7 @@ vi.mock('./TripList', () => ({
       <button onClick={onAdd}>trigger-add</button>
       <button onClick={() => onDelete(1)}>trigger-delete</button>
       <button onClick={() => onEdit(sampleTrip)}>trigger-edit</button>
+      <button onClick={onImportExport}>trigger-import-export</button>
     </div>
   ),
 }));
@@ -83,6 +86,15 @@ vi.mock('@/components/AddTripModal', () => ({
       >
         trigger-added
       </button>
+    </div>
+  ),
+}));
+
+vi.mock('@/components/ImportExportModal', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div>
+      <span>import-export-modal</span>
+      <button onClick={onClose}>trigger-import-export-close</button>
     </div>
   ),
 }));
@@ -134,6 +146,7 @@ describe('Home', () => {
     expect(screen.getByText('checklist-section')).toBeInTheDocument();
     expect(screen.queryByText('add-trip-modal')).not.toBeInTheDocument();
     expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+    expect(screen.queryByText('import-export-modal')).not.toBeInTheDocument();
   });
 
   it('passes loading and trips from useHomeData through to TripList', () => {
@@ -219,5 +232,20 @@ describe('Home', () => {
       expect.objectContaining({ id: 1, title: 'Updated Trip' }),
     );
     expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('shows the import/export modal after triggering it and hides it after closing', async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'trigger-import-export' }),
+    );
+    expect(screen.getByText('import-export-modal')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'trigger-import-export-close' }),
+    );
+    expect(screen.queryByText('import-export-modal')).not.toBeInTheDocument();
   });
 });

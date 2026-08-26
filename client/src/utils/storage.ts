@@ -2,6 +2,7 @@
 // split by resource. This file re-exports them so existing `@/utils/storage`
 // imports keep working without a project-wide import rewrite.
 export * from '@/api/attractions';
+export * from '@/api/backup';
 export * from '@/api/checklistTemplate';
 export * from '@/api/connections';
 export * from '@/api/dayLocations';

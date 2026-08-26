@@ -51,4 +51,19 @@ describe('ModalFooterActions', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
+
+  it('disables the submit button and blocks submission when disabled is true', async () => {
+    const onSubmit = vi.fn(e => e.preventDefault());
+    const user = userEvent.setup();
+    render(
+      <form onSubmit={onSubmit}>
+        <ModalFooterActions onCancel={vi.fn()} disabled />
+      </form>,
+    );
+
+    expect(screen.getByText('儲存')).toBeDisabled();
+    await user.click(screen.getByText('儲存'));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });

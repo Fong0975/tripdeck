@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { FolderInput, Plus } from 'lucide-react';
 
 import TripCard from '@/components/TripCard';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
@@ -10,6 +10,7 @@ interface Props {
   onAdd: () => void;
   onDelete: (id: number) => void;
   onEdit: (trip: Trip) => void;
+  onImportExport: () => void;
 }
 
 export default function TripList({
@@ -18,18 +19,28 @@ export default function TripList({
   onAdd,
   onDelete,
   onEdit,
+  onImportExport,
 }: Props) {
   return (
     <main className='mx-auto max-w-screen-xl px-4 pb-20'>
       <div className='mb-8 flex items-center justify-between'>
         <h2 className='text-foreground text-2xl font-bold'>我的旅程</h2>
-        <button
-          onClick={onAdd}
-          className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
-        >
-          <Plus size={18} />
-          新增旅程
-        </button>
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={onImportExport}
+            className='border-border text-foreground hover:bg-accent flex items-center gap-2 rounded-xl border px-4 py-2 font-medium transition-colors'
+          >
+            <FolderInput size={18} />
+            匯入 / 匯出
+          </button>
+          <button
+            onClick={onAdd}
+            className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
+          >
+            <Plus size={18} />
+            新增旅程
+          </button>
+        </div>
       </div>
 
       {loading ? (

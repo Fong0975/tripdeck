@@ -45,6 +45,7 @@ describe('TripList', () => {
         onAdd={vi.fn()}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onImportExport={vi.fn()}
       />,
     );
 
@@ -63,6 +64,7 @@ describe('TripList', () => {
         onAdd={vi.fn()}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onImportExport={vi.fn()}
       />,
     );
 
@@ -85,6 +87,7 @@ describe('TripList', () => {
         onAdd={vi.fn()}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onImportExport={vi.fn()}
       />,
     );
 
@@ -102,12 +105,32 @@ describe('TripList', () => {
         onAdd={onAdd}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onImportExport={vi.fn()}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: /新增旅程/ }));
 
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onImportExport when the "匯入 / 匯出" button is clicked', async () => {
+    const user = userEvent.setup();
+    const onImportExport = vi.fn();
+    render(
+      <TripList
+        trips={[]}
+        loading={false}
+        onAdd={vi.fn()}
+        onDelete={vi.fn()}
+        onEdit={vi.fn()}
+        onImportExport={onImportExport}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /匯入 \/ 匯出/ }));
+
+    expect(onImportExport).toHaveBeenCalledTimes(1);
   });
 
   it('calls onDelete with the trip id when a trip card requests deletion', async () => {
@@ -121,6 +144,7 @@ describe('TripList', () => {
         onAdd={vi.fn()}
         onDelete={onDelete}
         onEdit={vi.fn()}
+        onImportExport={vi.fn()}
       />,
     );
 
@@ -140,6 +164,7 @@ describe('TripList', () => {
         onAdd={vi.fn()}
         onDelete={vi.fn()}
         onEdit={onEdit}
+        onImportExport={vi.fn()}
       />,
     );
 
