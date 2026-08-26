@@ -1,3 +1,4 @@
+export * from './autoBackupStorage';
 export * from './backupExport';
 export * from './backupImport';
 export * from './backupValidate';
