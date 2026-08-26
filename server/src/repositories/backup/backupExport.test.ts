@@ -1,7 +1,10 @@
 import AdmZip from 'adm-zip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { TripChecklistResponse } from '../../types/checklist';
+import type {
+  ChecklistTemplateResponse,
+  TripChecklistResponse,
+} from '../../types/checklist';
 import type { TripContentResponse, TripResponse } from '../../types/trip';
 
 import { buildBackupZip, buildTripBackupData } from './backupExport';
@@ -10,11 +13,16 @@ import { TripNotFoundError } from './errors';
 const mockFindById = vi.fn();
 const mockFindContent = vi.fn();
 const mockFindChecklist = vi.fn();
+const mockFindTemplate = vi.fn();
 const mockReadFileSync = vi.fn();
 
 vi.mock('../trip', () => ({
   findById: (...args: unknown[]) => mockFindById(...args),
   findContent: (...args: unknown[]) => mockFindContent(...args),
+}));
+
+vi.mock('../checklist/template', () => ({
+  findTemplate: (...args: unknown[]) => mockFindTemplate(...args),
 }));
 
 vi.mock('../checklist/trip', () => ({
@@ -86,9 +94,29 @@ const sampleChecklist: TripChecklistResponse = {
   occasions: [],
 };
 
+const sampleTemplate: ChecklistTemplateResponse = {
+  categories: [
+    {
+      id: 1,
+      name: 'Documents',
+      items: [
+        {
+          id: 1,
+          name: 'Passport',
+          quantity: 1,
+          notes: null,
+          storage_location: null,
+          specs: [],
+        },
+      ],
+    },
+  ],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockReadFileSync.mockReturnValue(Buffer.from('fake-image-bytes'));
+  mockFindTemplate.mockResolvedValue(sampleTemplate);
 });
 
 describe('buildTripBackupData', () => {
@@ -228,5 +256,45 @@ describe('buildBackupZip', () => {
     mockFindById.mockResolvedValue(null);
 
     await expect(buildBackupZip([999])).rejects.toThrow(TripNotFoundError);
+  });
+
+  it('omits template.json and includesTemplate by default', async () => {
+    const buffer = await buildBackupZip([1]);
+    const zip = new AdmZip(buffer);
+    const manifest = JSON.parse(zip.readAsText('manifest.json'));
+
+    expect(zip.getEntry('template.json')).toBeNull();
+    expect(manifest.includesTemplate).toBeUndefined();
+    expect(mockFindTemplate).not.toHaveBeenCalled();
+  });
+
+  it('adds template.json and sets includesTemplate when requested', async () => {
+    const buffer = await buildBackupZip([1], { includeTemplate: true });
+    const zip = new AdmZip(buffer);
+    const manifest = JSON.parse(zip.readAsText('manifest.json'));
+
+    expect(manifest.includesTemplate).toBe(true);
+    const template = JSON.parse(zip.readAsText('template.json'));
+    expect(template).toEqual(sampleTemplate);
+  });
+
+  it('can export just the template with no trips', async () => {
+    const buffer = await buildBackupZip([], { includeTemplate: true });
+    const zip = new AdmZip(buffer);
+    const manifest = JSON.parse(zip.readAsText('manifest.json'));
+
+    expect(manifest.tripCount).toBe(0);
+    expect(manifest.includesTemplate).toBe(true);
+    expect(zip.getEntry('template.json')).not.toBeNull();
+  });
+
+  it('still produces a valid backup when the template has no categories yet', async () => {
+    mockFindTemplate.mockResolvedValue({ categories: [] });
+
+    const buffer = await buildBackupZip([1], { includeTemplate: true });
+    const zip = new AdmZip(buffer);
+    const template = JSON.parse(zip.readAsText('template.json'));
+
+    expect(template).toEqual({ categories: [] });
   });
 });

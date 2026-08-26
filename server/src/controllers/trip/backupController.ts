@@ -4,9 +4,7 @@ import * as backupRepo from '../../repositories/backup';
 
 function isPositiveIntegerArray(value: unknown): value is number[] {
   return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every(id => Number.isInteger(id) && id > 0)
+    Array.isArray(value) && value.every(id => Number.isInteger(id) && id > 0)
   );
 }
 
@@ -17,14 +15,17 @@ function buildBackupFilename(now: Date): string {
 
 export async function exportTrips(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Backup']
-     #swagger.summary = 'Export one or more trips as a backup zip'
+     #swagger.summary = 'Export one or more trips (and optionally the checklist template) as a backup zip'
      #swagger.requestBody = {
        required: true,
        content: {
          'application/json': {
            schema: {
              type: 'object',
-             properties: { tripIds: { type: 'array', items: { type: 'integer' }, example: [1, 2] } },
+             properties: {
+               tripIds: { type: 'array', items: { type: 'integer' }, example: [1, 2] },
+               includeTemplate: { type: 'boolean', example: false, description: 'Also include a snapshot of the global packing checklist template.' }
+             },
              required: ['tripIds']
            }
          }
@@ -35,15 +36,32 @@ export async function exportTrips(req: Request, res: Response): Promise<void> {
        content: { 'application/zip': {} }
      } */
   try {
-    const body = req.body as { tripIds?: unknown };
+    const body = req.body as { tripIds?: unknown; includeTemplate?: unknown };
     if (!isPositiveIntegerArray(body.tripIds)) {
       res.status(400).json({
-        error: 'tripIds must be a non-empty array of positive integers',
+        error: 'tripIds must be an array of positive integers',
+      });
+      return;
+    }
+    if (
+      body.includeTemplate !== undefined &&
+      typeof body.includeTemplate !== 'boolean'
+    ) {
+      res.status(400).json({ error: 'includeTemplate must be a boolean' });
+      return;
+    }
+
+    const includeTemplate = body.includeTemplate === true;
+    if (body.tripIds.length === 0 && !includeTemplate) {
+      res.status(400).json({
+        error: 'Select at least one trip or the checklist template to export',
       });
       return;
     }
 
-    const zipBuffer = await backupRepo.buildBackupZip(body.tripIds);
+    const zipBuffer = await backupRepo.buildBackupZip(body.tripIds, {
+      includeTemplate,
+    });
     const filename = buildBackupFilename(new Date());
 
     res.setHeader('Content-Type', 'application/zip');

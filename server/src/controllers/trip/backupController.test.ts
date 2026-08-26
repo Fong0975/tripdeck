@@ -24,7 +24,6 @@ describe('exportTrips', () => {
   it.each([
     { name: 'tripIds is missing', body: {} },
     { name: 'tripIds is not an array', body: { tripIds: 1 } },
-    { name: 'tripIds is an empty array', body: { tripIds: [] } },
     { name: 'tripIds contains a non-integer', body: { tripIds: [1, 1.5] } },
     {
       name: 'tripIds contains a non-positive integer',
@@ -36,9 +35,50 @@ describe('exportTrips', () => {
     await exportTrips(req, res);
 
     expectJsonStatus(res, 400, {
-      error: 'tripIds must be a non-empty array of positive integers',
+      error: 'tripIds must be an array of positive integers',
     });
     expect(backupRepo.buildBackupZip).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when includeTemplate is not a boolean', async () => {
+    const { req, res } = createMockReqRes({
+      body: { tripIds: [1], includeTemplate: 'true' },
+    });
+
+    await exportTrips(req, res);
+
+    expectJsonStatus(res, 400, {
+      error: 'includeTemplate must be a boolean',
+    });
+    expect(backupRepo.buildBackupZip).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when neither a trip nor the template is selected', async () => {
+    const { req, res } = createMockReqRes({
+      body: { tripIds: [], includeTemplate: false },
+    });
+
+    await exportTrips(req, res);
+
+    expectJsonStatus(res, 400, {
+      error: 'Select at least one trip or the checklist template to export',
+    });
+    expect(backupRepo.buildBackupZip).not.toHaveBeenCalled();
+  });
+
+  it('allows an empty tripIds array when includeTemplate is true', async () => {
+    const zipBuffer = Buffer.from('zip-bytes');
+    vi.mocked(backupRepo.buildBackupZip).mockResolvedValue(zipBuffer);
+    const { req, res } = createMockReqRes({
+      body: { tripIds: [], includeTemplate: true },
+    });
+
+    await exportTrips(req, res);
+
+    expect(backupRepo.buildBackupZip).toHaveBeenCalledWith([], {
+      includeTemplate: true,
+    });
+    expect(res.send).toHaveBeenCalledWith(zipBuffer);
   });
 
   it('streams the zip buffer with the correct headers on success', async () => {
@@ -48,7 +88,9 @@ describe('exportTrips', () => {
 
     await exportTrips(req, res);
 
-    expect(backupRepo.buildBackupZip).toHaveBeenCalledWith([1, 2]);
+    expect(backupRepo.buildBackupZip).toHaveBeenCalledWith([1, 2], {
+      includeTemplate: false,
+    });
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Type',
       'application/zip',
@@ -58,6 +100,20 @@ describe('exportTrips', () => {
       expect.stringMatching(/^attachment; filename="tripdeck-backup-.*\.zip"$/),
     );
     expect(res.send).toHaveBeenCalledWith(zipBuffer);
+  });
+
+  it('passes includeTemplate through when requested alongside trips', async () => {
+    const zipBuffer = Buffer.from('zip-bytes');
+    vi.mocked(backupRepo.buildBackupZip).mockResolvedValue(zipBuffer);
+    const { req, res } = createMockReqRes({
+      body: { tripIds: [1], includeTemplate: true },
+    });
+
+    await exportTrips(req, res);
+
+    expect(backupRepo.buildBackupZip).toHaveBeenCalledWith([1], {
+      includeTemplate: true,
+    });
   });
 
   it('returns 404 with the error message when a trip is not found', async () => {

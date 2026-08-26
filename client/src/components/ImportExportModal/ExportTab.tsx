@@ -22,11 +22,19 @@ function buildExportFilename(now: Date): string {
 
 export default function ExportTab({ trips, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [includeTemplate, setIncludeTemplate] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
 
   const allSelected = trips.length > 0 && selectedIds.size === trips.length;
+  const canSubmit = selectedIds.size > 0 || includeTemplate;
+
+  const toggleTemplate = () => {
+    setIncludeTemplate(prev => !prev);
+    setExportError('');
+    setExportSuccess(false);
+  };
 
   const toggleTrip = (id: number) => {
     setSelectedIds(prev => {
@@ -50,7 +58,7 @@ export default function ExportTab({ trips, onClose }: Props) {
 
   const handleExportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedIds.size === 0) {
+    if (!canSubmit) {
       return;
     }
 
@@ -58,7 +66,7 @@ export default function ExportTab({ trips, onClose }: Props) {
     setExportError('');
     setExportSuccess(false);
     try {
-      const blob = await exportTripsBackup([...selectedIds]);
+      const blob = await exportTripsBackup([...selectedIds], includeTemplate);
       downloadBlob(blob, buildExportFilename(new Date()));
       setExportSuccess(true);
     } catch {
@@ -70,6 +78,21 @@ export default function ExportTab({ trips, onClose }: Props) {
 
   return (
     <form onSubmit={handleExportSubmit} className='space-y-4'>
+      <label className='border-border hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5'>
+        <input
+          type='checkbox'
+          checked={includeTemplate}
+          onChange={toggleTemplate}
+          className='accent-primary size-3.5 cursor-pointer'
+        />
+        <div className='flex-1'>
+          <p className='text-foreground text-sm'>打包清單範本</p>
+          <p className='text-muted-foreground text-xs'>
+            所有旅程共用的全域打包清單範本
+          </p>
+        </div>
+      </label>
+
       {trips.length === 0 ? (
         <p className='text-muted-foreground text-sm'>目前沒有旅程可以匯出。</p>
       ) : (
@@ -119,7 +142,7 @@ export default function ExportTab({ trips, onClose }: Props) {
       <ModalFooterActions
         onCancel={onClose}
         submitLabel={exporting ? '匯出中…' : '匯出'}
-        disabled={exporting || selectedIds.size === 0}
+        disabled={exporting || !canSubmit}
       />
     </form>
   );

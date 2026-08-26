@@ -51,7 +51,8 @@ describe('ExportTab', () => {
 
     expect(screen.getByText('匯出')).toBeDisabled();
 
-    await user.click(screen.getByRole('checkbox'));
+    const [, tripCheckbox] = screen.getAllByRole('checkbox');
+    await user.click(tripCheckbox);
 
     expect(screen.getByText('匯出')).toBeEnabled();
   });
@@ -64,14 +65,31 @@ describe('ExportTab', () => {
         onClose={vi.fn()}
       />,
     );
-    const checkbox = screen.getByRole('checkbox');
-    await user.click(checkbox);
-    expect(checkbox).toBeChecked();
+    const [, tripCheckbox] = screen.getAllByRole('checkbox');
+    await user.click(tripCheckbox);
+    expect(tripCheckbox).toBeChecked();
 
-    await user.click(checkbox);
+    await user.click(tripCheckbox);
 
-    expect(checkbox).not.toBeChecked();
+    expect(tripCheckbox).not.toBeChecked();
     expect(screen.getByText('匯出')).toBeDisabled();
+  });
+
+  it('allows exporting just the template when there are no trips', async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(['zip']);
+    vi.mocked(exportTripsBackup).mockResolvedValue(blob);
+    render(<ExportTab trips={[]} onClose={vi.fn()} />);
+    expect(screen.getByText('匯出')).toBeDisabled();
+
+    await user.click(screen.getByRole('checkbox'));
+    expect(screen.getByText('匯出')).toBeEnabled();
+
+    await user.click(screen.getByText('匯出'));
+
+    await waitFor(() =>
+      expect(exportTripsBackup).toHaveBeenCalledWith([], true),
+    );
   });
 
   it('does nothing when the export form is submitted with no trips selected', () => {
@@ -98,11 +116,17 @@ describe('ExportTab', () => {
     render(<ExportTab trips={trips} onClose={vi.fn()} />);
 
     await user.click(screen.getByText('全選'));
-    screen.getAllByRole('checkbox').forEach(cb => expect(cb).toBeChecked());
+    screen
+      .getAllByRole('checkbox')
+      .slice(1)
+      .forEach(cb => expect(cb).toBeChecked());
     expect(screen.getByText('匯出')).toBeEnabled();
 
     await user.click(screen.getByText('取消全選'));
-    screen.getAllByRole('checkbox').forEach(cb => expect(cb).not.toBeChecked());
+    screen
+      .getAllByRole('checkbox')
+      .slice(1)
+      .forEach(cb => expect(cb).not.toBeChecked());
     expect(screen.getByText('匯出')).toBeDisabled();
   });
 
@@ -117,15 +141,39 @@ describe('ExportTab', () => {
       />,
     );
 
-    await user.click(screen.getByRole('checkbox'));
+    const [, tripCheckbox] = screen.getAllByRole('checkbox');
+    await user.click(tripCheckbox);
     await user.click(screen.getByText('匯出'));
 
-    await waitFor(() => expect(exportTripsBackup).toHaveBeenCalledWith([7]));
+    await waitFor(() =>
+      expect(exportTripsBackup).toHaveBeenCalledWith([7], false),
+    );
     expect(downloadBlob).toHaveBeenCalledWith(
       blob,
       expect.stringMatching(/^tripdeck-backup-\d{8}-\d{6}\.zip$/),
     );
     expect(await screen.findByText('已成功下載備份檔案。')).toBeInTheDocument();
+  });
+
+  it('includes the template flag alongside the selected trip when both are checked', async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(['zip']);
+    vi.mocked(exportTripsBackup).mockResolvedValue(blob);
+    render(
+      <ExportTab
+        trips={[makeTrip({ id: 7, title: 'Trip A' })]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const [templateCheckbox, tripCheckbox] = screen.getAllByRole('checkbox');
+    await user.click(templateCheckbox);
+    await user.click(tripCheckbox);
+    await user.click(screen.getByText('匯出'));
+
+    await waitFor(() =>
+      expect(exportTripsBackup).toHaveBeenCalledWith([7], true),
+    );
   });
 
   it('shows an error message and does not download when the export fails', async () => {
@@ -138,7 +186,8 @@ describe('ExportTab', () => {
       />,
     );
 
-    await user.click(screen.getByRole('checkbox'));
+    const [, tripCheckbox] = screen.getAllByRole('checkbox');
+    await user.click(tripCheckbox);
     await user.click(screen.getByText('匯出'));
 
     expect(await screen.findByText('匯出失敗，請稍後再試')).toBeInTheDocument();
