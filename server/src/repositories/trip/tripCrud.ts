@@ -8,12 +8,21 @@ import type {
   UpdateTripBody,
 } from '../../types/trip';
 import * as attractionCrud from '../attraction/attractionCrud';
+import * as connectionRepo from '../connectionRepository';
 import * as imageRepo from '../imageRepository';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
 import { TripDayRow, TripRow } from './types';
 
+interface TripDayIdRow extends RowDataPacket {
+  id: number;
+}
+
 interface TripAttractionIdRow extends RowDataPacket {
+  id: number;
+}
+
+interface TripConnectionIdRow extends RowDataPacket {
   id: number;
 }
 
@@ -223,13 +232,51 @@ export async function update(
 }
 
 /**
- * Deletes a trip and its own images from disk. `ON DELETE CASCADE` on
- * `trip_images.trip_id` removes the DB rows automatically, but the uploaded
- * files must be cleaned up explicitly (same tradeoff as
- * connectionRepository.deleteById).
+ * Deletes a trip and every image file it owns — its own, plus every day's,
+ * attraction's, and connection's — from disk. `ON DELETE CASCADE` removes
+ * all the corresponding DB rows automatically, but the uploaded files
+ * themselves are never touched by that cascade and must be cleaned up
+ * explicitly (same tradeoff as connectionRepository.deleteById).
+ *
+ * Every trip_connections row under this trip is deleted explicitly first
+ * (via connectionRepo.deleteById, which also cleans up its own images) since
+ * the trip_attraction_id_from/to foreign keys have no ON DELETE clause;
+ * without this, MySQL's cascade from trips -> trip_days -> trip_attractions
+ * would hit those constraints and reject the whole delete (same issue
+ * attractionCrud.deleteById works around for a single attraction).
  */
 export async function deleteById(id: number): Promise<boolean> {
-  const images = await imageRepo.getTripImages(id);
+  const [dayRows] = await pool.execute<TripDayIdRow[]>(
+    'SELECT id FROM trip_days WHERE trip_id = ?',
+    [id],
+  );
+  const dayIds = dayRows.map(row => row.id);
+
+  const [attractionRows] = await pool.execute<TripAttractionIdRow[]>(
+    `SELECT ta.id FROM trip_attractions ta
+     JOIN trip_days td ON td.id = ta.trip_day_id
+     WHERE td.trip_id = ?`,
+    [id],
+  );
+  const attractionIds = attractionRows.map(row => row.id);
+
+  const [connectionRows] = await pool.execute<TripConnectionIdRow[]>(
+    `SELECT tc.id FROM trip_connections tc
+     JOIN trip_days td ON td.id = tc.trip_day_id
+     WHERE td.trip_id = ?`,
+    [id],
+  );
+  for (const row of connectionRows) {
+    await connectionRepo.deleteById(row.id);
+  }
+
+  const [images, dayImagesByDay, attractionImagesByAttraction] =
+    await Promise.all([
+      imageRepo.getTripImages(id),
+      imageRepo.getDayImagesBatch(dayIds),
+      imageRepo.getAttractionImagesBatch(attractionIds),
+    ]);
+
   const [result] = await pool.execute<ResultSetHeader>(
     'DELETE FROM trips WHERE id = ?',
     [id],
@@ -237,6 +284,16 @@ export async function deleteById(id: number): Promise<boolean> {
   if (result.affectedRows > 0) {
     for (const img of images) {
       deleteImageFromDisk(img.filename);
+    }
+    for (const dayImages of dayImagesByDay.values()) {
+      for (const img of dayImages) {
+        deleteImageFromDisk(img.filename);
+      }
+    }
+    for (const attractionImages of attractionImagesByAttraction.values()) {
+      for (const img of attractionImages) {
+        deleteImageFromDisk(img.filename);
+      }
     }
   }
   return result.affectedRows > 0;
