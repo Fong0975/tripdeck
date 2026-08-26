@@ -1,7 +1,7 @@
 {
   "name": "tripdeck",
   "private": true,
-  "version": "1.0.38",
+  "version": "1.0.39",
   "workspaces": [
     "client",
     "server"
