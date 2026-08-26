@@ -102,15 +102,40 @@ describe('importTrips', () => {
     const result = {
       imported: [{ originalTripId: 1, newTripId: 10, title: 'Kyoto Trip' }],
       failed: [],
+      templateRestored: false,
     };
     vi.mocked(backupRepo.importBackupZip).mockResolvedValue(result);
     const { req, res } = createMockReqRes({ file: mockZipFile });
 
     await importTrips(req, res);
 
-    expect(backupRepo.importBackupZip).toHaveBeenCalledWith(mockZipFile.buffer);
+    expect(backupRepo.importBackupZip).toHaveBeenCalledWith(
+      mockZipFile.buffer,
+      { restoreTemplate: false },
+    );
     expect(res.json).toHaveBeenCalledWith(result);
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('passes restoreTemplate: true through when the form field is set', async () => {
+    const result = {
+      imported: [{ originalTripId: 1, newTripId: 10, title: 'Kyoto Trip' }],
+      failed: [],
+      templateRestored: true,
+    };
+    vi.mocked(backupRepo.importBackupZip).mockResolvedValue(result);
+    const { req, res } = createMockReqRes({
+      file: mockZipFile,
+      body: { restoreTemplate: 'true' },
+    });
+
+    await importTrips(req, res);
+
+    expect(backupRepo.importBackupZip).toHaveBeenCalledWith(
+      mockZipFile.buffer,
+      { restoreTemplate: true },
+    );
+    expect(res.json).toHaveBeenCalledWith(result);
   });
 
   it('returns 400 with details when the backup fails validation', async () => {

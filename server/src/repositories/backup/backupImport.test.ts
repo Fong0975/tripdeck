@@ -102,6 +102,23 @@ function mockSequentialInserts() {
   });
 }
 
+/**
+ * Assigns fresh insertIds to the template category/item inserts, so tests
+ * can assert later inserts (items, specs) use the *new* ids. Everything
+ * else (DELETE, specs) is a fire-and-forget affected-rows result.
+ */
+function mockTemplateInserts() {
+  mockConnExecute.mockImplementation((sql: string) => {
+    if (sql.startsWith('INSERT INTO checklist_template_categories')) {
+      return Promise.resolve([{ insertId: 7000 }]);
+    }
+    if (sql.startsWith('INSERT INTO checklist_template_items')) {
+      return Promise.resolve([{ insertId: 8000 }]);
+    }
+    return Promise.resolve([{ affectedRows: 1 }]);
+  });
+}
+
 const sampleData: TripBackupData = {
   trip: {
     id: 1,
@@ -575,6 +592,7 @@ describe('importBackupZip', () => {
           imageBuffers: sampleImageBuffers(),
         },
       ],
+      template: null,
     };
     mockParseBackupZip.mockReturnValue(parsed);
 
@@ -584,6 +602,7 @@ describe('importBackupZip', () => {
       { originalTripId: 1, newTripId: 1000, title: 'Kyoto Trip' },
     ]);
     expect(result.failed).toEqual([]);
+    expect(result.templateRestored).toBe(false);
   });
 
   it('collects a failed entry without aborting the rest when one trip fails', async () => {
@@ -633,6 +652,7 @@ describe('importBackupZip', () => {
           imageBuffers: sampleImageBuffers(),
         },
       ],
+      template: null,
     };
     mockParseBackupZip.mockReturnValue(parsed);
 
@@ -648,5 +668,162 @@ describe('importBackupZip', () => {
     expect(result.imported).toEqual([
       { originalTripId: 2, newTripId: 1000, title: 'Trip B' },
     ]);
+  });
+
+  it('restores the template when restoreTemplate is true and the backup includes one', async () => {
+    mockTemplateInserts();
+    const parsed: ParsedBackup = {
+      manifest: {
+        formatVersion: 1,
+        exportedAt: '2024-01-01T00:00:00.000Z',
+        tripCount: 0,
+        trips: [],
+        includesTemplate: true,
+      },
+      trips: [],
+      template: {
+        categories: [
+          {
+            id: 1,
+            name: 'Documents',
+            items: [
+              {
+                id: 1,
+                name: 'Passport',
+                quantity: 1,
+                notes: null,
+                storage_location: null,
+                specs: [{ id: 1, name: 'Size M', storage_location: null }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    mockParseBackupZip.mockReturnValue(parsed);
+
+    const result = await importBackupZip(Buffer.from('zip'), {
+      restoreTemplate: true,
+    });
+
+    expect(result.templateRestored).toBe(true);
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      'DELETE FROM checklist_template_categories',
+    );
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      'INSERT INTO checklist_template_categories (name) VALUES (?)',
+      ['Documents'],
+    );
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO checklist_template_items'),
+      [7000, 'Passport', 1, null, null],
+    );
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO checklist_template_item_specs'),
+      [8000, 'Size M', null],
+    );
+    expect(mockConnCommit).toHaveBeenCalled();
+  });
+
+  it('does not restore the template when restoreTemplate is not requested', async () => {
+    mockTemplateInserts();
+    const parsed: ParsedBackup = {
+      manifest: {
+        formatVersion: 1,
+        exportedAt: '2024-01-01T00:00:00.000Z',
+        tripCount: 0,
+        trips: [],
+        includesTemplate: true,
+      },
+      trips: [],
+      template: { categories: [{ id: 1, name: 'Documents', items: [] }] },
+    };
+    mockParseBackupZip.mockReturnValue(parsed);
+
+    const result = await importBackupZip(Buffer.from('zip'));
+
+    expect(result.templateRestored).toBe(false);
+    expect(mockConnExecute).not.toHaveBeenCalledWith(
+      'DELETE FROM checklist_template_categories',
+    );
+  });
+
+  it('does not restore the template when requested but the backup has none', async () => {
+    const parsed: ParsedBackup = {
+      manifest: {
+        formatVersion: 1,
+        exportedAt: '2024-01-01T00:00:00.000Z',
+        tripCount: 0,
+        trips: [],
+      },
+      trips: [],
+      template: null,
+    };
+    mockParseBackupZip.mockReturnValue(parsed);
+
+    const result = await importBackupZip(Buffer.from('zip'), {
+      restoreTemplate: true,
+    });
+
+    expect(result.templateRestored).toBe(false);
+    expect(mockGetConnection).not.toHaveBeenCalled();
+  });
+
+  it('leaves already-successful trip results intact when template restore fails', async () => {
+    mockNoTitleConflicts();
+    let attractionCounter = 2000;
+    mockConnExecute.mockImplementation((sql: string) => {
+      if (sql.startsWith('INSERT INTO trips')) {
+        return Promise.resolve([{ insertId: 1000 }]);
+      }
+      if (sql.startsWith('INSERT INTO trip_days')) {
+        return Promise.resolve([{ insertId: 1001 }]);
+      }
+      if (sql.startsWith('INSERT INTO trip_attractions')) {
+        return Promise.resolve([{ insertId: attractionCounter++ }]);
+      }
+      if (sql.startsWith('INSERT INTO trip_connections')) {
+        return Promise.resolve([{ insertId: 3000 }]);
+      }
+      if (sql.startsWith('DELETE FROM checklist_template_categories')) {
+        return Promise.reject(new Error('template db error'));
+      }
+      return Promise.resolve([{ affectedRows: 1 }]);
+    });
+
+    const parsed: ParsedBackup = {
+      manifest: {
+        formatVersion: 1,
+        exportedAt: '2024-01-01T00:00:00.000Z',
+        tripCount: 1,
+        trips: [{ originalTripId: 1, folder: 'trip_1', title: 'Kyoto Trip' }],
+        includesTemplate: true,
+      },
+      trips: [
+        {
+          originalTripId: 1,
+          folder: 'trip_1',
+          data: { ...sampleData, checklist: null },
+          imageBuffers: sampleImageBuffers(),
+        },
+      ],
+      template: { categories: [{ id: 1, name: 'Documents', items: [] }] },
+    };
+    mockParseBackupZip.mockReturnValue(parsed);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await importBackupZip(Buffer.from('zip'), {
+      restoreTemplate: true,
+    });
+
+    expect(result.imported).toEqual([
+      { originalTripId: 1, newTripId: 1000, title: 'Kyoto Trip' },
+    ]);
+    expect(result.failed).toEqual([]);
+    expect(result.templateRestored).toBe(false);
+    expect(mockConnRollback).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
+
+    errorSpy.mockRestore();
   });
 });

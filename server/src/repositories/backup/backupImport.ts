@@ -11,6 +11,7 @@ import type {
   ImportedTripResult,
   TripBackupData,
 } from '../../types/backup';
+import type { ChecklistTemplateResponse } from '../../types/checklist';
 import type { ImageResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
@@ -302,12 +303,74 @@ export async function importSingleTrip(
 }
 
 /**
+ * Replaces the entire global packing checklist template with `template`'s
+ * contents, in one transaction: every existing category is deleted first
+ * (cascading to its items and specs), then the backup's categories, items,
+ * and specs are re-inserted. Unlike trip import, this is a replace rather
+ * than an "always new" operation, since the template is a single global
+ * record rather than a collection the user adds to.
+ */
+async function restoreTemplate(
+  template: ChecklistTemplateResponse,
+): Promise<void> {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    await conn.execute('DELETE FROM checklist_template_categories');
+
+    for (const category of template.categories) {
+      const [categoryResult] = await conn.execute<ResultSetHeader>(
+        'INSERT INTO checklist_template_categories (name) VALUES (?)',
+        [category.name],
+      );
+      const newCategoryId = categoryResult.insertId;
+
+      for (const item of category.items) {
+        const [itemResult] = await conn.execute<ResultSetHeader>(
+          'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+          [
+            newCategoryId,
+            item.name,
+            item.quantity,
+            item.notes,
+            item.storage_location,
+          ],
+        );
+        const newItemId = itemResult.insertId;
+
+        for (const spec of item.specs) {
+          await conn.execute(
+            'INSERT INTO checklist_template_item_specs (checklist_template_item_id, name, storage_location) VALUES (?, ?, ?)',
+            [newItemId, spec.name, spec.storage_location],
+          );
+        }
+      }
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
  * Validates and imports every trip in a backup zip. Each trip is imported
  * independently: one trip failing does not stop the others, since every
  * imported trip is a self-contained new record.
+ *
+ * When `options.restoreTemplate` is true and the backup actually contains a
+ * template snapshot (system-wide backups only), the global checklist
+ * template is replaced after every trip has been processed. A failure while
+ * restoring the template is logged but does not affect the trip results
+ * already collected — it only leaves `templateRestored` false.
  */
 export async function importBackupZip(
   buffer: Buffer,
+  options: { restoreTemplate?: boolean } = {},
 ): Promise<ImportBackupResult> {
   const parsed = parseBackupZip(buffer);
 
@@ -326,5 +389,15 @@ export async function importBackupZip(
     }
   }
 
-  return { imported, failed, templateRestored: false };
+  let templateRestored = false;
+  if (options.restoreTemplate && parsed.template) {
+    try {
+      await restoreTemplate(parsed.template);
+      templateRestored = true;
+    } catch (err) {
+      console.error('[backup] Failed to restore checklist template:', err);
+    }
+  }
+
+  return { imported, failed, templateRestored };
 }

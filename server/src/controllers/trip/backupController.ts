@@ -114,7 +114,10 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const result = await backupRepo.importBackupZip(req.file.buffer);
+    const body = req.body as { restoreTemplate?: string };
+    const result = await backupRepo.importBackupZip(req.file.buffer, {
+      restoreTemplate: body.restoreTemplate === 'true',
+    });
     res.json(result);
   } catch (err) {
     if (err instanceof backupRepo.BackupValidationError) {
