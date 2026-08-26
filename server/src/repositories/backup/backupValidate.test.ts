@@ -87,6 +87,22 @@ interface TripFixture {
   malformedDataJson?: boolean;
 }
 
+/** A minimal single-trip manifest matching `data`, for tests that build a zip by hand. */
+function defaultManifestFor(data: TripBackupData): BackupManifest {
+  return {
+    formatVersion: 1,
+    exportedAt: '2024-01-01T00:00:00.000Z',
+    tripCount: 1,
+    trips: [
+      {
+        originalTripId: data.trip.id,
+        folder: 'trip_1',
+        title: data.trip.title,
+      },
+    ],
+  };
+}
+
 function sampleTemplate(): ChecklistTemplateResponse {
   return {
     categories: [
@@ -346,6 +362,49 @@ describe('parseBackupZip', () => {
     expect(() => parseBackupZip(zip)).toThrow(
       /template\.json missing or unreadable/,
     );
+  });
+
+  describe('zip bomb guard', () => {
+    /** 21 MB of zeros — one byte over MAX_ENTRY_UNCOMPRESSED_BYTES (20 MB) and highly compressible, exactly the shape of a "zip bomb" entry. */
+    const oversizedContent = Buffer.alloc(21 * 1024 * 1024, 0);
+
+    it('rejects a data.json entry whose declared uncompressed size exceeds the cap', () => {
+      const zip = new AdmZip();
+      zip.addFile(
+        'manifest.json',
+        Buffer.from(
+          JSON.stringify(defaultManifestFor(sampleTripData())),
+          'utf-8',
+        ),
+      );
+      zip.addFile('trips/trip_1/data.json', oversizedContent);
+
+      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+        /"trips\/trip_1\/data\.json" is too large \(\d+ bytes uncompressed\)/,
+      );
+    });
+
+    it('rejects an image entry whose declared uncompressed size exceeds the cap', () => {
+      const zip = new AdmZip();
+      const data = sampleTripData();
+      zip.addFile(
+        'manifest.json',
+        Buffer.from(JSON.stringify(defaultManifestFor(data)), 'utf-8'),
+      );
+      zip.addFile(
+        'trips/trip_1/data.json',
+        Buffer.from(JSON.stringify(data), 'utf-8'),
+      );
+      zip.addFile('trips/trip_1/images/trip1.jpg', oversizedContent);
+      zip.addFile(
+        'trips/trip_1/images/attr1.jpg',
+        Buffer.from('bytes-attr1.jpg', 'utf-8'),
+      );
+
+      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+        /"trips\/trip_1\/images\/trip1\.jpg" is too large \(\d+ bytes uncompressed\)/,
+      );
+    });
   });
 
   it('collects missing images across every trip before throwing, not just the first', () => {

@@ -22,13 +22,24 @@ describe('exportTripsBackup', () => {
     const blob = new Blob(['zip-bytes']);
     vi.mocked(apiBlob).mockResolvedValue(blob);
 
-    const result = await exportTripsBackup([1, 2]);
+    const result = await exportTripsBackup([1, 2], false);
 
     expect(apiBlob).toHaveBeenCalledWith('/api/trips/export', {
       method: 'POST',
-      ...json({ tripIds: [1, 2] }),
+      ...json({ tripIds: [1, 2], includeTemplate: false }),
     });
     expect(result).toBe(blob);
+  });
+
+  it('includes the includeTemplate flag when requested', async () => {
+    vi.mocked(apiBlob).mockResolvedValue(new Blob(['zip-bytes']));
+
+    await exportTripsBackup([1], true);
+
+    expect(apiBlob).toHaveBeenCalledWith('/api/trips/export', {
+      method: 'POST',
+      ...json({ tripIds: [1], includeTemplate: true }),
+    });
   });
 });
 

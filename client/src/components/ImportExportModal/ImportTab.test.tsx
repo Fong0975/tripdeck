@@ -226,6 +226,27 @@ describe('ImportTab', () => {
     expect(await screen.findByText('已還原打包清單範本。')).toBeInTheDocument();
   });
 
+  it('shows a neutral message when the backup has no trips and the template was not restored', async () => {
+    const user = userEvent.setup();
+    vi.mocked(importTripsBackup).mockResolvedValue({
+      imported: [],
+      failed: [],
+      templateRestored: false,
+    });
+    const { container } = render(<ImportTab onClose={vi.fn()} />);
+    fireEvent.change(getFileInput(container), {
+      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
+    });
+
+    await user.click(screen.getByText('匯入'));
+
+    expect(
+      await screen.findByText(
+        '這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('calls onClose when cancel is clicked', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

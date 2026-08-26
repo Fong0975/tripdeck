@@ -10,6 +10,7 @@ import {
   type TripBackupData,
 } from '../../types/backup';
 import type { ImageResponse } from '../../types/trip';
+import * as templateRepo from '../checklist/template';
 import * as checklistRepo from '../checklist/trip';
 import * as tripRepo from '../trip';
 
@@ -119,8 +120,16 @@ export async function addTripsToZip(
  * Duplicate IDs are de-duplicated; a missing image file on disk is skipped
  * (with a console warning) rather than failing the whole export, since a
  * DB image row should never outlive its file under normal operation.
+ *
+ * When `options.includeTemplate` is set, a `template.json` snapshot of the
+ * global packing checklist template is also added to the zip's root and
+ * `manifest.includesTemplate` is set, so the same file can later be
+ * imported with "restore template" enabled.
  */
-export async function buildBackupZip(tripIds: number[]): Promise<Buffer> {
+export async function buildBackupZip(
+  tripIds: number[],
+  options: { includeTemplate?: boolean } = {},
+): Promise<Buffer> {
   const zip = new AdmZip();
   const manifestTrips = await addTripsToZip(zip, tripIds);
 
@@ -130,6 +139,16 @@ export async function buildBackupZip(tripIds: number[]): Promise<Buffer> {
     tripCount: manifestTrips.length,
     trips: manifestTrips,
   };
+
+  if (options.includeTemplate) {
+    const template = await templateRepo.findTemplate();
+    zip.addFile(
+      'template.json',
+      Buffer.from(JSON.stringify(template, null, 2), 'utf-8'),
+    );
+    manifest.includesTemplate = true;
+  }
+
   zip.addFile(
     'manifest.json',
     Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8'),

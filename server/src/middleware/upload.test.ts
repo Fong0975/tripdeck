@@ -139,24 +139,22 @@ describe('saveImportedImageBuffer', () => {
     vi.clearAllMocks();
   });
 
-  it.each(['.jpg', '.png', '.gif', '.webp'])(
-    'writes the buffer to disk under a new UUID filename for %s',
-    ext => {
-      const buffer = Buffer.from('image-bytes');
-
-      const filename = saveImportedImageBuffer(buffer, `original${ext}`);
+  it.each(mimeCases)(
+    'writes the buffer to disk under a new UUID filename for $ext when magic bytes are valid',
+    ({ ext, validBuffer }) => {
+      const filename = saveImportedImageBuffer(validBuffer, `original${ext}`);
 
       expect(filename).toBe(`fixed-uuid${ext}`);
       expect(fs.writeFileSync).toHaveBeenCalledWith(
         expect.stringContaining(filename),
-        buffer,
+        validBuffer,
       );
     },
   );
 
   it('is case-insensitive about the source extension', () => {
     const filename = saveImportedImageBuffer(
-      Buffer.from('image-bytes'),
+      mimeCases[0].validBuffer,
       'ORIGINAL.JPG',
     );
 
@@ -167,6 +165,15 @@ describe('saveImportedImageBuffer', () => {
     expect(() =>
       saveImportedImageBuffer(Buffer.from('bytes'), 'malware.exe'),
     ).toThrow('Unsupported image extension: .exe');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('throws and does not write to disk when the content does not match the declared extension', () => {
+    // Simulates a crafted backup zip smuggling arbitrary content under an
+    // image-looking filename — the extension alone must not be trusted.
+    expect(() => saveImportedImageBuffer(GARBAGE_BUFFER, 'cover.jpg')).toThrow(
+      'File content does not match declared image type',
+    );
     expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 });

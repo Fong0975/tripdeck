@@ -2,11 +2,18 @@ import type { AutoBackupFileInfo, ImportBackupResult } from '@/types';
 
 import { apiBlob, apiJson, apiUrl, json } from './client';
 
-/** Downloads a backup zip containing the given trips' full data and images. */
-export async function exportTripsBackup(tripIds: number[]): Promise<Blob> {
+/**
+ * Downloads a backup zip containing the given trips' full data and images.
+ * `includeTemplate` additionally adds a snapshot of the global packing
+ * checklist template to the zip.
+ */
+export async function exportTripsBackup(
+  tripIds: number[],
+  includeTemplate: boolean,
+): Promise<Blob> {
   return apiBlob('/api/trips/export', {
     method: 'POST',
-    ...json({ tripIds }),
+    ...json({ tripIds, includeTemplate }),
   });
 }
 
