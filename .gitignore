@@ -51,7 +51,7 @@ server/backups/*
 !server/backups/.gitkeep
 
 # Docker uploads volume
-.upload/
+.uploads/
 
 # Docker backups volume
 .backups/

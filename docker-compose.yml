@@ -9,9 +9,21 @@ services:
     container_name: tripdeck-backend
     image: fong/tripdeck-backend
     network_mode: host
+    environment:
+      DB_HOST: ${DB_HOST:-localhost}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-tripdeck}
+      VITE_API_PORT: ${VITE_API_PORT:-3001}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      AUTO_BACKUP_ENABLED: ${AUTO_BACKUP_ENABLED:-true}
+      AUTO_BACKUP_INTERVAL_DAYS: ${AUTO_BACKUP_INTERVAL_DAYS:-15}
+      AUTO_BACKUP_CHECK_INTERVAL_HOURS: ${AUTO_BACKUP_CHECK_INTERVAL_HOURS:-24}
+      AUTO_BACKUP_RETENTION_COUNT: ${AUTO_BACKUP_RETENTION_COUNT:-6}
     volumes:
-      - ./.uploads:/app/uploads
-      - ./.backups:/app/backups
+      - ${UPLOADS_HOST_DIR:-./.uploads}:/app/uploads
+      - ${BACKUPS_HOST_DIR:-./.backups}:/app/backups
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${VITE_API_PORT:-3001}/api/health || exit 1"]
@@ -28,7 +40,11 @@ services:
       network: host
       args:
         FRONTEND_PORT: ${FRONTEND_PORT:-3000}
+        VITE_API_DOMAIN: ${VITE_API_DOMAIN:-}
+        VITE_API_PORT: ${VITE_API_PORT:-3001}
+        VITE_API_PUBLIC_PORT: ${VITE_API_PUBLIC_PORT:-}
         VITE_OWM_API_KEY: ${VITE_OWM_API_KEY:-}
+        VITE_VC_API_KEY: ${VITE_VC_API_KEY:-}
     container_name: tripdeck-frontend
     image: fong/tripdeck-frontend
     network_mode: host

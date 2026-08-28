@@ -1,8 +1,10 @@
 const _apiDomain = import.meta.env.VITE_API_DOMAIN;
+// The public-facing port can differ from the backend's internal listen port
+// when a reverse proxy maps VITE_API_DOMAIN to a different external port.
+const _apiPort =
+  import.meta.env.VITE_API_PUBLIC_PORT || import.meta.env.VITE_API_PORT;
 /* v8 ignore next 3 -- domain truthy branch depends on VITE_API_DOMAIN env var, not set in test env */
-const API_BASE = _apiDomain
-  ? `${_apiDomain}:${import.meta.env.VITE_API_PORT}`
-  : '';
+const API_BASE = _apiDomain ? `${_apiDomain}:${_apiPort}` : '';
 
 /**
  * Builds a full request URL for `path`, for callers that need the URL
