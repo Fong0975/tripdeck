@@ -20,6 +20,35 @@ const swaggerFile: object = JSON.parse(
 const app = express();
 const PORT = Number(process.env.VITE_API_PORT ?? 3001);
 
+// Cross-origin requests only matter when the frontend calls this API
+// directly instead of through its own nginx same-origin proxy (e.g. when
+// VITE_API_DOMAIN points at a separate public API domain); CORS_ORIGIN opts
+// specific origins into that access, comma-separated for multiple domains.
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+if (CORS_ORIGINS.length > 0) {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && CORS_ORIGINS.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    );
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+}
+
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));

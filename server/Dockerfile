@@ -7,7 +7,6 @@ COPY server/package.json ./
 RUN npm install --verbose
 
 COPY server/ .
-COPY .env .
 RUN npm run build
 
 # Final stage
@@ -20,7 +19,6 @@ RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/swagger ./swagger
-COPY --from=builder /app/.env .
 
 RUN mkdir -p uploads backups
 

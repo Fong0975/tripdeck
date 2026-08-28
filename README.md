@@ -126,6 +126,31 @@ Outputs:
 npm run start
 ```
 
+## Docker Deployment
+
+Use Docker to deploy the frontend and backend for production. Both services build their images from source (`client/Dockerfile` / `server/Dockerfile`) rather than pulling a pre-built image, and neither Dockerfile depends on a physical `.env` file being present at build time — configuration is passed in as container environment variables and Docker build args instead, resolved from a single `.env` file next to whichever `docker-compose.yml` you use. This also means the stack can be deployed directly from a fresh clone of this repository (e.g. a Portainer stack pointed at this repo), not only via the `export_docker.bat` snapshot below.
+
+Pick one of the following:
+
+- **Directly from the repository root** — copy `.env.example` to `.env`, fill in the values, then run `docker compose build && docker compose up -d` from the repo root.
+- **Via the `export_docker.bat` snapshot** — copy `.env.example` to `.env.production` in the repo root and fill in the values, run `export_docker.bat` to copy everything the Docker host needs (including renaming `.env.production` to `.env`) into the `docker/` directory, then run `docker compose build && docker compose up -d` from inside `docker/`.
+
+| Variable | Description | Sample Value |
+|----------|--------------|---------------|
+| DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME | MySQL connection settings, injected into the backend container at runtime | see `.env.example` |
+| VITE_API_DOMAIN | Backend API domain, baked into the frontend build via a Docker build arg; leave empty to use the relative path via the nginx proxy | http://api.tripdeck.example.com |
+| VITE_API_PORT | Backend API port; used by the backend container itself, baked into the frontend build, and used by nginx's `envsubst` proxy config | 3001 |
+| VITE_API_PUBLIC_PORT | Public-facing port baked into the frontend build for calls to `VITE_API_DOMAIN`, when a reverse proxy maps it to a different external port than `VITE_API_PORT`; leave empty to reuse `VITE_API_PORT` | 80 |
+| CORS_ORIGIN | Origin(s) allowed to make cross-origin requests to the backend, comma-separated; needed when `VITE_API_DOMAIN` points the frontend directly at the API instead of through the frontend's nginx same-origin proxy; leave empty to disable | http://tripdeck.example.com |
+| VITE_OWM_API_KEY | OpenWeatherMap API key, baked into the frontend build via a Docker build arg | — |
+| VITE_VC_API_KEY | Visual Crossing API key, baked into the frontend build via a Docker build arg | — |
+| FRONTEND_PORT | Port the frontend (nginx) listens on | 3000 |
+| AUTO_BACKUP_ENABLED / AUTO_BACKUP_INTERVAL_DAYS / AUTO_BACKUP_CHECK_INTERVAL_HOURS / AUTO_BACKUP_RETENTION_COUNT | Automatic full-system backup schedule, injected into the backend container at runtime | see `.env.example` |
+| UPLOADS_HOST_DIR | Host directory bind-mounted into the backend container's uploaded trip images; defaults to `./.uploads` (relative to wherever `docker-compose.yml` runs from) — override with an absolute path when that directory isn't stable (e.g. deployed via Portainer) | /opt/tripdeck/uploads |
+| BACKUPS_HOST_DIR | Host directory bind-mounted into the backend container's backup output; same override behavior as `UPLOADS_HOST_DIR` | /opt/tripdeck/backups |
+
+See `.env.example` for the full list of variables and their default values.
+
 ## Development
 
 ### Available Root Scripts
