@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../../logger';
 import * as attractionRepo from '../../repositories/attraction';
 import * as tripRepo from '../../repositories/trip';
 import type {
@@ -7,6 +8,8 @@ import type {
   ReorderAttractionsBody,
   UpdateAttractionBody,
 } from '../../types/trip';
+
+const logger = createLogger('attraction');
 
 export async function addAttraction(
   req: Request,
@@ -41,18 +44,37 @@ export async function addAttraction(
 
     const body = req.body as CreateAttractionBody;
     if (!body.name) {
+      logger.warn('Rejected add-attraction request with no name', {
+        tripId,
+        dayId,
+      });
       res.status(400).json({ error: 'name is required' });
       return;
     }
 
     const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
     if (!day) {
+      logger.warn('Add-attraction rejected: day not found', {
+        tripId,
+        dayId,
+      });
       res.status(404).json({ error: 'Day not found' });
       return;
     }
 
-    res.status(201).json(await attractionRepo.create(dayId, body));
-  } catch {
+    const attraction = await attractionRepo.create(dayId, body);
+    logger.info('Attraction created', {
+      tripId,
+      dayId,
+      attractionId: attraction.id,
+    });
+    res.status(201).json(attraction);
+  } catch (err) {
+    logger.error(
+      'Failed to add attraction',
+      { tripId: req.params.tripId, dayId: req.params.dayId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to add attraction' });
   }
 }
@@ -93,6 +115,10 @@ export async function updateAttraction(
       tripId,
     );
     if (!belongs) {
+      logger.warn('Update-attraction rejected: attraction not found', {
+        tripId,
+        attractionId,
+      });
       res.status(404).json({ error: 'Attraction not found' });
       return;
     }
@@ -102,11 +128,20 @@ export async function updateAttraction(
       req.body as UpdateAttractionBody,
     );
     if (!updated) {
+      logger.warn(
+        'Update-attraction rejected: attraction not found on update',
+        { tripId, attractionId },
+      );
       res.status(404).json({ error: 'Attraction not found' });
       return;
     }
     res.json(updated);
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to update attraction',
+      { tripId: req.params.tripId, attractionId: req.params.attractionId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to update attraction' });
   }
 }
@@ -126,13 +161,23 @@ export async function deleteAttraction(
       tripId,
     );
     if (!belongs) {
+      logger.warn('Delete-attraction rejected: attraction not found', {
+        tripId,
+        attractionId,
+      });
       res.status(404).json({ error: 'Attraction not found' });
       return;
     }
 
     await attractionRepo.deleteById(attractionId);
+    logger.info('Attraction deleted', { tripId, attractionId });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to delete attraction',
+      { tripId: req.params.tripId, attractionId: req.params.attractionId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to delete attraction' });
   }
 }
@@ -152,14 +197,29 @@ export async function duplicateAttraction(
       tripId,
     );
     if (!belongs) {
+      logger.warn('Duplicate-attraction rejected: attraction not found', {
+        tripId,
+        attractionId,
+      });
       res.status(404).json({ error: 'Attraction not found' });
       return;
     }
 
     const dayId = await attractionRepo.getDayIdForAttraction(attractionId);
     const copy = await attractionRepo.duplicate(attractionId, dayId);
+    logger.info('Attraction duplicated', {
+      tripId,
+      dayId,
+      sourceAttractionId: attractionId,
+      newAttractionId: copy.id,
+    });
     res.status(201).json(copy);
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to duplicate attraction',
+      { tripId: req.params.tripId, attractionId: req.params.attractionId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to duplicate attraction' });
   }
 }
@@ -176,19 +236,37 @@ export async function reorderAttractions(
 
     const body = req.body as ReorderAttractionsBody;
     if (!Array.isArray(body.orderedIds)) {
+      logger.warn('Rejected reorder-attractions request: not an array', {
+        tripId,
+        dayId,
+      });
       res.status(400).json({ error: 'orderedIds array is required' });
       return;
     }
 
     const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
     if (!day) {
+      logger.warn('Reorder-attractions rejected: day not found', {
+        tripId,
+        dayId,
+      });
       res.status(404).json({ error: 'Day not found' });
       return;
     }
 
     await attractionRepo.updateOrder(dayId, body.orderedIds);
+    logger.info('Attractions reordered', {
+      tripId,
+      dayId,
+      count: body.orderedIds.length,
+    });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to reorder attractions',
+      { tripId: req.params.tripId, dayId: req.params.dayId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to reorder attractions' });
   }
 }

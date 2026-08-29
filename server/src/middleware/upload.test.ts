@@ -13,6 +13,16 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'fixed-uuid'),
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import {
   copyImageFile,
   deleteImageFromDisk,
@@ -123,14 +133,20 @@ describe('copyImageFile', () => {
     );
   });
 
-  it('returns null when fs.copyFileSync throws', () => {
+  it('returns null and logs when fs.copyFileSync throws', () => {
+    const copyError = new Error('EACCES');
     vi.mocked(fs.copyFileSync).mockImplementationOnce(() => {
-      throw new Error('ENOENT');
+      throw copyError;
     });
 
     const result = copyImageFile('original.jpg');
 
     expect(result).toBeNull();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to copy image file',
+      expect.objectContaining({ filename: 'original.jpg' }),
+      copyError,
+    );
   });
 });
 
@@ -190,15 +206,28 @@ describe('deleteImageFromDisk', () => {
     );
   });
 
-  it('silently swallows the error when fs.unlinkSync throws', () => {
+  it('silently ignores an ENOENT error without logging', () => {
     vi.mocked(fs.unlinkSync).mockImplementationOnce(() => {
-      throw new Error('ENOENT');
+      throw Object.assign(new Error('no such file'), { code: 'ENOENT' });
     });
 
-    let result: void | undefined;
-    expect(() => {
-      result = deleteImageFromDisk('missing.jpg');
-    }).not.toThrow();
-    expect(result).toBeUndefined();
+    expect(() => deleteImageFromDisk('missing.jpg')).not.toThrow();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('logs any other deletion failure instead of swallowing it', () => {
+    const permissionError = Object.assign(new Error('denied'), {
+      code: 'EACCES',
+    });
+    vi.mocked(fs.unlinkSync).mockImplementationOnce(() => {
+      throw permissionError;
+    });
+
+    expect(() => deleteImageFromDisk('locked.jpg')).not.toThrow();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to delete image file from disk',
+      { filename: 'locked.jpg' },
+      permissionError,
+    );
   });
 });

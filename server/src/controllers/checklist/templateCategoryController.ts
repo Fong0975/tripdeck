@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
+
+const logger = createLogger('checklist-template');
 
 export async function getTemplate(_req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
@@ -53,7 +56,8 @@ export async function getTemplate(_req: Request, res: Response): Promise<void> {
      } */
   try {
     res.json(await templateRepo.findTemplate());
-  } catch {
+  } catch (err) {
+    logger.error('Failed to fetch template', undefined, err);
     res.status(500).json({ error: 'Failed to fetch template' });
   }
 }
@@ -79,11 +83,15 @@ export async function addCategory(req: Request, res: Response): Promise<void> {
   try {
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
+      logger.warn('Rejected add-category request with an invalid name');
       res.status(400).json({ error: 'name is required' });
       return;
     }
-    res.status(201).json(await templateRepo.createCategory(name));
-  } catch {
+    const category = await templateRepo.createCategory(name);
+    logger.info('Template category created', { catId: category.id, name });
+    res.status(201).json(category);
+  } catch (err) {
+    logger.error('Failed to add category', undefined, err);
     res.status(500).json({ error: 'Failed to add category' });
   }
 }
@@ -126,16 +134,21 @@ export async function updateCategory(
     const catId = Number(req.params.catId);
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
+      logger.warn('Rejected update-category request with an invalid name', {
+        catId,
+      });
       res.status(400).json({ error: 'name is required' });
       return;
     }
     const category = await templateRepo.updateCategory(catId, name);
     if (!category) {
+      logger.warn('Update-category rejected: category not found', { catId });
       res.status(404).json({ error: 'Category not found' });
       return;
     }
     res.json(category);
-  } catch {
+  } catch (err) {
+    logger.error('Failed to update category', { catId: req.params.catId }, err);
     res.status(500).json({ error: 'Failed to update category' });
   }
 }
@@ -150,11 +163,14 @@ export async function deleteCategory(
     const catId = Number(req.params.catId);
     const deleted = await templateRepo.deleteCategory(catId);
     if (!deleted) {
+      logger.warn('Delete-category rejected: category not found', { catId });
       res.status(404).json({ error: 'Category not found' });
       return;
     }
+    logger.info('Template category deleted', { catId });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error('Failed to delete category', { catId: req.params.catId }, err);
     res.status(500).json({ error: 'Failed to delete category' });
   }
 }

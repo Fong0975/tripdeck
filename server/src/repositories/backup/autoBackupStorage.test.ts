@@ -18,6 +18,16 @@ vi.mock('fs', () => ({
   },
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import {
   buildAutoBackupFilename,
   isAutoBackupFilename,
@@ -85,6 +95,24 @@ describe('writeAutoBackupFile', () => {
       sizeBytes: 1234,
       createdAt: '2026-08-26T12:00:00.000Z',
     });
+  });
+
+  it('logs and rethrows when the write fails (e.g. disk full)', () => {
+    const writeError = Object.assign(new Error('ENOSPC'), {
+      code: 'ENOSPC',
+    });
+    mockWriteFileSync.mockImplementation(() => {
+      throw writeError;
+    });
+
+    expect(() => writeAutoBackupFile(Buffer.from('zip-bytes'))).toThrow(
+      writeError,
+    );
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to write automatic backup file',
+      expect.objectContaining({ sizeBytes: 9 }),
+      writeError,
+    );
   });
 });
 
@@ -178,14 +206,35 @@ describe('pruneOldAutoBackups', () => {
     expect(mockUnlinkSync).not.toHaveBeenCalled();
   });
 
-  it('ignores a file that is already gone when deleting', () => {
+  it('silently ignores a file that is already gone (ENOENT) when deleting', () => {
     mockUnlinkSync.mockImplementation((filePath: string) => {
       if (filePath.includes('2026-08-04')) {
-        throw new Error('ENOENT');
+        throw Object.assign(new Error('no such file'), { code: 'ENOENT' });
       }
     });
 
     expect(() => pruneOldAutoBackups(2)).not.toThrow();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('logs (but does not throw) any other deletion failure', () => {
+    const permissionError = Object.assign(new Error('denied'), {
+      code: 'EACCES',
+    });
+    mockUnlinkSync.mockImplementation((filePath: string) => {
+      if (filePath.includes('2026-08-04')) {
+        throw permissionError;
+      }
+    });
+
+    expect(() => pruneOldAutoBackups(2)).not.toThrow();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to delete old automatic backup file',
+      expect.objectContaining({
+        filename: 'tripdeck-auto-backup-2026-08-04T00-00-00-000Z.zip',
+      }),
+      permissionError,
+    );
   });
 });
 
@@ -204,11 +253,15 @@ describe('resolveAutoBackupPath', () => {
     );
   });
 
-  it('returns null when the filename does not match the naming pattern', () => {
+  it('returns null and logs a WARN when the filename does not match the naming pattern', () => {
     mockExistsSync.mockReturnValue(true);
 
     expect(resolveAutoBackupPath('../../etc/passwd')).toBeNull();
     expect(mockExistsSync).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Rejected filename not matching the backup naming pattern',
+      { filename: '../../etc/passwd' },
+    );
   });
 
   it('returns null when the filename is valid but the file does not exist', () => {

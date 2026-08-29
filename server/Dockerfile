@@ -20,7 +20,7 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/swagger ./swagger
 
-RUN mkdir -p uploads backups
+RUN mkdir -p uploads backups logs
 
 EXPOSE 3001
 

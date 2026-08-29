@@ -15,6 +15,16 @@ vi.mock('../../config/database', () => ({
   },
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { restoreTemplate } from './templateRestore';
 
 function makeConn() {
@@ -120,5 +130,10 @@ describe('restoreTemplate', () => {
     expect(mockConnRollback).toHaveBeenCalled();
     expect(mockConnCommit).not.toHaveBeenCalled();
     expect(mockConnRelease).toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to restore checklist template, rolled back',
+      expect.objectContaining({ incomingCategoryCount: 1 }),
+      expect.any(Error),
+    );
   });
 });

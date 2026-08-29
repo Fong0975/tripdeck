@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 
+import { createLogger } from '../../logger';
 import type { AutoBackupFileInfo } from '../../types/backup';
+
+const logger = createLogger('auto-backup');
 
 /**
  * Directory automatic backups are written to. Resolved relative to this
@@ -51,10 +54,21 @@ function toFileInfo(filename: string): AutoBackupFileInfo {
  * `BACKUPS_DIR` first if it doesn't exist yet.
  */
 export function writeAutoBackupFile(buffer: Buffer): AutoBackupFileInfo {
-  fs.mkdirSync(BACKUPS_DIR, { recursive: true });
   const filename = buildAutoBackupFilename(new Date());
-  fs.writeFileSync(path.join(BACKUPS_DIR, filename), buffer);
-  return toFileInfo(filename);
+  try {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(BACKUPS_DIR, filename), buffer);
+  } catch (err) {
+    logger.error(
+      'Failed to write automatic backup file',
+      { dir: BACKUPS_DIR, filename, sizeBytes: buffer.length },
+      err,
+    );
+    throw err;
+  }
+  const info = toFileInfo(filename);
+  logger.info('Automatic backup file written', info);
+  return info;
 }
 
 /**
@@ -86,12 +100,30 @@ export function pruneOldAutoBackups(retain: number): void {
   }
 
   const files = listAutoBackupFiles();
-  for (const file of files.slice(retain)) {
+  const toDelete = files.slice(retain);
+  let deleted = 0;
+  for (const file of toDelete) {
     try {
       fs.unlinkSync(path.join(BACKUPS_DIR, file.filename));
-    } catch {
-      // Already removed — safe to ignore.
+      deleted++;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        continue; // Already removed — safe to ignore.
+      }
+      logger.error(
+        'Failed to delete old automatic backup file',
+        { filename: file.filename },
+        err,
+      );
     }
+  }
+
+  if (toDelete.length > 0) {
+    logger.info('Pruned old automatic backups', {
+      retain,
+      deleted,
+      candidateCount: toDelete.length,
+    });
   }
 }
 
@@ -105,6 +137,9 @@ export function pruneOldAutoBackups(retain: number): void {
  */
 export function resolveAutoBackupPath(filename: string): string | null {
   if (!isAutoBackupFilename(filename)) {
+    logger.warn('Rejected filename not matching the backup naming pattern', {
+      filename,
+    });
     return null;
   }
 

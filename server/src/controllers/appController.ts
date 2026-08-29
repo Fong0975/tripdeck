@@ -1,5 +1,10 @@
 import { Request, Response } from 'express';
 
+import pkg from '../../package.json';
+import { createLogger } from '../logger';
+
+const logger = createLogger('app');
+
 export const fetchPageTitle = async (
   req: Request,
   res: Response,
@@ -20,6 +25,7 @@ export const fetchPageTitle = async (
      } */
   const url = req.query.url as string | undefined;
   if (!url) {
+    logger.warn('Rejected fetch-title request with no url parameter');
     res.status(400).json({ error: 'Missing url parameter' });
     return;
   }
@@ -28,11 +34,18 @@ export const fetchPageTitle = async (
   try {
     parsed = new URL(url);
   } catch {
+    logger.warn('Rejected fetch-title request with an unparseable url', {
+      url,
+    });
     res.status(400).json({ error: 'Invalid URL' });
     return;
   }
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    logger.warn('Rejected fetch-title request with a disallowed protocol', {
+      url,
+      protocol: parsed.protocol,
+    });
     res.status(400).json({ error: 'Only http/https URLs are allowed' });
     return;
   }
@@ -50,12 +63,11 @@ export const fetchPageTitle = async (
     const html = await response.text();
     const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     res.json({ title: match?.[1] ?? null });
-  } catch {
+  } catch (err) {
+    logger.error('Failed to fetch page title', { url }, err);
     res.json({ title: null });
   }
 };
-
-import pkg from '../../package.json';
 
 export const getHealth = (_req: Request, res: Response) => {
   /* #swagger.tags = ['System']

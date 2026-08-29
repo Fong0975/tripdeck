@@ -4,6 +4,16 @@ const mockListAutoBackupFiles = vi.fn();
 const mockBuildSystemBackupZip = vi.fn();
 const mockWriteAutoBackupFile = vi.fn();
 const mockPruneOldAutoBackups = vi.fn();
+// vi.mock(...) factories are hoisted above plain top-level statements, so a
+// value more complex than a bare `vi.fn()` (here, an object with several
+// vi.fn() properties) must be created via vi.hoisted() to be available by
+// the time the '../logger' factory below runs.
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 vi.mock('../repositories/backup', () => ({
   listAutoBackupFiles: (...args: unknown[]) => mockListAutoBackupFiles(...args),
@@ -11,6 +21,9 @@ vi.mock('../repositories/backup', () => ({
     mockBuildSystemBackupZip(...args),
   writeAutoBackupFile: (...args: unknown[]) => mockWriteAutoBackupFile(...args),
   pruneOldAutoBackups: (...args: unknown[]) => mockPruneOldAutoBackups(...args),
+}));
+vi.mock('../logger', () => ({
+  createLogger: () => mockLogger,
 }));
 
 import {
@@ -155,16 +168,18 @@ describe('runAutoBackupIfDue', () => {
 
   it('logs and does not throw when building the backup fails', async () => {
     mockListAutoBackupFiles.mockReturnValue([]);
-    mockBuildSystemBackupZip.mockRejectedValue(new Error('disk full'));
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const buildError = new Error('disk full');
+    mockBuildSystemBackupZip.mockRejectedValue(buildError);
 
     await expect(runAutoBackupIfDue(baseConfig)).resolves.toBeUndefined();
 
     expect(mockWriteAutoBackupFile).not.toHaveBeenCalled();
     expect(mockPruneOldAutoBackups).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalled();
-
-    errorSpy.mockRestore();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to create automatic backup',
+      expect.any(Object),
+      buildError,
+    );
   });
 });
 

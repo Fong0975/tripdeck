@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../middleware/upload';
 import type {
   CreateTripBody,
@@ -13,6 +14,8 @@ import * as imageRepo from '../imageRepository';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
 import { TripDayRow, TripRow } from './types';
+
+const logger = createLogger('trip');
 
 interface TripDayIdRow extends RowDataPacket {
   id: number;
@@ -78,6 +81,7 @@ export async function create(data: CreateTripBody): Promise<TripResponse> {
     }
 
     await conn.commit();
+    logger.info('Trip created', { tripId, daysCreated: dates.length });
 
     const [rows] = await pool.execute<TripRow[]>(
       'SELECT * FROM trips WHERE id = ?',
@@ -86,6 +90,11 @@ export async function create(data: CreateTripBody): Promise<TripResponse> {
     return toTripResponse(rows[0]);
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to create trip, rolled back',
+      { title: data.title, startDate: data.startDate, endDate: data.endDate },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -151,8 +160,22 @@ export async function update(
       'SELECT id FROM trip_attractions WHERE trip_day_id = ?',
       [day.id],
     );
-    for (const attr of attrRows) {
-      await attractionCrud.deleteById(attr.id);
+    try {
+      for (const attr of attrRows) {
+        await attractionCrud.deleteById(attr.id);
+      }
+    } catch (err) {
+      // Non-atomic by design (see function doc comment above): this throws
+      // before the transaction below even starts, so trips/trip_days are
+      // untouched, but any attraction already deleted on this day stays
+      // deleted. Logging exactly which day/attraction failed is the only
+      // way to tell which parts of this best-effort cleanup actually ran.
+      logger.error(
+        'Partial failure while clearing attractions for a removed day',
+        { tripId: id, dayId: day.id },
+        err,
+      );
+      throw err;
     }
   }
 
@@ -210,14 +233,32 @@ export async function update(
 
     await conn.commit();
 
+    let imagesRemoved = 0;
     for (const day of daysToRemove) {
       const dayImages = dayImagesByDayId.get(day.id) ?? [];
       for (const img of dayImages) {
         deleteImageFromDisk(img.filename);
+        imagesRemoved++;
       }
     }
+
+    logger.info('Trip updated', {
+      tripId: id,
+      daysRemoved: daysToRemove.length,
+      daysAdded: datesToAdd.length,
+      imagesRemoved,
+    });
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to update trip, rolled back',
+      {
+        tripId: id,
+        daysToRemove: daysToRemove.length,
+        datesToAdd: datesToAdd.length,
+      },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -282,19 +323,28 @@ export async function deleteById(id: number): Promise<boolean> {
     [id],
   );
   if (result.affectedRows > 0) {
+    let imagesDeleted = 0;
     for (const img of images) {
       deleteImageFromDisk(img.filename);
+      imagesDeleted++;
     }
     for (const dayImages of dayImagesByDay.values()) {
       for (const img of dayImages) {
         deleteImageFromDisk(img.filename);
+        imagesDeleted++;
       }
     }
     for (const attractionImages of attractionImagesByAttraction.values()) {
       for (const img of attractionImages) {
         deleteImageFromDisk(img.filename);
+        imagesDeleted++;
       }
     }
+    logger.info('Trip deleted', {
+      tripId: id,
+      connectionsDeleted: connectionRows.length,
+      imagesDeleted,
+    });
   }
   return result.affectedRows > 0;
 }

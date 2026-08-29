@@ -1,8 +1,11 @@
 import type { RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
+import { createLogger } from '../logger';
 
 import { tableDefinitions, type ColumnDef, type TableDef } from './schema';
+
+const logger = createLogger('db');
 
 // --- SQL builders ---
 
@@ -86,8 +89,10 @@ async function getExistingColumns(
 // --- Per-table handlers ---
 
 async function createTable(def: TableDef): Promise<void> {
-  await pool.execute(buildCreateTableSql(def));
-  console.log(`[db] Created table: ${def.name}`);
+  const sql = buildCreateTableSql(def);
+  logger.debug('Running CREATE TABLE', { table: def.name, sql });
+  await pool.execute(sql);
+  logger.info('Created table', { table: def.name });
 }
 
 /**
@@ -102,10 +107,14 @@ async function addMissingColumns(
   const missing = def.columns.filter(col => !existingColumns.has(col.name));
 
   for (const col of missing) {
-    await pool.execute(
-      `ALTER TABLE ${def.name} ADD COLUMN ${buildColumnSql(col)}`,
-    );
-    console.log(`[db] Added column "${col.name}" to table "${def.name}"`);
+    const sql = `ALTER TABLE ${def.name} ADD COLUMN ${buildColumnSql(col)}`;
+    logger.debug('Running ALTER TABLE', {
+      table: def.name,
+      column: col.name,
+      sql,
+    });
+    await pool.execute(sql);
+    logger.info('Added column', { table: def.name, column: col.name });
   }
 }
 
@@ -120,18 +129,25 @@ async function addMissingColumns(
  * - Columns removed from the definition are intentionally left untouched.
  */
 export async function initDatabase(): Promise<void> {
-  const dbName = await getDbName();
+  logger.info('Verifying tables', { tableCount: tableDefinitions.length });
 
-  for (const def of tableDefinitions) {
-    const exists = await tableExists(dbName, def.name);
+  try {
+    const dbName = await getDbName();
 
-    if (!exists) {
-      await createTable(def);
-    } else {
-      const existingColumns = await getExistingColumns(dbName, def.name);
-      await addMissingColumns(def, existingColumns);
+    for (const def of tableDefinitions) {
+      const exists = await tableExists(dbName, def.name);
+
+      if (!exists) {
+        await createTable(def);
+      } else {
+        const existingColumns = await getExistingColumns(dbName, def.name);
+        await addMissingColumns(def, existingColumns);
+      }
     }
+  } catch (err) {
+    logger.error('Failed to verify/initialize tables', undefined, err);
+    throw err;
   }
 
-  console.log('[db] Tables verified.');
+  logger.info('Tables verified', { tableCount: tableDefinitions.length });
 }

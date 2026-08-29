@@ -4,6 +4,10 @@ import path from 'path';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
+import { createLogger } from '../logger';
+
+const logger = createLogger('upload');
+
 const MAGIC_BYTES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
   { mime: 'image/jpeg', bytes: [0xff, 0xd8, 0xff] },
   {
@@ -112,7 +116,8 @@ export function copyImageFile(filename: string): string | null {
   try {
     fs.copyFileSync(srcPath, destPath);
     return newFilename;
-  } catch {
+  } catch (err) {
+    logger.error('Failed to copy image file', { filename, newFilename }, err);
     return null;
   }
 }
@@ -149,13 +154,18 @@ export function saveImportedImageBuffer(
 
 /**
  * Removes an uploaded image file from disk.
- * Silently ignores missing files.
+ * Silently ignores missing files; any other failure (e.g. a permission
+ * error) is logged rather than swallowed, since that previously masked a
+ * real deletion failure as a no-op success.
  */
 export function deleteImageFromDisk(filename: string): void {
   const filePath = path.join(UPLOADS_DIR, filename);
   try {
     fs.unlinkSync(filePath);
-  } catch {
-    // File already removed or never written — safe to ignore
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return;
+    }
+    logger.error('Failed to delete image file from disk', { filename }, err);
   }
 }

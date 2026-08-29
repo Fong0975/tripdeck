@@ -1,5 +1,6 @@
 import AdmZip from 'adm-zip';
 
+import { createLogger } from '../../logger';
 import {
   BACKUP_FORMAT_VERSION,
   type BackupManifest,
@@ -9,6 +10,8 @@ import type { ChecklistTemplateResponse } from '../../types/checklist';
 import type { ImageResponse } from '../../types/trip';
 
 import { BackupValidationError } from './errors';
+
+const logger = createLogger('backup');
 
 /** One trip parsed out of a backup zip, ready to be imported. */
 export interface ParsedBackupTrip {
@@ -47,6 +50,10 @@ const MAX_ENTRY_UNCOMPRESSED_BYTES = 20 * 1024 * 1024; // 20 MB
 
 function assertSafeEntrySize(entry: AdmZip.IZipEntry): void {
   if (entry.header.size > MAX_ENTRY_UNCOMPRESSED_BYTES) {
+    logger.warn('Rejected oversized zip entry (possible zip bomb)', {
+      entryName: entry.entryName,
+      declaredSize: entry.header.size,
+    });
     throw new BackupValidationError(
       `Invalid backup file: "${entry.entryName}" is too large (${entry.header.size} bytes uncompressed)`,
     );
@@ -61,7 +68,11 @@ function readJsonEntry<T>(zip: AdmZip, entryPath: string): T | null {
   assertSafeEntrySize(entry);
   try {
     return JSON.parse(entry.getData().toString('utf-8')) as T;
-  } catch {
+  } catch (err) {
+    logger.warn('Failed to parse JSON entry in backup zip', {
+      entryPath,
+      reason: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
@@ -112,7 +123,11 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
   let zip: AdmZip;
   try {
     zip = new AdmZip(buffer);
-  } catch {
+  } catch (err) {
+    logger.warn('Rejected backup upload: not a valid zip archive', {
+      bufferSize: buffer.length,
+      reason: err instanceof Error ? err.message : String(err),
+    });
     throw new BackupValidationError(
       'Invalid backup file: not a valid zip archive',
     );
@@ -120,16 +135,22 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
 
   const manifest = readJsonEntry<BackupManifest>(zip, 'manifest.json');
   if (!manifest) {
+    logger.warn('Rejected backup upload: manifest.json missing or unreadable');
     throw new BackupValidationError(
       'Invalid backup file: manifest.json missing or unreadable',
     );
   }
   if (manifest.formatVersion !== BACKUP_FORMAT_VERSION) {
+    logger.warn('Rejected backup upload: unsupported format version', {
+      receivedVersion: manifest.formatVersion,
+      expectedVersion: BACKUP_FORMAT_VERSION,
+    });
     throw new BackupValidationError(
       `Unsupported backup format version: ${String(manifest.formatVersion)}`,
     );
   }
   if (!Array.isArray(manifest.trips)) {
+    logger.warn('Rejected backup upload: manifest.trips missing or malformed');
     throw new BackupValidationError(
       'Invalid backup file: manifest.trips is missing or malformed',
     );
@@ -142,6 +163,9 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
       `trips/${tripEntry.folder}/data.json`,
     );
     if (!data) {
+      logger.warn('Rejected backup upload: trip data.json unreadable', {
+        folder: tripEntry.folder,
+      });
       throw new BackupValidationError(
         `Invalid backup file: trips/${tripEntry.folder}/data.json missing or unreadable`,
       );
@@ -158,6 +182,9 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
   if (manifest.includesTemplate) {
     template = readJsonEntry<ChecklistTemplateResponse>(zip, 'template.json');
     if (!template) {
+      logger.warn(
+        'Rejected backup upload: template.json missing or unreadable',
+      );
       throw new BackupValidationError(
         'Invalid backup file: template.json missing or unreadable',
       );
@@ -192,6 +219,10 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
       (sum, t) => sum + t.missingFilenames.length,
       0,
     );
+    logger.warn('Rejected backup upload: incomplete, missing image files', {
+      totalMissing,
+      trips: missingImagesByTrip,
+    });
     throw new BackupValidationError(
       `Backup file is incomplete: ${totalMissing} image file(s) missing`,
       { trips: missingImagesByTrip },

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../logger';
 import { saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
@@ -7,7 +8,11 @@ import * as imageRepo from '../repositories/imageRepository';
 import * as tripRepo from '../repositories/trip';
 import type { ImageResponse } from '../types/trip';
 
+const logger = createLogger('image');
+
 interface ImageHandlerConfig {
+  /** e.g. "attraction"/"connection"/"trip"/"day" — included in log context to distinguish which entity an upload/delete targets. */
+  entityType: string;
   notFoundError: string;
   getParentId: (req: Request) => number;
   /** Confirms the parent (attraction/connection/trip) exists and, where applicable, belongs to the trip. */
@@ -33,23 +38,38 @@ async function handleUpload(
   res: Response,
   config: ImageHandlerConfig,
 ): Promise<void> {
-  try {
-    const tripId = Number(req.params.tripId);
-    const parentId = config.getParentId(req);
+  const tripId = Number(req.params.tripId);
+  const parentId = config.getParentId(req);
 
+  try {
     const belongs = await config.verifyParent(parentId, tripId);
     if (!belongs) {
+      logger.warn('Image upload rejected: parent not found', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+      });
       res.status(404).json({ error: config.notFoundError });
       return;
     }
 
     if (!req.file) {
+      logger.warn('Image upload rejected: no file provided', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+      });
       res.status(400).json({ error: 'image file is required' });
       return;
     }
 
     const title = (req.body.title as string | undefined)?.trim();
     if (!title) {
+      logger.warn('Image upload rejected: no title provided', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+      });
       res.status(400).json({ error: 'title is required' });
       return;
     }
@@ -57,14 +77,33 @@ async function handleUpload(
     let filename: string;
     try {
       filename = saveImageToDisk(req.file.buffer, req.file.mimetype);
-    } catch {
+    } catch (err) {
+      logger.warn('Image upload rejected: invalid image file', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+        mimetype: req.file.mimetype,
+        sizeBytes: req.file.buffer.length,
+        reason: err instanceof Error ? err.message : String(err),
+      });
       res.status(400).json({ error: 'Invalid image file' });
       return;
     }
 
     const image = await config.addImage(parentId, filename, title);
+    logger.info('Image uploaded', {
+      entityType: config.entityType,
+      tripId,
+      parentId,
+      imageId: image.id,
+    });
     res.status(201).json(image);
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to upload image',
+      { entityType: config.entityType, tripId, parentId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to upload image' });
   }
 }
@@ -75,30 +114,54 @@ async function handleDelete(
   res: Response,
   config: ImageHandlerConfig,
 ): Promise<void> {
-  try {
-    const tripId = Number(req.params.tripId);
-    const parentId = config.getParentId(req);
-    const imageId = Number(req.params.imageId);
+  const tripId = Number(req.params.tripId);
+  const parentId = config.getParentId(req);
+  const imageId = Number(req.params.imageId);
 
+  try {
     const belongs = await config.verifyParent(parentId, tripId);
     if (!belongs) {
+      logger.warn('Image delete rejected: parent not found', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+        imageId,
+      });
       res.status(404).json({ error: config.notFoundError });
       return;
     }
 
     const deleted = await config.deleteImage(imageId, parentId);
     if (!deleted) {
+      logger.warn('Image delete rejected: image not found', {
+        entityType: config.entityType,
+        tripId,
+        parentId,
+        imageId,
+      });
       res.status(404).json({ error: 'Image not found' });
       return;
     }
 
+    logger.info('Image deleted', {
+      entityType: config.entityType,
+      tripId,
+      parentId,
+      imageId,
+    });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to delete image',
+      { entityType: config.entityType, tripId, parentId, imageId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to delete image' });
   }
 }
 
 const attractionConfig: ImageHandlerConfig = {
+  entityType: 'attraction',
   notFoundError: 'Attraction not found',
   getParentId: req => Number(req.params.attractionId),
   verifyParent: (parentId, tripId) =>
@@ -108,6 +171,7 @@ const attractionConfig: ImageHandlerConfig = {
 };
 
 const connectionConfig: ImageHandlerConfig = {
+  entityType: 'connection',
   notFoundError: 'Connection not found',
   getParentId: req => Number(req.params.connectionId),
   verifyParent: (parentId, tripId) =>
@@ -117,6 +181,7 @@ const connectionConfig: ImageHandlerConfig = {
 };
 
 const tripConfig: ImageHandlerConfig = {
+  entityType: 'trip',
   notFoundError: 'Trip not found',
   // A trip image's "parent" is the trip itself, so parentId === tripId here.
   getParentId: req => Number(req.params.tripId),
@@ -126,6 +191,7 @@ const tripConfig: ImageHandlerConfig = {
 };
 
 const dayConfig: ImageHandlerConfig = {
+  entityType: 'day',
   notFoundError: 'Day not found',
   getParentId: req => Number(req.params.dayId),
   verifyParent: async (parentId, tripId) =>

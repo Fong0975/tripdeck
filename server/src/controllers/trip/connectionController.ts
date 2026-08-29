@@ -1,11 +1,14 @@
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../../logger';
 import * as connectionRepo from '../../repositories/connectionRepository';
 import * as tripRepo from '../../repositories/trip';
 import type {
   CreateConnectionBody,
   UpdateConnectionBody,
 } from '../../types/trip';
+
+const logger = createLogger('connection');
 
 export async function addConnection(
   req: Request,
@@ -38,6 +41,10 @@ export async function addConnection(
 
     const body = req.body as CreateConnectionBody;
     if (!body.fromAttractionId || !body.toAttractionId || !body.transportMode) {
+      logger.warn('Rejected add-connection request with missing fields', {
+        tripId,
+        dayId,
+      });
       res.status(400).json({
         error:
           'fromAttractionId, toAttractionId, and transportMode are required',
@@ -47,12 +54,27 @@ export async function addConnection(
 
     const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
     if (!day) {
+      logger.warn('Add-connection rejected: day not found', {
+        tripId,
+        dayId,
+      });
       res.status(404).json({ error: 'Day not found' });
       return;
     }
 
-    res.status(201).json(await connectionRepo.create(dayId, body));
-  } catch {
+    const connection = await connectionRepo.create(dayId, body);
+    logger.info('Connection created', {
+      tripId,
+      dayId,
+      connectionId: connection.id,
+    });
+    res.status(201).json(connection);
+  } catch (err) {
+    logger.error(
+      'Failed to add connection',
+      { tripId: req.params.tripId, dayId: req.params.dayId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to add connection' });
   }
 }
@@ -91,6 +113,10 @@ export async function updateConnection(
       tripId,
     );
     if (!belongs) {
+      logger.warn('Update-connection rejected: connection not found', {
+        tripId,
+        connectionId,
+      });
       res.status(404).json({ error: 'Connection not found' });
       return;
     }
@@ -100,11 +126,20 @@ export async function updateConnection(
       req.body as UpdateConnectionBody,
     );
     if (!updated) {
+      logger.warn(
+        'Update-connection rejected: connection not found on update',
+        { tripId, connectionId },
+      );
       res.status(404).json({ error: 'Connection not found' });
       return;
     }
     res.json(updated);
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to update connection',
+      { tripId: req.params.tripId, connectionId: req.params.connectionId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to update connection' });
   }
 }
@@ -124,13 +159,23 @@ export async function deleteConnection(
       tripId,
     );
     if (!belongs) {
+      logger.warn('Delete-connection rejected: connection not found', {
+        tripId,
+        connectionId,
+      });
       res.status(404).json({ error: 'Connection not found' });
       return;
     }
 
     await connectionRepo.deleteById(connectionId);
+    logger.info('Connection deleted', { tripId, connectionId });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to delete connection',
+      { tripId: req.params.tripId, connectionId: req.params.connectionId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to delete connection' });
   }
 }

@@ -1,11 +1,25 @@
 import AdmZip from 'adm-zip';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BackupManifest, TripBackupData } from '../../types/backup';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 /** Runs `fn`, expecting it to throw a `BackupValidationError`, and returns that error. */
 function captureValidationError(fn: () => unknown): BackupValidationError {
@@ -245,6 +259,10 @@ describe('parseBackupZip', () => {
     expect(() => parseBackupZip(Buffer.from('not a zip file'))).toThrow(
       /not a valid zip archive/,
     );
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Rejected backup upload: not a valid zip archive',
+      expect.objectContaining({ bufferSize: 'not a zip file'.length }),
+    );
   });
 
   it('throws when manifest.json is missing', () => {
@@ -269,6 +287,10 @@ describe('parseBackupZip', () => {
 
     expect(() => parseBackupZip(buildZip({ manifest }))).toThrow(
       /Unsupported backup format version: 2/,
+    );
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Rejected backup upload: unsupported format version',
+      { receivedVersion: 2, expectedVersion: 1 },
     );
   });
 
@@ -328,6 +350,10 @@ describe('parseBackupZip', () => {
         { folder: 'trip_1', title: 'Trip', missingFilenames: ['attr1.jpg'] },
       ],
     });
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Rejected backup upload: incomplete, missing image files',
+      expect.objectContaining({ totalMissing: 1 }),
+    );
   });
 
   it('leaves template null when manifest.includesTemplate is not set', () => {

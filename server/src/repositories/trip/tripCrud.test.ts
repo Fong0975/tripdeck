@@ -48,6 +48,16 @@ vi.mock('../../config/database', () => ({
   },
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 describe('tripCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -330,6 +340,11 @@ describe('tripCrud', () => {
       expect(mockConnRollback).toHaveBeenCalled();
       expect(mockConnCommit).not.toHaveBeenCalled();
       expect(mockConnRelease).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to create trip, rolled back',
+        expect.objectContaining({ title: 'Bad Trip' }),
+        expect.any(Error),
+      );
     });
   });
 
@@ -673,6 +688,11 @@ describe('tripCrud', () => {
       expect(mockConnRollback).toHaveBeenCalled();
       expect(mockConnCommit).not.toHaveBeenCalled();
       expect(mockConnRelease).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to update trip, rolled back',
+        expect.objectContaining({ tripId: 10 }),
+        expect.any(Error),
+      );
     });
 
     it('does not open a transaction if deleting an attraction for a removed day fails', async () => {
@@ -698,6 +718,11 @@ describe('tripCrud', () => {
       );
 
       expect(mockGetConnection).not.toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Partial failure while clearing attractions for a removed day',
+        { tripId: 10, dayId: 404 },
+        expect.any(Error),
+      );
     });
   });
 

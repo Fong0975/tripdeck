@@ -2,7 +2,10 @@ import fs from 'fs';
 
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../logger';
 import * as backupRepo from '../repositories/backup';
+
+const logger = createLogger('backup');
 
 export function listAutoBackups(_req: Request, res: Response): void {
   /* #swagger.tags = ['Backup']
@@ -27,7 +30,8 @@ export function listAutoBackups(_req: Request, res: Response): void {
      } */
   try {
     res.json(backupRepo.listAutoBackupFiles());
-  } catch {
+  } catch (err) {
+    logger.error('Failed to list automatic backups', undefined, err);
     res.status(500).json({ error: 'Failed to list automatic backups' });
   }
 }
@@ -43,6 +47,9 @@ export function downloadAutoBackup(req: Request, res: Response): void {
   try {
     const filePath = backupRepo.resolveAutoBackupPath(req.params.filename);
     if (!filePath) {
+      logger.warn('Requested automatic backup file not found', {
+        filename: req.params.filename,
+      });
       res.status(404).json({ error: 'Backup file not found' });
       return;
     }
@@ -53,7 +60,12 @@ export function downloadAutoBackup(req: Request, res: Response): void {
       `attachment; filename="${req.params.filename}"`,
     );
     res.send(fs.readFileSync(filePath));
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to download automatic backup',
+      { filename: req.params.filename },
+      err,
+    );
     res.status(500).json({ error: 'Failed to download automatic backup' });
   }
 }
