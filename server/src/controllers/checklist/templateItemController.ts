@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 
+import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
+
+const logger = createLogger('checklist-template');
 
 export async function addItem(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
@@ -32,6 +35,9 @@ export async function addItem(req: Request, res: Response): Promise<void> {
       storage_location?: string | null;
     };
     if (!name || typeof name !== 'string') {
+      logger.warn('Rejected add-item request with an invalid name', {
+        catId,
+      });
       res.status(400).json({ error: 'name is required' });
       return;
     }
@@ -42,11 +48,14 @@ export async function addItem(req: Request, res: Response): Promise<void> {
       storage_location,
     });
     if (!item) {
+      logger.warn('Add-item rejected: category not found', { catId });
       res.status(404).json({ error: 'Category not found' });
       return;
     }
+    logger.info('Template item created', { catId, itemId: item.id });
     res.status(201).json(item);
-  } catch {
+  } catch (err) {
+    logger.error('Failed to add item', { catId: req.params.catId }, err);
     res.status(500).json({ error: 'Failed to add item' });
   }
 }
@@ -92,6 +101,10 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
       storage_location?: string | null;
     };
     if (!name || typeof name !== 'string') {
+      logger.warn('Rejected update-item request with an invalid name', {
+        catId,
+        itemId,
+      });
       res.status(400).json({ error: 'name is required' });
       return;
     }
@@ -100,6 +113,7 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
       catId,
     );
     if (!belongs) {
+      logger.warn('Update-item rejected: item not found', { catId, itemId });
       res.status(404).json({ error: 'Item not found' });
       return;
     }
@@ -110,11 +124,20 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
       storage_location,
     });
     if (!item) {
+      logger.warn('Update-item rejected: item not found after update', {
+        catId,
+        itemId,
+      });
       res.status(404).json({ error: 'Item not found' });
       return;
     }
     res.json(item);
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to update item',
+      { catId: req.params.catId, itemId: req.params.itemId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to update item' });
   }
 }
@@ -130,16 +153,27 @@ export async function deleteItem(req: Request, res: Response): Promise<void> {
       catId,
     );
     if (!belongs) {
+      logger.warn('Delete-item rejected: item not found', { catId, itemId });
       res.status(404).json({ error: 'Item not found' });
       return;
     }
     const deleted = await templateRepo.deleteItem(itemId);
     if (!deleted) {
+      logger.warn('Delete-item rejected: item not found after check', {
+        catId,
+        itemId,
+      });
       res.status(404).json({ error: 'Item not found' });
       return;
     }
+    logger.info('Template item deleted', { catId, itemId });
     res.status(204).send();
-  } catch {
+  } catch (err) {
+    logger.error(
+      'Failed to delete item',
+      { catId: req.params.catId, itemId: req.params.itemId },
+      err,
+    );
     res.status(500).json({ error: 'Failed to delete item' });
   }
 }
