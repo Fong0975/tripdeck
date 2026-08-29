@@ -21,9 +21,15 @@ services:
       AUTO_BACKUP_INTERVAL_DAYS: ${AUTO_BACKUP_INTERVAL_DAYS:-15}
       AUTO_BACKUP_CHECK_INTERVAL_HOURS: ${AUTO_BACKUP_CHECK_INTERVAL_HOURS:-24}
       AUTO_BACKUP_RETENTION_COUNT: ${AUTO_BACKUP_RETENTION_COUNT:-6}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_DIR: ${LOG_DIR:-/app/logs}
+      LOG_FILENAME: ${LOG_FILENAME:-app.log}
+      LOG_MAX_SIZE_MB: ${LOG_MAX_SIZE_MB:-10}
+      LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
     volumes:
       - ${UPLOADS_HOST_DIR:-./.uploads}:/app/uploads
       - ${BACKUPS_HOST_DIR:-./.backups}:/app/backups
+      - ${LOGS_HOST_DIR:-./.logs}:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${VITE_API_PORT:-3001}/api/health || exit 1"]

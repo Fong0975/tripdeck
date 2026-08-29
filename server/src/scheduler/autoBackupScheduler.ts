@@ -1,4 +1,7 @@
+import { createLogger } from '../logger';
 import * as backupRepo from '../repositories/backup';
+
+const logger = createLogger('auto-backup');
 
 const DEFAULT_INTERVAL_DAYS = 15;
 const DEFAULT_CHECK_INTERVAL_HOURS = 24;
@@ -86,14 +89,34 @@ export async function runAutoBackupIfDue(
 ): Promise<void> {
   try {
     if (!isAutoBackupDue(config.intervalDays)) {
+      logger.debug('No backup due yet', {
+        intervalDays: config.intervalDays,
+      });
       return;
     }
 
+    logger.info('Automatic backup due, starting', {
+      intervalDays: config.intervalDays,
+    });
+
     const buffer = await backupRepo.buildSystemBackupZip();
-    backupRepo.writeAutoBackupFile(buffer);
+    const info = backupRepo.writeAutoBackupFile(buffer);
     backupRepo.pruneOldAutoBackups(config.retentionCount);
+
+    logger.info('Automatic backup completed', {
+      filename: info.filename,
+      sizeBytes: info.sizeBytes,
+      retentionCount: config.retentionCount,
+    });
   } catch (err) {
-    console.error('[auto-backup] Failed to create automatic backup:', err);
+    logger.error(
+      'Failed to create automatic backup',
+      {
+        intervalDays: config.intervalDays,
+        retentionCount: config.retentionCount,
+      },
+      err,
+    );
   }
 }
 
@@ -108,7 +131,7 @@ export async function runAutoBackupIfDue(
 export function startAutoBackupScheduler(): NodeJS.Timeout | null {
   const config = readAutoBackupConfig();
   if (!config.enabled) {
-    console.log('[auto-backup] Disabled via AUTO_BACKUP_ENABLED=false');
+    logger.info('Disabled via AUTO_BACKUP_ENABLED=false');
     return null;
   }
 
@@ -116,6 +139,12 @@ export function startAutoBackupScheduler(): NodeJS.Timeout | null {
     config.checkIntervalHours * 60 * 60 * 1000,
     MIN_CHECK_INTERVAL_MS,
   );
+
+  logger.info('Scheduler started', {
+    intervalDays: config.intervalDays,
+    checkIntervalHours: config.checkIntervalHours,
+    retentionCount: config.retentionCount,
+  });
 
   const timer = setInterval(() => {
     void runAutoBackupIfDue(config);
