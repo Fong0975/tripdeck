@@ -9,8 +9,7 @@ function firePopstate() {
 
 // Stateful navigation-guard hook — deliberately not table-driven: each case
 // exercises a different point in the same effect/listener lifecycle, so a
-// shared it.each would obscure the assertions (same rationale as
-// useConfirmDelete.test.ts).
+// shared it.each would obscure the assertions.
 describe('useUnsavedChangesGuard', () => {
   let pushStateSpy: ReturnType<typeof vi.spyOn>;
 

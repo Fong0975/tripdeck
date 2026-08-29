@@ -1,11 +1,13 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { MapPin, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { Trip } from '@/types';
 import { getTripTotalDays } from '@/utils/date';
+
+import ConfirmDialog from './ui/ConfirmDialog';
 
 interface Props {
   trip: Trip;
@@ -15,9 +17,7 @@ interface Props {
 
 export default function TripCard({ trip, onDelete, onEdit }: Props) {
   const navigate = useNavigate();
-  const { confirming, handleClick: handleDelete } = useConfirmDelete(() =>
-    onDelete(trip.id),
-  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const totalDays = getTripTotalDays(trip);
 
@@ -55,13 +55,12 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
               <Pencil size={16} />
             </button>
             <button
-              onClick={handleDelete}
-              className={`rounded-lg p-1.5 transition-all ${
-                confirming
-                  ? 'bg-destructive scale-110 text-white'
-                  : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100'
-              }`}
-              title={confirming ? '再次點擊確認刪除' : '刪除旅程'}
+              onClick={e => {
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5 opacity-0 transition-all group-hover:opacity-100'
+              title='刪除旅程'
             >
               <Trash2 size={16} />
             </button>
@@ -97,6 +96,21 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
           </span>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div onClick={e => e.stopPropagation()}>
+          <ConfirmDialog
+            title={`確定要刪除「${trip.title}」嗎？`}
+            message='刪除後將無法復原，此旅程的所有資料都會一併移除。'
+            confirmLabel='刪除'
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              onDelete(trip.id);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

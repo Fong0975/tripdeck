@@ -80,26 +80,41 @@ describe('TripCard', () => {
     },
   );
 
-  it('arms the delete confirmation on first click without deleting', async () => {
+  it('opens a confirmation dialog on click without deleting', async () => {
     const onDelete = vi.fn();
     const user = userEvent.setup();
-    renderCard(makeTrip(), onDelete);
+    renderCard(makeTrip({ title: 'Tokyo Trip' }), onDelete);
 
     await user.click(screen.getByTitle('刪除旅程'));
 
     expect(onDelete).not.toHaveBeenCalled();
-    expect(screen.getByTitle('再次點擊確認刪除')).toBeInTheDocument();
+    expect(
+      screen.getByText('確定要刪除「Tokyo Trip」嗎？'),
+    ).toBeInTheDocument();
   });
 
-  it('deletes on a second click within the confirmation window', async () => {
+  it('deletes when the dialog is confirmed, without navigating', async () => {
     const onDelete = vi.fn();
     const user = userEvent.setup();
     renderCard(makeTrip({ id: 7 }), onDelete);
 
     await user.click(screen.getByTitle('刪除旅程'));
-    await user.click(screen.getByTitle('再次點擊確認刪除'));
+    await user.click(screen.getByText('刪除', { selector: 'button' }));
 
     expect(onDelete).toHaveBeenCalledWith(7);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does not delete when the dialog is cancelled, without navigating', async () => {
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    renderCard(makeTrip(), onDelete);
+
+    await user.click(screen.getByTitle('刪除旅程'));
+    await user.click(screen.getByText('取消'));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('does not navigate when the delete button is clicked', async () => {
