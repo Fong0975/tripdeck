@@ -1,7 +1,7 @@
 {
   "name": "@tripdeck/server",
   "private": true,
-  "version": "1.0.43",
+  "version": "1.0.44",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json",
