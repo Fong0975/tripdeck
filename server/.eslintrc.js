@@ -30,6 +30,7 @@ module.exports = {
       },
     ],
 
+    'no-console': 'error',
     'no-debugger': 'error',
     'no-duplicate-imports': 'error',
     'prefer-const': 'error',

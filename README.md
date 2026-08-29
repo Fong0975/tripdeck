@@ -31,13 +31,15 @@ tripdeck/
 │   │   ├── config/           # Database connection setup
 │   │   ├── controllers/      # Handles API business logic and responses
 │   │   ├── db/               # Schema definitions and table initialization
-│   │   ├── middleware/       # Express middleware (multer file upload)
+│   │   ├── logger/           # File-based logger (levels, rotation, config)
+│   │   ├── middleware/       # Express middleware (multer file upload, global error handler)
 │   │   ├── repositories/     # Database query layer (MySQL2)
 │   │   ├── routes/           # Defines API endpoints and URL mapping
 │   │   ├── scheduler/        # Periodic automatic full-system backup checker
 │   │   ├── types/            # Request/response type definitions
 │   │   └── index.ts          # Express server entry point
 │   ├── backups/              # Automatic backup files (git-ignored, timestamped filenames)
+│   ├── logs/                 # Rotated log files (git-ignored)
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
 │   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── Dockerfile            # Multi-stage build: tsc → production Node.js
@@ -148,8 +150,25 @@ Pick one of the following:
 | AUTO_BACKUP_ENABLED / AUTO_BACKUP_INTERVAL_DAYS / AUTO_BACKUP_CHECK_INTERVAL_HOURS / AUTO_BACKUP_RETENTION_COUNT | Automatic full-system backup schedule, injected into the backend container at runtime | see `.env.example` |
 | UPLOADS_HOST_DIR | Host directory bind-mounted into the backend container's uploaded trip images; defaults to `./.uploads` (relative to wherever `docker-compose.yml` runs from) — override with an absolute path when that directory isn't stable (e.g. deployed via Portainer) | /opt/tripdeck/uploads |
 | BACKUPS_HOST_DIR | Host directory bind-mounted into the backend container's backup output; same override behavior as `UPLOADS_HOST_DIR` | /opt/tripdeck/backups |
+| LOG_LEVEL / LOG_DIR / LOG_FILENAME / LOG_MAX_SIZE_MB / LOG_MAX_FILES | Application log level and file rotation settings, injected into the backend container at runtime — see [Logging](#logging) | see `.env.example` |
+| LOGS_HOST_DIR | Host directory bind-mounted into the backend container's log output; same override behavior as `UPLOADS_HOST_DIR` | /opt/tripdeck/logs |
 
 See `.env.example` for the full list of variables and their default values.
+
+## Logging
+
+The backend writes structured (JSON-lines) logs to a file only — nothing is printed to the console. Each entry has the shape `{ timestamp, level, tag, message, meta? }`, where `tag` identifies the module that logged it (e.g. `db`, `backup`, `auto-backup`, `trip`).
+
+By default, log files live at `server/logs/app.log` in local development. Once the active file exceeds `LOG_MAX_SIZE_MB`, it's rotated: `app.log` is renamed `app.1.log`, the previous `app.1.log` becomes `app.2.log`, and so on — a file is never overwritten. `LOG_MAX_FILES` caps how many rotated files are kept (`0` means unlimited).
+
+| Variable | Description | Default |
+|----------|--------------|---------|
+| LOG_LEVEL | Minimum severity written: `debug`, `info`, `warn`, or `error` | `info` |
+| LOG_DIR | Directory log files are written to; leave empty to use the built-in default (`server/logs` outside Docker, `/app/logs` inside the container) | — |
+| LOG_FILENAME | Base filename for the active log file | `app.log` |
+| LOG_MAX_SIZE_MB | Rotate once the active file reaches this size | `10` |
+| LOG_MAX_FILES | How many rotated (historical) files to keep; `0` = unlimited | `5` |
+| LOGS_HOST_DIR | Docker-only: host directory bind-mounted onto the container's `LOG_DIR`, so rotated logs survive a container rebuild — see [Docker Deployment](#docker-deployment) | `./.logs` |
 
 ## Development
 
