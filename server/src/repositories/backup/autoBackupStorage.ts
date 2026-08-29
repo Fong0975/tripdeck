@@ -67,7 +67,7 @@ export function writeAutoBackupFile(buffer: Buffer): AutoBackupFileInfo {
     throw err;
   }
   const info = toFileInfo(filename);
-  logger.info('Automatic backup file written', info);
+  logger.info('Automatic backup file written', { ...info });
   return info;
 }
 

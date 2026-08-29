@@ -114,6 +114,14 @@ jobs:
         if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
         run: npm run lint:check -w server
 
+      - name: Run TypeScript build on client
+        if: steps.filter.outputs.client == 'true' || github.event_name == 'workflow_dispatch'
+        run: npm run build -w client
+
+      - name: Run TypeScript build on server
+        if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
+        run: npm run build -w server
+
       - name: Run server unit tests with coverage
         id: server-tests
         if: steps.filter.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
