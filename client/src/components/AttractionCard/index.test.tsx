@@ -173,8 +173,8 @@ describe('AttractionCard', () => {
   });
 
   it(
-    'arms the delete confirmation on a single click without calling ' +
-      'onDelete, and does not bubble',
+    'opens a confirmation dialog on click without calling onDelete, ' +
+      'and does not bubble',
     async () => {
       const user = userEvent.setup();
       const { onDelete, onParentClick } = renderCard();
@@ -183,18 +183,21 @@ describe('AttractionCard', () => {
 
       expect(onDelete).not.toHaveBeenCalled();
       expect(onParentClick).not.toHaveBeenCalled();
+      expect(
+        screen.getByText('確定要刪除「Test Attraction」嗎？'),
+      ).toBeInTheDocument();
     },
   );
 
   it(
-    'calls onDelete with the attraction id on a second click within the ' +
-      'confirmation window, and does not bubble',
+    'calls onDelete with the attraction id when the dialog is confirmed, ' +
+      'and does not bubble',
     async () => {
       const user = userEvent.setup();
       const { attraction, onDelete, onParentClick } = renderCard();
 
       await user.click(screen.getByTitle('刪除'));
-      await user.click(screen.getByTitle('再次點擊確認'));
+      await user.click(screen.getByText('刪除', { selector: 'button' }));
 
       expect(onDelete).toHaveBeenCalledWith(attraction.id);
       expect(onParentClick).not.toHaveBeenCalled();

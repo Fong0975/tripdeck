@@ -1,13 +1,13 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { TravelConnection, TransportMode } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
 import ClampedTextSection from './ClampedTextSection';
 import ImageLightbox from './ImageLightbox';
 import ImageStrip from './ImageStrip';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 interface Props {
   connection: TravelConnection;
@@ -41,12 +41,11 @@ export default function TravelConnectionItem({
   onDelete,
 }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const durationDisplay = formatDurationDisplay(connection.duration);
   const hasRoute = !!connection.route?.trim();
   const hasNotes = !!connection.notes?.trim();
   const hasImages = (connection.images ?? []).length > 0;
-  const { confirming: confirmDelete, handleClick: handleDelete } =
-    useConfirmDelete(() => onDelete(connection.id));
 
   return (
     <div className='group my-1 flex items-center gap-2 px-3'>
@@ -80,13 +79,12 @@ export default function TravelConnectionItem({
             <Pencil size={12} className='text-muted-foreground' />
             <button
               type='button'
-              onClick={handleDelete}
-              className={`rounded p-0.5 transition-colors ${
-                confirmDelete
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'text-muted-foreground hover:text-destructive'
-              }`}
-              title={confirmDelete ? '再次點擊確認' : '刪除'}
+              onClick={e => {
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+              }}
+              className='text-muted-foreground hover:text-destructive rounded p-0.5 transition-colors'
+              title='刪除'
             >
               <Trash2 size={12} />
             </button>
@@ -123,6 +121,19 @@ export default function TravelConnectionItem({
           images={connection.images!}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
+        />
+      )}
+
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title='確定要刪除這筆交通方式嗎？'
+          message='刪除後將無法復原。'
+          confirmLabel='刪除'
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            onDelete(connection.id);
+          }}
         />
       )}
     </div>

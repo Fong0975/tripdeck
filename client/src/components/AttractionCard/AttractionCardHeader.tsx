@@ -1,7 +1,9 @@
 import { Copy, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
-import { useConfirmDelete } from '@/hooks/useConfirmDelete';
 import type { Attraction } from '@/types';
+
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface AttractionCardHeaderProps {
   attraction: Attraction;
@@ -16,8 +18,7 @@ export default function AttractionCardHeader({
   onDelete,
   onDuplicate,
 }: AttractionCardHeaderProps) {
-  const { confirming: confirmDelete, handleClick: handleDelete } =
-    useConfirmDelete(() => onDelete(attraction.id));
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <div className='relative'>
@@ -60,17 +61,31 @@ export default function AttractionCardHeader({
           </button>
         )}
         <button
-          onClick={handleDelete}
-          className={`rounded p-1 transition-colors ${
-            confirmDelete
-              ? 'bg-destructive/10 text-destructive'
-              : 'text-muted-foreground hover:text-destructive'
-          }`}
-          title={confirmDelete ? '再次點擊確認' : '刪除'}
+          onClick={e => {
+            e.stopPropagation();
+            setShowDeleteConfirm(true);
+          }}
+          className='text-muted-foreground hover:text-destructive rounded p-1 transition-colors'
+          title='刪除'
         >
           <Trash2 size={14} />
         </button>
       </div>
+
+      {showDeleteConfirm && (
+        <div onClick={e => e.stopPropagation()}>
+          <ConfirmDialog
+            title={`確定要刪除「${attraction.name}」嗎？`}
+            message='刪除後將無法復原。'
+            confirmLabel='刪除'
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              onDelete(attraction.id);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

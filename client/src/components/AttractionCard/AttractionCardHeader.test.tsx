@@ -105,12 +105,12 @@ describe('AttractionCardHeader', () => {
     expect(onDuplicate).toHaveBeenCalledWith(attraction);
   });
 
-  it('arms the delete confirmation on a single click without calling onDelete', async () => {
+  it('opens a confirmation dialog on click without calling onDelete', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
     render(
       <AttractionCardHeader
-        attraction={makeAttraction()}
+        attraction={makeAttraction({ name: 'Test Attraction' })}
         onEdit={vi.fn()}
         onDelete={onDelete}
       />,
@@ -119,10 +119,12 @@ describe('AttractionCardHeader', () => {
     await user.click(screen.getByTitle('刪除'));
 
     expect(onDelete).not.toHaveBeenCalled();
-    expect(screen.getByTitle('再次點擊確認')).toBeInTheDocument();
+    expect(
+      screen.getByText('確定要刪除「Test Attraction」嗎？'),
+    ).toBeInTheDocument();
   });
 
-  it('calls onDelete with the attraction id on a second click within the confirmation window', async () => {
+  it('calls onDelete with the attraction id when the dialog is confirmed', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
     const attraction = makeAttraction();
@@ -135,8 +137,25 @@ describe('AttractionCardHeader', () => {
     );
 
     await user.click(screen.getByTitle('刪除'));
-    await user.click(screen.getByTitle('再次點擊確認'));
+    await user.click(screen.getByText('刪除', { selector: 'button' }));
 
     expect(onDelete).toHaveBeenCalledWith(attraction.id);
+  });
+
+  it('does not call onDelete when the dialog is cancelled', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(
+      <AttractionCardHeader
+        attraction={makeAttraction()}
+        onEdit={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByTitle('刪除'));
+    await user.click(screen.getByText('取消'));
+
+    expect(onDelete).not.toHaveBeenCalled();
   });
 });

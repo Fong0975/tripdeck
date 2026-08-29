@@ -185,7 +185,7 @@ describe('TravelConnectionItem', () => {
   });
 
   describe('delete button', () => {
-    it('arms confirmation on first click without calling onDelete or onEdit', async () => {
+    it('opens a confirmation dialog on click without calling onDelete or onEdit', async () => {
       const onEdit = vi.fn();
       const onDelete = vi.fn();
       const user = userEvent.setup();
@@ -201,10 +201,12 @@ describe('TravelConnectionItem', () => {
 
       expect(onDelete).not.toHaveBeenCalled();
       expect(onEdit).not.toHaveBeenCalled();
-      expect(screen.getByTitle('再次點擊確認')).toBeInTheDocument();
+      expect(
+        screen.getByText('確定要刪除這筆交通方式嗎？'),
+      ).toBeInTheDocument();
     });
 
-    it('calls onDelete with the connection id on the second click, without triggering onEdit', async () => {
+    it('calls onDelete with the connection id when the dialog is confirmed', async () => {
       const onEdit = vi.fn();
       const onDelete = vi.fn();
       const user = userEvent.setup();
@@ -218,10 +220,30 @@ describe('TravelConnectionItem', () => {
       );
 
       await user.click(screen.getByTitle('刪除'));
-      await user.click(screen.getByTitle('再次點擊確認'));
+      await user.click(screen.getByText('刪除', { selector: 'button' }));
 
       expect(onDelete).toHaveBeenCalledWith(7);
       expect(onEdit).not.toHaveBeenCalled();
+    });
+
+    it('does not call onDelete when the dialog is cancelled', async () => {
+      const onDelete = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <TravelConnectionItem
+          connection={makeConnection()}
+          onEdit={vi.fn()}
+          onDelete={onDelete}
+        />,
+      );
+
+      await user.click(screen.getByTitle('刪除'));
+      await user.click(screen.getByText('取消'));
+
+      expect(onDelete).not.toHaveBeenCalled();
+      expect(
+        screen.queryByText('確定要刪除這筆交通方式嗎？'),
+      ).not.toBeInTheDocument();
     });
   });
 });
