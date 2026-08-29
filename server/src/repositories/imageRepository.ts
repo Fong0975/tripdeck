@@ -1,8 +1,11 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
+import { createLogger } from '../logger';
 import { deleteImageFromDisk } from '../middleware/upload';
 import type { ImageResponse } from '../types/trip';
+
+const logger = createLogger('image');
 
 interface ImageRow extends RowDataPacket {
   id: number;
@@ -69,12 +72,25 @@ function createImageRepo(table: string, idColumn: string) {
     filename: string,
     title: string,
   ): Promise<ImageResponse> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO ${table} (${idColumn}, filename, title) VALUES (?, ?, ?)`,
-      [parentId, filename, title],
-    );
+    try {
+      const [result] = await pool.execute<ResultSetHeader>(
+        `INSERT INTO ${table} (${idColumn}, filename, title) VALUES (?, ?, ?)`,
+        [parentId, filename, title],
+      );
 
-    return { id: result.insertId, filename, title };
+      return { id: result.insertId, filename, title };
+    } catch (err) {
+      // The file has already been written to disk by the caller at this
+      // point (saveImageToDisk/saveImportedImageBuffer runs first) — a
+      // failure here leaves an orphaned file with no DB row, which is
+      // exactly the gap this log is meant to surface.
+      logger.error(
+        'Failed to insert image row after file was written to disk',
+        { table, idColumn, parentId, filename },
+        err,
+      );
+      throw err;
+    }
   }
 
   async function deleteImage(
@@ -93,6 +109,12 @@ function createImageRepo(table: string, idColumn: string) {
     await pool.execute(`DELETE FROM ${table} WHERE id = ?`, [imageId]);
 
     deleteImageFromDisk(rows[0].filename);
+    logger.debug('Image deleted', {
+      table,
+      imageId,
+      parentId,
+      filename: rows[0].filename,
+    });
     return true;
   }
 

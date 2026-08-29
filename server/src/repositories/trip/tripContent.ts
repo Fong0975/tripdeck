@@ -1,4 +1,5 @@
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import type {
   AttractionResponse,
   ConnectionResponse,
@@ -18,6 +19,8 @@ import {
   TripDayLocationRow,
   TripDayRow,
 } from './types';
+
+const logger = createLogger('trip');
 
 /**
  * Fetches the full trip content: all days with their attractions
@@ -141,6 +144,13 @@ export async function findContent(
     connections: connectionsByDayId.get(row.id) ?? [],
     images: imagesByDayId.get(row.id) ?? [],
   }));
+
+  logger.debug('Assembled trip content', {
+    tripId,
+    days: dayRows.length,
+    attractions: attractionRows.length,
+    connections: connectionRows.length,
+  });
 
   return { tripId, days };
 }

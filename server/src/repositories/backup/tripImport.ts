@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import {
   deleteImageFromDisk,
   saveImportedImageBuffer,
@@ -8,6 +9,8 @@ import {
 import type { ImportedTripResult, TripBackupData } from '../../types/backup';
 import type { ImageResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
+
+const logger = createLogger('backup');
 
 /**
  * Returns `desiredTitle` unchanged if no trip already uses it, otherwise
@@ -29,7 +32,12 @@ export async function generateUniqueTripTitle(
   while (existingTitles.has(`${desiredTitle} (${suffix})`)) {
     suffix++;
   }
-  return `${desiredTitle} (${suffix})`;
+  const resolvedTitle = `${desiredTitle} (${suffix})`;
+  logger.debug('Resolved a title collision during import', {
+    desiredTitle,
+    resolvedTitle,
+  });
+  return resolvedTitle;
 }
 
 interface PendingImage {
@@ -65,6 +73,10 @@ export async function importSingleTrip(
   imageBuffers: Map<string, Buffer>,
 ): Promise<ImportedTripResult> {
   const title = await generateUniqueTripTitle(data.trip.title.trim());
+  logger.debug('Starting trip import transaction', {
+    originalTripId: data.trip.id,
+    title,
+  });
 
   const dayIdMap = new Map<number, number>();
   const attractionIdMap = new Map<number, number>();
@@ -164,21 +176,31 @@ export async function importSingleTrip(
 
     // Second pass: connections, now that every attraction they might
     // reference has been inserted and remapped above.
+    logger.debug('Importing connections (second pass)', {
+      originalTripId: data.trip.id,
+      dayCount: data.content.days.length,
+    });
     for (const day of data.content.days) {
       const newDayId = dayIdMap.get(day.id);
       if (newDayId === undefined) {
-        throw new Error(
-          `Day ${day.id} was not imported before its connections`,
-        );
+        const message = `Day ${day.id} was not imported before its connections`;
+        logger.error('Trip import consistency error', {
+          originalTripId: data.trip.id,
+          message,
+        });
+        throw new Error(message);
       }
 
       for (const connection of day.connections) {
         const newFromId = attractionIdMap.get(connection.fromAttractionId);
         const newToId = attractionIdMap.get(connection.toAttractionId);
         if (newFromId === undefined || newToId === undefined) {
-          throw new Error(
-            `Connection ${connection.id} references an attraction that was not imported`,
-          );
+          const message = `Connection ${connection.id} references an attraction that was not imported`;
+          logger.error('Trip import consistency error', {
+            originalTripId: data.trip.id,
+            message,
+          });
+          throw new Error(message);
         }
 
         const [connectionResult] = await conn.execute<ResultSetHeader>(
@@ -209,6 +231,11 @@ export async function importSingleTrip(
     }
 
     if (data.checklist) {
+      logger.debug('Importing checklist', {
+        originalTripId: data.trip.id,
+        categoryCount: data.checklist.categories.length,
+        occasionCount: data.checklist.occasions.length,
+      });
       for (const category of data.checklist.categories) {
         const [categoryResult] = await conn.execute<ResultSetHeader>(
           'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
@@ -252,9 +279,12 @@ export async function importSingleTrip(
           }
           const newItemId = itemIdMap.get(Number(itemIdStr));
           if (newItemId === undefined) {
-            throw new Error(
-              `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`,
-            );
+            const message = `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`;
+            logger.error('Trip import consistency error', {
+              originalTripId: data.trip.id,
+              message,
+            });
+            throw new Error(message);
           }
           await conn.execute(
             'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked) VALUES (?, ?, 1)',
@@ -265,13 +295,27 @@ export async function importSingleTrip(
     }
 
     await conn.commit();
+    logger.debug('Trip import transaction committed', {
+      originalTripId: data.trip.id,
+      newTripId,
+    });
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Trip import transaction failed, rolled back',
+      { originalTripId: data.trip.id, title },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
   }
 
+  logger.debug('Writing imported trip images to disk', {
+    originalTripId: data.trip.id,
+    newTripId,
+    imageCount: pendingImages.length,
+  });
   const writtenFilenames: string[] = [];
   try {
     for (const pending of pendingImages) {
@@ -284,6 +328,16 @@ export async function importSingleTrip(
       await pending.add(pending.newParentId, newFilename, pending.title);
     }
   } catch (err) {
+    logger.error(
+      'Failed to write imported trip images; rolling back the new trip',
+      {
+        newTripId,
+        title,
+        filesWrittenBeforeFailure: writtenFilenames.length,
+        totalImages: pendingImages.length,
+      },
+      err,
+    );
     for (const filename of writtenFilenames) {
       deleteImageFromDisk(filename);
     }
@@ -291,5 +345,12 @@ export async function importSingleTrip(
     throw err;
   }
 
+  logger.info('Trip imported successfully', {
+    originalTripId: data.trip.id,
+    newTripId,
+    title,
+    daysImported: data.content.days.length,
+    imagesImported: pendingImages.length,
+  });
   return { originalTripId: data.trip.id, newTripId, title };
 }

@@ -3,6 +3,7 @@ import path from 'path';
 
 import AdmZip from 'adm-zip';
 
+import { createLogger } from '../../logger';
 import { UPLOADS_DIR } from '../../middleware/upload';
 import {
   BACKUP_FORMAT_VERSION,
@@ -16,6 +17,8 @@ import * as tripRepo from '../trip';
 
 import { TripNotFoundError } from './errors';
 
+const logger = createLogger('backup');
+
 /**
  * Assembles the full backup payload for one trip: its own fields/images,
  * the full day/attraction/connection content tree, and its checklist
@@ -26,6 +29,7 @@ export async function buildTripBackupData(
 ): Promise<TripBackupData> {
   const trip = await tripRepo.findById(tripId);
   if (!trip) {
+    logger.warn('Cannot build backup data: trip not found', { tripId });
     throw new TripNotFoundError(tripId);
   }
 
@@ -86,22 +90,35 @@ export async function addTripsToZip(
   for (const tripId of uniqueTripIds) {
     const data = await buildTripBackupData(tripId);
     const folder = `trip_${tripId}`;
+    const images = collectImages(data);
 
     zip.addFile(
       `trips/${folder}/data.json`,
       Buffer.from(JSON.stringify(data, null, 2), 'utf-8'),
     );
 
-    for (const image of collectImages(data)) {
+    let skippedImages = 0;
+    for (const image of images) {
       try {
         const buffer = fs.readFileSync(path.join(UPLOADS_DIR, image.filename));
         zip.addFile(`trips/${folder}/images/${image.filename}`, buffer);
-      } catch {
-        console.warn(
-          `[backup] Missing image file on disk, skipped from export: ${image.filename} (trip ${tripId})`,
-        );
+      } catch (err) {
+        skippedImages++;
+        logger.warn('Missing image file on disk, skipped from export', {
+          filename: image.filename,
+          tripId,
+          folder,
+          reason: err instanceof Error ? err.message : String(err),
+        });
       }
     }
+
+    logger.debug('Added trip to export zip', {
+      tripId,
+      folder,
+      imageCount: images.length,
+      skippedImages,
+    });
 
     manifestTrips.push({
       originalTripId: tripId,
@@ -154,5 +171,11 @@ export async function buildBackupZip(
     Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8'),
   );
 
-  return zip.toBuffer();
+  const zipBuffer = zip.toBuffer();
+  logger.info('Backup zip built', {
+    tripCount: manifestTrips.length,
+    includesTemplate: !!options.includeTemplate,
+    sizeBytes: zipBuffer.length,
+  });
+  return zipBuffer;
 }

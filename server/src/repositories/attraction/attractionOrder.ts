@@ -1,9 +1,12 @@
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../middleware/upload';
 import type { ImageResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
 import { TripConnectionAdjacencyRow } from './shared';
+
+const logger = createLogger('attraction');
 
 /**
  * Updates sort_order for each attraction in the given day according to the
@@ -49,6 +52,13 @@ export async function updateOrder(
       })
       .map(row => row.id);
 
+    if (staleConnectionIds.length > 0) {
+      logger.debug('Detected stale connections after reorder', {
+        dayId,
+        staleConnectionCount: staleConnectionIds.length,
+      });
+    }
+
     // Fetched before the delete (whose cascade would otherwise silently wipe
     // these rows) so the physical files can still be cleaned up afterwards.
     const staleImages =
@@ -66,13 +76,27 @@ export async function updateOrder(
 
     // Only delete the physical files once the transaction has actually
     // committed, so a rollback never leaves an in-use image deleted from disk.
+    let imagesRemoved = 0;
     for (const images of staleImages.values()) {
       for (const img of images) {
         deleteImageFromDisk(img.filename);
+        imagesRemoved++;
       }
     }
+
+    logger.info('Attractions reordered', {
+      dayId,
+      reordered: orderedIds.length,
+      connectionsRemoved: staleConnectionIds.length,
+      imagesRemoved,
+    });
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to reorder attractions, rolled back',
+      { dayId, orderedIdsCount: orderedIds.length },
+      err,
+    );
     throw err;
   } finally {
     conn.release();

@@ -1,3 +1,4 @@
+import { createLogger } from '../../logger';
 import type {
   FailedTripResult,
   ImportBackupResult,
@@ -7,6 +8,8 @@ import type {
 import { parseBackupZip } from './backupValidate';
 import { restoreTemplate } from './templateRestore';
 import { importSingleTrip } from './tripImport';
+
+const logger = createLogger('backup');
 
 /**
  * Validates and imports every trip in a backup zip. Each trip is imported
@@ -23,32 +26,54 @@ export async function importBackupZip(
   buffer: Buffer,
   options: { restoreTemplate?: boolean } = {},
 ): Promise<ImportBackupResult> {
+  logger.debug('Validating backup zip', { sizeBytes: buffer.length });
   const parsed = parseBackupZip(buffer);
 
   const imported: ImportedTripResult[] = [];
   const failed: FailedTripResult[] = [];
 
+  logger.debug('Importing trips', { tripCount: parsed.trips.length });
   for (const trip of parsed.trips) {
     try {
-      imported.push(await importSingleTrip(trip.data, trip.imageBuffers));
+      const result = await importSingleTrip(trip.data, trip.imageBuffers);
+      imported.push(result);
+      logger.info('Trip imported', {
+        originalTripId: result.originalTripId,
+        newTripId: result.newTripId,
+        title: result.title,
+      });
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Unknown import error';
       failed.push({
         originalTripId: trip.originalTripId,
         title: trip.data.trip.title,
-        error: err instanceof Error ? err.message : 'Unknown import error',
+        error: message,
+      });
+      logger.warn('Failed to import trip', {
+        originalTripId: trip.originalTripId,
+        title: trip.data.trip.title,
+        error: message,
       });
     }
   }
 
   let templateRestored = false;
   if (options.restoreTemplate && parsed.template) {
+    logger.debug('Restoring checklist template');
     try {
       await restoreTemplate(parsed.template);
       templateRestored = true;
     } catch (err) {
-      console.error('[backup] Failed to restore checklist template:', err);
+      logger.error('Failed to restore checklist template', undefined, err);
     }
   }
+
+  logger.info('Backup import completed', {
+    importedCount: imported.length,
+    failedCount: failed.length,
+    templateRestored,
+  });
 
   return { imported, failed, templateRestored };
 }

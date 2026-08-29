@@ -15,6 +15,16 @@ vi.mock('./backupValidate', () => ({
   parseBackupZip: (...args: unknown[]) => mockParseBackupZip(...args),
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import type { TripBackupData } from '../../types/backup';
 
 import { importBackupZip } from './backupImport';
@@ -129,6 +139,16 @@ describe('importBackupZip', () => {
     expect(result.imported).toEqual([
       { originalTripId: 2, newTripId: 1000, title: 'Trip B' },
     ]);
+    expect(mockLogger.warn).toHaveBeenCalledWith('Failed to import trip', {
+      originalTripId: 1,
+      title: 'Trip A',
+      error: 'boom',
+    });
+    expect(mockLogger.info).toHaveBeenCalledWith('Trip imported', {
+      originalTripId: 2,
+      newTripId: 1000,
+      title: 'Trip B',
+    });
   });
 
   it('reports a generic message when importSingleTrip throws a non-Error value', async () => {
@@ -209,8 +229,8 @@ describe('importBackupZip', () => {
       newTripId: 1000,
       title: 'Kyoto Trip',
     });
-    mockRestoreTemplate.mockRejectedValue(new Error('template db error'));
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const templateError = new Error('template db error');
+    mockRestoreTemplate.mockRejectedValue(templateError);
 
     const result = await importBackupZip(Buffer.from('zip'), {
       restoreTemplate: true,
@@ -221,8 +241,10 @@ describe('importBackupZip', () => {
     ]);
     expect(result.failed).toEqual([]);
     expect(result.templateRestored).toBe(false);
-    expect(errorSpy).toHaveBeenCalled();
-
-    errorSpy.mockRestore();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to restore checklist template',
+      undefined,
+      templateError,
+    );
   });
 });

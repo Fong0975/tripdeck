@@ -36,6 +36,16 @@ vi.mock('../imageRepository', () => ({
   addConnectionImage: (...args: unknown[]) => mockAddConnectionImage(...args),
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { generateUniqueTripTitle, importSingleTrip } from './tripImport';
 
 function makeConn() {
@@ -432,6 +442,11 @@ describe('importSingleTrip', () => {
       'DELETE FROM trips WHERE id = ?',
       expect.anything(),
     );
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Trip import transaction failed, rolled back',
+      expect.objectContaining({ originalTripId: sampleData.trip.id }),
+      expect.any(Error),
+    );
   });
 
   it('rolls back when a connection references an attraction that was never imported', async () => {
@@ -457,6 +472,14 @@ describe('importSingleTrip', () => {
 
     expect(mockConnRollback).toHaveBeenCalled();
     expect(mockConnCommit).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Trip import consistency error',
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'references an attraction that was not imported',
+        ),
+      }),
+    );
   });
 
   it('rolls back when an occasion check references a checklist item that was never imported', async () => {
@@ -522,6 +545,11 @@ describe('importSingleTrip', () => {
     expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('new-day1.jpg');
     expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('new-attr1.jpg');
     expect(mockDeleteImageFromDisk).not.toHaveBeenCalledWith('new-conn1.jpg');
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to write imported trip images; rolling back the new trip',
+      expect.objectContaining({ filesWrittenBeforeFailure: 3 }),
+      expect.any(Error),
+    );
     expect(mockPoolExecute).toHaveBeenCalledWith(
       'DELETE FROM trips WHERE id = ?',
       [1000],

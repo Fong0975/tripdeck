@@ -1,7 +1,10 @@
 import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
+
+const logger = createLogger('backup');
 
 /**
  * Replaces the entire global packing checklist template with `template`'s
@@ -14,6 +17,10 @@ import type { ChecklistTemplateResponse } from '../../types/checklist';
 export async function restoreTemplate(
   template: ChecklistTemplateResponse,
 ): Promise<void> {
+  logger.info('Replacing checklist template', {
+    incomingCategoryCount: template.categories.length,
+  });
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -50,8 +57,16 @@ export async function restoreTemplate(
     }
 
     await conn.commit();
+    logger.info('Checklist template replaced', {
+      categoryCount: template.categories.length,
+    });
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to restore checklist template, rolled back',
+      { incomingCategoryCount: template.categories.length },
+      err,
+    );
     throw err;
   } finally {
     conn.release();

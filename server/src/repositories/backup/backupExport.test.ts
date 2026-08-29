@@ -37,6 +37,16 @@ vi.mock('fs', () => ({
   },
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 const sampleTrip: TripResponse = {
   id: 1,
   title: '東京 🗼 五日遊',
@@ -230,16 +240,16 @@ describe('buildBackupZip', () => {
       }
       return Buffer.from('fake-image-bytes');
     });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const buffer = await buildBackupZip([1]);
     const zip = new AdmZip(buffer);
 
     expect(zip.getEntry('trips/trip_1/images/attr1.jpg')).toBeNull();
     expect(zip.getEntry('trips/trip_1/images/day1.jpg')).not.toBeNull();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('attr1.jpg'));
-
-    warnSpy.mockRestore();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Missing image file on disk, skipped from export',
+      expect.objectContaining({ filename: 'attr1.jpg', tripId: 1 }),
+    );
   });
 
   it('serializes a null checklist as null in data.json', async () => {

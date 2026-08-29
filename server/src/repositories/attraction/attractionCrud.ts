@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../middleware/upload';
 import type {
   AttractionResponse,
@@ -9,6 +10,8 @@ import type {
 } from '../../types/trip';
 import * as connectionRepo from '../connectionRepository';
 import * as imageRepo from '../imageRepository';
+
+const logger = createLogger('attraction');
 
 import {
   getWebsites,
@@ -26,6 +29,7 @@ export async function getDayIdForAttraction(
     [attractionId],
   );
   if (rows.length === 0) {
+    logger.warn('Attraction not found', { attractionId });
     throw new Error('Attraction not found');
   }
   return rows[0].trip_day_id;
@@ -89,6 +93,7 @@ export async function create(
     }
 
     await conn.commit();
+    logger.info('Attraction created', { attractionId, dayId });
 
     return {
       id: attractionId,
@@ -104,6 +109,11 @@ export async function create(
     };
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to create attraction, rolled back',
+      { dayId, name: data.name },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -123,6 +133,7 @@ export async function update(
     [attractionId],
   );
   if (rows.length === 0) {
+    logger.warn('Cannot update attraction: not found', { attractionId });
     return null;
   }
 
@@ -167,6 +178,11 @@ export async function update(
     await conn.commit();
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to update attraction, rolled back',
+      { attractionId, fields: Object.keys(data) },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -207,6 +223,11 @@ export async function deleteById(attractionId: number): Promise<boolean> {
     for (const img of images) {
       deleteImageFromDisk(img.filename);
     }
+    logger.info('Attraction deleted', {
+      attractionId,
+      connectionsDeleted: connectionRows.length,
+      imagesDeleted: images.length,
+    });
   }
   return result.affectedRows > 0;
 }

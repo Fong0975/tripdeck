@@ -1,6 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
+import { createLogger } from '../logger';
 import { deleteImageFromDisk } from '../middleware/upload';
 import type {
   ConnectionResponse,
@@ -10,6 +11,8 @@ import type {
 } from '../types/trip';
 
 import * as imageRepo from './imageRepository';
+
+const logger = createLogger('connection');
 
 // --- Row type ---
 
@@ -139,6 +142,10 @@ export async function deleteById(connectionId: number): Promise<boolean> {
     for (const img of images) {
       deleteImageFromDisk(img.filename);
     }
+    logger.info('Connection deleted', {
+      connectionId,
+      imagesDeleted: images.length,
+    });
   }
   return result.affectedRows > 0;
 }

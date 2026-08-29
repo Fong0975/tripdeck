@@ -1,6 +1,7 @@
 import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../../config/database';
+import { createLogger } from '../../../logger';
 import type {
   OccasionResponse,
   TripChecklistCategoryResponse,
@@ -19,6 +20,8 @@ import {
   TripChecklistCategoryRow,
   TripChecklistItemRow,
 } from './shared';
+
+const logger = createLogger('checklist-trip');
 
 /**
  * Returns the full checklist for a trip.
@@ -112,6 +115,10 @@ export async function initChecklist(
     const [catRows] = await conn.execute<TemplateCategoryRow[]>(
       'SELECT * FROM checklist_template_categories ORDER BY id',
     );
+    logger.debug('Copying template into new trip checklist', {
+      tripId,
+      categoryCount: catRows.length,
+    });
 
     for (const cat of catRows) {
       const [catResult] = await conn.execute<ResultSetHeader>(
@@ -156,8 +163,17 @@ export async function initChecklist(
     );
 
     await conn.commit();
+    logger.info('Trip checklist initialized from template', {
+      tripId,
+      categoriesCopied: catRows.length,
+    });
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to initialize trip checklist, rolled back',
+      { tripId },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -177,5 +193,8 @@ export async function findOrInitChecklist(
   if (existing) {
     return existing;
   }
+  logger.debug('No checklist found, auto-initializing from template', {
+    tripId,
+  });
   return initChecklist(tripId);
 }

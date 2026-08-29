@@ -1,11 +1,14 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import { createLogger } from '../../logger';
 import { copyImageFile } from '../../middleware/upload';
 import type { AttractionResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
 import { getWebsites, toAttractionResponse, TripAttractionRow } from './shared';
+
+const logger = createLogger('attraction');
 
 /**
  * Duplicates an attraction to the end of the given day.
@@ -21,6 +24,7 @@ export async function duplicate(
     [attractionId],
   );
   if (rows.length === 0) {
+    logger.warn('Cannot duplicate attraction: not found', { attractionId });
     throw new Error('Attraction not found');
   }
   const original = rows[0];
@@ -69,6 +73,11 @@ export async function duplicate(
     await conn.commit();
   } catch (err) {
     await conn.rollback();
+    logger.error(
+      'Failed to duplicate attraction, rolled back',
+      { attractionId, dayId },
+      err,
+    );
     throw err;
   } finally {
     conn.release();
@@ -84,8 +93,22 @@ export async function duplicate(
         img.title,
       );
       copiedImages.push(newImg);
+    } else {
+      logger.warn('Skipped copying image during attraction duplication', {
+        sourceFilename: img.filename,
+        attractionId,
+        newAttractionId,
+      });
     }
   }
+
+  logger.info('Attraction duplicated', {
+    attractionId,
+    newAttractionId,
+    dayId,
+    imagesCopied: copiedImages.length,
+    imagesSkipped: images.length - copiedImages.length,
+  });
 
   return toAttractionResponse(
     {
