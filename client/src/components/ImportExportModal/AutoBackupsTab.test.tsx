@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { listAutoBackups } from '@/api/backup';
+import { showToast } from '@/lib/toast';
 
 import AutoBackupsTab from './AutoBackupsTab';
 
@@ -11,6 +12,10 @@ vi.mock('@/api/backup', () => ({
   getAutoBackupDownloadUrl: vi.fn(
     (filename: string) => `/api/backups/${filename}`,
   ),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -74,9 +79,12 @@ describe('AutoBackupsTab', () => {
     vi.mocked(listAutoBackups).mockRejectedValue(new Error('network error'));
     render(<AutoBackupsTab />);
 
-    expect(
-      await screen.findByText('讀取自動備份清單失敗，請稍後再試'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '讀取自動備份清單失敗，請稍後再試',
+      ),
+    );
   });
 
   it('re-fetches the list when the refresh button is clicked', async () => {

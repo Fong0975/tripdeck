@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import { deleteTrip, getTrips } from '@/utils/storage';
 
@@ -9,6 +10,10 @@ import { useHomeData } from './useHomeData';
 vi.mock('@/utils/storage', () => ({
   getTrips: vi.fn(),
   deleteTrip: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
@@ -95,6 +100,7 @@ describe('useHomeData', () => {
     });
 
     expect(deleteTrip).toHaveBeenCalledWith(1);
+    expect(showToast).toHaveBeenCalledWith('success', '已刪除旅程。');
   });
 
   it('removes the deleted trip from local state', async () => {
@@ -112,6 +118,24 @@ describe('useHomeData', () => {
     });
 
     expect(result.current.trips).toEqual([otherTrip]);
+  });
+
+  it('shows an error toast and keeps the trip in local state when deleteTrip fails', async () => {
+    const trip = makeTrip();
+    const otherTrip = makeTrip({ id: 2, title: 'Other' });
+    vi.mocked(getTrips).mockResolvedValue([trip, otherTrip]);
+    vi.mocked(deleteTrip).mockRejectedValue(new Error('network error'));
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([trip, otherTrip]);
+    });
+
+    await act(async () => {
+      await result.current.handleDeleteTrip(1);
+    });
+
+    expect(result.current.trips).toEqual([trip, otherTrip]);
+    expect(showToast).toHaveBeenCalledWith('error', '刪除旅程失敗，請稍後再試');
   });
 
   it('replaces the matching trip in local state without calling the API', async () => {

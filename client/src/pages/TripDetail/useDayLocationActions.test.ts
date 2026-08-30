@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
   addDayLocation,
@@ -13,6 +14,10 @@ vi.mock('@/utils/storage', () => ({
   addDayLocation: vi.fn(),
   deleteDayLocation: vi.fn(),
   updateDayLocation: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(): Trip {
@@ -77,6 +82,25 @@ describe('useDayLocationActions', () => {
 
       expect(addDayLocation).toHaveBeenCalledWith(1, 10, 'Airport');
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it('shows an error toast and does not reload when adding fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(addDayLocation).mockRejectedValue(new Error('network error'));
+      const { handleAddLocation } = useDayLocationActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+      );
+
+      await handleAddLocation(0, 'Airport');
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '新增地點失敗，請稍後再試',
+      );
     });
   });
 
@@ -107,6 +131,27 @@ describe('useDayLocationActions', () => {
 
       expect(updateDayLocation).toHaveBeenCalledWith(1, 5, 'Renamed');
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it('shows an error toast and does not reload when updating fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(updateDayLocation).mockRejectedValue(
+        new Error('network error'),
+      );
+      const { handleUpdateLocation } = useDayLocationActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+      );
+
+      await handleUpdateLocation(0, 5, 'Renamed');
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '更新地點失敗，請稍後再試',
+      );
     });
   });
 
@@ -137,6 +182,27 @@ describe('useDayLocationActions', () => {
 
       expect(deleteDayLocation).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith('success', '已刪除地點。');
+    });
+
+    it('shows an error toast and does not reload when deleting fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(deleteDayLocation).mockRejectedValue(
+        new Error('network error'),
+      );
+      const { handleDeleteLocation } = useDayLocationActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+      );
+
+      await handleDeleteLocation(0, 5);
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '刪除地點失敗，請稍後再試',
+      );
     });
   });
 });

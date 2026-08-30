@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { ChecklistCategory } from '@/types';
 import {
   addTemplateItem,
@@ -71,6 +72,9 @@ export function useSaveCategoryEdit(
 
       onSaved();
       onClose();
+      showToast('success', '已儲存分類。');
+    } catch {
+      showToast('error', '儲存分類失敗，請稍後再試');
     } finally {
       setSaving(false);
     }

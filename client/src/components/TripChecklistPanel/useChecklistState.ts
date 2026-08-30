@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 
@@ -97,6 +98,9 @@ export function useChecklistState(
       await Promise.all(updates);
       setLocalChecks({});
       await reload();
+      showToast('success', '已儲存打包清單勾選。');
+    } catch {
+      showToast('error', '儲存打包清單勾選失敗，請稍後再試');
     } finally {
       setSaving(false);
     }

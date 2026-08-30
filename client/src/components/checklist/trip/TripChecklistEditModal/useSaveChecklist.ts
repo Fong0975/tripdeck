@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { TripChecklist } from '@/types';
 import {
   addOccasion,
@@ -92,6 +93,9 @@ export function useSaveChecklist(
 
       onSaved();
       onClose();
+      showToast('success', '已儲存行李清單。');
+    } catch {
+      showToast('error', '儲存行李清單失敗，請稍後再試');
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
   deleteTripImage,
@@ -76,8 +77,9 @@ export default function EditTripModal({
       });
       onUpdated(updated);
       onContentChanged?.();
+      showToast('success', '已更新旅程。');
     } catch {
-      setError('更新旅程失敗，請稍後再試');
+      showToast('error', '更新旅程失敗，請稍後再試');
     }
   };
 

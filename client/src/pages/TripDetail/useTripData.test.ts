@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import { getTrip, getTripContent } from '@/utils/storage';
 
@@ -16,6 +17,8 @@ vi.mock('@/utils/storage', () => ({
   getTrip: vi.fn(),
   getTripContent: vi.fn(),
 }));
+
+vi.mock('@/lib/toast', () => ({ showToast: vi.fn() }));
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
   return {
@@ -77,6 +80,37 @@ describe('useTripData', () => {
     });
     expect(result.current.content).toEqual(content);
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  describe('load failure', () => {
+    it('sets loadError and shows a toast when fetching fails, then recovers via retryLoad', async () => {
+      const trip = makeTrip();
+      const content: TripContent = { tripId: 1, days: [] };
+      vi.mocked(getTrip).mockRejectedValueOnce(new Error('network error'));
+      vi.mocked(getTripContent).mockResolvedValue(content);
+
+      const { result } = renderHook(() => useTripData('1'));
+
+      await waitFor(() => {
+        expect(result.current.loadError).toBe(true);
+      });
+      expect(result.current.trip).toBeNull();
+      expect(result.current.content).toBeNull();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '載入旅程資料失敗，請稍後再試',
+      );
+
+      vi.mocked(getTrip).mockResolvedValue(trip);
+
+      await act(async () => {
+        await result.current.retryLoad();
+      });
+
+      expect(result.current.loadError).toBe(false);
+      expect(result.current.trip).toEqual(trip);
+      expect(result.current.content).toEqual(content);
+    });
   });
 
   describe('reloadContent', () => {

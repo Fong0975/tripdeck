@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { AttractionImage, Trip } from '@/types';
 import { createTrip, uploadTripImage } from '@/utils/storage';
 
@@ -68,8 +69,9 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
       }
 
       onAdded({ ...trip, images });
+      showToast('success', '已建立旅程。');
     } catch {
-      setError('建立旅程失敗，請稍後再試');
+      showToast('error', '建立旅程失敗，請稍後再試');
     }
   };
 

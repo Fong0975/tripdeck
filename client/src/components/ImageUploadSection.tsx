@@ -2,6 +2,7 @@ import { ImagePlus, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { INPUT_CLS } from '@/components/formStyles';
+import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
@@ -66,8 +67,12 @@ export default function ImageUploadSection({
     try {
       await onUpload(pendingFile, title);
       clearPending();
+      showToast('success', '已上傳圖片。');
     } catch {
-      setError('上傳失敗，請確認檔案格式（支援 JPG、PNG、GIF、WebP）');
+      showToast(
+        'error',
+        '上傳失敗，請確認檔案格式（支援 JPG、PNG、GIF、WebP）',
+      );
     } finally {
       setUploading(false);
     }

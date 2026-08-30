@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { getAutoBackupDownloadUrl, listAutoBackups } from '@/api/backup';
+import { showToast } from '@/lib/toast';
 import type { AutoBackupFileInfo } from '@/types';
 
 import LoadingIndicator from '../ui/LoadingIndicator';
@@ -34,6 +35,7 @@ export default function AutoBackupsTab() {
       setAutoBackups(await listAutoBackups());
     } catch {
       setAutoBackupsError('讀取自動備份清單失敗，請稍後再試');
+      showToast('error', '讀取自動備份清單失敗，請稍後再試');
     } finally {
       setAutoBackupsLoading(false);
     }
@@ -61,10 +63,6 @@ export default function AutoBackupsTab() {
           重新整理
         </button>
       </div>
-
-      {autoBackupsError && (
-        <StatusMessage variant='error'>{autoBackupsError}</StatusMessage>
-      )}
 
       {!autoBackupsError && autoBackupsLoading && <LoadingIndicator />}
 

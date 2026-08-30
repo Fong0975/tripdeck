@@ -1,8 +1,9 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { showToast } from '@/lib/toast';
 import type { Attraction, DayPlan, Trip, TravelConnection } from '@/types';
 import { exportToDocx } from '@/utils/exportToDocx';
 
@@ -34,6 +35,7 @@ vi.mock('@/hooks/useUnsavedChangesGuard', () => ({
   useUnsavedChangesGuard: vi.fn(),
 }));
 vi.mock('@/utils/exportToDocx', () => ({ exportToDocx: vi.fn() }));
+vi.mock('@/lib/toast', () => ({ showToast: vi.fn() }));
 
 vi.mock('@/components/Navbar', () => ({
   default: () => <div>navbar</div>,
@@ -352,6 +354,8 @@ function makeTripData(
     content: { tripId: 1, days: makeDays() },
     reloadContent: vi.fn(),
     setTrip: vi.fn(),
+    loadError: false,
+    retryLoad: vi.fn(),
     ...overrides,
   };
 }
@@ -455,6 +459,24 @@ describe('TripDetail', () => {
     expect(screen.queryByText(/^trip-header-/)).not.toBeInTheDocument();
   });
 
+  it('shows a retry button instead of the loading indicator when loading fails', async () => {
+    const retryLoad = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(
+      makeTripData({ trip: null, content: null, loadError: true, retryLoad }),
+    );
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    expect(
+      screen.getByText('載入旅程資料失敗，請稍後再試'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('loading-indicator')).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('重試'));
+
+    expect(retryLoad).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the loaded board with navbar, header, tabs and day columns', () => {
     renderTripDetail();
 
@@ -535,6 +557,23 @@ describe('TripDetail', () => {
     });
 
     expect(screen.getByText('exporting:false')).toBeInTheDocument();
+    expect(showToast).toHaveBeenCalledWith('success', '已匯出 Word 文件。');
+  });
+
+  it('shows an error toast and resets exporting state when the export fails', async () => {
+    vi.mocked(exportToDocx).mockRejectedValue(new Error('export failed'));
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    await user.click(screen.getByText('export-trigger'));
+
+    await waitFor(() => {
+      expect(screen.getByText('exporting:false')).toBeInTheDocument();
+    });
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '匯出 Word 文件失敗，請稍後再試',
+    );
   });
 
   it('ignores extra export triggers while an export is already in progress', async () => {

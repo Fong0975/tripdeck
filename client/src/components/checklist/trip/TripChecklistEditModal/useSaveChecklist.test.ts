@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { TripChecklist } from '@/types';
 import {
   addOccasion,
@@ -34,6 +35,10 @@ vi.mock('@/utils/storage', () => ({
   updateTripCategory: vi.fn(),
   updateTripItem: vi.fn(),
   updateTripItemSpec: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 const checklist: TripChecklist = {
@@ -89,6 +94,7 @@ async function save(edit: ReturnType<typeof unchangedEdit>) {
     useSaveChecklist(1, checklist, edit, onSaved, onClose),
   );
   await act(() => result.current.handleSave());
+  expect(showToast).toHaveBeenCalledWith('success', '已儲存行李清單。');
   return { onSaved, onClose };
 }
 
@@ -316,6 +322,28 @@ describe('useSaveChecklist', () => {
       resolveAdd({ id: 50, name: 'New', checks: {} });
       await savePromise;
     });
+    expect(result.current.saving).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存行李清單。');
+  });
+
+  it('shows an error toast and does not call onSaved/onClose when saving fails', async () => {
+    vi.mocked(updateOccasion).mockRejectedValue(new Error('network'));
+    const edit = unchangedEdit();
+    edit.occasions[0].name = 'Renamed';
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const { result } = renderHook(() =>
+      useSaveChecklist(1, checklist, edit, onSaved, onClose),
+    );
+
+    await act(() => result.current.handleSave());
+
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '儲存行李清單失敗，請稍後再試',
+    );
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
     expect(result.current.saving).toBe(false);
   });
 });

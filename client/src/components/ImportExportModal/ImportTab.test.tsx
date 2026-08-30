@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
+import { showToast } from '@/lib/toast';
 import type { ImportBackupErrorDetails } from '@/types';
 
 import ImportTab from './ImportTab';
@@ -11,6 +13,21 @@ import ImportTab from './ImportTab';
 vi.mock('@/api/backup', () => ({
   importTripsBackup: vi.fn(),
 }));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
+}));
+
+vi.mock('@/lib/ToastList', () => ({
+  ToastList: ({ children }: { children: ReactNode }) => <ul>{children}</ul>,
+}));
+
+/** Renders the content of the last showToast(variant, content) call of the given variant, so its text can be asserted with screen queries. */
+function renderLastToast(variant: 'success' | 'error' | 'info') {
+  const calls = vi.mocked(showToast).mock.calls.filter(c => c[0] === variant);
+  expect(calls.length).toBeGreaterThan(0);
+  render(<>{calls[calls.length - 1][1]}</>);
+}
 
 // The backup-file <input type="file"> has no accessible label, so it can
 // only be reached by its type attribute rather than a testing-library query.
@@ -98,8 +115,12 @@ describe('ImportTab', () => {
     await waitFor(() =>
       expect(importTripsBackup).toHaveBeenCalledWith(file, false),
     );
-    expect(await screen.findByText('Kyoto Trip')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('success', expect.anything()),
+    );
+    renderLastToast('success');
     expect(screen.getByText('匯入成功')).toBeInTheDocument();
+    expect(screen.getByText('Kyoto Trip')).toBeInTheDocument();
     expect(onImported).toHaveBeenCalledTimes(1);
   });
 
@@ -120,7 +141,11 @@ describe('ImportTab', () => {
 
     await user.click(screen.getByText('匯入'));
 
-    expect(await screen.findByText('匯入失敗')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('error', expect.anything()),
+    );
+    renderLastToast('error');
+    expect(screen.getByText('匯入失敗')).toBeInTheDocument();
     expect(screen.getByText('Kyoto Trip：boom')).toBeInTheDocument();
     expect(onImported).not.toHaveBeenCalled();
   });
@@ -149,10 +174,12 @@ describe('ImportTab', () => {
 
     await user.click(screen.getByText('匯入'));
 
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('error', expect.anything()),
+    );
+    renderLastToast('error');
     expect(
-      await screen.findByText(
-        'Backup file is incomplete: 2 image file(s) missing',
-      ),
+      screen.getByText('Backup file is incomplete: 2 image file(s) missing'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('旅程「Kyoto Trip」缺少 2 張圖片：a.jpg、b.jpg'),
@@ -169,7 +196,11 @@ describe('ImportTab', () => {
 
     await user.click(screen.getByText('匯入'));
 
-    expect(await screen.findByText('network error')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('error', expect.anything()),
+    );
+    renderLastToast('error');
+    expect(screen.getByText('network error')).toBeInTheDocument();
     expect(screen.queryByText(/缺少/)).not.toBeInTheDocument();
   });
 
@@ -183,7 +214,11 @@ describe('ImportTab', () => {
 
     await user.click(screen.getByText('匯入'));
 
-    expect(await screen.findByText('匯入失敗，請稍後再試')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('error', expect.anything()),
+    );
+    renderLastToast('error');
+    expect(screen.getByText('匯入失敗，請稍後再試')).toBeInTheDocument();
   });
 
   it('defaults the restore-template option to off and submits it as false', async () => {
@@ -223,7 +258,9 @@ describe('ImportTab', () => {
     await waitFor(() =>
       expect(importTripsBackup).toHaveBeenCalledWith(file, true),
     );
-    expect(await screen.findByText('已還原打包清單範本。')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('success', '已還原打包清單範本。'),
+    );
   });
 
   it('shows a neutral message when the backup has no trips and the template was not restored', async () => {
@@ -240,11 +277,12 @@ describe('ImportTab', () => {
 
     await user.click(screen.getByText('匯入'));
 
-    expect(
-      await screen.findByText(
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'info',
         '這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。',
       ),
-    ).toBeInTheDocument();
+    );
   });
 
   it('calls onClose when cancel is clicked', async () => {

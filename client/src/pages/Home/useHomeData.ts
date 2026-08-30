@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import { getTrips, deleteTrip } from '@/utils/storage';
 
@@ -21,8 +22,13 @@ export function useHomeData() {
   };
 
   const handleDeleteTrip = async (id: number) => {
-    await deleteTrip(id);
-    setTrips(prev => prev.filter(t => t.id !== id));
+    try {
+      await deleteTrip(id);
+      setTrips(prev => prev.filter(t => t.id !== id));
+      showToast('success', '已刪除旅程。');
+    } catch {
+      showToast('error', '刪除旅程失敗，請稍後再試');
+    }
   };
 
   const handleTripUpdated = (trip: Trip) => {
