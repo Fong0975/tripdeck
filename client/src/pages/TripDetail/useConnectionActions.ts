@@ -1,3 +1,4 @@
+import { showToast } from '@/lib/toast';
 import type { Trip, TravelConnection, TripContent } from '@/types';
 import {
   addConnection,
@@ -40,30 +41,35 @@ export function useConnectionActions(
       return;
     }
     const day = content.days[dayIndex];
-    if (connection.id === 0) {
-      const created = await addConnection(trip.id, day.id, {
-        fromAttractionId: connection.fromAttractionId,
-        toAttractionId: connection.toAttractionId,
-        transportMode: connection.transportMode,
-        duration: connection.duration ?? undefined,
-        route: connection.route ?? undefined,
-        notes: connection.notes ?? undefined,
-      });
-      if (stagedImages?.length) {
-        for (const { file, title } of stagedImages) {
-          await uploadConnectionImage(trip.id, created.id, file, title);
+    try {
+      if (connection.id === 0) {
+        const created = await addConnection(trip.id, day.id, {
+          fromAttractionId: connection.fromAttractionId,
+          toAttractionId: connection.toAttractionId,
+          transportMode: connection.transportMode,
+          duration: connection.duration ?? undefined,
+          route: connection.route ?? undefined,
+          notes: connection.notes ?? undefined,
+        });
+        if (stagedImages?.length) {
+          for (const { file, title } of stagedImages) {
+            await uploadConnectionImage(trip.id, created.id, file, title);
+          }
         }
+      } else {
+        await updateConnection(trip.id, connection.id, {
+          transportMode: connection.transportMode,
+          duration: connection.duration ?? null,
+          route: connection.route ?? null,
+          notes: connection.notes ?? null,
+        });
       }
-    } else {
-      await updateConnection(trip.id, connection.id, {
-        transportMode: connection.transportMode,
-        duration: connection.duration ?? null,
-        route: connection.route ?? null,
-        notes: connection.notes ?? null,
-      });
+      await reloadContent();
+      closeModal();
+      showToast('success', '已儲存交通方式。');
+    } catch {
+      showToast('error', '儲存交通方式失敗，請稍後再試');
     }
-    await reloadContent();
-    closeModal();
   };
 
   const handleDeleteConnection = async (
@@ -73,8 +79,13 @@ export function useConnectionActions(
     if (!trip) {
       return;
     }
-    await deleteConnection(trip.id, connectionId);
-    await reloadContent();
+    try {
+      await deleteConnection(trip.id, connectionId);
+      await reloadContent();
+      showToast('success', '已刪除交通方式。');
+    } catch {
+      showToast('error', '刪除交通方式失敗，請稍後再試');
+    }
   };
 
   return { handleAddConnection, handleSaveConnection, handleDeleteConnection };

@@ -1,10 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
 
 import ImageUploadSection from './ImageUploadSection';
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
+}));
 
 const images: AttractionImage[] = [
   { id: 1, filename: 'a.jpg', title: 'Photo A' },
@@ -102,6 +107,7 @@ describe('ImageUploadSection', () => {
 
     expect(onUpload).toHaveBeenCalledWith(file, 'My Photo');
     expect(await screen.findByText('新增圖片')).toBeInTheDocument();
+    expect(showToast).toHaveBeenCalledWith('success', '已上傳圖片。');
   });
 
   it('shows an error and keeps the form when onUpload rejects', async () => {
@@ -118,11 +124,12 @@ describe('ImageUploadSection', () => {
 
     await user.click(screen.getByText('確認上傳'));
 
-    expect(
-      await screen.findByText(
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
         '上傳失敗，請確認檔案格式（支援 JPG、PNG、GIF、WebP）',
       ),
-    ).toBeInTheDocument();
+    );
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
   });
 

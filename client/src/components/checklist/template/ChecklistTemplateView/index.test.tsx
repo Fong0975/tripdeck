@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -15,6 +16,10 @@ vi.mock('@/utils/storage', () => ({
   addTemplateCategory: vi.fn(),
   deleteTemplateCategory: vi.fn(),
   getChecklistTemplate: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 vi.mock('../CategoryEditModal', () => ({
@@ -129,6 +134,25 @@ describe('ChecklistTemplateView', () => {
 
     await waitFor(() => expect(deleteTemplateCategory).toHaveBeenCalledWith(1));
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(showToast).toHaveBeenCalledWith('success', '已刪除分類。');
+  });
+
+  it('shows an error toast and does not reload when deleteTemplateCategory fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(deleteTemplateCategory).mockRejectedValue(new Error('network'));
+    render(<ChecklistTemplateView />);
+    await screen.findByText('Category A');
+    vi.mocked(getChecklistTemplate).mockClear();
+
+    await user.click(screen.getByLabelText('刪除分類'));
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '刪除分類失敗，請稍後再試',
+      ),
+    );
+    expect(getChecklistTemplate).not.toHaveBeenCalled();
   });
 
   it('calls addTemplateCategory and reloads when 新增分類 is clicked', async () => {
@@ -143,5 +167,24 @@ describe('ChecklistTemplateView', () => {
       expect(addTemplateCategory).toHaveBeenCalledWith('新分類'),
     );
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(showToast).toHaveBeenCalledWith('success', '已新增分類。');
+  });
+
+  it('shows an error toast and does not reload when addTemplateCategory fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(addTemplateCategory).mockRejectedValue(new Error('network'));
+    render(<ChecklistTemplateView />);
+    await screen.findByText('Category A');
+    vi.mocked(getChecklistTemplate).mockClear();
+
+    await user.click(screen.getByText('新增分類'));
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '新增分類失敗，請稍後再試',
+      ),
+    );
+    expect(getChecklistTemplate).not.toHaveBeenCalled();
   });
 });

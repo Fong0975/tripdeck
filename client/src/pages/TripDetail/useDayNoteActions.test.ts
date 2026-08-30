@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import { updateDayNotes } from '@/utils/storage';
 
@@ -7,6 +8,10 @@ import { useDayNoteActions } from './useDayNoteActions';
 
 vi.mock('@/utils/storage', () => ({
   updateDayNotes: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(): Trip {
@@ -76,5 +81,27 @@ describe('useDayNoteActions', () => {
     expect(updateDayNotes).toHaveBeenCalledWith(1, 10, 'New notes');
     expect(reloadContent).toHaveBeenCalledTimes(1);
     expect(closeModal).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存每日備註。');
+  });
+
+  it('shows an error toast and does not reload or close the modal when saving fails', async () => {
+    const reloadContent = vi.fn();
+    const closeModal = vi.fn();
+    vi.mocked(updateDayNotes).mockRejectedValue(new Error('network error'));
+    const { handleSaveDayNotes } = useDayNoteActions(
+      makeTrip(),
+      makeContent(),
+      reloadContent,
+      closeModal,
+    );
+
+    await handleSaveDayNotes(0, 'New notes');
+
+    expect(reloadContent).not.toHaveBeenCalled();
+    expect(closeModal).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '儲存每日備註失敗，請稍後再試',
+    );
   });
 });

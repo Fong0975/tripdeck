@@ -1,13 +1,22 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
 
 import { useEntityImages } from './useEntityImages';
 
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
+}));
+
 const images: AttractionImage[] = [{ id: 1, filename: 'a.jpg', title: 'A' }];
 
 describe('useEntityImages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('initializes images from initialImages', () => {
     const { result } = renderHook(() =>
       useEntityImages({
@@ -74,5 +83,18 @@ describe('useEntityImages', () => {
 
     expect(remove).toHaveBeenCalledWith(1);
     expect(result.current.images).toEqual([]);
+    expect(showToast).toHaveBeenCalledWith('success', '已刪除圖片。');
+  });
+
+  it('shows an error toast and keeps the image when remove fails', async () => {
+    const remove = vi.fn().mockRejectedValue(new Error('network error'));
+    const { result } = renderHook(() =>
+      useEntityImages({ initialImages: images, upload: undefined, remove }),
+    );
+
+    await act(() => result.current.handleDelete(1));
+
+    expect(result.current.images).toEqual(images);
+    expect(showToast).toHaveBeenCalledWith('error', '刪除圖片失敗，請稍後再試');
   });
 });

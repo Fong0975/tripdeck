@@ -8,6 +8,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { Attraction, TripContent } from '@/types';
 import { findConnectionsBrokenByMove } from '@/utils/connectionAdjacency';
 import {
@@ -59,7 +60,9 @@ export function useDragAndDrop(
     if (!tripId) {
       return;
     }
-    void reorderAttractions(tripId, dayId, orderedIds).then(() => onReload());
+    void reorderAttractions(tripId, dayId, orderedIds)
+      .then(() => onReload())
+      .catch(() => showToast('error', '調整景點順序失敗，請稍後再試'));
   };
 
   const performCrossDayMove = (attraction: Attraction, targetDayId: number) => {
@@ -77,7 +80,8 @@ export function useDragAndDrop(
           referenceWebsites: attraction.referenceWebsites,
         }),
       )
-      .then(() => onReload());
+      .then(() => onReload())
+      .catch(() => showToast('error', '移動景點失敗，請稍後再試'));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

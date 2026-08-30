@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
 
 interface Options {
@@ -30,8 +31,13 @@ export function useEntityImages({ initialImages, upload, remove }: Options) {
     if (!remove) {
       return;
     }
-    await remove(imageId);
-    setImages(prev => prev.filter(img => img.id !== imageId));
+    try {
+      await remove(imageId);
+      setImages(prev => prev.filter(img => img.id !== imageId));
+      showToast('success', '已刪除圖片。');
+    } catch {
+      showToast('error', '刪除圖片失敗，請稍後再試');
+    }
   };
 
   return { images, handleUpload, handleDelete };

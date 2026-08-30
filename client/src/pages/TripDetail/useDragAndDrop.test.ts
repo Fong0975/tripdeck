@@ -2,6 +2,7 @@ import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { TripContent } from '@/types';
 import {
   addAttraction,
@@ -15,6 +16,10 @@ vi.mock('@/utils/storage', () => ({
   addAttraction: vi.fn().mockResolvedValue({ id: 999, name: 'New' }),
   deleteAttraction: vi.fn().mockResolvedValue(undefined),
   reorderAttractions: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeContent(): TripContent {
@@ -187,6 +192,28 @@ describe('useDragAndDrop', () => {
       expect(reorderAttractions).toHaveBeenCalledWith(1, 10, [101, 100]);
     });
 
+    it('shows an error toast and does not reload when reordering fails', async () => {
+      vi.mocked(reorderAttractions).mockRejectedValueOnce(
+        new Error('network error'),
+      );
+      const onReload = vi.fn();
+      const { result } = renderHook(() =>
+        useDragAndDrop(1, makeContent(), onReload),
+      );
+
+      act(() => {
+        result.current.handleDragEnd(makeDragEndEvent(100, 101));
+      });
+
+      await vi.waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          'error',
+          '調整景點順序失敗，請稍後再試',
+        );
+      });
+      expect(onReload).not.toHaveBeenCalled();
+    });
+
     it('moves an attraction to a different day and reloads', async () => {
       const onReload = vi.fn();
       const { result } = renderHook(() =>
@@ -208,6 +235,28 @@ describe('useDragAndDrop', () => {
         nearbyAttractions: undefined,
         referenceWebsites: undefined,
       });
+    });
+
+    it('shows an error toast and does not reload when moving fails', async () => {
+      vi.mocked(deleteAttraction).mockRejectedValueOnce(
+        new Error('network error'),
+      );
+      const onReload = vi.fn();
+      const { result } = renderHook(() =>
+        useDragAndDrop(1, makeContent(), onReload),
+      );
+
+      act(() => {
+        result.current.handleDragEnd(makeDragEndEvent(100, 200));
+      });
+
+      await vi.waitFor(() => {
+        expect(showToast).toHaveBeenCalledWith(
+          'error',
+          '移動景點失敗，請稍後再試',
+        );
+      });
+      expect(onReload).not.toHaveBeenCalled();
     });
 
     describe('when the move would break an existing connection', () => {

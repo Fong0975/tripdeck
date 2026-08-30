@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 
@@ -9,6 +10,10 @@ import { useChecklistState } from './useChecklistState';
 vi.mock('@/utils/storage', () => ({
   getTripChecklist: vi.fn(),
   setCheck: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeChecklist(): TripChecklist {
@@ -125,6 +130,7 @@ describe('useChecklistState', () => {
     expect(setCheck).toHaveBeenCalledWith(1, 1, 20, true);
     expect(result.current.isDirty).toBe(false);
     expect(getTripChecklist).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存打包清單勾選。');
   });
 
   it('handleSaveChecks skips entries whose local value matches the saved value', async () => {
@@ -137,6 +143,25 @@ describe('useChecklistState', () => {
 
     expect(setCheck).toHaveBeenCalledTimes(1);
     expect(setCheck).toHaveBeenCalledWith(1, 1, 20, true);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存打包清單勾選。');
+  });
+
+  it('shows an error toast and preserves local edits when handleSaveChecks fails', async () => {
+    vi.mocked(setCheck).mockRejectedValue(new Error('network'));
+    const { result } = await renderLoaded();
+    act(() => result.current.handleToggleCheck(1, 10));
+    vi.mocked(getTripChecklist).mockClear();
+
+    await act(() => result.current.handleSaveChecks());
+
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '儲存打包清單勾選失敗，請稍後再試',
+    );
+    expect(getTripChecklist).not.toHaveBeenCalled();
+    expect(result.current.isDirty).toBe(true);
+    expect(result.current.getCheck(1, 10)).toBe(false);
+    expect(result.current.saving).toBe(false);
   });
 
   it('tracks saving as true while the save is in flight, then false', async () => {
@@ -160,6 +185,7 @@ describe('useChecklistState', () => {
       await savePromise;
     });
     expect(result.current.saving).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存打包清單勾選。');
   });
 
   it('handleDiscardChecks clears local edits without calling setCheck', async () => {

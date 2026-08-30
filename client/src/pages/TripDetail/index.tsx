@@ -9,7 +9,9 @@ import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
+import StatusMessage from '@/components/ui/StatusMessage';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
+import { showToast } from '@/lib/toast';
 
 import ItineraryBoard from './ItineraryBoard';
 import TripHeader from './TripHeader';
@@ -25,7 +27,8 @@ export default function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { trip, content, reloadContent, setTrip } = useTripData(id);
+  const { trip, content, reloadContent, setTrip, loadError, retryLoad } =
+    useTripData(id);
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
@@ -82,6 +85,9 @@ export default function TripDetail() {
     try {
       const { exportToDocx } = await import('@/utils/exportToDocx');
       await exportToDocx(trip, content);
+      showToast('success', '已匯出 Word 文件。');
+    } catch {
+      showToast('error', '匯出 Word 文件失敗，請稍後再試');
     } finally {
       setExporting(false);
     }
@@ -104,6 +110,22 @@ export default function TripDetail() {
             )?.name ?? '',
         }
       : null;
+
+  if (loadError) {
+    return (
+      <div className='bg-background flex min-h-screen flex-col items-center justify-center gap-4 p-4'>
+        <StatusMessage variant='error'>
+          載入旅程資料失敗，請稍後再試
+        </StatusMessage>
+        <button
+          onClick={() => void retryLoad()}
+          className='bg-primary text-primary-foreground rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
+        >
+          重試
+        </button>
+      </div>
+    );
+  }
 
   if (!trip || !content) {
     return (

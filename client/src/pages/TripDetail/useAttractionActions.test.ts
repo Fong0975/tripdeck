@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Attraction, Trip, TripContent } from '@/types';
 import {
   addAttraction,
@@ -17,6 +18,10 @@ vi.mock('@/utils/storage', () => ({
   duplicateAttraction: vi.fn(),
   updateAttraction: vi.fn(),
   uploadAttractionImage: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(): Trip {
@@ -125,7 +130,50 @@ describe('useAttractionActions', () => {
         }
         expect(reloadContent).toHaveBeenCalledTimes(1);
         expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith('success', '已儲存景點。');
       });
+    });
+
+    it('shows an error toast and does not reload or close the modal when creating fails', async () => {
+      vi.mocked(addAttraction).mockRejectedValue(new Error('network error'));
+      const reloadContent = vi.fn();
+      const closeModal = vi.fn();
+      const { handleSaveAttraction } = useAttractionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        closeModal,
+      );
+
+      await handleSaveAttraction(0, makeAttraction({ id: 0 }));
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(closeModal).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '儲存景點失敗，請稍後再試',
+      );
+    });
+
+    it('shows an error toast and does not reload or close the modal when updating fails', async () => {
+      vi.mocked(updateAttraction).mockRejectedValue(new Error('network error'));
+      const reloadContent = vi.fn();
+      const closeModal = vi.fn();
+      const { handleSaveAttraction } = useAttractionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        closeModal,
+      );
+
+      await handleSaveAttraction(0, makeAttraction({ id: 5 }));
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(closeModal).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '儲存景點失敗，請稍後再試',
+      );
     });
 
     it('uploads each staged image after creating a new attraction', async () => {
@@ -207,6 +255,26 @@ describe('useAttractionActions', () => {
 
       expect(deleteAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith('success', '已刪除景點。');
+    });
+
+    it('shows an error toast and does not reload when deleting fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(deleteAttraction).mockRejectedValue(new Error('network error'));
+      const { handleDeleteAttraction } = useAttractionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        vi.fn(),
+      );
+
+      await handleDeleteAttraction(0, 5);
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '刪除景點失敗，請稍後再試',
+      );
     });
   });
 
@@ -239,6 +307,28 @@ describe('useAttractionActions', () => {
 
       expect(duplicateAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith('success', '已複製景點。');
+    });
+
+    it('shows an error toast and does not reload when duplicating fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(duplicateAttraction).mockRejectedValue(
+        new Error('network error'),
+      );
+      const { handleDuplicateAttraction } = useAttractionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        vi.fn(),
+      );
+
+      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '複製景點失敗，請稍後再試',
+      );
     });
   });
 });

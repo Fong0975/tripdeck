@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import { createTrip, uploadTripImage } from '@/utils/storage';
 
@@ -10,6 +11,10 @@ import AddTripModal from './AddTripModal';
 vi.mock('@/utils/storage', () => ({
   createTrip: vi.fn(),
   uploadTripImage: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 // Pin the timezone so the startDate -> endDate auto-calculation (which round
@@ -142,6 +147,7 @@ describe('AddTripModal', () => {
       expect(onAdded).toHaveBeenCalledWith({ ...trip, images: [] });
     });
     expect(uploadTripImage).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('success', '已建立旅程。');
   });
 
   it('uploads staged images after creating the trip and reports them to the parent', async () => {
@@ -178,6 +184,7 @@ describe('AddTripModal', () => {
       expect(uploadTripImage).toHaveBeenCalledWith(1, file, 'Cover'),
     );
     expect(onAdded).toHaveBeenCalledWith({ ...trip, images: [newImage] });
+    expect(showToast).toHaveBeenCalledWith('success', '已建立旅程。');
   });
 
   it('shows an error and does not report to the parent on failure', async () => {
@@ -193,9 +200,12 @@ describe('AddTripModal', () => {
     fillDateField(container, 'startDate', '2026-01-01');
     submitForm(container);
 
-    expect(
-      await screen.findByText('建立旅程失敗，請稍後再試'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '建立旅程失敗，請稍後再試',
+      ),
+    );
     expect(onAdded).not.toHaveBeenCalled();
   });
 

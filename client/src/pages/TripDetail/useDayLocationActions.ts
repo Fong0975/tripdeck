@@ -1,3 +1,4 @@
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
   addDayLocation,
@@ -18,8 +19,12 @@ export function useDayLocationActions(
     if (!trip || !content) {
       return;
     }
-    await addDayLocation(trip.id, content.days[dayIndex].id, name);
-    await reloadContent();
+    try {
+      await addDayLocation(trip.id, content.days[dayIndex].id, name);
+      await reloadContent();
+    } catch {
+      showToast('error', '新增地點失敗，請稍後再試');
+    }
   };
 
   const handleUpdateLocation = async (
@@ -30,8 +35,12 @@ export function useDayLocationActions(
     if (!trip) {
       return;
     }
-    await updateDayLocation(trip.id, locationId, name);
-    await reloadContent();
+    try {
+      await updateDayLocation(trip.id, locationId, name);
+      await reloadContent();
+    } catch {
+      showToast('error', '更新地點失敗，請稍後再試');
+    }
   };
 
   const handleDeleteLocation = async (
@@ -41,8 +50,13 @@ export function useDayLocationActions(
     if (!trip) {
       return;
     }
-    await deleteDayLocation(trip.id, locationId);
-    await reloadContent();
+    try {
+      await deleteDayLocation(trip.id, locationId);
+      await reloadContent();
+      showToast('success', '已刪除地點。');
+    } catch {
+      showToast('error', '刪除地點失敗，請稍後再試');
+    }
   };
 
   return { handleAddLocation, handleUpdateLocation, handleDeleteLocation };

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { TravelConnection, Trip, TripContent } from '@/types';
 import {
   addConnection,
@@ -15,6 +16,10 @@ vi.mock('@/utils/storage', () => ({
   deleteConnection: vi.fn(),
   updateConnection: vi.fn(),
   uploadConnectionImage: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(): Trip {
@@ -150,7 +155,52 @@ describe('useConnectionActions', () => {
         }
         expect(reloadContent).toHaveBeenCalledTimes(1);
         expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith('success', '已儲存交通方式。');
       });
+    });
+
+    it('shows an error toast and does not reload or close the modal when creating fails', async () => {
+      vi.mocked(addConnection).mockRejectedValue(new Error('network error'));
+      const reloadContent = vi.fn();
+      const closeModal = vi.fn();
+      const { handleSaveConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        closeModal,
+        vi.fn(),
+      );
+
+      await handleSaveConnection(0, makeConnection({ id: 0 }));
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(closeModal).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '儲存交通方式失敗，請稍後再試',
+      );
+    });
+
+    it('shows an error toast and does not reload or close the modal when updating fails', async () => {
+      vi.mocked(updateConnection).mockRejectedValue(new Error('network error'));
+      const reloadContent = vi.fn();
+      const closeModal = vi.fn();
+      const { handleSaveConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        closeModal,
+        vi.fn(),
+      );
+
+      await handleSaveConnection(0, makeConnection({ id: 7 }));
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(closeModal).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '儲存交通方式失敗，請稍後再試',
+      );
     });
 
     it('uploads each staged image after creating a new connection', async () => {
@@ -234,6 +284,27 @@ describe('useConnectionActions', () => {
 
       expect(deleteConnection).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
+      expect(showToast).toHaveBeenCalledWith('success', '已刪除交通方式。');
+    });
+
+    it('shows an error toast and does not reload when deleting fails', async () => {
+      const reloadContent = vi.fn();
+      vi.mocked(deleteConnection).mockRejectedValue(new Error('network error'));
+      const { handleDeleteConnection } = useConnectionActions(
+        makeTrip(),
+        makeContent(),
+        reloadContent,
+        vi.fn(),
+        vi.fn(),
+      );
+
+      await handleDeleteConnection(0, 5);
+
+      expect(reloadContent).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '刪除交通方式失敗，請稍後再試',
+      );
     });
   });
 });

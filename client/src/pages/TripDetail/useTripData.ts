@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import { getTrip, getTripContent } from '@/utils/storage';
 
@@ -8,8 +9,9 @@ export function useTripData(id: string | undefined) {
   const navigate = useNavigate();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [content, setContent] = useState<TripContent | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -18,7 +20,8 @@ export function useTripData(id: string | undefined) {
       navigate('/');
       return;
     }
-    const load = async () => {
+    setLoadError(false);
+    try {
       const [fetchedTrip, fetchedContent] = await Promise.all([
         getTrip(tripId),
         getTripContent(tripId),
@@ -29,9 +32,15 @@ export function useTripData(id: string | undefined) {
       }
       setTrip(fetchedTrip);
       setContent(fetchedContent);
-    };
-    void load();
+    } catch {
+      setLoadError(true);
+      showToast('error', '載入旅程資料失敗，請稍後再試');
+    }
   }, [id, navigate]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const reloadContent = async () => {
     if (!id) {
@@ -41,5 +50,5 @@ export function useTripData(id: string | undefined) {
     setContent(fresh);
   };
 
-  return { trip, content, reloadContent, setTrip };
+  return { trip, content, reloadContent, setTrip, loadError, retryLoad: load };
 }

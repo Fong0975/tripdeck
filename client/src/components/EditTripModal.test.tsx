@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { DayPlan, Trip, TripContent } from '@/types';
 import {
   deleteTripImage,
@@ -17,6 +18,10 @@ vi.mock('@/utils/storage', () => ({
   updateTrip: vi.fn(),
   uploadTripImage: vi.fn(),
   deleteTripImage: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -262,6 +267,7 @@ describe('EditTripModal', () => {
     expect(
       screen.queryByText('調整日期後將刪除部份行程內容'),
     ).not.toBeInTheDocument();
+    expect(showToast).toHaveBeenCalledWith('success', '已更新旅程。');
   });
 
   it('shows a confirmation dialog listing impacted days when shrinking with initialContent provided', async () => {
@@ -344,6 +350,7 @@ describe('EditTripModal', () => {
     });
     expect(onUpdated).toHaveBeenCalled();
     expect(onContentChanged).toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('success', '已更新旅程。');
   });
 
   it('falls back to fetching content when no initialContent is provided', async () => {
@@ -378,6 +385,7 @@ describe('EditTripModal', () => {
     expect(
       screen.queryByText('調整日期後將刪除部份行程內容'),
     ).not.toBeInTheDocument();
+    expect(showToast).toHaveBeenCalledWith('success', '已更新旅程。');
   });
 
   it('shows an error and does not report to the parent when updateTrip fails', async () => {
@@ -395,9 +403,12 @@ describe('EditTripModal', () => {
     fillDateField(container, 'endDate', '2026-01-10');
     submitForm(container);
 
-    expect(
-      await screen.findByText('更新旅程失敗，請稍後再試'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '更新旅程失敗，請稍後再試',
+      ),
+    );
     expect(onUpdated).not.toHaveBeenCalled();
   });
 

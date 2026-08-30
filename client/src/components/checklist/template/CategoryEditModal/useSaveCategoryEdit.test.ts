@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import type { ChecklistCategory } from '@/types';
 import {
   addTemplateItem,
@@ -24,6 +25,10 @@ vi.mock('@/utils/storage', () => ({
   addTemplateItemSpec: vi.fn(),
   updateTemplateItemSpec: vi.fn(),
   deleteTemplateItemSpec: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 const category: ChecklistCategory = {
@@ -65,6 +70,7 @@ async function save(edit: EditCategory) {
     useSaveCategoryEdit(category, edit, onSaved, onClose),
   );
   await act(() => result.current.handleSave());
+  expect(showToast).toHaveBeenCalledWith('success', '已儲存分類。');
   return { onSaved, onClose };
 }
 
@@ -229,6 +235,25 @@ describe('useSaveCategoryEdit', () => {
       });
       await savePromise;
     });
+    expect(result.current.saving).toBe(false);
+    expect(showToast).toHaveBeenCalledWith('success', '已儲存分類。');
+  });
+
+  it('shows an error toast and does not call onSaved/onClose when saving fails', async () => {
+    vi.mocked(updateTemplateCategory).mockRejectedValue(new Error('network'));
+    const edit = unchangedEdit();
+    edit.name = 'New Name';
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+    const { result } = renderHook(() =>
+      useSaveCategoryEdit(category, edit, onSaved, onClose),
+    );
+
+    await act(() => result.current.handleSave());
+
+    expect(showToast).toHaveBeenCalledWith('error', '儲存分類失敗，請稍後再試');
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
     expect(result.current.saving).toBe(false);
   });
 });

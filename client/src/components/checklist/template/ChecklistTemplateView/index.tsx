@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
+import { showToast } from '@/lib/toast';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -26,13 +27,23 @@ export default function ChecklistTemplateView() {
   }, []);
 
   const handleAddCategory = async () => {
-    await addTemplateCategory('新分類');
-    await reload();
+    try {
+      await addTemplateCategory('新分類');
+      await reload();
+      showToast('success', '已新增分類。');
+    } catch {
+      showToast('error', '新增分類失敗，請稍後再試');
+    }
   };
 
   const handleDeleteCategory = async (catId: number) => {
-    await deleteTemplateCategory(catId);
-    await reload();
+    try {
+      await deleteTemplateCategory(catId);
+      await reload();
+      showToast('success', '已刪除分類。');
+    } catch {
+      showToast('error', '刪除分類失敗，請稍後再試');
+    }
   };
 
   if (!template) {

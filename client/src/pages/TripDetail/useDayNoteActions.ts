@@ -1,3 +1,4 @@
+import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import { updateDayNotes } from '@/utils/storage';
 
@@ -15,9 +16,14 @@ export function useDayNoteActions(
     if (!trip || !content) {
       return;
     }
-    await updateDayNotes(trip.id, content.days[dayIndex].id, notes);
-    await reloadContent();
-    closeModal();
+    try {
+      await updateDayNotes(trip.id, content.days[dayIndex].id, notes);
+      await reloadContent();
+      closeModal();
+      showToast('success', '已儲存每日備註。');
+    } catch {
+      showToast('error', '儲存每日備註失敗，請稍後再試');
+    }
   };
 
   return { handleSaveDayNotes };
