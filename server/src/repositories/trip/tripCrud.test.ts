@@ -134,7 +134,7 @@ describe('tripCrud', () => {
           },
         ]);
         expect(mockPoolExecute).toHaveBeenCalledWith(
-          'SELECT * FROM trips ORDER BY created_at DESC',
+          'SELECT * FROM trips ORDER BY start_date DESC, created_at DESC',
         );
       },
     );

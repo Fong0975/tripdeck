@@ -31,7 +31,7 @@ interface TripConnectionIdRow extends RowDataPacket {
 
 export async function findAll(): Promise<TripResponse[]> {
   const [rows] = await pool.execute<TripRow[]>(
-    'SELECT * FROM trips ORDER BY created_at DESC',
+    'SELECT * FROM trips ORDER BY start_date DESC, created_at DESC',
   );
   const imagesByTrip = await imageRepo.getTripImagesBatch(rows.map(r => r.id));
   return rows.map(row => toTripResponse(row, imagesByTrip.get(row.id) ?? []));
