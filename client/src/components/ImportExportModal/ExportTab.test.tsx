@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { exportTripsBackup } from '@/api/backup';
+import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import { downloadBlob } from '@/utils/download';
 
@@ -14,6 +15,10 @@ vi.mock('@/api/backup', () => ({
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
+}));
+
+vi.mock('@/lib/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
@@ -152,7 +157,9 @@ describe('ExportTab', () => {
       blob,
       expect.stringMatching(/^tripdeck-backup-\d{8}-\d{6}\.zip$/),
     );
-    expect(await screen.findByText('已成功下載備份檔案。')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('success', '已成功下載備份檔案。'),
+    );
   });
 
   it('includes the template flag alongside the selected trip when both are checked', async () => {
@@ -190,7 +197,9 @@ describe('ExportTab', () => {
     await user.click(tripCheckbox);
     await user.click(screen.getByText('匯出'));
 
-    expect(await screen.findByText('匯出失敗，請稍後再試')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('error', '匯出失敗，請稍後再試'),
+    );
     expect(downloadBlob).not.toHaveBeenCalled();
   });
 

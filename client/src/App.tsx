@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import { ThemeProvider } from '@/context/ThemeContext.tsx';
@@ -26,6 +27,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
+      <Toaster position='bottom-right' expand />
     </ThemeProvider>
   );
 }

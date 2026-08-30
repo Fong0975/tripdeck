@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { exportTripsBackup } from '@/api/backup';
+import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import { downloadBlob } from '@/utils/download';
 
@@ -25,16 +26,12 @@ export default function ExportTab({ trips, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [includeTemplate, setIncludeTemplate] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState('');
-  const [exportSuccess, setExportSuccess] = useState(false);
 
   const allSelected = trips.length > 0 && selectedIds.size === trips.length;
   const canSubmit = selectedIds.size > 0 || includeTemplate;
 
   const toggleTemplate = () => {
     setIncludeTemplate(prev => !prev);
-    setExportError('');
-    setExportSuccess(false);
   };
 
   const toggleTrip = (id: number) => {
@@ -47,14 +44,10 @@ export default function ExportTab({ trips, onClose }: Props) {
       }
       return next;
     });
-    setExportError('');
-    setExportSuccess(false);
   };
 
   const toggleAll = () => {
     setSelectedIds(allSelected ? new Set() : new Set(trips.map(t => t.id)));
-    setExportError('');
-    setExportSuccess(false);
   };
 
   const handleExportSubmit = async (e: React.FormEvent) => {
@@ -64,14 +57,12 @@ export default function ExportTab({ trips, onClose }: Props) {
     }
 
     setExporting(true);
-    setExportError('');
-    setExportSuccess(false);
     try {
       const blob = await exportTripsBackup([...selectedIds], includeTemplate);
       downloadBlob(blob, buildExportFilename(new Date()));
-      setExportSuccess(true);
+      showToast('success', '已成功下載備份檔案。');
     } catch {
-      setExportError('匯出失敗，請稍後再試');
+      showToast('error', '匯出失敗，請稍後再試');
     } finally {
       setExporting(false);
     }
@@ -133,13 +124,6 @@ export default function ExportTab({ trips, onClose }: Props) {
             ))}
           </div>
         </>
-      )}
-
-      {exportError && (
-        <StatusMessage variant='error'>{exportError}</StatusMessage>
-      )}
-      {exportSuccess && (
-        <StatusMessage variant='success'>已成功下載備份檔案。</StatusMessage>
       )}
 
       <ModalFooterActions

@@ -3,10 +3,11 @@ import { useRef, useState } from 'react';
 
 import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
-import type { ImportBackupErrorDetails, ImportBackupResult } from '@/types';
+import { showToast } from '@/lib/toast';
+import { ToastList } from '@/lib/ToastList';
+import type { ImportBackupErrorDetails } from '@/types';
 
 import ModalFooterActions from '../ui/ModalFooterActions';
-import StatusMessage from '../ui/StatusMessage';
 
 interface Props {
   onClose: () => void;
@@ -18,19 +19,10 @@ export default function ImportTab({ onClose, onImported }: Props) {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [restoreTemplate, setRestoreTemplate] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState('');
-  const [importErrorDetails, setImportErrorDetails] =
-    useState<ImportBackupErrorDetails | null>(null);
-  const [importResult, setImportResult] = useState<ImportBackupResult | null>(
-    null,
-  );
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     setImportFile(e.target.files?.[0] ?? null);
-    setImportError('');
-    setImportErrorDetails(null);
-    setImportResult(null);
   };
 
   const clearImportFile = () => {
@@ -47,21 +39,71 @@ export default function ImportTab({ onClose, onImported }: Props) {
     }
 
     setImporting(true);
-    setImportError('');
-    setImportErrorDetails(null);
-    setImportResult(null);
     try {
       const result = await importTripsBackup(importFile, restoreTemplate);
-      setImportResult(result);
       if (result.imported.length > 0) {
+        showToast(
+          'success',
+          <>
+            <p className='font-medium'>匯入成功</p>
+            <ToastList>
+              {result.imported.map(t => (
+                <li key={t.newTripId}>{t.title}</li>
+              ))}
+            </ToastList>
+          </>,
+        );
         onImported?.();
       }
-    } catch (err) {
-      if (err instanceof ApiError && err.details) {
-        setImportErrorDetails(err.details as ImportBackupErrorDetails);
+      if (result.failed.length > 0) {
+        showToast(
+          'error',
+          <>
+            <p className='font-medium'>匯入失敗</p>
+            <ToastList>
+              {result.failed.map(t => (
+                <li key={t.originalTripId}>
+                  {t.title}：{t.error}
+                </li>
+              ))}
+            </ToastList>
+          </>,
+        );
       }
-      setImportError(
-        err instanceof Error ? err.message : '匯入失敗，請稍後再試',
+      if (result.templateRestored) {
+        showToast('success', '已還原打包清單範本。');
+      }
+      if (
+        result.imported.length === 0 &&
+        result.failed.length === 0 &&
+        !result.templateRestored
+      ) {
+        showToast(
+          'info',
+          '這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。',
+        );
+      }
+    } catch (err) {
+      const details =
+        err instanceof ApiError && err.details
+          ? (err.details as ImportBackupErrorDetails)
+          : null;
+      showToast(
+        'error',
+        <>
+          <p className='font-medium'>
+            {err instanceof Error ? err.message : '匯入失敗，請稍後再試'}
+          </p>
+          {details && (
+            <ToastList>
+              {details.trips.map(t => (
+                <li key={t.folder}>
+                  {`旅程「${t.title}」缺少 ${t.missingFilenames.length} 張圖片：${t.missingFilenames.join('、')}`}
+                </li>
+              ))}
+            </ToastList>
+          )}
+        </>,
       );
     } finally {
       setImporting(false);
@@ -119,60 +161,6 @@ export default function ImportTab({ onClose, onImported }: Props) {
           </span>
         </span>
       </label>
-
-      {importError && (
-        <div className='space-y-1'>
-          <StatusMessage variant='error'>{importError}</StatusMessage>
-          {importErrorDetails && (
-            <ul className='text-destructive list-disc space-y-0.5 pl-5 text-xs'>
-              {importErrorDetails.trips.map(t => (
-                <li key={t.folder}>
-                  {`旅程「${t.title}」缺少 ${t.missingFilenames.length} 張圖片：${t.missingFilenames.join('、')}`}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {importResult && (
-        <div className='space-y-2'>
-          {importResult.imported.length > 0 && (
-            <div className='space-y-1'>
-              <StatusMessage variant='success'>匯入成功</StatusMessage>
-              <ul className='text-primary space-y-0.5 pl-[34px] text-sm'>
-                {importResult.imported.map(t => (
-                  <li key={t.newTripId}>{t.title}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {importResult.failed.length > 0 && (
-            <div className='space-y-1'>
-              <StatusMessage variant='error'>匯入失敗</StatusMessage>
-              <ul className='text-destructive space-y-0.5 pl-[34px] text-sm'>
-                {importResult.failed.map(t => (
-                  <li key={t.originalTripId}>
-                    {t.title}：{t.error}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {importResult.templateRestored && (
-            <StatusMessage variant='success'>
-              已還原打包清單範本。
-            </StatusMessage>
-          )}
-          {importResult.imported.length === 0 &&
-            importResult.failed.length === 0 &&
-            !importResult.templateRestored && (
-              <StatusMessage variant='info'>
-                這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。
-              </StatusMessage>
-            )}
-        </div>
-      )}
 
       <ModalFooterActions
         onCancel={onClose}
