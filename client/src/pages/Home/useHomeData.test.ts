@@ -70,7 +70,7 @@ describe('useHomeData', () => {
     expect(result.current.trips).toEqual(updated);
   });
 
-  it('appends a trip to local state without calling the API', async () => {
+  it('adds a trip to local state without calling the API', async () => {
     vi.mocked(getTrips).mockResolvedValue([]);
     const { result } = renderHook(() => useHomeData());
     await waitFor(() => {
@@ -84,6 +84,71 @@ describe('useHomeData', () => {
 
     expect(result.current.trips).toEqual([newTrip]);
     expect(getTrips).toHaveBeenCalledTimes(1);
+  });
+
+  it('inserts a newly added trip at the front when its startDate is the newest', async () => {
+    const older = makeTrip({ id: 1, startDate: '2026-01-01' });
+    vi.mocked(getTrips).mockResolvedValue([older]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([older]);
+    });
+
+    const newer = makeTrip({ id: 2, startDate: '2026-06-01' });
+    act(() => {
+      result.current.handleTripAdded(newer);
+    });
+
+    expect(result.current.trips).toEqual([newer, older]);
+  });
+
+  it('inserts a newly added trip at the end when its startDate is the oldest', async () => {
+    const newer = makeTrip({ id: 1, startDate: '2026-06-01' });
+    vi.mocked(getTrips).mockResolvedValue([newer]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([newer]);
+    });
+
+    const older = makeTrip({ id: 2, startDate: '2026-01-01' });
+    act(() => {
+      result.current.handleTripAdded(older);
+    });
+
+    expect(result.current.trips).toEqual([newer, older]);
+  });
+
+  it('inserts a newly added trip between two existing trips by startDate', async () => {
+    const newest = makeTrip({ id: 1, startDate: '2026-09-01' });
+    const oldest = makeTrip({ id: 2, startDate: '2026-01-01' });
+    vi.mocked(getTrips).mockResolvedValue([newest, oldest]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([newest, oldest]);
+    });
+
+    const middle = makeTrip({ id: 3, startDate: '2026-05-01' });
+    act(() => {
+      result.current.handleTripAdded(middle);
+    });
+
+    expect(result.current.trips).toEqual([newest, middle, oldest]);
+  });
+
+  it('places a newly added trip before an existing trip with the same startDate', async () => {
+    const existing = makeTrip({ id: 1, startDate: '2026-03-01' });
+    vi.mocked(getTrips).mockResolvedValue([existing]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([existing]);
+    });
+
+    const sameDate = makeTrip({ id: 2, startDate: '2026-03-01' });
+    act(() => {
+      result.current.handleTripAdded(sameDate);
+    });
+
+    expect(result.current.trips).toEqual([sameDate, existing]);
   });
 
   it('calls deleteTrip with the given id', async () => {
@@ -148,6 +213,27 @@ describe('useHomeData', () => {
     });
 
     const updatedTrip = makeTrip({ title: 'Renamed' });
+    act(() => {
+      result.current.handleTripUpdated(updatedTrip);
+    });
+
+    expect(result.current.trips).toEqual([updatedTrip, otherTrip]);
+  });
+
+  it('repositions a trip when editing moves its startDate past another trip', async () => {
+    const trip = makeTrip({ id: 1, startDate: '2026-01-01' });
+    const otherTrip = makeTrip({
+      id: 2,
+      title: 'Other',
+      startDate: '2026-06-01',
+    });
+    vi.mocked(getTrips).mockResolvedValue([otherTrip, trip]);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.trips).toEqual([otherTrip, trip]);
+    });
+
+    const updatedTrip = makeTrip({ id: 1, startDate: '2026-09-01' });
     act(() => {
       result.current.handleTripUpdated(updatedTrip);
     });
