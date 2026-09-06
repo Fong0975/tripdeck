@@ -27,6 +27,7 @@ import { exportToDocx } from './index';
 // `BorderStyle` is mocked because `./constants` reads it at module-init time.
 vi.mock('docx', () => ({
   BorderStyle: { NONE: 'none', SINGLE: 'single' },
+  ShadingType: { SOLID: 'solid' },
   Packer: { toBlob: vi.fn() },
   Document: vi.fn().mockImplementation(function (options: unknown) {
     return { type: 'Document', options };

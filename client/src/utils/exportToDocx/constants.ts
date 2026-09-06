@@ -1,4 +1,4 @@
-import { BorderStyle } from 'docx';
+import { BorderStyle, ShadingType } from 'docx';
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -12,6 +12,10 @@ export const CONTENT_WIDTH_PX = 602;
 export const HALF_WIDTH_PX = Math.ceil(CONTENT_WIDTH_PX / 2) + 1;
 
 export const FONT = 'Microsoft JhengHei';
+export const MONO_FONT = 'Consolas';
+
+// Markdown heading depth (1-6) -> docx half-point size
+export const HEADING_SIZES = [28, 26, 24, 24, 22, 22] as const;
 
 // Attraction table: 4 equal columns [25% | 25% | 25% | 25%]
 export const COL_W = Math.round(CONTENT_WIDTH_DXA / 4); // 2257 — single column
@@ -50,3 +54,36 @@ export const ALL_BORDERS = {
   left: CELL_BORDER,
   right: CELL_BORDER,
 } as const;
+
+// ---------------------------------------------------------------------------
+// Markdown rendering presets
+// ---------------------------------------------------------------------------
+
+export const HR_BORDER = {
+  style: BorderStyle.SINGLE,
+  size: 6,
+  color: 'CCCCCC',
+  space: 1,
+} as const;
+
+export const QUOTE_BORDER = {
+  style: BorderStyle.SINGLE,
+  size: 12,
+  color: 'D1D5DB',
+  space: 8,
+} as const;
+
+export const CODE_SHADING = {
+  type: ShadingType.SOLID,
+  fill: 'F5F5F5',
+  color: 'auto',
+} as const;
+
+export const TABLE_HEADER_SHADING = {
+  type: ShadingType.SOLID,
+  fill: 'F3F4F6',
+  color: 'auto',
+} as const;
+
+// Indentation step (twips) applied per nesting level inside lists/quotes
+export const INDENT_STEP = 360;

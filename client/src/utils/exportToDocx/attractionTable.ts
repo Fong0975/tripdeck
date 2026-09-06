@@ -118,7 +118,7 @@ export async function makeAttractionTable(
   const hasImages = (attraction.images ?? []).length > 0;
 
   if (hasNotes || hasImages) {
-    const cellChildren: Paragraph[] = [];
+    const cellChildren: (Paragraph | Table)[] = [];
 
     if (hasNotes) {
       cellChildren.push(...parseMarkdownContent(attraction.notes!));
@@ -170,16 +170,7 @@ export async function makeAttractionTable(
             width: { size: COL_3R, type: WidthType.DXA },
             borders: ALL_BORDERS,
             margins: { top: 80, bottom: 80, left: 160, right: 160 },
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: attraction.nearbyAttractions!,
-                    font: FONT,
-                  }),
-                ],
-              }),
-            ],
+            children: parseMarkdownContent(attraction.nearbyAttractions!),
           }),
         ],
       }),
