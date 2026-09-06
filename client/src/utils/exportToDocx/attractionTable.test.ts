@@ -20,10 +20,12 @@ import { parseMarkdownContent } from './markdownToDocx';
 // real component instances (see markdownToDocx.test.ts for the rationale).
 // They are invoked with `new`, so the mock implementation must be a real
 // `function` — an arrow function cannot be used as a constructor target.
-// `BorderStyle`/`WidthType` are mocked because `./constants` reads them at
-// module-init time (docx is mocked module-wide, not just the symbols below).
+// `BorderStyle`/`ShadingType`/`WidthType` are mocked because `./constants`
+// reads them at module-init time (docx is mocked module-wide, not just the
+// symbols below).
 vi.mock('docx', () => ({
   BorderStyle: { NONE: 'none', SINGLE: 'single' },
+  ShadingType: { SOLID: 'solid' },
   WidthType: { DXA: 'dxa' },
   ExternalHyperlink: vi.fn().mockImplementation(function (options: unknown) {
     return { type: 'ExternalHyperlink', options };
@@ -311,15 +313,22 @@ describe('makeAttractionTable', () => {
     },
   );
 
-  it('renders the nearby-attractions row with label and value cells', async () => {
+  it('renders the nearby-attractions row with its value parsed as markdown', async () => {
+    vi.mocked(parseMarkdownContent).mockReturnValue([
+      fakeParagraph('nearby') as never,
+    ]);
+
     const table = await makeAttractionTable(
-      attraction({ nearbyAttractions: '晴空塔、淺草寺' }),
+      attraction({ nearbyAttractions: '[晴空塔](https://demo.com)' }),
     );
 
+    expect(parseMarkdownContent).toHaveBeenCalledWith(
+      '[晴空塔](https://demo.com)',
+    );
     expect(rows(table)[1]).toEqual(
       tableRow([
         labelCell([paragraph([textRun('附近景點', { bold: true, size: 20 })])]),
-        valueCell([paragraph([textRun('晴空塔、淺草寺')])]),
+        valueCell([fakeParagraph('nearby')]),
       ]),
     );
   });

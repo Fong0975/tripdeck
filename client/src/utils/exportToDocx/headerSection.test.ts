@@ -12,6 +12,7 @@ import { makeImageParagraphs } from './imageHelpers';
 // `function` — an arrow function cannot be used as a constructor target.
 vi.mock('docx', () => ({
   BorderStyle: { NONE: 'none', SINGLE: 'single' },
+  ShadingType: { SOLID: 'solid' },
   HeadingLevel: { HEADING_1: 'Heading1' },
   Paragraph: vi.fn().mockImplementation(function (options: unknown) {
     return { type: 'Paragraph', options };

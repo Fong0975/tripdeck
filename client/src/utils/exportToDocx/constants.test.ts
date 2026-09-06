@@ -16,6 +16,7 @@ import {
 // `BorderStyle` is mocked because `./constants` reads it at module-init time.
 vi.mock('docx', () => ({
   BorderStyle: { NONE: 'none', SINGLE: 'single' },
+  ShadingType: { SOLID: 'solid' },
 }));
 
 describe('layout constants', () => {

@@ -9,6 +9,7 @@ import {
   TRANSPORT_BORDER,
 } from './constants';
 import { makeImageParagraphs } from './imageHelpers';
+import { parseMarkdownContent } from './markdownToDocx';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 // `docx` constructors are captured as plain, comparable objects instead of
@@ -40,6 +41,10 @@ vi.mock('docx', () => ({
 
 vi.mock('./imageHelpers', () => ({
   makeImageParagraphs: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('./markdownToDocx', () => ({
+  parseMarkdownContent: vi.fn().mockReturnValue([]),
 }));
 
 type MockNode = { type: string; options: Record<string, any> };
@@ -78,6 +83,7 @@ function paragraph(children: unknown[], extra: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.mocked(makeImageParagraphs).mockReset().mockResolvedValue([]);
+  vi.mocked(parseMarkdownContent).mockReset().mockReturnValue([]);
 });
 
 describe('makeDayHeaderTable', () => {
@@ -245,18 +251,26 @@ describe('makeTransportTable', () => {
     },
   );
 
-  it('adds a route line only when conn.route is set', async () => {
+  it('adds a labelled, markdown-parsed route block only when conn.route is set', async () => {
+    vi.mocked(parseMarkdownContent).mockReturnValue([
+      { type: 'Paragraph', options: { marker: 'route' } } as never,
+    ]);
+
     const withRoute = await makeTransportTable(
-      connection({ route: 'JR山手線' }),
+      connection({ route: '[JR山手線](https://demo.com)' }),
       '',
     );
     const withoutRoute = await makeTransportTable(connection(), '');
 
-    expect(cellChildren(withRoute)[1]).toEqual(
-      paragraph([textRun('路線：JR山手線')], {
-        spacing: { before: 40, after: 40 },
-      }),
+    expect(parseMarkdownContent).toHaveBeenCalledWith(
+      '[JR山手線](https://demo.com)',
     );
+    expect(cellChildren(withRoute).slice(1)).toEqual([
+      paragraph([textRun('路線', { bold: true, size: 20 })], {
+        spacing: { before: 40, after: 20 },
+      }),
+      { type: 'Paragraph', options: { marker: 'route' } },
+    ]);
     expect(cellChildren(withoutRoute)).toHaveLength(1);
   });
 

@@ -19,6 +19,7 @@ import {
   TRANSPORT_BORDER,
 } from './constants';
 import { makeImageParagraphs } from './imageHelpers';
+import { parseMarkdownContent } from './markdownToDocx';
 
 // ---------------------------------------------------------------------------
 // Day header table  ─  1×1, dark blue background, white text
@@ -78,7 +79,7 @@ export async function makeTransportTable(
   conn: TravelConnection,
   toName: string,
 ): Promise<Table> {
-  const cellChildren: Paragraph[] = [];
+  const cellChildren: (Paragraph | Table)[] = [];
 
   const parts = [TRANSPORT_MODE_META[conn.transportMode].label];
   const durationDisplay = formatDurationDisplay(conn.duration);
@@ -95,12 +96,17 @@ export async function makeTransportTable(
   );
 
   if (conn.route) {
+    // The label gets its own line: markdown content can open with a heading or
+    // a list, which cannot share a paragraph with an inline prefix.
     cellChildren.push(
       new Paragraph({
-        children: [new TextRun({ text: `路線：${conn.route}`, font: FONT })],
-        spacing: { before: 40, after: 40 },
+        children: [
+          new TextRun({ text: '路線', bold: true, size: 20, font: FONT }),
+        ],
+        spacing: { before: 40, after: 20 },
       }),
     );
+    cellChildren.push(...parseMarkdownContent(conn.route));
   }
 
   if (conn.notes) {
