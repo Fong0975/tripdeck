@@ -1,6 +1,13 @@
-import type { WeatherIconCode, WeatherResult } from './types';
+import { createLogger } from '../logger';
 
-export const VC_KEY = import.meta.env.VITE_VC_API_KEY as string | undefined;
+import {
+  WEATHER_FETCH_TIMEOUT_MS,
+  type WeatherIconCode,
+  type WeatherResult,
+} from './types';
+
+const logger = createLogger('weather');
+
 const VC_BASE =
   'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline';
 
@@ -33,18 +40,32 @@ function normalizeVcIcon(vcCode: string): WeatherIconCode {
   return 'cloudy';
 }
 
+/**
+ * Fetches a single day's weather from the Visual Crossing timeline API.
+ *
+ * @param location - `lat,lon` or a place name.
+ * @param resolvedName - Display name used when VC returns no resolved address.
+ * @param dateStr - Target date as `YYYY-MM-DD`.
+ * @param apiKey - Visual Crossing API key.
+ * @returns `not_found` when VC can't resolve the location or has no data.
+ */
 export async function fetchVcWeather(
   location: string,
   resolvedName: string,
   dateStr: string,
+  apiKey: string,
 ): Promise<WeatherResult> {
-  const url = `${VC_BASE}/${encodeURIComponent(location)}/${dateStr}?key=${VC_KEY}&unitGroup=metric&lang=zh&include=days&elements=datetime,tempmin,tempmax,humidity,precipprob,icon,description,resolvedAddress`;
+  const url = `${VC_BASE}/${encodeURIComponent(location)}/${dateStr}?key=${apiKey}&unitGroup=metric&lang=zh&include=days&elements=datetime,tempmin,tempmax,humidity,precipprob,icon,description,resolvedAddress`;
 
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS),
+  });
   if (res.status === 400 || res.status === 404) {
     return { status: 'not_found' };
   }
   if (!res.ok) {
+    // The request URL carries the API key, so only the status is logged.
+    logger.warn('Visual Crossing request failed', { status: res.status });
     return { status: 'error' };
   }
 
@@ -69,6 +90,7 @@ export async function fetchVcWeather(
 
   return {
     status: 'success',
+    source: 'visualcrossing',
     data: {
       resolvedName: json.resolvedAddress || resolvedName,
       icon: normalizeVcIcon(day.icon),

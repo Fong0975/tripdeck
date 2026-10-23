@@ -27,8 +27,12 @@ services:
       LOG_FILENAME: ${LOG_FILENAME:-app.log}
       LOG_MAX_SIZE_MB: ${LOG_MAX_SIZE_MB:-10}
       LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
+      OWM_API_KEY_FILE: /run/secrets/owm_api_key
+      VC_API_KEY_FILE: /run/secrets/vc_api_key
     secrets:
       - db_password
+      - owm_api_key
+      - vc_api_key
     volumes:
       - ${UPLOADS_HOST_DIR:-./.uploads}:/app/uploads
       - ${BACKUPS_HOST_DIR:-./.backups}:/app/backups
@@ -52,8 +56,6 @@ services:
         VITE_API_DOMAIN: ${VITE_API_DOMAIN:-}
         VITE_API_PORT: ${VITE_API_PORT:-3001}
         VITE_API_PUBLIC_PORT: ${VITE_API_PUBLIC_PORT:-}
-        VITE_OWM_API_KEY: ${VITE_OWM_API_KEY:-}
-        VITE_VC_API_KEY: ${VITE_VC_API_KEY:-}
     container_name: tripdeck-frontend
     image: fong/tripdeck-frontend
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
@@ -79,3 +81,7 @@ services:
 secrets:
   db_password:
     environment: DB_PASSWORD
+  owm_api_key:
+    environment: OWM_API_KEY
+  vc_api_key:
+    environment: VC_API_KEY

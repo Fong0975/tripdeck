@@ -7,6 +7,7 @@ import {
   fetchDailyWeather,
   type WeatherIconCode,
   type WeatherResult,
+  type WeatherSource,
 } from '@/utils/weatherApi';
 
 import DayWeather from './DayWeather';
@@ -28,8 +29,10 @@ type SuccessData = Extract<WeatherResult, { status: 'success' }>['data'];
 
 const successResult = (
   overrides: Partial<SuccessData> = {},
+  source: WeatherSource = 'openweathermap',
 ): WeatherResult => ({
   status: 'success',
+  source,
   data: {
     resolvedName: 'Tokyo',
     icon: 'clear',
@@ -134,6 +137,22 @@ describe('DayWeather', () => {
     expect(screen.getByText('55%')).toBeInTheDocument();
     expect(screen.getByText('30%')).toBeInTheDocument();
   });
+
+  it.each([
+    { source: 'openweathermap', label: 'OpenWeatherMap' },
+    { source: 'visualcrossing', label: 'Visual Crossing' },
+  ] as { source: WeatherSource; label: string }[])(
+    'shows a $label source tooltip on the weather details',
+    async ({ source, label }) => {
+      mockedFetch.mockResolvedValue(successResult({}, source));
+
+      render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+
+      expect(await screen.findByTitle(`資料來源：${label}`)).toHaveTextContent(
+        'Clear sky',
+      );
+    },
+  );
 
   it('hides the precipitation marker when pop is 0', async () => {
     mockedFetch.mockResolvedValue(successResult({ pop: 0 }));

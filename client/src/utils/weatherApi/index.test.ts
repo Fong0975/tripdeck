@@ -1,194 +1,132 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-interface LoadConfig {
-  owmKey?: string;
-  vcKey?: string;
-  daysFromToday?: number;
-}
+import type { WeatherResult } from './types';
 
-async function loadWeatherApi(config: LoadConfig = {}) {
+const SUCCESS: WeatherResult = {
+  status: 'success',
+  source: 'openweathermap',
+  data: {
+    resolvedName: 'Tokyo',
+    icon: 'clear',
+    description: 'Clear',
+    tempMin: 20,
+    tempMax: 28,
+    humidity: 50,
+    pop: 0,
+  },
+};
+
+/** Loads a fresh module instance so each test starts with empty caches. */
+async function loadWeatherApi(daysFromTodayValue = 0) {
   vi.resetModules();
-  const daysFromToday = vi.fn().mockReturnValue(config.daysFromToday ?? 0);
-  const fetchOwmWeather = vi.fn();
-  const geocode = vi.fn();
-  const fetchVcWeather = vi.fn();
+  const daysFromToday = vi.fn().mockReturnValue(daysFromTodayValue);
+  const getWeather = vi.fn();
+  const getWeatherStatus = vi.fn();
 
   vi.doMock('@/utils/date', () => ({ daysFromToday }));
-  vi.doMock('./openWeatherMap', () => ({
-    OWM_KEY: config.owmKey ?? '',
-    fetchOwmWeather,
-    geocode,
-  }));
-  vi.doMock('./visualCrossing', () => ({
-    VC_KEY: config.vcKey ?? '',
-    fetchVcWeather,
-  }));
+  vi.doMock('@/api/weather', () => ({ getWeather, getWeatherStatus }));
 
   const mod = await import('./index');
-  return { ...mod, daysFromToday, fetchOwmWeather, geocode, fetchVcWeather };
+  return { ...mod, daysFromToday, getWeather, getWeatherStatus };
 }
 
-beforeEach(() => {
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-});
-
-describe('isWeatherEnabled', () => {
+describe('getWeatherEnabled', () => {
   it.each([
-    { description: 'only the OWM key is set', owmKey: 'owm', vcKey: '' },
-    { description: 'only the VC key is set', owmKey: '', vcKey: 'vc' },
-    { description: 'both keys are set', owmKey: 'owm', vcKey: 'vc' },
-  ])('is true when $description', async ({ owmKey, vcKey }) => {
-    const api = await loadWeatherApi({ owmKey, vcKey });
+    {
+      description: 'the backend reports enabled',
+      setup: (fn: ReturnType<typeof vi.fn>) =>
+        fn.mockResolvedValue({ enabled: true }),
+      expected: true,
+    },
+    {
+      description: 'the backend reports disabled',
+      setup: (fn: ReturnType<typeof vi.fn>) =>
+        fn.mockResolvedValue({ enabled: false }),
+      expected: false,
+    },
+    {
+      description: 'the status request fails',
+      setup: (fn: ReturnType<typeof vi.fn>) =>
+        fn.mockRejectedValue(new Error('API error 500')),
+      expected: false,
+    },
+  ])('resolves $expected when $description', async ({ setup, expected }) => {
+    const api = await loadWeatherApi();
+    setup(api.getWeatherStatus);
 
-    expect(api.isWeatherEnabled).toBe(true);
+    expect(await api.getWeatherEnabled()).toBe(expected);
   });
 
-  it('is false when neither key is set', async () => {
-    const api = await loadWeatherApi({ owmKey: '', vcKey: '' });
+  it('requests the status only once', async () => {
+    const api = await loadWeatherApi();
+    api.getWeatherStatus.mockResolvedValue({ enabled: true });
 
-    expect(api.isWeatherEnabled).toBe(false);
+    await Promise.all([api.getWeatherEnabled(), api.getWeatherEnabled()]);
+    await api.getWeatherEnabled();
+
+    expect(api.getWeatherStatus).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('fetchDailyWeather', () => {
-  it('returns error when neither provider key is configured', async () => {
-    const api = await loadWeatherApi({ owmKey: '', vcKey: '' });
+  it('passes the client-side days-from-today to the backend', async () => {
+    const api = await loadWeatherApi(3);
+    api.getWeather.mockResolvedValue(SUCCESS);
 
     const result = await api.fetchDailyWeather('Tokyo', '2026-08-20');
 
-    expect(result).toEqual({ status: 'error' });
+    expect(result).toEqual(SUCCESS);
+    expect(api.daysFromToday).toHaveBeenCalledWith('2026-08-20');
+    expect(api.getWeather).toHaveBeenCalledWith('Tokyo', '2026-08-20', 3);
   });
 
-  it('returns out_of_range when OWM is the only key and the date is beyond its forecast range', async () => {
-    const api = await loadWeatherApi({
-      owmKey: 'owm',
-      vcKey: '',
-      daysFromToday: 5,
+  it('returns error when the backend request fails', async () => {
+    const api = await loadWeatherApi();
+    api.getWeather.mockRejectedValue(new Error('API error 500'));
+
+    expect(await api.fetchDailyWeather('Tokyo', '2026-08-20')).toEqual({
+      status: 'error',
     });
-
-    const result = await api.fetchDailyWeather('Tokyo', '2026-08-25');
-
-    expect(result).toEqual({ status: 'out_of_range' });
-    expect(api.geocode).not.toHaveBeenCalled();
   });
 
-  it('returns not_found when geocoding fails with an OWM key present', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: '' });
-    api.geocode.mockRejectedValue(new Error('geocode failed'));
-
-    const result = await api.fetchDailyWeather('Nowhere', '2026-08-20');
-
-    expect(result).toEqual({ status: 'not_found' });
-    expect(api.fetchOwmWeather).not.toHaveBeenCalled();
-  });
-
-  it('returns the OWM result on success without calling Visual Crossing', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: 'vc' });
-    const geo = { lat: 35, lon: 139, resolvedName: 'Tokyo' };
-    api.geocode.mockResolvedValue(geo);
-    const success = {
-      status: 'success' as const,
-      data: {
-        resolvedName: 'Tokyo',
-        icon: 'clear' as const,
-        description: 'Clear',
-        tempMin: 20,
-        tempMax: 28,
-        humidity: 50,
-        pop: 0,
-      },
-    };
-    api.fetchOwmWeather.mockResolvedValue(success);
-
-    const result = await api.fetchDailyWeather('Tokyo', '2026-08-20');
-
-    expect(result).toEqual(success);
-    expect(api.fetchVcWeather).not.toHaveBeenCalled();
-  });
-
-  it('falls back to Visual Crossing when OWM fails but a VC key is present', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: 'vc' });
-    const geo = { lat: 35, lon: 139, resolvedName: 'Tokyo' };
-    api.geocode.mockResolvedValue(geo);
-    api.fetchOwmWeather.mockResolvedValue({ status: 'error' });
-    const success = {
-      status: 'success' as const,
-      data: {
-        resolvedName: 'Tokyo',
-        icon: 'rain' as const,
-        description: 'Rain',
-        tempMin: 18,
-        tempMax: 22,
-        humidity: 80,
-        pop: 60,
-      },
-    };
-    api.fetchVcWeather.mockResolvedValue(success);
-
-    const result = await api.fetchDailyWeather('Tokyo', '2026-08-20');
-
-    expect(result).toEqual(success);
-    expect(api.fetchVcWeather).toHaveBeenCalledWith(
-      '35,139',
-      'Tokyo',
-      '2026-08-20',
-    );
-  });
-
-  it('uses the raw location name for Visual Crossing when no OWM key is configured', async () => {
-    const api = await loadWeatherApi({ owmKey: '', vcKey: 'vc' });
-    api.fetchVcWeather.mockResolvedValue({ status: 'error' });
-
-    await api.fetchDailyWeather('Osaka', '2026-08-20');
-
-    expect(api.geocode).not.toHaveBeenCalled();
-    expect(api.fetchVcWeather).toHaveBeenCalledWith(
-      'Osaka',
-      'Osaka',
-      '2026-08-20',
-    );
-  });
-
-  it('caches a result by location and date so a second call does not refetch', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: '' });
-    api.geocode.mockResolvedValue({ lat: 1, lon: 2, resolvedName: 'Tokyo' });
-    api.fetchOwmWeather.mockResolvedValue({ status: 'error' });
+  it.each([
+    {
+      description: 'serves a repeated lookup from cache',
+      first: SUCCESS,
+      second: { location: 'Tokyo', date: '2026-08-20' },
+      expectedCalls: 1,
+    },
+    {
+      description: 'caches non-error statuses too',
+      first: { status: 'out_of_range' } as WeatherResult,
+      second: { location: 'Tokyo', date: '2026-08-20' },
+      expectedCalls: 1,
+    },
+    {
+      description: 'does not cache error results',
+      first: { status: 'error' } as WeatherResult,
+      second: { location: 'Tokyo', date: '2026-08-20' },
+      expectedCalls: 2,
+    },
+    {
+      description: 'uses a separate entry for a different date',
+      first: SUCCESS,
+      second: { location: 'Tokyo', date: '2026-08-21' },
+      expectedCalls: 2,
+    },
+    {
+      description: 'uses a separate entry for a different location',
+      first: SUCCESS,
+      second: { location: 'Osaka', date: '2026-08-20' },
+      expectedCalls: 2,
+    },
+  ])('$description', async ({ first, second, expectedCalls }) => {
+    const api = await loadWeatherApi();
+    api.getWeather.mockResolvedValue(first);
 
     await api.fetchDailyWeather('Tokyo', '2026-08-20');
-    await api.fetchDailyWeather('Tokyo', '2026-08-20');
+    await api.fetchDailyWeather(second.location, second.date);
 
-    expect(api.geocode).toHaveBeenCalledTimes(1);
-    expect(api.fetchOwmWeather).toHaveBeenCalledTimes(1);
-  });
-
-  it('uses a separate cache entry for a different date', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: '' });
-    api.geocode.mockResolvedValue({ lat: 1, lon: 2, resolvedName: 'Tokyo' });
-    api.fetchOwmWeather.mockResolvedValue({ status: 'error' });
-
-    await api.fetchDailyWeather('Tokyo', '2026-08-20');
-    await api.fetchDailyWeather('Tokyo', '2026-08-21');
-
-    expect(api.geocode).toHaveBeenCalledTimes(2);
-  });
-
-  it('falls back to error status when fetchOwmWeather rejects and no VC key is configured', async () => {
-    const api = await loadWeatherApi({ owmKey: 'owm', vcKey: '' });
-    const geo = { lat: 35, lon: 139, resolvedName: 'Tokyo' };
-    api.geocode.mockResolvedValue(geo);
-    api.fetchOwmWeather.mockRejectedValue(new Error('network error'));
-
-    const result = await api.fetchDailyWeather('Tokyo', '2026-08-20');
-
-    expect(result).toEqual({ status: 'error' });
-  });
-
-  it('falls back to error status when fetchVcWeather rejects', async () => {
-    const api = await loadWeatherApi({ owmKey: '', vcKey: 'vc' });
-    api.fetchVcWeather.mockRejectedValue(new Error('network error'));
-
-    const result = await api.fetchDailyWeather('Osaka', '2026-08-20');
-
-    expect(result).toEqual({ status: 'error' });
+    expect(api.getWeather).toHaveBeenCalledTimes(expectedCalls);
   });
 });

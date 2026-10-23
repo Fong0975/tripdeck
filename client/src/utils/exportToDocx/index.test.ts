@@ -11,7 +11,7 @@ import type {
 } from '@/types';
 import { daysFromToday } from '@/utils/date';
 import { downloadBlob } from '@/utils/download';
-import { fetchDailyWeather } from '@/utils/weatherApi';
+import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { makeDayNotesSection } from './dayNotesSection';
@@ -44,7 +44,7 @@ vi.mock('@/utils/date', () => ({ daysFromToday: vi.fn() }));
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }));
 vi.mock('@/utils/weatherApi', () => ({
   fetchDailyWeather: vi.fn(),
-  isWeatherEnabled: true,
+  getWeatherEnabled: vi.fn(),
 }));
 vi.mock('./attractionTable', () => ({ makeAttractionTable: vi.fn() }));
 // The header section's own content (title/destination/date/description/
@@ -140,6 +140,7 @@ beforeEach(() => {
   } as unknown as Table);
   vi.mocked(daysFromToday).mockReturnValue(-1);
   vi.mocked(fetchDailyWeather).mockResolvedValue({ status: 'error' });
+  vi.mocked(getWeatherEnabled).mockResolvedValue(true);
 });
 
 describe('exportToDocx', () => {
@@ -223,18 +224,27 @@ describe('exportToDocx', () => {
 
   it.each([
     {
+      description: 'weather is disabled',
+      enabled: false,
+      locations: [{ id: 1, name: '東京' }] as DayLocation[],
+      daysFromTodayValue: 0,
+    },
+    {
       description: 'the day has no locations',
+      enabled: true,
       locations: [] as DayLocation[],
       daysFromTodayValue: 0,
     },
     {
       description: 'the day is in the past',
+      enabled: true,
       locations: [{ id: 1, name: '東京' }] as DayLocation[],
       daysFromTodayValue: -1,
     },
   ])(
     'does not fetch weather when $description',
-    async ({ locations, daysFromTodayValue }) => {
+    async ({ enabled, locations, daysFromTodayValue }) => {
+      vi.mocked(getWeatherEnabled).mockResolvedValue(enabled);
       vi.mocked(daysFromToday).mockReturnValue(daysFromTodayValue);
       const day = dayPlan({ locations });
 
@@ -248,6 +258,7 @@ describe('exportToDocx', () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
     vi.mocked(fetchDailyWeather).mockResolvedValue({
       status: 'success',
+      source: 'openweathermap',
       data: {
         resolvedName: '東京',
         icon: 'clear',
@@ -272,6 +283,7 @@ describe('exportToDocx', () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
     vi.mocked(fetchDailyWeather).mockResolvedValue({
       status: 'success',
+      source: 'openweathermap',
       data: {
         resolvedName: '東京',
         icon: 'rain',

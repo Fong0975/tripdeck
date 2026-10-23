@@ -5,13 +5,14 @@ import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isPastDate } from '@/utils/date';
 
 import DayColumn from './index';
 
 vi.mock('@/utils/date', () => ({ isPastDate: vi.fn() }));
-vi.mock('@/utils/weatherApi', () => ({ isWeatherEnabled: true }));
+vi.mock('@/hooks/useWeatherEnabled', () => ({ useWeatherEnabled: vi.fn() }));
 
 vi.mock('../AttractionCard', () => ({
   default: ({
@@ -110,6 +111,7 @@ function setupColumn(day: DayPlan, dayIndex = 0, callbacks = makeCallbacks()) {
 
 beforeEach(() => {
   vi.mocked(isPastDate).mockReturnValue(false);
+  vi.mocked(useWeatherEnabled).mockReturnValue(true);
 });
 
 describe('DayColumn', () => {
@@ -262,12 +264,25 @@ describe('DayColumn', () => {
 
   it.each([
     {
+      description: 'weather is disabled',
+      enabled: false,
+      isPast: false,
+      locations: [{ id: 1, name: 'Tokyo' }],
+    },
+    {
       description: 'the day is in the past',
+      enabled: true,
       isPast: true,
       locations: [{ id: 1, name: 'Tokyo' }],
     },
-    { description: 'there are no locations', isPast: false, locations: [] },
-  ])('hides DayWeather when $description', ({ isPast, locations }) => {
+    {
+      description: 'there are no locations',
+      enabled: true,
+      isPast: false,
+      locations: [],
+    },
+  ])('hides DayWeather when $description', ({ enabled, isPast, locations }) => {
+    vi.mocked(useWeatherEnabled).mockReturnValue(enabled);
     vi.mocked(isPastDate).mockReturnValue(isPast);
     const day = makeDay({ locations });
 

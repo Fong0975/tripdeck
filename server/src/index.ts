@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './loadEnv';
 
 import { readFileSync } from 'fs';
 import path from 'path';

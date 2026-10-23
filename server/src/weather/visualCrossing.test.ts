@@ -1,13 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { fetchVcWeather } from './visualCrossing';
 
+const API_KEY = 'vc-secret';
+
 function makeResponse(ok: boolean, status: number, body: unknown): Response {
-  return {
-    ok,
-    status,
-    json: () => Promise.resolve(body),
-  } as unknown as Response;
+  return { ok, status, json: () => Promise.resolve(body) } as Response;
 }
 
 interface VcDayOverrides {
@@ -31,6 +39,7 @@ function makeVcDay(overrides: VcDayOverrides = {}) {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn());
 });
 
@@ -39,23 +48,43 @@ afterEach(() => {
 });
 
 describe('fetchVcWeather', () => {
+  it('sends the location, date and API key with a timeout signal', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeResponse(true, 200, {
+        resolvedAddress: 'Tokyo',
+        days: [makeVcDay()],
+      }),
+    );
+
+    await fetchVcWeather('35,139', 'Tokyo', '2026-01-01', API_KEY);
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain(`/${encodeURIComponent('35,139')}/2026-01-01?`);
+    expect(url).toContain(`key=${API_KEY}`);
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it.each([
     { description: 'the response status is 400', status: 400 },
     { description: 'the response status is 404', status: 404 },
   ])('returns not_found when $description', async ({ status }) => {
     vi.mocked(fetch).mockResolvedValue(makeResponse(false, status, {}));
 
-    expect(await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01')).toEqual({
-      status: 'not_found',
-    });
+    expect(
+      await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01', API_KEY),
+    ).toEqual({ status: 'not_found' });
   });
 
-  it('returns error when the response is not ok for another reason', async () => {
+  it('returns error and logs only the status when the response is not ok for another reason', async () => {
     vi.mocked(fetch).mockResolvedValue(makeResponse(false, 500, {}));
 
-    expect(await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01')).toEqual({
-      status: 'error',
-    });
+    expect(
+      await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01', API_KEY),
+    ).toEqual({ status: 'error' });
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Visual Crossing request failed',
+      { status: 500 },
+    );
   });
 
   it('returns not_found when the response has no days', async () => {
@@ -63,9 +92,9 @@ describe('fetchVcWeather', () => {
       makeResponse(true, 200, { resolvedAddress: 'Tokyo', days: [] }),
     );
 
-    expect(await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01')).toEqual({
-      status: 'not_found',
-    });
+    expect(
+      await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01', API_KEY),
+    ).toEqual({ status: 'not_found' });
   });
 
   it('resolves data from the first day, rounding numeric fields', async () => {
@@ -76,8 +105,11 @@ describe('fetchVcWeather', () => {
       }),
     );
 
-    expect(await fetchVcWeather('Tokyo', 'Fallback', '2026-01-01')).toEqual({
+    expect(
+      await fetchVcWeather('Tokyo', 'Fallback', '2026-01-01', API_KEY),
+    ).toEqual({
       status: 'success',
+      source: 'visualcrossing',
       data: {
         resolvedName: 'Tokyo, JP',
         icon: 'clear',
@@ -95,7 +127,12 @@ describe('fetchVcWeather', () => {
       makeResponse(true, 200, { resolvedAddress: '', days: [makeVcDay()] }),
     );
 
-    const result = await fetchVcWeather('Tokyo', 'Fallback', '2026-01-01');
+    const result = await fetchVcWeather(
+      'Tokyo',
+      'Fallback',
+      '2026-01-01',
+      API_KEY,
+    );
 
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -129,7 +166,12 @@ describe('fetchVcWeather', () => {
         }),
       );
 
-      const result = await fetchVcWeather('Tokyo', 'Tokyo', '2026-01-01');
+      const result = await fetchVcWeather(
+        'Tokyo',
+        'Tokyo',
+        '2026-01-01',
+        API_KEY,
+      );
 
       expect(result.status).toBe('success');
       if (result.status === 'success') {

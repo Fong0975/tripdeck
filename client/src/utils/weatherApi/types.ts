@@ -18,9 +18,12 @@ export interface DailyWeatherData {
   pop: number;
 }
 
+/** Provider that supplied a successful result. */
+export type WeatherSource = 'openweathermap' | 'visualcrossing';
+
 export type WeatherResult =
   | { status: 'loading' }
   | { status: 'not_found' }
   | { status: 'out_of_range' }
   | { status: 'error' }
-  | { status: 'success'; data: DailyWeatherData };
+  | { status: 'success'; source: WeatherSource; data: DailyWeatherData };

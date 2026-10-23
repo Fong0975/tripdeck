@@ -1,5 +1,7 @@
 import fs from 'fs';
 
+import type { Logger } from '../logger';
+
 /**
  * Reads a secret value, preferring the file named by the `<key>_FILE`
  * environment variable (the Docker secrets convention, e.g.
@@ -30,4 +32,22 @@ export function readSecret(key: string, defaultValue = ''): string {
   }
 
   return contents.replace(/[\r\n]+$/, '') || defaultValue;
+}
+
+/**
+ * Like {@link readSecret}, but an unreadable secret file is logged and
+ * treated as an empty value instead of throwing, so the server still starts
+ * and the missing credential surfaces through the feature that needs it.
+ *
+ * @param key - Name of the secret's environment variable, e.g. `DB_PASSWORD`.
+ * @param logger - Logger the read failure is reported to.
+ * @returns The resolved secret value, or `''` when it can't be read.
+ */
+export function readSecretOrEmpty(key: string, logger: Logger): string {
+  try {
+    return readSecret(key);
+  } catch (err) {
+    logger.error(`Failed to load ${key} secret`, undefined, err);
+    return '';
+  }
 }

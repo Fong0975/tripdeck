@@ -1,6 +1,13 @@
-import type { WeatherIconCode, WeatherResult } from './types';
+import { createLogger } from '../logger';
 
-export const OWM_KEY = import.meta.env.VITE_OWM_API_KEY as string | undefined;
+import {
+  WEATHER_FETCH_TIMEOUT_MS,
+  type WeatherIconCode,
+  type WeatherResult,
+} from './types';
+
+const logger = createLogger('weather');
+
 const OWM_BASE = 'https://api.openweathermap.org';
 
 export interface GeoResult {
@@ -38,11 +45,24 @@ function normalizeOwmIcon(owmCode: string): WeatherIconCode {
   return 'cloudy';
 }
 
-export async function geocode(name: string): Promise<GeoResult | null> {
+/**
+ * Resolves a place name to coordinates via the OWM geocoding API.
+ *
+ * @param name - Place name in any language.
+ * @param apiKey - OpenWeatherMap API key.
+ * @returns The first match, or null when nothing matches or the request fails.
+ */
+export async function geocode(
+  name: string,
+  apiKey: string,
+): Promise<GeoResult | null> {
   const res = await fetch(
-    `${OWM_BASE}/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${OWM_KEY}`,
+    `${OWM_BASE}/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${apiKey}`,
+    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
   );
   if (!res.ok) {
+    // The request URL carries the API key, so only the status is logged.
+    logger.warn('OWM geocoding request failed', { status: res.status });
     return null;
   }
 
@@ -64,14 +84,25 @@ export async function geocode(name: string): Promise<GeoResult | null> {
   };
 }
 
+/**
+ * Summarizes the OWM 5-day / 3-hour forecast entries for a single date.
+ *
+ * @param geo - Coordinates and display name of the place.
+ * @param dateStr - Target date as `YYYY-MM-DD`.
+ * @param apiKey - OpenWeatherMap API key.
+ * @returns `out_of_range` when the forecast doesn't cover the date.
+ */
 export async function fetchOwmWeather(
   geo: GeoResult,
   dateStr: string,
+  apiKey: string,
 ): Promise<WeatherResult> {
   const res = await fetch(
-    `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${OWM_KEY}&units=metric&lang=zh_tw&cnt=40`,
+    `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${apiKey}&units=metric&lang=zh_tw&cnt=40`,
+    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
   );
   if (!res.ok) {
+    logger.warn('OWM forecast request failed', { status: res.status });
     return { status: 'error' };
   }
 
@@ -96,6 +127,7 @@ export async function fetchOwmWeather(
 
   return {
     status: 'success',
+    source: 'openweathermap',
     data: {
       resolvedName: geo.resolvedName,
       icon: normalizeOwmIcon(midday.weather[0].icon),
