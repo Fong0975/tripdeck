@@ -1,32 +1,25 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '../logger';
+
+const readFileSync = vi.hoisted(() => vi.fn());
+vi.mock('fs', () => ({ default: { readFileSync } }));
 
 import { readSecret, readSecretOrEmpty } from './secrets';
 
 const KEY = 'TEST_SECRET';
 const FILE_KEY = `${KEY}_FILE`;
+const SECRET_PATH = '/run/secrets/test_secret';
+const MISSING_PATH = '/run/secrets/missing';
 
-let tmpDir: string;
-
-beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tripdeck-secrets-'));
-});
-
-afterAll(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+beforeEach(() => {
+  readFileSync.mockReset();
+  readFileSync.mockImplementation((filePath: string) => {
+    if (filePath === MISSING_PATH) {
+      throw new Error('ENOENT');
+    }
+    return '';
+  });
 });
 
 afterEach(() => {
@@ -90,16 +83,20 @@ describe('readSecret', () => {
       process.env[KEY] = env;
     }
     if (fileContents !== undefined) {
-      const filePath = path.join(tmpDir, 'secret');
-      fs.writeFileSync(filePath, fileContents);
-      process.env[FILE_KEY] = filePath;
+      readFileSync.mockReturnValue(fileContents);
+      process.env[FILE_KEY] = SECRET_PATH;
     }
 
     expect(readSecret(KEY, defaultValue)).toBe(expected);
+    if (fileContents !== undefined) {
+      expect(readFileSync).toHaveBeenCalledWith(SECRET_PATH, 'utf-8');
+    } else {
+      expect(readFileSync).not.toHaveBeenCalled();
+    }
   });
 
   it('throws when the secret file cannot be read', () => {
-    process.env[FILE_KEY] = path.join(tmpDir, 'missing');
+    process.env[FILE_KEY] = MISSING_PATH;
 
     expect(() => readSecret(KEY)).toThrow(`Failed to read ${FILE_KEY}`);
   });
@@ -130,7 +127,7 @@ describe('readSecretOrEmpty', () => {
     const logger = makeLogger();
     process.env[KEY] = env;
     if (missingFile) {
-      process.env[FILE_KEY] = path.join(tmpDir, 'missing');
+      process.env[FILE_KEY] = MISSING_PATH;
     }
 
     expect(readSecretOrEmpty(KEY, logger)).toBe(expected);

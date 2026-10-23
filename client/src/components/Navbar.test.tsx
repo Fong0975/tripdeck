@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -86,7 +86,9 @@ describe('Navbar', () => {
     );
     renderNavbar();
 
-    await screen.findByText('Tripdeck');
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    // Let the rejected request and the component's catch handler settle.
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(screen.queryByText(/API v/)).not.toBeInTheDocument();
   });

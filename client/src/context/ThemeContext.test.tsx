@@ -1,5 +1,4 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -49,13 +48,11 @@ describe('ThemeContext default value', () => {
     expect(screen.getByTestId('theme')).toHaveTextContent('light');
   });
 
-  it('defaults toggle to a no-op when rendered without a provider', async () => {
-    const user = userEvent.setup();
+  it('defaults toggle to a no-op when rendered without a provider', () => {
     render(<RawContextConsumer />);
 
-    await expect(
-      user.click(screen.getByRole('button')),
-    ).resolves.toBeUndefined();
+    expect(() => fireEvent.click(screen.getByRole('button'))).not.toThrow();
+    expect(screen.getByTestId('theme')).toHaveTextContent('light');
   });
 });
 
@@ -108,10 +105,9 @@ describe('ThemeProvider', () => {
     },
   );
 
-  it('flips the theme and persists it to storage when toggle is called', async () => {
+  it('flips the theme and persists it to storage when toggle is called', () => {
     localStorage.setItem('tripdeck_theme', 'light');
     mockMatchMedia(false);
-    const user = userEvent.setup();
 
     render(
       <ThemeProvider>
@@ -120,17 +116,16 @@ describe('ThemeProvider', () => {
     );
     expect(screen.getByTestId('theme')).toHaveTextContent('light');
 
-    await user.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button'));
 
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     expect(localStorage.getItem('tripdeck_theme')).toBe('dark');
     expect(document.documentElement).toHaveClass('dark');
   });
 
-  it('flips the theme from dark to light when toggle is called', async () => {
+  it('flips the theme from dark to light when toggle is called', () => {
     localStorage.setItem('tripdeck_theme', 'dark');
     mockMatchMedia(true);
-    const user = userEvent.setup();
 
     render(
       <ThemeProvider>
@@ -139,7 +134,7 @@ describe('ThemeProvider', () => {
     );
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
 
-    await user.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button'));
 
     expect(screen.getByTestId('theme')).toHaveTextContent('light');
     expect(localStorage.getItem('tripdeck_theme')).toBe('light');

@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WeatherResult } from './types';
+import * as weatherService from './weatherService';
 
 interface LoadConfig {
   owmKey?: string;
@@ -23,25 +24,37 @@ const SUCCESS: WeatherResult = {
   },
 };
 
-/** Loads a fresh module instance so each test starts with an empty cache. */
-async function loadService(config: LoadConfig = {}) {
-  vi.resetModules();
-  const fetchOwmWeather = vi.fn();
-  const geocode = vi.fn();
-  const fetchVcWeather = vi.fn();
+const mocks = vi.hoisted(() => ({
+  keys: { owmKey: '', vcKey: '' },
+  fetchOwmWeather: vi.fn(),
+  geocode: vi.fn(),
+  fetchVcWeather: vi.fn(),
+}));
 
-  vi.doMock('./config', () => ({
-    getWeatherKeys: () => ({
-      owmKey: config.owmKey ?? '',
-      vcKey: config.vcKey ?? '',
-    }),
-  }));
-  vi.doMock('./openWeatherMap', () => ({ fetchOwmWeather, geocode }));
-  vi.doMock('./visualCrossing', () => ({ fetchVcWeather }));
+vi.mock('./config', () => ({ getWeatherKeys: () => mocks.keys }));
+vi.mock('./openWeatherMap', () => ({
+  fetchOwmWeather: mocks.fetchOwmWeather,
+  geocode: mocks.geocode,
+}));
+vi.mock('./visualCrossing', () => ({ fetchVcWeather: mocks.fetchVcWeather }));
 
-  const mod = await import('./weatherService');
-  return { ...mod, fetchOwmWeather, geocode, fetchVcWeather };
+/** Configures the provider keys for the current test and returns the service plus its mocked providers. */
+function useService(config: LoadConfig = {}) {
+  mocks.keys = { owmKey: config.owmKey ?? '', vcKey: config.vcKey ?? '' };
+  return {
+    ...weatherService,
+    fetchOwmWeather: mocks.fetchOwmWeather,
+    geocode: mocks.geocode,
+    fetchVcWeather: mocks.fetchVcWeather,
+  };
 }
+
+beforeEach(() => {
+  mocks.fetchOwmWeather.mockReset();
+  mocks.geocode.mockReset();
+  mocks.fetchVcWeather.mockReset();
+  weatherService.__resetCacheForTests();
+});
 
 afterEach(() => {
   vi.useRealTimers();
@@ -67,8 +80,8 @@ describe('isWeatherEnabled', () => {
       vcKey: '',
       expected: false,
     },
-  ])('is $expected when $description', async ({ owmKey, vcKey, expected }) => {
-    const service = await loadService({ owmKey, vcKey });
+  ])('is $expected when $description', ({ owmKey, vcKey, expected }) => {
+    const service = useService({ owmKey, vcKey });
 
     expect(service.isWeatherEnabled()).toBe(expected);
   });
@@ -92,7 +105,7 @@ describe('getDailyWeather', () => {
   ])(
     'returns $expected.status without calling a provider when $description',
     async ({ config, days, expected }) => {
-      const service = await loadService(config);
+      const service = useService(config);
 
       const result = await service.getDailyWeather('Tokyo', '2026-08-25', days);
 
@@ -111,7 +124,7 @@ describe('getDailyWeather', () => {
   ])(
     'returns not_found when $description with an OWM key present',
     async ({ geocodeResult }) => {
-      const service = await loadService({ owmKey: 'owm', vcKey: 'vc' });
+      const service = useService({ owmKey: 'owm', vcKey: 'vc' });
       if (geocodeResult instanceof Error) {
         service.geocode.mockRejectedValue(geocodeResult);
       } else {
@@ -127,7 +140,7 @@ describe('getDailyWeather', () => {
   );
 
   it('returns the OWM result on success without calling Visual Crossing', async () => {
-    const service = await loadService({ owmKey: 'owm', vcKey: 'vc' });
+    const service = useService({ owmKey: 'owm', vcKey: 'vc' });
     service.geocode.mockResolvedValue(GEO);
     service.fetchOwmWeather.mockResolvedValue(SUCCESS);
 
@@ -167,7 +180,7 @@ describe('getDailyWeather', () => {
   ])(
     'falls back to Visual Crossing with the geocoded coordinates when $description',
     async ({ setupOwm, days, expectOwmCall }) => {
-      const service = await loadService({ owmKey: 'owm', vcKey: 'vc' });
+      const service = useService({ owmKey: 'owm', vcKey: 'vc' });
       service.geocode.mockResolvedValue(GEO);
       setupOwm(service.fetchOwmWeather);
       service.fetchVcWeather.mockResolvedValue(SUCCESS);
@@ -188,7 +201,7 @@ describe('getDailyWeather', () => {
   );
 
   it('uses the raw location name for Visual Crossing when no OWM key is configured', async () => {
-    const service = await loadService({ vcKey: 'vc' });
+    const service = useService({ vcKey: 'vc' });
     service.fetchVcWeather.mockResolvedValue(SUCCESS);
 
     await service.getDailyWeather('Osaka', '2026-08-20', 0);
@@ -209,7 +222,7 @@ describe('getDailyWeather', () => {
     },
     { description: 'Visual Crossing rejects', config: { vcKey: 'vc' } },
   ])('returns error when $description', async ({ config }) => {
-    const service = await loadService(config);
+    const service = useService(config);
     service.geocode.mockResolvedValue(GEO);
     service.fetchOwmWeather.mockRejectedValue(new Error('network error'));
     service.fetchVcWeather.mockRejectedValue(new Error('network error'));
@@ -254,7 +267,7 @@ describe('getDailyWeather cache', () => {
     '$description',
     async ({ owmResult, secondCall, advanceMs, expectedLookups }) => {
       vi.useFakeTimers();
-      const service = await loadService({ owmKey: 'owm' });
+      const service = useService({ owmKey: 'owm' });
       service.geocode.mockResolvedValue(GEO);
       service.fetchOwmWeather.mockResolvedValue(owmResult);
 
@@ -267,7 +280,7 @@ describe('getDailyWeather cache', () => {
   );
 
   it('evicts the oldest entry once the cache is full', async () => {
-    const service = await loadService({ owmKey: 'owm' });
+    const service = useService({ owmKey: 'owm' });
     service.geocode.mockResolvedValue(GEO);
     service.fetchOwmWeather.mockResolvedValue(SUCCESS);
 

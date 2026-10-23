@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeDay, makeImage } from '@/test-utils/fixtures';
 import { selectFile } from '@/test-utils/queries';
+import { setupUser } from '@/test-utils/render';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
 
 import EditDayNoteModal from './EditDayNoteModal';
@@ -34,7 +34,7 @@ describe('EditDayNoteModal', () => {
 
   it('calls onSave with the trimmed notes on submit', async () => {
     const onSave = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <EditDayNoteModal
         tripId={1}
@@ -55,7 +55,7 @@ describe('EditDayNoteModal', () => {
 
   it('calls onSave with null when the notes are cleared', async () => {
     const onSave = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <EditDayNoteModal
         tripId={1}
@@ -75,7 +75,7 @@ describe('EditDayNoteModal', () => {
     vi.mocked(deleteDayImage).mockResolvedValue(undefined);
     const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
     vi.mocked(uploadDayImage).mockResolvedValue(newImage);
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <EditDayNoteModal
         tripId={1}
@@ -107,7 +107,7 @@ describe('EditDayNoteModal', () => {
 
   it('calls onClose when cancel is clicked', async () => {
     const onClose = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <EditDayNoteModal
         tripId={1}

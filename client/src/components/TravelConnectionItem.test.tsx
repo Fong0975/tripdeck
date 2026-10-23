@@ -7,6 +7,10 @@ import type { TransportMode } from '@/types';
 
 import TravelConnectionItem from './TravelConnectionItem';
 
+vi.mock('@/components/ClampedTextSection', async () => ({
+  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+}));
+
 describe('TravelConnectionItem', () => {
   it.each([
     { mode: 'walk' as TransportMode, label: '步行' },
@@ -62,7 +66,10 @@ describe('TravelConnectionItem', () => {
       );
 
       expect(screen.getByText('路線說明')).toBeInTheDocument();
-      expect(screen.getByText('搭乘銀座線')).toBeInTheDocument();
+      expect(screen.getByText('**搭乘銀座線**')).toHaveAttribute(
+        'data-markdown',
+        'true',
+      );
     });
 
     it('does not show the label when route is not set', () => {
@@ -89,7 +96,10 @@ describe('TravelConnectionItem', () => {
       );
 
       expect(screen.getByText('備註')).toBeInTheDocument();
-      expect(screen.getByText('**帶雨傘**')).toBeInTheDocument();
+      expect(screen.getByText('**帶雨傘**')).toHaveAttribute(
+        'data-markdown',
+        'false',
+      );
     });
 
     it('does not show the label when notes is not set', () => {

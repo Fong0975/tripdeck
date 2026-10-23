@@ -12,6 +12,10 @@ import type { Attraction, AttractionImage } from '@/types';
 
 import AttractionCard from './index';
 
+vi.mock('@/components/ClampedTextSection', async () => ({
+  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+}));
+
 function renderCard(options: { attraction?: Attraction } = {}) {
   const attraction = options.attraction ?? makeAttraction();
 

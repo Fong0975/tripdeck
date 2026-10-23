@@ -311,8 +311,37 @@ describe('parseBackupZip', () => {
   });
 
   describe('zip bomb guard', () => {
-    /** 21 MB of zeros — one byte over MAX_ENTRY_UNCOMPRESSED_BYTES (20 MB) and highly compressible, exactly the shape of a "zip bomb" entry. */
-    const oversizedContent = Buffer.alloc(21 * 1024 * 1024, 0);
+    /** 1 MB over MAX_ENTRY_UNCOMPRESSED_BYTES (20 MB), declared in the zip without allocating it. */
+    const OVERSIZED_DECLARED_BYTES = 21 * 1024 * 1024;
+
+    /**
+     * Rewrites the uncompressed-size field of one entry's central directory
+     * record, which is the only place the production guard reads it from.
+     * A central directory record starts with the signature `PK\x01\x02`; the
+     * uncompressed size (UInt32LE) is at offset 24, the name length (UInt16LE)
+     * at offset 28, and the name itself at offset 46.
+     */
+    function declareUncompressedSize(
+      zipBuffer: Buffer,
+      entryName: string,
+      size: number,
+    ): Buffer {
+      const patched = Buffer.from(zipBuffer);
+      const signature = Buffer.from([0x50, 0x4b, 0x01, 0x02]);
+      let offset = patched.indexOf(signature);
+      while (offset !== -1) {
+        const nameLength = patched.readUInt16LE(offset + 28);
+        const name = patched
+          .subarray(offset + 46, offset + 46 + nameLength)
+          .toString('utf-8');
+        if (name === entryName) {
+          patched.writeUInt32LE(size, offset + 24);
+          return patched;
+        }
+        offset = patched.indexOf(signature, offset + 1);
+      }
+      throw new Error(`Central directory record not found for ${entryName}`);
+    }
 
     it('rejects a data.json entry whose declared uncompressed size exceeds the cap', () => {
       const zip = new AdmZip();
@@ -323,9 +352,15 @@ describe('parseBackupZip', () => {
           'utf-8',
         ),
       );
-      zip.addFile('trips/trip_1/data.json', oversizedContent);
+      zip.addFile('trips/trip_1/data.json', Buffer.from('{}', 'utf-8'));
 
-      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+      const bomb = declareUncompressedSize(
+        zip.toBuffer(),
+        'trips/trip_1/data.json',
+        OVERSIZED_DECLARED_BYTES,
+      );
+
+      expect(() => parseBackupZip(bomb)).toThrow(
         /"trips\/trip_1\/data\.json" is too large \(\d+ bytes uncompressed\)/,
       );
     });
@@ -341,13 +376,22 @@ describe('parseBackupZip', () => {
         'trips/trip_1/data.json',
         Buffer.from(JSON.stringify(data), 'utf-8'),
       );
-      zip.addFile('trips/trip_1/images/trip1.jpg', oversizedContent);
+      zip.addFile(
+        'trips/trip_1/images/trip1.jpg',
+        Buffer.from('bytes-trip1.jpg', 'utf-8'),
+      );
       zip.addFile(
         'trips/trip_1/images/attr1.jpg',
         Buffer.from('bytes-attr1.jpg', 'utf-8'),
       );
 
-      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+      const bomb = declareUncompressedSize(
+        zip.toBuffer(),
+        'trips/trip_1/images/trip1.jpg',
+        OVERSIZED_DECLARED_BYTES,
+      );
+
+      expect(() => parseBackupZip(bomb)).toThrow(
         /"trips\/trip_1\/images\/trip1\.jpg" is too large \(\d+ bytes uncompressed\)/,
       );
     });

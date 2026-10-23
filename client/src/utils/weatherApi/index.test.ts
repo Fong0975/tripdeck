@@ -1,80 +1,84 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getWeather, getWeatherStatus } from '@/api/weather';
 import { makeWeatherSuccess } from '@/test-utils/fixtures';
+import { daysFromToday } from '@/utils/date';
 
 import type { WeatherResult } from './types';
 
+import {
+  __resetCacheForTests,
+  fetchDailyWeather,
+  getWeatherEnabled,
+} from './index';
+
+vi.mock('@/utils/date', () => ({ daysFromToday: vi.fn() }));
+vi.mock('@/api/weather', () => ({
+  getWeather: vi.fn(),
+  getWeatherStatus: vi.fn(),
+}));
+
 const SUCCESS = makeWeatherSuccess();
 
-/** Loads a fresh module instance so each test starts with empty caches. */
-async function loadWeatherApi(daysFromTodayValue = 0) {
-  vi.resetModules();
-  const daysFromToday = vi.fn().mockReturnValue(daysFromTodayValue);
-  const getWeather = vi.fn();
-  const getWeatherStatus = vi.fn();
-
-  vi.doMock('@/utils/date', () => ({ daysFromToday }));
-  vi.doMock('@/api/weather', () => ({ getWeather, getWeatherStatus }));
-
-  const mod = await import('./index');
-  return { ...mod, daysFromToday, getWeather, getWeatherStatus };
-}
+beforeEach(() => {
+  __resetCacheForTests();
+  vi.mocked(daysFromToday).mockReturnValue(0);
+});
 
 describe('getWeatherEnabled', () => {
   it.each([
     {
       description: 'the backend reports enabled',
-      setup: (fn: ReturnType<typeof vi.fn>) =>
-        fn.mockResolvedValue({ enabled: true }),
+      setup: () =>
+        vi.mocked(getWeatherStatus).mockResolvedValue({ enabled: true }),
       expected: true,
     },
     {
       description: 'the backend reports disabled',
-      setup: (fn: ReturnType<typeof vi.fn>) =>
-        fn.mockResolvedValue({ enabled: false }),
+      setup: () =>
+        vi.mocked(getWeatherStatus).mockResolvedValue({ enabled: false }),
       expected: false,
     },
     {
       description: 'the status request fails',
-      setup: (fn: ReturnType<typeof vi.fn>) =>
-        fn.mockRejectedValue(new Error('API error 500')),
+      setup: () =>
+        vi
+          .mocked(getWeatherStatus)
+          .mockRejectedValue(new Error('API error 500')),
       expected: false,
     },
   ])('resolves $expected when $description', async ({ setup, expected }) => {
-    const api = await loadWeatherApi();
-    setup(api.getWeatherStatus);
+    setup();
 
-    expect(await api.getWeatherEnabled()).toBe(expected);
+    expect(await getWeatherEnabled()).toBe(expected);
   });
 
   it('requests the status only once', async () => {
-    const api = await loadWeatherApi();
-    api.getWeatherStatus.mockResolvedValue({ enabled: true });
+    vi.mocked(getWeatherStatus).mockResolvedValue({ enabled: true });
 
-    await Promise.all([api.getWeatherEnabled(), api.getWeatherEnabled()]);
-    await api.getWeatherEnabled();
+    await Promise.all([getWeatherEnabled(), getWeatherEnabled()]);
+    await getWeatherEnabled();
 
-    expect(api.getWeatherStatus).toHaveBeenCalledTimes(1);
+    expect(getWeatherStatus).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('fetchDailyWeather', () => {
   it('passes the client-side days-from-today to the backend', async () => {
-    const api = await loadWeatherApi(3);
-    api.getWeather.mockResolvedValue(SUCCESS);
+    vi.mocked(daysFromToday).mockReturnValue(3);
+    vi.mocked(getWeather).mockResolvedValue(SUCCESS);
 
-    const result = await api.fetchDailyWeather('Tokyo', '2026-08-20');
+    const result = await fetchDailyWeather('Tokyo', '2026-08-20');
 
     expect(result).toEqual(SUCCESS);
-    expect(api.daysFromToday).toHaveBeenCalledWith('2026-08-20');
-    expect(api.getWeather).toHaveBeenCalledWith('Tokyo', '2026-08-20', 3);
+    expect(daysFromToday).toHaveBeenCalledWith('2026-08-20');
+    expect(getWeather).toHaveBeenCalledWith('Tokyo', '2026-08-20', 3);
   });
 
   it('returns error when the backend request fails', async () => {
-    const api = await loadWeatherApi();
-    api.getWeather.mockRejectedValue(new Error('API error 500'));
+    vi.mocked(getWeather).mockRejectedValue(new Error('API error 500'));
 
-    expect(await api.fetchDailyWeather('Tokyo', '2026-08-20')).toEqual({
+    expect(await fetchDailyWeather('Tokyo', '2026-08-20')).toEqual({
       status: 'error',
     });
   });
@@ -111,12 +115,11 @@ describe('fetchDailyWeather', () => {
       expectedCalls: 2,
     },
   ])('$description', async ({ first, second, expectedCalls }) => {
-    const api = await loadWeatherApi();
-    api.getWeather.mockResolvedValue(first);
+    vi.mocked(getWeather).mockResolvedValue(first);
 
-    await api.fetchDailyWeather('Tokyo', '2026-08-20');
-    await api.fetchDailyWeather(second.location, second.date);
+    await fetchDailyWeather('Tokyo', '2026-08-20');
+    await fetchDailyWeather(second.location, second.date);
 
-    expect(api.getWeather).toHaveBeenCalledTimes(expectedCalls);
+    expect(getWeather).toHaveBeenCalledTimes(expectedCalls);
   });
 });

@@ -21,7 +21,6 @@ describe('useWeatherEnabled', () => {
 
     const { result } = renderHook(() => useWeatherEnabled());
 
-    await waitFor(() => expect(getWeatherEnabled).toHaveBeenCalled());
     await waitFor(() => expect(result.current).toBe(resolved));
   });
 

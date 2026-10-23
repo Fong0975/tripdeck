@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import { makeImage } from '@/test-utils/fixtures';
 import { getFileInput, selectFile } from '@/test-utils/queries';
+import { setupUser } from '@/test-utils/render';
 
 import ImageUploadSection from './ImageUploadSection';
 
@@ -59,7 +59,7 @@ describe('ImageUploadSection', () => {
 
   it('requires a title before calling onUpload', async () => {
     const onUpload = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -73,7 +73,7 @@ describe('ImageUploadSection', () => {
 
   it('calls onUpload and clears the form on success', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -93,7 +93,7 @@ describe('ImageUploadSection', () => {
 
   it('shows an error and keeps the form when onUpload rejects', async () => {
     const onUpload = vi.fn().mockRejectedValue(new Error('upload failed'));
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -116,7 +116,7 @@ describe('ImageUploadSection', () => {
 
   it("calls onDelete with the clicked thumbnail's image id", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <ImageUploadSection
         images={images}
@@ -131,7 +131,7 @@ describe('ImageUploadSection', () => {
   });
 
   it('opens the lightbox when an existing thumbnail is clicked and closes it via its close button', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <ImageUploadSection
         images={images}

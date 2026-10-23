@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getFileInput, selectFile } from '@/test-utils/queries';
+import { setupUser } from '@/test-utils/render';
 
 import StagedImageUploader from './StagedImageUploader';
 
@@ -36,7 +36,7 @@ describe('StagedImageUploader', () => {
   });
 
   it('shows a required-title error when confirming without a title', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
@@ -49,7 +49,7 @@ describe('StagedImageUploader', () => {
 
   it('stages the image and reports it once a title is provided', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
@@ -69,7 +69,7 @@ describe('StagedImageUploader', () => {
 
   it('clears the pending file without staging when the X button is clicked', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
@@ -86,7 +86,7 @@ describe('StagedImageUploader', () => {
 
   it('removes a staged image and reports the updated list', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
@@ -131,7 +131,7 @@ describe('StagedImageUploader', () => {
   });
 
   it('opens the file picker when the add-image button is clicked', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );

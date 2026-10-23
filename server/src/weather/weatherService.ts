@@ -52,6 +52,11 @@ function writeCache(key: string, result: WeatherResult): void {
   cache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
+/** Test-only: clears the in-memory response cache. */
+export function __resetCacheForTests(): void {
+  cache.clear();
+}
+
 /** True when at least one weather provider has an API key configured. */
 export function isWeatherEnabled(): boolean {
   const { owmKey, vcKey } = getWeatherKeys();

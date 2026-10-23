@@ -1,16 +1,19 @@
 import { fireEvent, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { makeAttraction } from '@/test-utils/fixtures';
-import { makeMounter } from '@/test-utils/render';
+import { makeMounter, setupUser } from '@/test-utils/render';
 
 import AttractionModal from './index';
 
 vi.mock('@/hooks/useEntityImages', () => ({
   useEntityImages: vi.fn(),
+}));
+
+vi.mock('@/components/MarkdownField', async () => ({
+  default: (await import('@/test-utils/stubs')).MarkdownFieldStub,
 }));
 
 vi.mock('../ImageUploadSection', () => ({
@@ -129,7 +132,7 @@ describe('AttractionModal', () => {
   ])(
     'shows a required-field error and does not save when $description',
     async ({ name }) => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ onSave });
 
@@ -169,7 +172,7 @@ describe('AttractionModal', () => {
       stageImage,
       expectedSecondArg,
     }) => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ attraction, onSave });
 
@@ -214,7 +217,7 @@ describe('AttractionModal', () => {
   });
 
   it('calls onClose when the cancel button is clicked', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onClose = vi.fn();
     renderModal({ onClose });
 
@@ -242,7 +245,7 @@ describe('AttractionModal', () => {
   ])(
     'updates $field via its onChange and includes it in the saved attraction',
     async ({ field, placeholder, typed }) => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ attraction: editingAttraction, onSave });
 
@@ -295,7 +298,7 @@ describe('AttractionModal', () => {
   );
 
   it('includes the updated reference websites list in the saved attraction', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     renderModal({ attraction: editingAttraction, onSave });
 
@@ -312,7 +315,7 @@ describe('AttractionModal', () => {
 
   describe('unsaved reference website draft guard', () => {
     it('asks for confirmation instead of saving when a website draft is pending', async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ attraction: editingAttraction, onSave });
 
@@ -330,7 +333,7 @@ describe('AttractionModal', () => {
     });
 
     it('returns to the form without saving when the save confirmation is cancelled', async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ attraction: editingAttraction, onSave });
 
@@ -347,7 +350,7 @@ describe('AttractionModal', () => {
     });
 
     it('asks for confirmation instead of closing when cancel is clicked with a pending website draft', async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onClose = vi.fn();
       renderModal({ attraction: editingAttraction, onClose });
 
@@ -365,7 +368,7 @@ describe('AttractionModal', () => {
     });
 
     it('saves directly without a confirmation once the website draft is cleared', async () => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       renderModal({ attraction: editingAttraction, onSave });
 
@@ -392,7 +395,7 @@ describe('AttractionModal', () => {
       handleUpload,
       handleDelete,
     });
-    const user = userEvent.setup();
+    const user = setupUser();
     renderModal({ attraction: editingAttraction });
 
     await user.click(screen.getByRole('button', { name: 'upload image' }));

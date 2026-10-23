@@ -22,3 +22,8 @@ export function getWeatherKeys(): WeatherKeys {
   };
   return cachedKeys;
 }
+
+/** Test-only: drops the cached keys so the next lookup re-reads the secrets. */
+export function __resetKeysForTests(): void {
+  cachedKeys = null;
+}

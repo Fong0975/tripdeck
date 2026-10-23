@@ -169,3 +169,54 @@ export function EditableItemRowStub({
     </div>
   );
 }
+
+/**
+ * Stub for `MarkdownField`: a plain labelled textarea with no edit/preview
+ * tabs, so the Markdown renderer is never loaded.
+ */
+export function MarkdownFieldStub({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <textarea
+      aria-label={label}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+    />
+  );
+}
+
+/**
+ * Stub for `ClampedTextSection`: renders the optional label, the raw content
+ * (exposing the `markdown` flag as `data-markdown`), and the same top and
+ * optional bottom dividers as the real component.
+ */
+export function ClampedTextSectionStub({
+  content,
+  label,
+  showBottomDivider,
+  markdown = true,
+}: {
+  content: string;
+  label?: string;
+  showBottomDivider: boolean;
+  markdown?: boolean;
+}) {
+  return (
+    <div>
+      <hr />
+      {label && <p>{label}</p>}
+      <div data-markdown={String(markdown)}>{content}</div>
+      {showBottomDivider && <hr />}
+    </div>
+  );
+}

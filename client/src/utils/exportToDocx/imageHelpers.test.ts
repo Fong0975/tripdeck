@@ -59,11 +59,8 @@ class FakeImage {
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn());
-  vi.stubGlobal('URL', {
-    ...URL,
-    createObjectURL: vi.fn().mockReturnValue('blob:mock'),
-    revokeObjectURL: vi.fn(),
-  });
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   vi.stubGlobal('Image', FakeImage);
   FakeImage.naturalWidth = 800;
   FakeImage.naturalHeight = 600;
@@ -72,6 +69,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('makeImageParagraphs', () => {
