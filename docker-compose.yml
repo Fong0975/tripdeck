@@ -14,7 +14,7 @@ services:
       DB_HOST: ${DB_HOST:-localhost}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD_FILE: /run/secrets/db_password
       DB_NAME: ${DB_NAME:-tripdeck}
       VITE_API_PORT: ${VITE_API_PORT:-3001}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
@@ -27,6 +27,8 @@ services:
       LOG_FILENAME: ${LOG_FILENAME:-app.log}
       LOG_MAX_SIZE_MB: ${LOG_MAX_SIZE_MB:-10}
       LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
+    secrets:
+      - db_password
     volumes:
       - ${UPLOADS_HOST_DIR:-./.uploads}:/app/uploads
       - ${BACKUPS_HOST_DIR:-./.backups}:/app/backups
@@ -68,3 +70,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 3
+
+# Sensitive values are handed to the backend as files under /run/secrets/
+# instead of environment variables, so they don't show up in `docker inspect`
+# or the container's process environment. Each one is still sourced from the
+# variable of the same name in `.env` (or the Portainer stack variables), so
+# that variable must be defined there -- an empty value is fine.
+secrets:
+  db_password:
+    environment: DB_PASSWORD
