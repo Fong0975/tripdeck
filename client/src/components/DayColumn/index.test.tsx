@@ -2,10 +2,16 @@ import { DndContext } from '@dnd-kit/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
+import {
+  makeAttraction,
+  makeConnection,
+  makeDay,
+  makeLocation,
+} from '@/test-utils/fixtures';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isPastDate } from '@/utils/date';
 
@@ -68,22 +74,6 @@ vi.mock('./LocationChips', () => ({
   default: () => <div>location-chips</div>,
 }));
 
-function makeDay(overrides: Partial<DayPlan> = {}): DayPlan {
-  return {
-    id: 1,
-    day: 1,
-    date: '2026-08-20',
-    locations: [],
-    attractions: [],
-    connections: [],
-    ...overrides,
-  };
-}
-
-function makeAttraction(id: number, name = `A${id}`): Attraction {
-  return { id, name };
-}
-
 function makeCallbacks() {
   return {
     onEditDayNote: vi.fn(),
@@ -137,7 +127,7 @@ describe('DayColumn', () => {
 
   it('renders each attraction', () => {
     const day = makeDay({
-      attractions: [makeAttraction(1), makeAttraction(2)],
+      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
     });
 
     setupColumn(day);
@@ -148,15 +138,8 @@ describe('DayColumn', () => {
 
   it('renders the connection between two consecutive attractions when it exists', () => {
     const day = makeDay({
-      attractions: [makeAttraction(1), makeAttraction(2)],
-      connections: [
-        {
-          id: 5,
-          fromAttractionId: 1,
-          toAttractionId: 2,
-          transportMode: 'walk',
-        },
-      ],
+      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
+      connections: [makeConnection({ id: 5 })],
     });
 
     setupColumn(day);
@@ -167,7 +150,7 @@ describe('DayColumn', () => {
 
   it('shows an add-connection button between two consecutive attractions with no connection', async () => {
     const day = makeDay({
-      attractions: [makeAttraction(1), makeAttraction(2)],
+      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
     });
     const user = userEvent.setup();
     const callbacks = setupColumn(day, 2);
@@ -178,7 +161,7 @@ describe('DayColumn', () => {
   });
 
   it('does not render a connector after the last attraction', () => {
-    const day = makeDay({ attractions: [makeAttraction(1)] });
+    const day = makeDay({ attractions: [makeAttraction({ id: 1 })] });
 
     setupColumn(day);
 
@@ -196,7 +179,7 @@ describe('DayColumn', () => {
   });
 
   it('wraps attraction card callbacks with the dayIndex', async () => {
-    const day = makeDay({ attractions: [makeAttraction(1)] });
+    const day = makeDay({ attractions: [makeAttraction({ id: 1 })] });
     const user = userEvent.setup();
     const callbacks = setupColumn(day, 2);
 
@@ -215,47 +198,24 @@ describe('DayColumn', () => {
     );
   });
 
-  it('wraps the connection edit callback with the dayIndex', async () => {
-    const connection: TravelConnection = {
-      id: 5,
-      fromAttractionId: 1,
-      toAttractionId: 2,
-      transportMode: 'walk',
-    };
+  it('wraps connection callbacks with the dayIndex', async () => {
+    const connection = makeConnection({ id: 5 });
     const day = makeDay({
-      attractions: [makeAttraction(1), makeAttraction(2)],
+      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
       connections: [connection],
     });
     const user = userEvent.setup();
     const callbacks = setupColumn(day, 2);
 
     await user.click(screen.getByText('connection-5'));
-
-    expect(callbacks.onEditConnection).toHaveBeenCalledWith(2, connection);
-  });
-
-  it('wraps the connection delete callback with the dayIndex', async () => {
-    const connection: TravelConnection = {
-      id: 5,
-      fromAttractionId: 1,
-      toAttractionId: 2,
-      transportMode: 'walk',
-    };
-    const day = makeDay({
-      attractions: [makeAttraction(1), makeAttraction(2)],
-      connections: [connection],
-    });
-    const user = userEvent.setup();
-    const callbacks = setupColumn(day, 2);
-
     await user.click(screen.getByText('delete-connection-5'));
 
+    expect(callbacks.onEditConnection).toHaveBeenCalledWith(2, connection);
     expect(callbacks.onDeleteConnection).toHaveBeenCalledWith(2, 5);
   });
 
   it('shows DayWeather when enabled, the day is not past, and locations exist', () => {
-    vi.mocked(isPastDate).mockReturnValue(false);
-    const day = makeDay({ locations: [{ id: 1, name: 'Tokyo' }] });
+    const day = makeDay({ locations: [makeLocation()] });
 
     setupColumn(day);
 
@@ -267,13 +227,13 @@ describe('DayColumn', () => {
       description: 'weather is disabled',
       enabled: false,
       isPast: false,
-      locations: [{ id: 1, name: 'Tokyo' }],
+      locations: [makeLocation()],
     },
     {
       description: 'the day is in the past',
       enabled: true,
       isPast: true,
-      locations: [{ id: 1, name: 'Tokyo' }],
+      locations: [makeLocation()],
     },
     {
       description: 'there are no locations',

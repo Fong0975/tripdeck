@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { makeTrip } from '@/test-utils/fixtures';
 import type { Trip } from '@/types';
 
 import TripCard from './TripCard';
@@ -14,18 +15,6 @@ vi.mock('react-router-dom', async importOriginal => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Tokyo Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
-
 function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
   return render(
     <MemoryRouter>
@@ -34,14 +23,10 @@ function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
   );
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe('TripCard', () => {
   it('navigates to the trip detail page when clicked', async () => {
     const user = userEvent.setup();
-    renderCard(makeTrip({ id: 42 }));
+    renderCard(makeTrip({ id: 42, title: 'Tokyo Trip' }));
 
     await user.click(screen.getByText('Tokyo Trip'));
 
@@ -117,16 +102,7 @@ describe('TripCard', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('does not navigate when the delete button is clicked', async () => {
-    const user = userEvent.setup();
-    renderCard(makeTrip());
-
-    await user.click(screen.getByTitle('刪除旅程'));
-
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('calls onEdit with the trip when the edit button is clicked', async () => {
+  it('calls onEdit with the trip when the edit button is clicked, without navigating', async () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
     const trip = makeTrip({ id: 9 });
@@ -135,14 +111,6 @@ describe('TripCard', () => {
     await user.click(screen.getByTitle('編輯旅程'));
 
     expect(onEdit).toHaveBeenCalledWith(trip);
-  });
-
-  it('does not navigate when the edit button is clicked', async () => {
-    const user = userEvent.setup();
-    renderCard(makeTrip());
-
-    await user.click(screen.getByTitle('編輯旅程'));
-
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

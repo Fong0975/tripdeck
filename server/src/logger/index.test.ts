@@ -23,7 +23,6 @@ function configWithLevel(level: 'debug' | 'info' | 'warn' | 'error') {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockReadLoggerConfig.mockReturnValue(configWithLevel('debug'));
 });
 

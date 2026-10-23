@@ -2,9 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ChecklistCategory } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+} from '@/test-utils/fixtures';
+import { getBackdrop } from '@/test-utils/queries';
 
-import type { EditItem, EditSpec } from '../../shared/types';
+import type { EditItem } from '../../shared/types';
 
 import { useEditState } from './useEditState';
 import { useSaveCategoryEdit } from './useSaveCategoryEdit';
@@ -13,61 +17,23 @@ import CategoryEditModal from './index';
 
 vi.mock('./useEditState', () => ({ useEditState: vi.fn() }));
 vi.mock('./useSaveCategoryEdit', () => ({ useSaveCategoryEdit: vi.fn() }));
-vi.mock('../../shared/EditableItemRow', () => ({
-  default: ({
-    item,
-    onUpdateItem,
-    onDeleteItem,
-    onAddSpec,
-    onUpdateSpec,
-    onDeleteSpec,
-  }: {
-    item: EditItem;
-    onUpdateItem: (itemId: number, fields: Partial<EditItem>) => void;
-    onDeleteItem: (itemId: number) => void;
-    onAddSpec: (itemId: number) => void;
-    onUpdateSpec: (
-      itemId: number,
-      specId: number,
-      fields: Partial<EditSpec>,
-    ) => void;
-    onDeleteSpec: (itemId: number, specId: number) => void;
-  }) => (
-    <div>
-      <span>{item.name}</span>
-      <button onClick={() => onUpdateItem(item.id, { name: 'Updated' })}>
-        update-item-{item.id}
-      </button>
-      <button onClick={() => onDeleteItem(item.id)}>
-        delete-item-{item.id}
-      </button>
-      <button onClick={() => onAddSpec(item.id)}>add-spec-{item.id}</button>
-      <button
-        onClick={() => onUpdateSpec(item.id, 100, { name: 'Updated Spec' })}
-      >
-        update-spec-{item.id}
-      </button>
-      <button onClick={() => onDeleteSpec(item.id, 100)}>
-        delete-spec-{item.id}
-      </button>
-    </div>
-  ),
+vi.mock('../../shared/EditableItemRow', async () => ({
+  default: (await import('@/test-utils/stubs')).EditableItemRowStub,
 }));
 
-const category: ChecklistCategory = {
-  id: 1,
+const category = makeChecklistCategory({
   name: 'Category A',
   items: [
-    {
+    makeChecklistItem({
       id: 10,
       name: 'Item A',
       quantity: null,
       notes: null,
       storage_location: null,
       specs: [],
-    },
+    }),
   ],
-};
+});
 
 const editItems: EditItem[] = [
   {
@@ -98,14 +64,7 @@ function mockEditState(
   });
 }
 
-// The modal backdrop is a bare decorative div with no accessible role/name;
-// 'absolute' uniquely identifies it (the modal wrapper itself uses 'fixed').
-function getBackdrop(container: HTMLElement): HTMLElement {
-  return container.querySelector('.absolute') as HTMLElement;
-}
-
 beforeEach(() => {
-  vi.clearAllMocks();
   mockEditState();
 });
 
@@ -209,27 +168,20 @@ describe('CategoryEditModal', () => {
     expect(deleteSpec).toHaveBeenCalledWith(10, 100);
   });
 
-  it('closes without saving when cancel is clicked', async () => {
-    vi.mocked(useSaveCategoryEdit).mockReturnValue({
-      saving: false,
-      handleSave: vi.fn(),
-    });
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <CategoryEditModal
-        category={category}
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByText('取消'));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('closes when the backdrop is clicked', async () => {
+  it.each([
+    {
+      description: 'the header close button',
+      trigger: () => screen.getByLabelText('關閉'),
+    },
+    {
+      description: 'the cancel button',
+      trigger: () => screen.getByText('取消'),
+    },
+    {
+      description: 'the backdrop',
+      trigger: (container: HTMLElement) => getBackdrop(container),
+    },
+  ])('calls onClose when $description is clicked', async ({ trigger }) => {
     vi.mocked(useSaveCategoryEdit).mockReturnValue({
       saving: false,
       handleSave: vi.fn(),
@@ -244,7 +196,7 @@ describe('CategoryEditModal', () => {
       />,
     );
 
-    await user.click(getBackdrop(container));
+    await user.click(trigger(container));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

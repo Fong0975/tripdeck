@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { setupUser } from '@/test-utils/render';
 import type { DayLocation } from '@/types';
 
 import LocationChips from './LocationChips';
@@ -28,7 +28,7 @@ describe('LocationChips', () => {
   });
 
   it('enters edit mode with the current name when a location is clicked', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -46,7 +46,7 @@ describe('LocationChips', () => {
 
   it('commits the trimmed name on Enter and exits edit mode', async () => {
     const onUpdate = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -69,7 +69,7 @@ describe('LocationChips', () => {
 
   it('discards the edit without calling onUpdate on Escape', async () => {
     const onUpdate = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -91,7 +91,7 @@ describe('LocationChips', () => {
 
   it('does not call onUpdate for a blank value but still exits edit mode', async () => {
     const onUpdate = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -113,7 +113,7 @@ describe('LocationChips', () => {
 
   it('commits the trimmed name on blur', async () => {
     const onUpdate = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -136,7 +136,7 @@ describe('LocationChips', () => {
 
   it('calls onDelete with the dayIndex and location id', async () => {
     const onDelete = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={locations}
@@ -154,7 +154,7 @@ describe('LocationChips', () => {
 
   it('calls onAdd with the trimmed value on Enter and hides the input', async () => {
     const onAdd = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={[]}
@@ -177,7 +177,7 @@ describe('LocationChips', () => {
 
   it('closes the add input without calling onAdd on Escape', async () => {
     const onAdd = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={[]}
@@ -199,7 +199,7 @@ describe('LocationChips', () => {
 
   it('does not call onAdd for a blank value but still closes the input', async () => {
     const onAdd = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <LocationChips
         locations={[]}

@@ -1,10 +1,23 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/trip', () => ({
+  create: vi.fn(),
+  deleteById: vi.fn(),
+  findAll: vi.fn(),
+  findById: vi.fn(),
+  findContent: vi.fn(),
+  update: vi.fn(),
+}));
 
 import * as tripRepo from '../../repositories/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
-import type { TripContentResponse, TripResponse } from '../../types/trip';
+import { makeTrip } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
+import type { TripContentResponse } from '../../types/trip';
 
 import {
   createTrip,
@@ -15,16 +28,7 @@ import {
   updateTrip,
 } from './tripCrudController';
 
-const sampleTrip: TripResponse = {
-  id: 1,
-  title: 'Kyoto Trip',
-  destination: 'Kyoto',
-  startDate: '2024-05-10',
-  endDate: '2024-05-12',
-  description: null,
-  createdAt: '2024-01-01T00:00:00.000Z',
-  images: [],
-};
+const sampleTrip = makeTrip();
 
 const sampleTripContent: TripContentResponse = {
   tripId: 1,
@@ -37,10 +41,6 @@ function expectNoContent(
   expect(res.status).toHaveBeenCalledWith(204);
   expect(res.send).toHaveBeenCalled();
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('Trips', () => {
   describe('getTrips', () => {
@@ -234,30 +234,19 @@ describe('Trip content', () => {
 });
 
 describe('500 error handling', () => {
-  const rejection = new Error('unexpected failure');
-
-  const cases: Array<{
-    name: string;
-    handler: (
-      req: Parameters<typeof getTrips>[0],
-      res: Parameters<typeof getTrips>[1],
-    ) => Promise<void>;
-    req: Parameters<typeof createMockReqRes>[0];
-    arrange: () => void;
-    expectedError: string;
-  }> = [
+  const cases: Returns500Case[] = [
     {
       name: 'getTrips',
       handler: getTrips,
       req: {},
-      arrange: () => vi.mocked(tripRepo.findAll).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.findAll).mockRejectedValue(error),
       expectedError: 'Failed to fetch trips',
     },
     {
       name: 'getTrip',
       handler: getTrip,
       req: { params: { tripId: '1' } },
-      arrange: () => vi.mocked(tripRepo.findById).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
       expectedError: 'Failed to fetch trip',
     },
     {
@@ -270,16 +259,16 @@ describe('500 error handling', () => {
           endDate: '2024-05-12',
         },
       },
-      arrange: () => vi.mocked(tripRepo.create).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.create).mockRejectedValue(error),
       expectedError: 'Failed to create trip',
     },
     {
       name: 'updateTrip',
       handler: updateTrip,
       req: { params: { tripId: '1' }, body: { title: 'New Title' } },
-      arrange: () => {
+      arrange: error => {
         vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
-        vi.mocked(tripRepo.update).mockRejectedValue(rejection);
+        vi.mocked(tripRepo.update).mockRejectedValue(error);
       },
       expectedError: 'Failed to update trip',
     },
@@ -287,29 +276,18 @@ describe('500 error handling', () => {
       name: 'deleteTrip',
       handler: deleteTrip,
       req: { params: { tripId: '1' } },
-      arrange: () =>
-        vi.mocked(tripRepo.deleteById).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.deleteById).mockRejectedValue(error),
       expectedError: 'Failed to delete trip',
     },
     {
       name: 'getTripContent',
       handler: getTripContent,
       req: { params: { tripId: '1' } },
-      arrange: () =>
-        vi.mocked(tripRepo.findContent).mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(tripRepo.findContent).mockRejectedValue(error),
       expectedError: 'Failed to fetch trip content',
     },
   ];
 
-  it.each(cases)(
-    'returns 500 when $name encounters an unexpected error',
-    async ({ handler, req, arrange, expectedError }) => {
-      arrange();
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await handler(mockReq, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(cases);
 });

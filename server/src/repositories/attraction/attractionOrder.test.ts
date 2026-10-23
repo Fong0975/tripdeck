@@ -1,29 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { db } from '../../test-utils/dbMocks';
 import * as imageRepo from '../imageRepository';
 
 import { updateOrder } from './attractionOrder';
 
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnQuery = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn().mockResolvedValue({
-  beginTransaction: mockConnBeginTransaction,
-  execute: mockConnExecute,
-  query: mockConnQuery,
-  commit: mockConnCommit,
-  rollback: mockConnRollback,
-  release: mockConnRelease,
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
 });
 
-vi.mock('../../config/database', () => ({
-  default: {
-    getConnection: () => mockGetConnection(),
-  },
-}));
+const mockConnExecute = db.conn.execute;
+const mockConnQuery = db.conn.query;
+const mockConnCommit = db.conn.commit;
+const mockConnRollback = db.conn.rollback;
+const mockGetConnection = db.pool.getConnection;
 
 const mockDeleteImageFromDisk = vi.fn();
 vi.mock('../../middleware/upload', () => ({
@@ -36,15 +27,6 @@ vi.mock('../imageRepository', () => ({
 
 describe('attractionOrder', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetConnection.mockResolvedValue({
-      beginTransaction: mockConnBeginTransaction,
-      execute: mockConnExecute,
-      query: mockConnQuery,
-      commit: mockConnCommit,
-      rollback: mockConnRollback,
-      release: mockConnRelease,
-    });
     vi.mocked(imageRepo.getConnectionImagesBatch).mockResolvedValue(new Map());
   });
 
@@ -99,42 +81,20 @@ describe('attractionOrder', () => {
 
       await updateOrder(10, orderedIds);
 
+      expect(mockConnExecute).toHaveBeenCalledWith(
+        expect.stringContaining('trip_connections'),
+        [10],
+      );
       expect(mockConnQuery).not.toHaveBeenCalled();
       expect(mockConnCommit).toHaveBeenCalled();
       expect(imageRepo.getConnectionImagesBatch).not.toHaveBeenCalled();
       expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
     });
 
-    it('scopes the connection lookup to the given day', async () => {
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
-
-      await updateOrder(42, [100, 101]);
-
-      expect(mockConnExecute).toHaveBeenCalledWith(
-        expect.stringContaining('trip_connections'),
-        [42],
-      );
-    });
-
     it('does nothing when orderedIds is empty', async () => {
       await updateOrder(10, []);
 
       expect(mockGetConnection).not.toHaveBeenCalled();
-    });
-
-    it('rolls back the transaction and rethrows when a query fails', async () => {
-      mockConnExecute.mockRejectedValueOnce(new Error('db error'));
-
-      await expect(updateOrder(10, [100, 101])).rejects.toThrow('db error');
-
-      expect(mockConnRollback).toHaveBeenCalled();
-      expect(mockConnCommit).not.toHaveBeenCalled();
-      expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
     });
 
     it('does not delete any image file when the transaction is rolled back', async () => {

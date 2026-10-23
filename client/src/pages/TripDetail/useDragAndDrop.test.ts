@@ -3,6 +3,12 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
+import {
+  makeAttraction,
+  makeConnection,
+  makeContent,
+  makeDay,
+} from '@/test-utils/fixtures';
 import type { TripContent } from '@/types';
 import {
   addAttraction,
@@ -12,77 +18,56 @@ import {
 
 import { useDragAndDrop } from './useDragAndDrop';
 
-vi.mock('@/utils/storage', () => ({
-  addAttraction: vi.fn().mockResolvedValue({ id: 999, name: 'New' }),
-  deleteAttraction: vi.fn().mockResolvedValue(undefined),
-  reorderAttractions: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-function makeContent(): TripContent {
-  return {
-    tripId: 1,
-    days: [
-      {
-        id: 10,
-        day: 1,
-        date: '2026-01-01',
-        locations: [],
-        attractions: [
-          { id: 100, name: 'A' },
-          { id: 101, name: 'B' },
-        ],
-        connections: [],
-      },
-      {
-        id: 20,
-        day: 2,
-        date: '2026-01-02',
-        locations: [],
-        attractions: [{ id: 200, name: 'C' }],
-        connections: [],
-      },
-    ],
-  };
+beforeEach(() => {
+  vi.mocked(addAttraction).mockResolvedValue({ id: 999, name: 'New' });
+  vi.mocked(deleteAttraction).mockResolvedValue(undefined);
+  vi.mocked(reorderAttractions).mockResolvedValue(undefined);
+});
+
+/** Day 10 holds attractions 100 'A' and 101 'B'; day 20 holds 200 'C'. */
+function makeTwoDayContent(): TripContent {
+  return makeContent([
+    makeDay({
+      id: 10,
+      attractions: [
+        makeAttraction({ id: 100, name: 'A' }),
+        makeAttraction({ id: 101, name: 'B' }),
+      ],
+    }),
+    makeDay({
+      id: 20,
+      day: 2,
+      date: '2026-01-02',
+      attractions: [makeAttraction({ id: 200, name: 'C' })],
+    }),
+  ]);
 }
 
 /** Day 10 has an existing connection between attractions 100 and 101. */
 function makeContentWithConnection(): TripContent {
-  return {
-    tripId: 1,
-    days: [
-      {
-        id: 10,
-        day: 1,
-        date: '2026-01-01',
-        locations: [],
-        attractions: [
-          { id: 100, name: 'A' },
-          { id: 101, name: 'B' },
-          { id: 102, name: 'C' },
-        ],
-        connections: [
-          {
-            id: 5,
-            fromAttractionId: 100,
-            toAttractionId: 101,
-            transportMode: 'walk',
-          },
-        ],
-      },
-      {
-        id: 20,
-        day: 2,
-        date: '2026-01-02',
-        locations: [],
-        attractions: [{ id: 200, name: 'D' }],
-        connections: [],
-      },
-    ],
-  };
+  return makeContent([
+    makeDay({
+      id: 10,
+      attractions: [
+        makeAttraction({ id: 100, name: 'A' }),
+        makeAttraction({ id: 101, name: 'B' }),
+        makeAttraction({ id: 102, name: 'C' }),
+      ],
+      connections: [
+        makeConnection({ id: 5, fromAttractionId: 100, toAttractionId: 101 }),
+      ],
+    }),
+    makeDay({
+      id: 20,
+      day: 2,
+      date: '2026-01-02',
+      attractions: [makeAttraction({ id: 200, name: 'D' })],
+    }),
+  ]);
 }
 
 function makeDragEndEvent(
@@ -100,10 +85,6 @@ function makeDragEndEvent(
 // (getBoundingClientRect) that jsdom cannot compute, so a real drag would not
 // be representative. See the plan's "明確排除範圍".
 describe('useDragAndDrop', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleDragEnd', () => {
     it.each([
       {
@@ -159,7 +140,7 @@ describe('useDragAndDrop', () => {
       'does nothing when $description',
       async ({ tripId, hasContent, activeId, overId }) => {
         const onReload = vi.fn();
-        const content = hasContent ? makeContent() : null;
+        const content = hasContent ? makeTwoDayContent() : null;
         const { result } = renderHook(() =>
           useDragAndDrop(tripId, content, onReload),
         );
@@ -179,7 +160,7 @@ describe('useDragAndDrop', () => {
     it('reorders attractions within the same day and reloads', async () => {
       const onReload = vi.fn();
       const { result } = renderHook(() =>
-        useDragAndDrop(1, makeContent(), onReload),
+        useDragAndDrop(1, makeTwoDayContent(), onReload),
       );
 
       act(() => {
@@ -198,7 +179,7 @@ describe('useDragAndDrop', () => {
       );
       const onReload = vi.fn();
       const { result } = renderHook(() =>
-        useDragAndDrop(1, makeContent(), onReload),
+        useDragAndDrop(1, makeTwoDayContent(), onReload),
       );
 
       act(() => {
@@ -217,7 +198,7 @@ describe('useDragAndDrop', () => {
     it('moves an attraction to a different day and reloads', async () => {
       const onReload = vi.fn();
       const { result } = renderHook(() =>
-        useDragAndDrop(1, makeContent(), onReload),
+        useDragAndDrop(1, makeTwoDayContent(), onReload),
       );
 
       act(() => {
@@ -243,7 +224,7 @@ describe('useDragAndDrop', () => {
       );
       const onReload = vi.fn();
       const { result } = renderHook(() =>
-        useDragAndDrop(1, makeContent(), onReload),
+        useDragAndDrop(1, makeTwoDayContent(), onReload),
       );
 
       act(() => {
@@ -380,7 +361,7 @@ describe('useDragAndDrop', () => {
 
     it('clears the active attraction id', () => {
       const { result } = renderHook(() =>
-        useDragAndDrop(1, makeContent(), vi.fn()),
+        useDragAndDrop(1, makeTwoDayContent(), vi.fn()),
       );
 
       act(() => {
@@ -398,7 +379,7 @@ describe('useDragAndDrop', () => {
 
   it('handleDragStart sets the active attraction id', () => {
     const { result } = renderHook(() =>
-      useDragAndDrop(1, makeContent(), vi.fn()),
+      useDragAndDrop(1, makeTwoDayContent(), vi.fn()),
     );
 
     act(() => {
@@ -434,7 +415,7 @@ describe('useDragAndDrop', () => {
       'returns the expected result when $description',
       ({ setActive, activeId, expectedName }) => {
         const { result } = renderHook(() =>
-          useDragAndDrop(1, makeContent(), vi.fn()),
+          useDragAndDrop(1, makeTwoDayContent(), vi.fn()),
         );
 
         if (setActive) {

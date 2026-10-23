@@ -1,14 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { makeConnection } from '@/test-utils/fixtures';
+import { setupUser } from '@/test-utils/render';
 import type { TravelConnection } from '@/types';
 
 import TravelConnectionModal from './TravelConnectionModal';
 
 vi.mock('@/hooks/useEntityImages', () => ({
   useEntityImages: vi.fn(),
+}));
+
+vi.mock('@/components/MarkdownField', async () => ({
+  default: (await import('@/test-utils/stubs')).MarkdownFieldStub,
 }));
 
 vi.mock('./ImageUploadSection', () => ({
@@ -65,20 +70,18 @@ const TRANSPORT_LABELS = [
 const ACTIVE_CLASSES = ['border-primary', 'bg-primary/10', 'text-primary'];
 const INACTIVE_CLASSES = ['border-border'];
 
-function makeConnection(
+// The modal reads every optional text field, so start them all as
+// explicit nulls (as the API returns them) rather than undefined.
+function makeFormConnection(
   overrides: Partial<TravelConnection> = {},
 ): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 10,
-    toAttractionId: 20,
-    transportMode: 'walk',
+  return makeConnection({
     duration: null,
     route: null,
     notes: null,
     images: [],
     ...overrides,
-  };
+  });
 }
 
 const baseProps = {
@@ -98,36 +101,33 @@ beforeEach(() => {
 });
 
 describe('TravelConnectionModal', () => {
-  describe.each(TRANSPORT_LABELS)(
-    'when transportMode is $value',
-    ({ value, label }) => {
-      it(`marks the ${label} button active and another button inactive`, () => {
-        render(
-          <TravelConnectionModal
-            {...baseProps}
-            connection={makeConnection({ transportMode: value })}
-          />,
-        );
+  it('marks only the selected transport button active as each mode is clicked', async () => {
+    const user = setupUser();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        connection={makeFormConnection({ transportMode: 'walk' })}
+      />,
+    );
 
-        const activeButton = screen.getByRole('button', {
-          name: new RegExp(label),
-        });
-        ACTIVE_CLASSES.forEach(cls =>
-          expect(activeButton.className).toContain(cls),
-        );
+    for (const { label } of TRANSPORT_LABELS) {
+      await user.click(screen.getByRole('button', { name: new RegExp(label) }));
 
-        const otherLabel = TRANSPORT_LABELS.find(
-          opt => opt.value !== value,
-        )!.label;
-        const inactiveButton = screen.getByRole('button', {
+      TRANSPORT_LABELS.forEach(({ label: otherLabel }) => {
+        const button = screen.getByRole('button', {
           name: new RegExp(otherLabel),
         });
-        INACTIVE_CLASSES.forEach(cls =>
-          expect(inactiveButton.className).toContain(cls),
-        );
+        const [expected, unexpected] =
+          otherLabel === label
+            ? [ACTIVE_CLASSES, INACTIVE_CLASSES]
+            : [INACTIVE_CLASSES, ACTIVE_CLASSES];
+        // Match whole class tokens: a substring check would treat
+        // `hover:border-primary/50` as containing `border-primary`.
+        expected.forEach(cls => expect(button).toHaveClass(cls));
+        unexpected.forEach(cls => expect(button).not.toHaveClass(cls));
       });
-    },
-  );
+    }
+  });
 
   describe.each([
     { description: 'no stored duration', duration: null, hours: 0, minutes: 0 },
@@ -148,7 +148,7 @@ describe('TravelConnectionModal', () => {
       render(
         <TravelConnectionModal
           {...baseProps}
-          connection={makeConnection({ duration })}
+          connection={makeFormConnection({ duration })}
         />,
       );
 
@@ -159,13 +159,13 @@ describe('TravelConnectionModal', () => {
   });
 
   it('submits a combined duration string when hours/minutes are edited', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     render(
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ duration: null })}
+        connection={makeFormConnection({ duration: null })}
       />,
     );
 
@@ -182,13 +182,13 @@ describe('TravelConnectionModal', () => {
   });
 
   it('submits a null duration when both hours and minutes remain 0', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     render(
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ duration: null })}
+        connection={makeFormConnection({ duration: null })}
       />,
     );
 
@@ -201,7 +201,7 @@ describe('TravelConnectionModal', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 
@@ -212,7 +212,7 @@ describe('TravelConnectionModal', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 0 })}
+        connection={makeFormConnection({ id: 0 })}
       />,
     );
 
@@ -223,13 +223,13 @@ describe('TravelConnectionModal', () => {
   });
 
   it('passes the staged images to onSave when creating a new connection', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     render(
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ id: 0 })}
+        connection={makeFormConnection({ id: 0 })}
       />,
     );
 
@@ -242,13 +242,13 @@ describe('TravelConnectionModal', () => {
   });
 
   it('does not pass staged images to onSave when editing an existing connection', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     render(
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 
@@ -261,13 +261,13 @@ describe('TravelConnectionModal', () => {
   });
 
   it('updates transportMode when a different transport option is clicked and includes it when saved', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onSave = vi.fn();
     render(
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ transportMode: 'walk' })}
+        connection={makeFormConnection({ transportMode: 'walk' })}
       />,
     );
 
@@ -294,13 +294,13 @@ describe('TravelConnectionModal', () => {
   ])(
     'updates $field via its onChange and includes it in the saved connection',
     async ({ field, placeholder, typed }) => {
-      const user = userEvent.setup();
+      const user = setupUser();
       const onSave = vi.fn();
       render(
         <TravelConnectionModal
           {...baseProps}
           onSave={onSave}
-          connection={makeConnection()}
+          connection={makeFormConnection()}
         />,
       );
 
@@ -322,11 +322,11 @@ describe('TravelConnectionModal', () => {
       handleUpload,
       handleDelete,
     });
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 

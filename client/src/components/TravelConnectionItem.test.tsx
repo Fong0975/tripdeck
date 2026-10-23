@@ -2,21 +2,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { TransportMode, TravelConnection } from '@/types';
+import { makeConnection, makeImage } from '@/test-utils/fixtures';
+import type { TransportMode } from '@/types';
 
 import TravelConnectionItem from './TravelConnectionItem';
 
-function makeConnection(
-  overrides: Partial<TravelConnection> = {},
-): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 10,
-    toAttractionId: 20,
-    transportMode: 'walk',
-    ...overrides,
-  };
-}
+vi.mock('@/components/ClampedTextSection', async () => ({
+  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+}));
 
 describe('TravelConnectionItem', () => {
   it.each([
@@ -63,7 +56,7 @@ describe('TravelConnectionItem', () => {
   });
 
   describe('route', () => {
-    it('shows the label and renders markdown syntax when route is set', () => {
+    it('shows the label and content when route is set', () => {
       render(
         <TravelConnectionItem
           connection={makeConnection({ route: '**搭乘銀座線**' })}
@@ -73,8 +66,10 @@ describe('TravelConnectionItem', () => {
       );
 
       expect(screen.getByText('路線說明')).toBeInTheDocument();
-      const bold = screen.getByText('搭乘銀座線');
-      expect(bold.tagName).toBe('STRONG');
+      expect(screen.getByText('**搭乘銀座線**')).toHaveAttribute(
+        'data-markdown',
+        'true',
+      );
     });
 
     it('does not show the label when route is not set', () => {
@@ -101,7 +96,10 @@ describe('TravelConnectionItem', () => {
       );
 
       expect(screen.getByText('備註')).toBeInTheDocument();
-      expect(screen.getByText('**帶雨傘**')).toBeInTheDocument();
+      expect(screen.getByText('**帶雨傘**')).toHaveAttribute(
+        'data-markdown',
+        'false',
+      );
     });
 
     it('does not show the label when notes is not set', () => {
@@ -121,7 +119,7 @@ describe('TravelConnectionItem', () => {
     render(
       <TravelConnectionItem
         connection={makeConnection({
-          images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'A' })],
         })}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
@@ -151,8 +149,8 @@ describe('TravelConnectionItem', () => {
         <TravelConnectionItem
           connection={makeConnection({
             images: [
-              { id: 1, filename: 'a.jpg', title: 'Img 1' },
-              { id: 2, filename: 'b.jpg', title: 'Img 2' },
+              makeImage({ filename: 'a.jpg', title: 'Img 1' }),
+              makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
             ],
           })}
           onEdit={onEdit}

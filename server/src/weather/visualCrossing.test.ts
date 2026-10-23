@@ -1,14 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../logger', async () => {
+  const { mockLogger } = await import('../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { mockLogger } from '../test-utils/loggerMock';
 
 import { fetchVcWeather } from './visualCrossing';
 
@@ -39,7 +36,6 @@ function makeVcDay(overrides: VcDayOverrides = {}) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn());
 });
 

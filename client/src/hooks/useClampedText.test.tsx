@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { mockElementOverflow } from '@/test-utils/dom';
+
 import { useClampedText } from './useClampedText';
 
 function TestComponent({ text }: { text: string | null | undefined }) {
@@ -17,23 +19,14 @@ function TestComponent({ text }: { text: string | null | undefined }) {
   );
 }
 
-// jsdom does not run layout, so scrollHeight/clientHeight are always 0.
-// Stub them on the HTMLElement prototype to simulate a specific overflow
-// state for the duration of a test.
+let restoreOverflow: (() => void) | undefined;
+
 function stubHeights(scrollHeight: number, clientHeight: number) {
-  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-    configurable: true,
-    value: scrollHeight,
-  });
-  Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
-    configurable: true,
-    value: clientHeight,
-  });
+  restoreOverflow = mockElementOverflow({ scrollHeight, clientHeight });
 }
 
 afterEach(() => {
-  delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-  delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
+  restoreOverflow?.();
 });
 
 describe('useClampedText', () => {

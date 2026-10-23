@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DayLocation } from '@/types';
+import { makeLocation, makeWeatherSuccess } from '@/test-utils/fixtures';
 import {
   fetchDailyWeather,
   type WeatherIconCode,
@@ -20,30 +20,8 @@ const mockedFetch = vi.mocked(fetchDailyWeather);
 
 const DATE = '2026-08-20';
 
-const makeLocation = (id: number, name: string): DayLocation => ({
-  id,
-  name,
-});
-
-type SuccessData = Extract<WeatherResult, { status: 'success' }>['data'];
-
-const successResult = (
-  overrides: Partial<SuccessData> = {},
-  source: WeatherSource = 'openweathermap',
-): WeatherResult => ({
-  status: 'success',
-  source,
-  data: {
-    resolvedName: 'Tokyo',
-    icon: 'clear',
-    description: 'Clear sky',
-    tempMin: 20,
-    tempMax: 28,
-    humidity: 55,
-    pop: 30,
-    ...overrides,
-  },
-});
+const tokyo = makeLocation({ id: 1, name: 'Tokyo' });
+const osaka = makeLocation({ id: 2, name: 'Osaka' });
 
 // The swipeable wrapper is a bare div with no accessible role/name; it is
 // only reachable via its cursor-grab class, which is present when there is
@@ -53,7 +31,6 @@ function getSwipeArea(container: HTMLElement): HTMLElement {
 }
 
 beforeEach(() => {
-  Element.prototype.setPointerCapture = vi.fn();
   mockedFetch.mockReset();
 });
 
@@ -67,7 +44,7 @@ describe('DayWeather', () => {
   it('shows the loading text before the fetch resolves', () => {
     mockedFetch.mockReturnValue(new Promise<WeatherResult>(() => {}));
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(screen.getByText('查詢中…')).toBeInTheDocument();
   });
@@ -91,7 +68,7 @@ describe('DayWeather', () => {
   ])('shows the $description message', async ({ result, text }) => {
     mockedFetch.mockResolvedValue(result);
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(await screen.findByText(text)).toBeInTheDocument();
   });
@@ -99,7 +76,7 @@ describe('DayWeather', () => {
   it('shows the error message when the fetch promise rejects', async () => {
     mockedFetch.mockRejectedValue(new Error('network error'));
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(await screen.findByText('天氣資料取得失敗')).toBeInTheDocument();
   });
@@ -115,9 +92,11 @@ describe('DayWeather', () => {
   ] as { icon: WeatherIconCode; iconClass: string }[])(
     'renders the $iconClass icon for the $icon weather code',
     async ({ icon, iconClass }) => {
-      mockedFetch.mockResolvedValue(successResult({ icon }));
+      mockedFetch.mockResolvedValue(
+        makeWeatherSuccess({ icon, description: 'Clear sky' }),
+      );
       const { container } = render(
-        <DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />,
+        <DayWeather locations={[tokyo]} date={DATE} />,
       );
 
       await screen.findByText('Clear sky');
@@ -128,9 +107,17 @@ describe('DayWeather', () => {
   );
 
   it('shows description, temps, humidity and pop on success', async () => {
-    mockedFetch.mockResolvedValue(successResult());
+    mockedFetch.mockResolvedValue(
+      makeWeatherSuccess({
+        description: 'Clear sky',
+        tempMin: 20,
+        tempMax: 28,
+        humidity: 55,
+        pop: 30,
+      }),
+    );
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(await screen.findByText('Clear sky')).toBeInTheDocument();
     expect(screen.getByText('20° / 28°C')).toBeInTheDocument();
@@ -144,9 +131,11 @@ describe('DayWeather', () => {
   ] as { source: WeatherSource; label: string }[])(
     'shows a $label source tooltip on the weather details',
     async ({ source, label }) => {
-      mockedFetch.mockResolvedValue(successResult({}, source));
+      mockedFetch.mockResolvedValue(
+        makeWeatherSuccess({ description: 'Clear sky' }, source),
+      );
 
-      render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+      render(<DayWeather locations={[tokyo]} date={DATE} />);
 
       expect(await screen.findByTitle(`資料來源：${label}`)).toHaveTextContent(
         'Clear sky',
@@ -155,9 +144,9 @@ describe('DayWeather', () => {
   );
 
   it('hides the precipitation marker when pop is 0', async () => {
-    mockedFetch.mockResolvedValue(successResult({ pop: 0 }));
+    mockedFetch.mockResolvedValue(makeWeatherSuccess({ humidity: 55, pop: 0 }));
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(await screen.findByText('55%')).toBeInTheDocument();
     expect(screen.getAllByText(/%$/)).toHaveLength(1);
@@ -166,7 +155,7 @@ describe('DayWeather', () => {
   it('does not render nav controls with a single location', () => {
     mockedFetch.mockResolvedValue({ status: 'error' });
 
-    render(<DayWeather locations={[makeLocation(1, 'Tokyo')]} date={DATE} />);
+    render(<DayWeather locations={[tokyo]} date={DATE} />);
 
     expect(screen.queryByLabelText('上一個地區')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('下一個地區')).not.toBeInTheDocument();
@@ -175,12 +164,7 @@ describe('DayWeather', () => {
   it('navigates between locations via the nav buttons', async () => {
     mockedFetch.mockResolvedValue({ status: 'error' });
     const user = userEvent.setup();
-    render(
-      <DayWeather
-        locations={[makeLocation(1, 'Tokyo'), makeLocation(2, 'Osaka')]}
-        date={DATE}
-      />,
-    );
+    render(<DayWeather locations={[tokyo, osaka]} date={DATE} />);
 
     expect(screen.getByText('Tokyo')).toBeInTheDocument();
     expect(mockedFetch).toHaveBeenCalledWith('Tokyo', DATE);
@@ -199,12 +183,7 @@ describe('DayWeather', () => {
   it('navigates back to the previous location via the previous button', async () => {
     mockedFetch.mockResolvedValue({ status: 'error' });
     const user = userEvent.setup();
-    render(
-      <DayWeather
-        locations={[makeLocation(1, 'Tokyo'), makeLocation(2, 'Osaka')]}
-        date={DATE}
-      />,
-    );
+    render(<DayWeather locations={[tokyo, osaka]} date={DATE} />);
 
     await user.click(screen.getByLabelText('下一個地區'));
     expect(screen.getByText('Osaka')).toBeInTheDocument();
@@ -235,10 +214,7 @@ describe('DayWeather', () => {
   ])('$description', ({ startX, endX, expectedLocation }) => {
     mockedFetch.mockResolvedValue({ status: 'error' });
     const { container } = render(
-      <DayWeather
-        locations={[makeLocation(1, 'Tokyo'), makeLocation(2, 'Osaka')]}
-        date={DATE}
-      />,
+      <DayWeather locations={[tokyo, osaka]} date={DATE} />,
     );
 
     const swipeArea = getSwipeArea(container);
@@ -252,10 +228,7 @@ describe('DayWeather', () => {
     mockedFetch.mockResolvedValue({ status: 'error' });
     const user = userEvent.setup();
     const { container } = render(
-      <DayWeather
-        locations={[makeLocation(1, 'Tokyo'), makeLocation(2, 'Osaka')]}
-        date={DATE}
-      />,
+      <DayWeather locations={[tokyo, osaka]} date={DATE} />,
     );
 
     await user.click(screen.getByLabelText('下一個地區'));

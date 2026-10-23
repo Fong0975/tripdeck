@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { Attraction, Trip, TripContent } from '@/types';
+import { makeAttraction, makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addAttraction,
   deleteAttraction,
@@ -12,54 +12,11 @@ import {
 
 import { useAttractionActions } from './useAttractionActions';
 
-vi.mock('@/utils/storage', () => ({
-  addAttraction: vi.fn(),
-  deleteAttraction: vi.fn(),
-  duplicateAttraction: vi.fn(),
-  updateAttraction: vi.fn(),
-  uploadAttractionImage: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
-
-function makeTrip(): Trip {
-  return {
-    id: 1,
-    title: 'Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-  };
-}
-
-function makeContent(): TripContent {
-  return {
-    tripId: 1,
-    days: [
-      {
-        id: 10,
-        day: 1,
-        date: '2026-01-01',
-        locations: [],
-        attractions: [],
-        connections: [],
-      },
-    ],
-  };
-}
-
-function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
-  return { id: 0, name: 'Attraction', ...overrides };
-}
+vi.mock('@/lib/toast');
 
 describe('useAttractionActions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleSaveAttraction', () => {
     it.each([
       { description: 'trip is null', trip: null, content: makeContent() },
@@ -74,7 +31,7 @@ describe('useAttractionActions', () => {
         closeModal,
       );
 
-      await handleSaveAttraction(0, makeAttraction());
+      await handleSaveAttraction(0, makeAttraction({ id: 0 }));
 
       expect(addAttraction).not.toHaveBeenCalled();
       expect(updateAttraction).not.toHaveBeenCalled();
@@ -134,28 +91,7 @@ describe('useAttractionActions', () => {
       });
     });
 
-    it('shows an error toast and does not reload or close the modal when creating fails', async () => {
-      vi.mocked(addAttraction).mockRejectedValue(new Error('network error'));
-      const reloadContent = vi.fn();
-      const closeModal = vi.fn();
-      const { handleSaveAttraction } = useAttractionActions(
-        makeTrip(),
-        makeContent(),
-        reloadContent,
-        closeModal,
-      );
-
-      await handleSaveAttraction(0, makeAttraction({ id: 0 }));
-
-      expect(reloadContent).not.toHaveBeenCalled();
-      expect(closeModal).not.toHaveBeenCalled();
-      expect(showToast).toHaveBeenCalledWith(
-        'error',
-        '儲存景點失敗，請稍後再試',
-      );
-    });
-
-    it('shows an error toast and does not reload or close the modal when updating fails', async () => {
+    it('shows an error toast and does not reload or close the modal when saving fails', async () => {
       vi.mocked(updateAttraction).mockRejectedValue(new Error('network error'));
       const reloadContent = vi.fn();
       const closeModal = vi.fn();

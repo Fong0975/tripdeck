@@ -1,27 +1,18 @@
 import fs from 'fs';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('fs', () => ({
-  default: {
-    writeFileSync: vi.fn(),
-    copyFileSync: vi.fn(),
-    unlinkSync: vi.fn(),
-  },
-}));
+vi.mock('fs', async () => (await import('../test-utils/fsMock')).fsMock.module);
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'fixed-uuid'),
 }));
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../logger', async () => {
+  const { mockLogger } = await import('../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { mockLogger } from '../test-utils/loggerMock';
 
 import {
   copyImageFile,
@@ -67,10 +58,6 @@ const mimeCases: MimeCase[] = [
 ];
 
 describe('saveImageToDisk', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe.each(mimeCases)('$mime', ({ mime, ext, validBuffer }) => {
     it(`returns a filename ending in ${ext} and writes the buffer to disk when magic bytes are valid`, () => {
       const filename = saveImageToDisk(validBuffer, mime);
@@ -82,13 +69,13 @@ describe('saveImageToDisk', () => {
         validBuffer,
       );
     });
+  });
 
-    it('throws and does not write to disk when magic bytes do not match the declared mimetype', () => {
-      expect(() => saveImageToDisk(GARBAGE_BUFFER, mime)).toThrow(
-        'File content does not match declared image type',
-      );
-      expect(fs.writeFileSync).not.toHaveBeenCalled();
-    });
+  it('throws and does not write to disk when magic bytes do not match the declared mimetype', () => {
+    expect(() => saveImageToDisk(GARBAGE_BUFFER, 'image/jpeg')).toThrow(
+      'File content does not match declared image type',
+    );
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 
   describe('webp-specific signature checks', () => {
@@ -118,10 +105,6 @@ describe('saveImageToDisk', () => {
 });
 
 describe('copyImageFile', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('copies the file to a new UUID-based filename with the same extension', () => {
     const result = copyImageFile('original.jpg');
 
@@ -151,23 +134,6 @@ describe('copyImageFile', () => {
 });
 
 describe('saveImportedImageBuffer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it.each(mimeCases)(
-    'writes the buffer to disk under a new UUID filename for $ext when magic bytes are valid',
-    ({ ext, validBuffer }) => {
-      const filename = saveImportedImageBuffer(validBuffer, `original${ext}`);
-
-      expect(filename).toBe(`fixed-uuid${ext}`);
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        expect.stringContaining(filename),
-        validBuffer,
-      );
-    },
-  );
-
   it('is case-insensitive about the source extension', () => {
     const filename = saveImportedImageBuffer(
       mimeCases[0].validBuffer,
@@ -175,6 +141,10 @@ describe('saveImportedImageBuffer', () => {
     );
 
     expect(filename).toBe('fixed-uuid.jpg');
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining(filename),
+      mimeCases[0].validBuffer,
+    );
   });
 
   it('throws and does not write to disk for an unsupported extension', () => {
@@ -195,10 +165,6 @@ describe('saveImportedImageBuffer', () => {
 });
 
 describe('deleteImageFromDisk', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('deletes the file from disk without throwing', () => {
     expect(() => deleteImageFromDisk('to-delete.jpg')).not.toThrow();
     expect(fs.unlinkSync).toHaveBeenCalledWith(

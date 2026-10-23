@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { TripChecklist } from '@/types';
+import { makeTripChecklist } from '@/test-utils/fixtures';
+import { getBackdrop } from '@/test-utils/queries';
 
 import { useEditState } from './useEditState';
 import { useSaveChecklist } from './useSaveChecklist';
@@ -18,7 +19,7 @@ vi.mock('./OccasionEditList', () => ({
   default: () => <div>occasion-edit-list</div>,
 }));
 
-const checklist: TripChecklist = { tripId: 1, categories: [], occasions: [] };
+const checklist = makeTripChecklist();
 
 function mockEditState() {
   vi.mocked(useEditState).mockReturnValue({
@@ -43,14 +44,7 @@ function mockEditState() {
   });
 }
 
-// The modal backdrop is a bare decorative div with no accessible role/name;
-// 'absolute' uniquely identifies it (the modal wrapper itself uses 'fixed').
-function getBackdrop(container: HTMLElement): HTMLElement {
-  return container.querySelector('.absolute') as HTMLElement;
-}
-
 beforeEach(() => {
-  vi.clearAllMocks();
   mockEditState();
 });
 
@@ -75,49 +69,20 @@ describe('TripChecklistEditModal', () => {
     expect(screen.getByText('category-edit-list')).toBeInTheDocument();
   });
 
-  it('calls onClose when the header close button is clicked', async () => {
-    vi.mocked(useSaveChecklist).mockReturnValue({
-      saving: false,
-      handleSave: vi.fn(),
-    });
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <TripChecklistEditModal
-        tripId={1}
-        checklist={checklist}
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByLabelText('關閉'));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onClose when the cancel button is clicked', async () => {
-    vi.mocked(useSaveChecklist).mockReturnValue({
-      saving: false,
-      handleSave: vi.fn(),
-    });
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <TripChecklistEditModal
-        tripId={1}
-        checklist={checklist}
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByText('取消'));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onClose when the backdrop is clicked', async () => {
+  it.each([
+    {
+      description: 'the header close button',
+      trigger: () => screen.getByLabelText('關閉'),
+    },
+    {
+      description: 'the cancel button',
+      trigger: () => screen.getByText('取消'),
+    },
+    {
+      description: 'the backdrop',
+      trigger: (container: HTMLElement) => getBackdrop(container),
+    },
+  ])('calls onClose when $description is clicked', async ({ trigger }) => {
     vi.mocked(useSaveChecklist).mockReturnValue({
       saving: false,
       handleSave: vi.fn(),
@@ -133,7 +98,7 @@ describe('TripChecklistEditModal', () => {
       />,
     );
 
-    await user.click(getBackdrop(container));
+    await user.click(trigger(container));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

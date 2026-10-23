@@ -1,11 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/attraction');
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/attraction', () => ({
+  create: vi.fn(),
+  deleteById: vi.fn(),
+  duplicate: vi.fn(),
+  getDayIdForAttraction: vi.fn(),
+  update: vi.fn(),
+  updateOrder: vi.fn(),
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../../repositories/trip', () => ({
+  findDayByIdAndTripId: vi.fn(),
+}));
 
 import * as attractionRepo from '../../repositories/attraction';
 import * as tripRepo from '../../repositories/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 import type { AttractionResponse } from '../../types/trip';
 
 import {
@@ -37,10 +52,6 @@ function expectNoContent(
   expect(res.status).toHaveBeenCalledWith(204);
   expect(res.send).toHaveBeenCalled();
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('Attractions', () => {
   describe('addAttraction', () => {
@@ -182,16 +193,10 @@ describe('Attractions', () => {
   });
 
   describe('reorderAttractions', () => {
-    it.each([
-      { name: 'orderedIds is missing', body: {} },
-      {
-        name: 'orderedIds is not an array',
-        body: { orderedIds: 'not-an-array' },
-      },
-    ])('returns 400 when $name', async ({ body }) => {
+    it('returns 400 when orderedIds is not an array', async () => {
       const { req, res } = createMockReqRes({
         params: { tripId: '1', dayId: '10' },
-        body,
+        body: { orderedIds: 'not-an-array' },
       });
 
       await reorderAttractions(req, res);
@@ -228,18 +233,7 @@ describe('Attractions', () => {
 });
 
 describe('500 error handling', () => {
-  const rejection = new Error('unexpected failure');
-
-  const cases: Array<{
-    name: string;
-    handler: (
-      req: Parameters<typeof addAttraction>[0],
-      res: Parameters<typeof addAttraction>[1],
-    ) => Promise<void>;
-    req: Parameters<typeof createMockReqRes>[0];
-    arrange: () => void;
-    expectedError: string;
-  }> = [
+  const cases: Returns500Case[] = [
     {
       name: 'addAttraction',
       handler: addAttraction,
@@ -247,8 +241,8 @@ describe('500 error handling', () => {
         params: { tripId: '1', dayId: '10' },
         body: { name: 'Fushimi Inari' },
       },
-      arrange: () =>
-        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
       expectedError: 'Failed to add attraction',
     },
     {
@@ -258,30 +252,24 @@ describe('500 error handling', () => {
         params: { tripId: '1', attractionId: '100' },
         body: { name: 'Updated' },
       },
-      arrange: () =>
-        vi
-          .mocked(attractionRepo.verifyBelongsToTrip)
-          .mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to update attraction',
     },
     {
       name: 'deleteAttraction',
       handler: deleteAttraction,
       req: { params: { tripId: '1', attractionId: '100' } },
-      arrange: () =>
-        vi
-          .mocked(attractionRepo.verifyBelongsToTrip)
-          .mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to delete attraction',
     },
     {
       name: 'duplicateAttraction',
       handler: duplicateAttraction,
       req: { params: { tripId: '1', attractionId: '100' } },
-      arrange: () =>
-        vi
-          .mocked(attractionRepo.verifyBelongsToTrip)
-          .mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to duplicate attraction',
     },
     {
@@ -291,21 +279,11 @@ describe('500 error handling', () => {
         params: { tripId: '1', dayId: '10' },
         body: { orderedIds: [100, 101] },
       },
-      arrange: () =>
-        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
       expectedError: 'Failed to reorder attractions',
     },
   ];
 
-  it.each(cases)(
-    'returns 500 when $name encounters an unexpected error',
-    async ({ handler, req, arrange, expectedError }) => {
-      arrange();
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await handler(mockReq, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(cases);
 });

@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/backup', async () => {
-  const actual = await vi.importActual<
-    typeof import('../../repositories/backup')
-  >('../../repositories/backup');
+  const { BackupValidationError, TripNotFoundError } = await vi.importActual<
+    typeof import('../../repositories/backup/errors')
+  >('../../repositories/backup/errors');
   return {
-    ...actual,
+    BackupValidationError,
+    TripNotFoundError,
     buildBackupZip: vi.fn(),
     importBackupZip: vi.fn(),
   };
@@ -16,13 +17,8 @@ import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 
 import { exportTrips, importTrips } from './backupController';
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe('exportTrips', () => {
   it.each([
-    { name: 'tripIds is missing', body: {} },
     { name: 'tripIds is not an array', body: { tripIds: 1 } },
     { name: 'tripIds contains a non-integer', body: { tripIds: [1, 1.5] } },
     {

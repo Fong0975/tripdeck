@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db } from '../test-utils/dbMocks';
 
 // eslint-disable-next-line import/order -- import/order flip-flops on newlines-between for this type-only sibling import; pin it here instead of fighting --fix
 import type { ColumnDef, TableDef } from './schema';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../config/database', async () => {
+  const { db } = await import('../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 // vi.mock(...) below is hoisted above these fixtures' declarations, so the
 // values it references must come from vi.hoisted(...) instead of plain
@@ -85,10 +86,6 @@ function setUpInitDatabaseMock(): void {
 }
 
 describe('db/init', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('buildColumnSql', () => {
     const cases: Array<{ name: string; col: ColumnDef; expected: string }> = [
       {
@@ -175,7 +172,7 @@ describe('db/init', () => {
   });
 
   describe('initDatabase', () => {
-    it('creates a table that does not exist yet', async () => {
+    it('creates missing tables, skips ALTER for complete tables, and adds missing columns', async () => {
       setUpInitDatabaseMock();
 
       await initDatabase();
@@ -185,23 +182,11 @@ describe('db/init', () => {
       );
       expect(createCalls).toHaveLength(1);
       expect(createCalls[0][0]).toContain('CREATE TABLE IF NOT EXISTS foo');
-    });
-
-    it('does not issue ALTER TABLE for an existing table with no missing columns', async () => {
-      setUpInitDatabaseMock();
-
-      await initDatabase();
 
       const barAlterCalls = mockPoolExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('ALTER TABLE bar'),
       );
       expect(barAlterCalls).toHaveLength(0);
-    });
-
-    it('adds missing columns to an existing table via ALTER TABLE ADD COLUMN', async () => {
-      setUpInitDatabaseMock();
-
-      await initDatabase();
 
       const bazAlterCalls = mockPoolExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('ALTER TABLE baz'),

@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { showToast } from '@/lib/toast';
+import {
+  makeBoardDays,
+  makeConnection,
+  makeContent,
+  makeTrip,
+} from '@/test-utils/fixtures';
 import type { Attraction, DayPlan, Trip, TravelConnection } from '@/types';
 import { exportToDocx } from '@/utils/exportToDocx';
 
@@ -35,7 +41,7 @@ vi.mock('@/hooks/useUnsavedChangesGuard', () => ({
   useUnsavedChangesGuard: vi.fn(),
 }));
 vi.mock('@/utils/exportToDocx', () => ({ exportToDocx: vi.fn() }));
-vi.mock('@/lib/toast', () => ({ showToast: vi.fn() }));
+vi.mock('@/lib/toast');
 
 vi.mock('@/components/Navbar', () => ({
   default: () => <div>navbar</div>,
@@ -74,97 +80,8 @@ vi.mock('./TripHeader', () => ({
 // buttons per day so TripDetail's own composition logic (which modal opens,
 // which handler receives which args) can be tested without a real drag
 // context.
-vi.mock('./ItineraryBoard', () => ({
-  default: ({
-    days,
-    onEditDayNote,
-    onAddAttraction,
-    onEditAttraction,
-    onDeleteAttraction,
-    onDuplicateAttraction,
-    onEditConnection,
-    onDeleteConnection,
-    onAddConnection,
-    onAddLocation,
-    onUpdateLocation,
-    onDeleteLocation,
-  }: {
-    days: DayPlan[];
-    onEditDayNote: (dayIndex: number) => void;
-    onAddAttraction: (dayIndex: number) => void;
-    onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
-    onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
-    onDeleteConnection: (dayIndex: number, connectionId: number) => void;
-    onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
-    onAddLocation: (dayIndex: number, name: string) => void;
-    onUpdateLocation: (
-      dayIndex: number,
-      locationId: number,
-      name: string,
-    ) => void;
-    onDeleteLocation: (dayIndex: number, locationId: number) => void;
-  }) => (
-    <div>
-      {days.map((day, dayIndex) => (
-        <div key={day.id}>
-          <span>day-column-{dayIndex}</span>
-          <button onClick={() => onEditDayNote(dayIndex)}>
-            edit-day-note-{dayIndex}
-          </button>
-          <button onClick={() => onAddAttraction(dayIndex)}>
-            add-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onEditAttraction(dayIndex, day.attractions[0])}
-          >
-            edit-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onDeleteAttraction(dayIndex, day.attractions[0].id)}
-          >
-            delete-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onDuplicateAttraction(dayIndex, day.attractions[0])}
-          >
-            duplicate-attraction-{dayIndex}
-          </button>
-          {day.connections[0] && (
-            <button
-              onClick={() => onEditConnection(dayIndex, day.connections[0])}
-            >
-              edit-connection-{dayIndex}
-            </button>
-          )}
-          {day.connections[0] && (
-            <button
-              onClick={() =>
-                onDeleteConnection(dayIndex, day.connections[0].id)
-              }
-            >
-              delete-connection-{dayIndex}
-            </button>
-          )}
-          <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
-            add-connection-{dayIndex}
-          </button>
-          <button onClick={() => onAddLocation(dayIndex, 'New Location')}>
-            add-location-{dayIndex}
-          </button>
-          <button
-            onClick={() => onUpdateLocation(dayIndex, 50, 'Updated Location')}
-          >
-            update-location-{dayIndex}
-          </button>
-          <button onClick={() => onDeleteLocation(dayIndex, 50)}>
-            delete-location-{dayIndex}
-          </button>
-        </div>
-      ))}
-    </div>
-  ),
+vi.mock('./ItineraryBoard', async () => ({
+  default: (await import('@/test-utils/stubs')).ItineraryBoardStub,
 }));
 
 vi.mock('@/components/AttractionModal', () => ({
@@ -302,56 +219,20 @@ vi.mock('@/components/ui/ConfirmDialog', () => ({
   ),
 }));
 
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
+function makeBoardTrip(): Trip {
+  return makeTrip({
     title: 'Trip A',
     destination: 'Tokyo',
-    startDate: '2026-01-01',
     endDate: '2026-01-02',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
-
-function makeDays(overrides: Partial<DayPlan>[] = []): DayPlan[] {
-  const base: DayPlan[] = [
-    {
-      id: 1,
-      day: 1,
-      date: '2026-01-01',
-      locations: [],
-      attractions: [
-        { id: 10, name: 'Attraction A' },
-        { id: 11, name: 'Attraction B' },
-      ],
-      connections: [
-        {
-          id: 100,
-          fromAttractionId: 10,
-          toAttractionId: 11,
-          transportMode: 'walk',
-        },
-      ],
-    },
-    {
-      id: 2,
-      day: 2,
-      date: '2026-01-02',
-      locations: [],
-      attractions: [{ id: 20, name: 'Attraction C' }],
-      connections: [],
-    },
-  ];
-  return base.map((day, i) => ({ ...day, ...overrides[i] }));
+  });
 }
 
 function makeTripData(
   overrides: Partial<ReturnType<typeof useTripData>> = {},
 ): ReturnType<typeof useTripData> {
   return {
-    trip: makeTrip(),
-    content: { tripId: 1, days: makeDays() },
+    trip: makeBoardTrip(),
+    content: makeContent(makeBoardDays()),
     reloadContent: vi.fn(),
     setTrip: vi.fn(),
     loadError: false,
@@ -435,7 +316,6 @@ function renderTripDetail() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(useTripData).mockReturnValue(makeTripData());
   vi.mocked(useAttractionActions).mockReturnValue(makeAttractionActions());
   vi.mocked(useConnectionActions).mockReturnValue(makeConnectionActions());
@@ -489,6 +369,10 @@ describe('TripDetail', () => {
     expect(
       screen.queryByText(/^trip-checklist-panel-/),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('確定要離開嗎？')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('確定要移動這張卡片嗎？'),
+    ).not.toBeInTheDocument();
   });
 
   it('switches to the checklist panel and back via the tab bar', async () => {
@@ -538,8 +422,8 @@ describe('TripDetail', () => {
       resolveExport = resolve;
     });
     vi.mocked(exportToDocx).mockReturnValue(exportPromise);
-    const trip = makeTrip();
-    const content = { tripId: 1, days: makeDays() };
+    const trip = makeBoardTrip();
+    const content = makeContent(makeBoardDays());
     vi.mocked(useTripData).mockReturnValue(makeTripData({ trip, content }));
     const user = userEvent.setup();
     renderTripDetail();
@@ -598,7 +482,7 @@ describe('TripDetail', () => {
     });
   });
 
-  it('opens the attraction modal in create mode from the add-attraction trigger', async () => {
+  it('opens the attraction modal in create mode from the add-attraction trigger, then closes it via onClose', async () => {
     const user = userEvent.setup();
     renderTripDetail();
 
@@ -606,6 +490,10 @@ describe('TripDetail', () => {
 
     expect(screen.getByText('attraction-modal')).toBeInTheDocument();
     expect(screen.getByText('creating')).toBeInTheDocument();
+
+    await user.click(screen.getByText('close-attraction-modal'));
+
+    expect(screen.queryByText('attraction-modal')).not.toBeInTheDocument();
   });
 
   it('saves a newly-created attraction for the right day', async () => {
@@ -624,16 +512,6 @@ describe('TripDetail', () => {
       { id: 0, name: 'New' },
       undefined,
     );
-  });
-
-  it('closes the attraction modal via its onClose trigger', async () => {
-    const user = userEvent.setup();
-    renderTripDetail();
-    await user.click(screen.getByText('add-attraction-0'));
-
-    await user.click(screen.getByText('close-attraction-modal'));
-
-    expect(screen.queryByText('attraction-modal')).not.toBeInTheDocument();
   });
 
   it('opens the attraction modal in edit mode with the clicked attraction', async () => {
@@ -663,101 +541,51 @@ describe('TripDetail', () => {
     });
   });
 
-  it('calls handleDeleteAttraction with the right day and attraction id', async () => {
+  it('forwards board callbacks to the attraction, connection and location action handlers with the right args', async () => {
     const handleDeleteAttraction = vi.fn();
+    const handleDuplicateAttraction = vi.fn();
+    const handleDeleteConnection = vi.fn();
+    const handleAddLocation = vi.fn();
+    const handleUpdateLocation = vi.fn();
+    const handleDeleteLocation = vi.fn();
     vi.mocked(useAttractionActions).mockReturnValue(
-      makeAttractionActions({ handleDeleteAttraction }),
+      makeAttractionActions({
+        handleDeleteAttraction,
+        handleDuplicateAttraction,
+      }),
+    );
+    vi.mocked(useConnectionActions).mockReturnValue(
+      makeConnectionActions({ handleDeleteConnection }),
+    );
+    vi.mocked(useDayLocationActions).mockReturnValue(
+      makeDayLocationActions({
+        handleAddLocation,
+        handleUpdateLocation,
+        handleDeleteLocation,
+      }),
     );
     const user = userEvent.setup();
     renderTripDetail();
 
     await user.click(screen.getByText('delete-attraction-0'));
+    await user.click(screen.getByText('duplicate-attraction-0'));
+    await user.click(screen.getByText('delete-connection-0'));
+    await user.click(screen.getByText('add-location-0'));
+    await user.click(screen.getByText('update-location-0'));
+    await user.click(screen.getByText('delete-location-0'));
 
     expect(handleDeleteAttraction).toHaveBeenCalledWith(0, 10);
-  });
-
-  it('calls handleDuplicateAttraction with the right day and attraction', async () => {
-    const handleDuplicateAttraction = vi.fn();
-    vi.mocked(useAttractionActions).mockReturnValue(
-      makeAttractionActions({ handleDuplicateAttraction }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('duplicate-attraction-0'));
-
     expect(handleDuplicateAttraction).toHaveBeenCalledWith(0, {
       id: 10,
       name: 'Attraction A',
     });
-  });
-
-  it('calls handleDeleteConnection with the right day and connection id', async () => {
-    const handleDeleteConnection = vi.fn();
-    vi.mocked(useConnectionActions).mockReturnValue(
-      makeConnectionActions({ handleDeleteConnection }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('delete-connection-0'));
-
     expect(handleDeleteConnection).toHaveBeenCalledWith(0, 100);
-  });
-
-  it('calls handleAddConnection with the right args from the add-connection trigger', async () => {
-    const handleAddConnection = vi.fn();
-    vi.mocked(useConnectionActions).mockReturnValue(
-      makeConnectionActions({ handleAddConnection }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('add-connection-0'));
-
-    expect(handleAddConnection).toHaveBeenCalledWith(0, 10, 11);
-  });
-
-  it('calls handleAddLocation with the right day and name from the add-location trigger', async () => {
-    const handleAddLocation = vi.fn();
-    vi.mocked(useDayLocationActions).mockReturnValue(
-      makeDayLocationActions({ handleAddLocation }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('add-location-0'));
-
     expect(handleAddLocation).toHaveBeenCalledWith(0, 'New Location');
-  });
-
-  it('calls handleUpdateLocation with the right day, location id and name from the update-location trigger', async () => {
-    const handleUpdateLocation = vi.fn();
-    vi.mocked(useDayLocationActions).mockReturnValue(
-      makeDayLocationActions({ handleUpdateLocation }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('update-location-0'));
-
     expect(handleUpdateLocation).toHaveBeenCalledWith(
       0,
       50,
       'Updated Location',
     );
-  });
-
-  it('calls handleDeleteLocation with the right day and location id from the delete-location trigger', async () => {
-    const handleDeleteLocation = vi.fn();
-    vi.mocked(useDayLocationActions).mockReturnValue(
-      makeDayLocationActions({ handleDeleteLocation }),
-    );
-    const user = userEvent.setup();
-    renderTripDetail();
-
-    await user.click(screen.getByText('delete-location-0'));
-
     expect(handleDeleteLocation).toHaveBeenCalledWith(0, 50);
   });
 
@@ -766,12 +594,12 @@ describe('TripDetail', () => {
 
     const calls = vi.mocked(useConnectionActions).mock.calls;
     const openConnectionModal = calls[calls.length - 1][4];
-    const connection: TravelConnection = {
+    const connection = makeConnection({
       id: 0,
       fromAttractionId: 10,
       toAttractionId: 11,
       transportMode: 'transit',
-    };
+    });
 
     act(() => {
       openConnectionModal(0, connection);
@@ -783,7 +611,7 @@ describe('TripDetail', () => {
     ).toBeInTheDocument();
   });
 
-  it('opens the connection modal from the edit-connection trigger with resolved names', async () => {
+  it('opens the connection modal from the edit-connection trigger with resolved names, then closes it via onClose', async () => {
     const user = userEvent.setup();
     renderTripDetail();
 
@@ -793,26 +621,28 @@ describe('TripDetail', () => {
     expect(
       screen.getByText('Attraction A to Attraction B'),
     ).toBeInTheDocument();
+
+    await user.click(screen.getByText('close-connection-modal'));
+
+    expect(screen.queryByText('connection-modal')).not.toBeInTheDocument();
   });
 
   it('falls back to empty names when the connection references unknown attractions', async () => {
     vi.mocked(useTripData).mockReturnValue(
       makeTripData({
-        content: {
-          tripId: 1,
-          days: makeDays([
+        content: makeContent(
+          makeBoardDays([
             {
               connections: [
-                {
+                makeConnection({
                   id: 100,
                   fromAttractionId: 999,
                   toAttractionId: 998,
-                  transportMode: 'walk',
-                },
+                }),
               ],
             },
           ]),
-        },
+        ),
       }),
     );
     const user = userEvent.setup();
@@ -821,16 +651,6 @@ describe('TripDetail', () => {
     await user.click(screen.getByText('edit-connection-0'));
 
     expect(screen.getByText('to')).toBeInTheDocument();
-  });
-
-  it('closes the connection modal via its onClose trigger', async () => {
-    const user = userEvent.setup();
-    renderTripDetail();
-    await user.click(screen.getByText('edit-connection-0'));
-
-    await user.click(screen.getByText('close-connection-modal'));
-
-    expect(screen.queryByText('connection-modal')).not.toBeInTheDocument();
   });
 
   it('saves a connection for the right day', async () => {
@@ -856,12 +676,6 @@ describe('TripDetail', () => {
     );
   });
 
-  it('does not render ConfirmDialog when showLeaveConfirm is false', () => {
-    renderTripDetail();
-
-    expect(screen.queryByText('確定要離開嗎？')).not.toBeInTheDocument();
-  });
-
   it('renders ConfirmDialog and wires cancel/confirm when showLeaveConfirm is true', async () => {
     const cancelLeave = vi.fn();
     const confirmLeave = vi.fn();
@@ -880,7 +694,7 @@ describe('TripDetail', () => {
     expect(confirmLeave).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the edit trip modal from the header edit trigger', async () => {
+  it('opens the edit trip modal from the header edit trigger, then closes it without touching the loaded trip', async () => {
     const user = userEvent.setup();
     renderTripDetail();
 
@@ -888,12 +702,6 @@ describe('TripDetail', () => {
 
     expect(screen.getByText('edit-trip-modal')).toBeInTheDocument();
     expect(screen.getByText('editing:Trip A')).toBeInTheDocument();
-  });
-
-  it('closes the edit trip modal without touching the loaded trip', async () => {
-    const user = userEvent.setup();
-    renderTripDetail();
-    await user.click(screen.getByText('edit-trip-trigger'));
 
     await user.click(screen.getByText('close-edit-trip-modal'));
 
@@ -939,7 +747,9 @@ describe('TripDetail', () => {
     expect(reloadContent).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the edit day note modal for the clicked day', async () => {
+  it('opens the edit day note modal for the clicked day, then closes it and reloads content via onClose', async () => {
+    const reloadContent = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(makeTripData({ reloadContent }));
     const user = userEvent.setup();
     renderTripDetail();
 
@@ -947,14 +757,6 @@ describe('TripDetail', () => {
 
     expect(screen.getByText('edit-day-note-modal')).toBeInTheDocument();
     expect(screen.getByText('editing-day-2')).toBeInTheDocument();
-  });
-
-  it('closes the edit day note modal and reloads content via its onClose trigger', async () => {
-    const reloadContent = vi.fn();
-    vi.mocked(useTripData).mockReturnValue(makeTripData({ reloadContent }));
-    const user = userEvent.setup();
-    renderTripDetail();
-    await user.click(screen.getByText('edit-day-note-0'));
 
     await user.click(screen.getByText('close-edit-day-note-modal'));
 
@@ -974,14 +776,6 @@ describe('TripDetail', () => {
     await user.click(screen.getByText('save-edit-day-note-modal'));
 
     expect(handleSaveDayNotes).toHaveBeenCalledWith(1, 'New notes');
-  });
-
-  it('does not render the move confirm dialog when showMoveConfirm is false', () => {
-    renderTripDetail();
-
-    expect(
-      screen.queryByText('確定要移動這張卡片嗎？'),
-    ).not.toBeInTheDocument();
   });
 
   it('renders the move confirm dialog and wires cancel/confirm when showMoveConfirm is true', async () => {

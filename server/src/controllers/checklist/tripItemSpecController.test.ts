@@ -1,8 +1,13 @@
-import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import * as tripRepo from '../../repositories/checklist/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import { invalidNameCases } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 
 import {
   addTripItemSpec,
@@ -10,17 +15,13 @@ import {
   updateTripItemSpec,
 } from './tripItemSpecController';
 
-vi.mock('../../repositories/checklist/trip');
-
-const invalidNameCases = [
-  { label: 'name is missing', body: {} },
-  { label: 'name is an empty string', body: { name: '' } },
-  { label: 'name is not a string', body: { name: 42 } },
-];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock('../../repositories/checklist/trip', () => ({
+  createTripItemSpec: vi.fn(),
+  deleteTripItemSpec: vi.fn(),
+  updateTripItemSpec: vi.fn(),
+  verifyItemBelongsToTrip: vi.fn(),
+  verifyTripSpecBelongsToItem: vi.fn(),
+}));
 
 describe('addTripItemSpec', () => {
   it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
@@ -205,53 +206,38 @@ describe('deleteTripItemSpec', () => {
 });
 
 describe('500 responses', () => {
-  interface FailureCase {
-    name: string;
-    handler: (req: Request, res: Response) => Promise<void>;
-    params?: Record<string, string>;
-    body?: unknown;
-    configureRejection: (error: Error) => void;
-    expectedError: string;
-  }
-
-  const failureCases: FailureCase[] = [
+  const failureCases: Returns500Case[] = [
     {
       name: 'addTripItemSpec',
       handler: addTripItemSpec,
-      params: { tripId: '1', itemId: '2' },
-      body: { name: 'Type-C charger' },
-      configureRejection: error =>
+      req: {
+        params: { tripId: '1', itemId: '2' },
+        body: { name: 'Type-C charger' },
+      },
+      arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to add spec',
     },
     {
       name: 'updateTripItemSpec',
       handler: updateTripItemSpec,
-      params: { tripId: '1', itemId: '2', specId: '3' },
-      body: { name: 'Type-C charger' },
-      configureRejection: error =>
+      req: {
+        params: { tripId: '1', itemId: '2', specId: '3' },
+        body: { name: 'Type-C charger' },
+      },
+      arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to update spec',
     },
     {
       name: 'deleteTripItemSpec',
       handler: deleteTripItemSpec,
-      params: { tripId: '1', itemId: '2', specId: '3' },
-      configureRejection: error =>
+      req: { params: { tripId: '1', itemId: '2', specId: '3' } },
+      arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to delete spec',
     },
   ];
 
-  it.each(failureCases)(
-    '$name returns 500 with its error message when the repository rejects',
-    async ({ handler, params, body, configureRejection, expectedError }) => {
-      configureRejection(new Error('database connection lost'));
-      const { req, res } = createMockReqRes({ params, body });
-
-      await handler(req, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(failureCases);
 });

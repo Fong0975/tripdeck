@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeTrip } from '@/test-utils/fixtures';
 import type { Trip } from '@/types';
 
 import ImportExportModal from './index';
@@ -34,14 +35,7 @@ vi.mock('./AutoBackupsTab', () => ({
   default: () => <div data-testid='auto-backups-tab' />,
 }));
 
-const trip: Trip = {
-  id: 1,
-  title: 'Trip A',
-  destination: null,
-  startDate: '2026-01-01',
-  endDate: '2026-01-05',
-  createdAt: '2026-01-01',
-};
+const trip = makeTrip({ title: 'Trip A' });
 
 describe('ImportExportModal', () => {
   it('shows the export tab by default, with the trips passed through', () => {
@@ -51,16 +45,6 @@ describe('ImportExportModal', () => {
     expect(screen.getByText('trips: 1')).toBeInTheDocument();
     expect(screen.queryByTestId('import-tab')).not.toBeInTheDocument();
     expect(screen.queryByTestId('auto-backups-tab')).not.toBeInTheDocument();
-  });
-
-  it('switches to the import tab', async () => {
-    const user = userEvent.setup();
-    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
-
-    await user.click(screen.getByText('匯入旅程'));
-
-    expect(screen.getByTestId('import-tab')).toBeInTheDocument();
-    expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
   });
 
   it('switches to the automatic backups tab', async () => {
@@ -73,10 +57,12 @@ describe('ImportExportModal', () => {
     expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
   });
 
-  it('switches back to the export tab', async () => {
+  it('switches to the import tab and back to the export tab', async () => {
     const user = userEvent.setup();
     render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
     await user.click(screen.getByText('匯入旅程'));
+    expect(screen.getByTestId('import-tab')).toBeInTheDocument();
+    expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
 
     await user.click(screen.getByText('匯出旅程'));
 

@@ -1,8 +1,13 @@
-import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import * as templateRepo from '../../repositories/checklist/template';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import { invalidNameCases } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 
 import {
   addCategory,
@@ -11,17 +16,12 @@ import {
   updateCategory,
 } from './templateCategoryController';
 
-vi.mock('../../repositories/checklist/template');
-
-const invalidNameCases = [
-  { label: 'name is missing', body: {} },
-  { label: 'name is an empty string', body: { name: '' } },
-  { label: 'name is not a string', body: { name: 42 } },
-];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock('../../repositories/checklist/template', () => ({
+  createCategory: vi.fn(),
+  deleteCategory: vi.fn(),
+  findTemplate: vi.fn(),
+  updateCategory: vi.fn(),
+}));
 
 describe('getTemplate', () => {
   it('returns 200 with the template', async () => {
@@ -118,59 +118,39 @@ describe('deleteCategory', () => {
 });
 
 describe('500 responses', () => {
-  interface FailureCase {
-    name: string;
-    handler: (req: Request, res: Response) => Promise<void>;
-    params?: Record<string, string>;
-    body?: unknown;
-    configureRejection: (error: Error) => void;
-    expectedError: string;
-  }
-
-  const failureCases: FailureCase[] = [
+  const failureCases: Returns500Case[] = [
     {
       name: 'getTemplate',
       handler: getTemplate,
-      configureRejection: error =>
+      arrange: error =>
         vi.mocked(templateRepo.findTemplate).mockRejectedValue(error),
       expectedError: 'Failed to fetch template',
     },
     {
       name: 'addCategory',
       handler: addCategory,
-      body: { name: 'Camping Gear' },
-      configureRejection: error =>
+      req: { body: { name: 'Camping Gear' } },
+      arrange: error =>
         vi.mocked(templateRepo.createCategory).mockRejectedValue(error),
       expectedError: 'Failed to add category',
     },
     {
       name: 'updateCategory',
       handler: updateCategory,
-      params: { catId: '1' },
-      body: { name: 'Camping Gear' },
-      configureRejection: error =>
+      req: { params: { catId: '1' }, body: { name: 'Camping Gear' } },
+      arrange: error =>
         vi.mocked(templateRepo.updateCategory).mockRejectedValue(error),
       expectedError: 'Failed to update category',
     },
     {
       name: 'deleteCategory',
       handler: deleteCategory,
-      params: { catId: '1' },
-      configureRejection: error =>
+      req: { params: { catId: '1' } },
+      arrange: error =>
         vi.mocked(templateRepo.deleteCategory).mockRejectedValue(error),
       expectedError: 'Failed to delete category',
     },
   ];
 
-  it.each(failureCases)(
-    '$name returns 500 with its error message when the repository rejects',
-    async ({ handler, params, body, configureRejection, expectedError }) => {
-      configureRejection(new Error('database connection lost'));
-      const { req, res } = createMockReqRes({ params, body });
-
-      await handler(req, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(failureCases);
 });

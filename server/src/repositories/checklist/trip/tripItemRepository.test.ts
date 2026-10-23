@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db, routeSql } from '../../../test-utils/dbMocks';
 
 import {
   createTripItem,
@@ -8,19 +10,14 @@ import {
   verifyItemBelongsToTrip,
 } from './tripItemRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 describe('tripItemRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('verifyItemBelongsToTrip', () => {
     it.each([
       { rows: [{ id: 1 }], expected: true },
@@ -101,12 +98,11 @@ describe('tripItemRepository', () => {
     };
 
     function mockSelectThenUpdate(row = CURRENT_ITEM) {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[row]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[row]]]],
+        [{ affectedRows: 1 }],
+      );
     }
 
     it('returns null when the item does not exist', async () => {
@@ -118,11 +114,6 @@ describe('tripItemRepository', () => {
     });
 
     it.each([
-      {
-        name: 'name omitted keeps the current value',
-        data: {},
-        expected: CURRENT_ITEM.name,
-      },
       {
         name: 'name provided as a non-empty string overrides the current value',
         data: { name: '新名稱' },
@@ -141,11 +132,12 @@ describe('tripItemRepository', () => {
       expect(result?.name).toBe(expected);
     });
 
-    it('keeps the current quantity when quantity is omitted from data', async () => {
+    it('keeps the current name and quantity when data is empty', async () => {
       mockSelectThenUpdate();
 
       const result = await updateTripItem(1, {});
 
+      expect(result?.name).toBe(CURRENT_ITEM.name);
       expect(result?.quantity).toBe(CURRENT_ITEM.quantity);
     });
 

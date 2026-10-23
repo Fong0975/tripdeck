@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db } from '../../../test-utils/dbMocks';
 
 import {
   createOccasion,
@@ -8,19 +10,14 @@ import {
   verifyOccasionBelongsToTrip,
 } from './tripOccasionRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 describe('tripOccasionRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('verifyOccasionBelongsToTrip', () => {
     it.each([
       { rows: [{ id: 1 }], expected: true },

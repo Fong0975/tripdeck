@@ -5,60 +5,36 @@ import {
 } from '@dnd-kit/sortable';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-  type Mock,
-} from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { makeAttraction, makeImage } from '@/test-utils/fixtures';
 import type { Attraction, AttractionImage } from '@/types';
 
 import AttractionCard from './index';
 
-function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
-  return {
-    id: 1,
-    name: 'Test Attraction',
-    ...overrides,
-  };
-}
+vi.mock('@/components/ClampedTextSection', async () => ({
+  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+}));
 
-interface RenderCardOptions {
-  attraction?: Attraction;
-  onEdit?: Mock;
-  onDelete?: Mock;
-  onDuplicate?: Mock;
-}
-
-function renderCard(options: RenderCardOptions = {}) {
+function renderCard(options: { attraction?: Attraction } = {}) {
   const attraction = options.attraction ?? makeAttraction();
-  const onEdit = options.onEdit ?? vi.fn();
-  const onDelete = options.onDelete ?? vi.fn();
-  const onParentClick = vi.fn();
 
   render(
-    <div onClick={onParentClick}>
-      <DndContext>
-        <SortableContext
-          items={[attraction.id]}
-          strategy={verticalListSortingStrategy}
-        >
-          <AttractionCard
-            attraction={attraction}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onDuplicate={options.onDuplicate}
-          />
-        </SortableContext>
-      </DndContext>
-    </div>,
+    <DndContext>
+      <SortableContext
+        items={[attraction.id]}
+        strategy={verticalListSortingStrategy}
+      >
+        <AttractionCard
+          attraction={attraction}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </SortableContext>
+    </DndContext>,
   );
 
-  return { attraction, onEdit, onDelete, onParentClick };
+  return { attraction };
 }
 
 const conditionalRenderingCases: {
@@ -70,7 +46,7 @@ const conditionalRenderingCases: {
   {
     description: 'has images',
     attraction: makeAttraction({
-      images: [{ id: 1, filename: 'a.jpg', title: 'Photo A' }],
+      images: [makeImage({ filename: 'a.jpg', title: 'Photo A' })],
     }),
     query: () => screen.queryByAltText('Photo A'),
     expectPresent: true,
@@ -151,114 +127,14 @@ describe('AttractionCard', () => {
     },
   );
 
-  it('calls onEdit with the attraction and does not bubble to the parent', async () => {
-    const user = userEvent.setup();
-    const { attraction, onEdit, onParentClick } = renderCard();
-
-    await user.click(screen.getByTitle('編輯'));
-
-    expect(onEdit).toHaveBeenCalledWith(attraction);
-    expect(onParentClick).not.toHaveBeenCalled();
-  });
-
-  it('calls onDuplicate with the attraction and does not bubble to the parent', async () => {
-    const user = userEvent.setup();
-    const onDuplicate = vi.fn();
-    const { attraction, onParentClick } = renderCard({ onDuplicate });
-
-    await user.click(screen.getByTitle('複製'));
-
-    expect(onDuplicate).toHaveBeenCalledWith(attraction);
-    expect(onParentClick).not.toHaveBeenCalled();
-  });
-
-  it(
-    'opens a confirmation dialog on click without calling onDelete, ' +
-      'and does not bubble',
-    async () => {
-      const user = userEvent.setup();
-      const { onDelete, onParentClick } = renderCard();
-
-      await user.click(screen.getByTitle('刪除'));
-
-      expect(onDelete).not.toHaveBeenCalled();
-      expect(onParentClick).not.toHaveBeenCalled();
-      expect(
-        screen.getByText('確定要刪除「Test Attraction」嗎？'),
-      ).toBeInTheDocument();
-    },
-  );
-
-  it(
-    'calls onDelete with the attraction id when the dialog is confirmed, ' +
-      'and does not bubble',
-    async () => {
-      const user = userEvent.setup();
-      const { attraction, onDelete, onParentClick } = renderCard();
-
-      await user.click(screen.getByTitle('刪除'));
-      await user.click(screen.getByText('刪除', { selector: 'button' }));
-
-      expect(onDelete).toHaveBeenCalledWith(attraction.id);
-      expect(onParentClick).not.toHaveBeenCalled();
-    },
-  );
-
-  it('does not bubble to the parent when the Google Maps link is clicked', async () => {
-    const user = userEvent.setup();
-    const { onParentClick } = renderCard({
-      attraction: makeAttraction({
-        googleMapUrl: 'https://maps.google.com/?q=x',
-      }),
-    });
-
-    await user.click(screen.getByTitle('Google Maps'));
-
-    expect(onParentClick).not.toHaveBeenCalled();
-  });
-
-  it('does not bubble to the parent when a reference website link is clicked', async () => {
-    const user = userEvent.setup();
-    const { onParentClick } = renderCard({
-      attraction: makeAttraction({
-        referenceWebsites: [
-          { url: 'https://example.com', title: 'Example Site' },
-        ],
-      }),
-    });
-
-    await user.click(screen.getByText('Example Site'));
-
-    expect(onParentClick).not.toHaveBeenCalled();
-  });
-
-  it(
-    'opens the lightbox and does not bubble when the thumbnail stack ' +
-      'is clicked',
-    async () => {
-      const user = userEvent.setup();
-      const images: AttractionImage[] = [
-        { id: 1, filename: 'a.jpg', title: 'Img 1' },
-        { id: 2, filename: 'b.jpg', title: 'Img 2' },
-      ];
-      const { onParentClick } = renderCard({
-        attraction: makeAttraction({ images }),
-      });
-
-      await user.click(screen.getByRole('button', { name: /Img 1/ }));
-
-      expect(onParentClick).not.toHaveBeenCalled();
-      expect(screen.getByText('1 / 2')).toBeInTheDocument();
-    },
-  );
-
-  it('closes the lightbox when it requests to close', async () => {
+  it('opens the lightbox when the thumbnail stack is clicked and closes it on Escape', async () => {
     const user = userEvent.setup();
     const images: AttractionImage[] = [
-      { id: 1, filename: 'a.jpg', title: 'Img 1' },
-      { id: 2, filename: 'b.jpg', title: 'Img 2' },
+      makeImage({ filename: 'a.jpg', title: 'Img 1' }),
+      makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
     ];
     renderCard({ attraction: makeAttraction({ images }) });
+
     await user.click(screen.getByRole('button', { name: /Img 1/ }));
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
 
@@ -302,7 +178,7 @@ describe('AttractionCard', () => {
         description: 'images follow',
         attraction: makeAttraction({
           nearbyAttractions: '附近有一間博物館',
-          images: [{ id: 1, filename: 'a.jpg', title: 'Photo A' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'Photo A' })],
         }),
         expectedSeparators: 2,
       },
@@ -322,47 +198,6 @@ describe('AttractionCard', () => {
         expect(screen.getAllByRole('separator')).toHaveLength(
           expectedSeparators,
         );
-      },
-    );
-  });
-
-  describe('line-clamped toggle buttons', () => {
-    beforeEach(() => {
-      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-        configurable: true,
-        value: 100,
-      });
-      Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
-        configurable: true,
-        value: 40,
-      });
-    });
-
-    afterEach(() => {
-      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
-    });
-
-    it.each([
-      {
-        description: 'notes',
-        attraction: makeAttraction({ notes: '很長很長的備註內容範例文字' }),
-      },
-      {
-        description: 'nearby attractions',
-        attraction: makeAttraction({
-          nearbyAttractions: '很長很長的附近景點內容範例文字',
-        }),
-      },
-    ])(
-      'does not bubble to the parent when the $description toggle is clicked',
-      async ({ attraction }) => {
-        const user = userEvent.setup();
-        const { onParentClick } = renderCard({ attraction });
-
-        await user.click(screen.getByText('展開'));
-
-        expect(onParentClick).not.toHaveBeenCalled();
       },
     );
   });

@@ -1,60 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { Trip } from '@/types';
+import { makeImage, makeTrip } from '@/test-utils/fixtures';
+import { fillDateField, selectFile, submitForm } from '@/test-utils/queries';
 import { createTrip, uploadTripImage } from '@/utils/storage';
 
 import AddTripModal from './AddTripModal';
 
-vi.mock('@/utils/storage', () => ({
-  createTrip: vi.fn(),
-  uploadTripImage: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 // Pin the timezone so the startDate -> endDate auto-calculation (which round
 // trips through Date/toISOString) produces a deterministic result.
 process.env.TZ = 'UTC';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  // jsdom does not implement the Blob URL APIs used to preview a staged file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
-
-// The staged-image <input type="file"> has no accessible label, so it can
-// only be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
-// The start/end date <input type="date"> fields have no <label htmlFor>
-// association in the source, so they can't be reached via getByLabelText —
-// querying by their `name` attribute is the most reliable option available.
-function fillDateField(container: HTMLElement, name: string, value: string) {
-  // eslint-disable-next-line testing-library/no-node-access
-  const input = container.querySelector(`input[name="${name}"]`)!;
-  fireEvent.change(input, { target: { value } });
-}
-
-// Some fixtures in this file deliberately set an endDate before the
-// endDate input's `min` (= startDate) to exercise the component's own
-// JS-level validation. Clicking the submit button would first run the
-// browser's native constraint validation and silently block the submit
-// event before it ever reaches React, so the form is submitted directly
-// instead — this exercises the same onSubmit handler without going
-// through that native gate.
-function submitForm(container: HTMLElement) {
-  // eslint-disable-next-line testing-library/no-node-access
-  const form = container.querySelector('form')!;
-  fireEvent.submit(form);
-}
 
 describe('AddTripModal', () => {
   it.each([
@@ -115,14 +76,11 @@ describe('AddTripModal', () => {
   });
 
   it('creates the trip and reports it to the parent on success', async () => {
-    const trip: Trip = {
-      id: 1,
+    const trip = makeTrip({
       title: 'My Trip',
       destination: 'Japan',
-      startDate: '2026-01-01',
       endDate: '2026-01-04',
-      createdAt: '2026-01-01',
-    };
+    });
     vi.mocked(createTrip).mockResolvedValue(trip);
     const onAdded = vi.fn();
     const { container } = render(
@@ -150,16 +108,9 @@ describe('AddTripModal', () => {
   });
 
   it('uploads staged images after creating the trip and reports them to the parent', async () => {
-    const trip: Trip = {
-      id: 1,
-      title: 'My Trip',
-      destination: null,
-      startDate: '2026-01-01',
-      endDate: '2026-01-04',
-      createdAt: '2026-01-01',
-    };
+    const trip = makeTrip({ title: 'My Trip', endDate: '2026-01-04' });
     vi.mocked(createTrip).mockResolvedValue(trip);
-    const newImage = { id: 5, filename: 'a.jpg', title: 'Cover' };
+    const newImage = makeImage({ id: 5, filename: 'a.jpg', title: 'Cover' });
     vi.mocked(uploadTripImage).mockResolvedValue(newImage);
     const onAdded = vi.fn();
     const user = userEvent.setup();
@@ -173,7 +124,7 @@ describe('AddTripModal', () => {
     fillDateField(container, 'startDate', '2026-01-01');
 
     const file = new File(['a'], 'a.jpg');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'Cover');
     await user.click(screen.getByText('加入圖片'));
 

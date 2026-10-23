@@ -1,56 +1,26 @@
-import { TextRun, type Paragraph } from 'docx';
+import type { Paragraph } from 'docx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Trip } from '@/types';
+import { textRuns } from '@/test-utils/docx';
+import { makeTrip } from '@/test-utils/fixtures';
 
 import { makeHeaderSection } from './headerSection';
 import { makeImageParagraphs } from './imageHelpers';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  HeadingLevel: { HEADING_1: 'Heading1' },
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 vi.mock('./imageHelpers', () => ({ makeImageParagraphs: vi.fn() }));
 
-function trip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: '東京行',
-    destination: '東京',
-    startDate: '2026-08-20',
-    endDate: '2026-08-22',
-    description: '第一次去東京',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-function textRuns(): string[] {
-  return vi
-    .mocked(TextRun)
-    .mock.calls.map(([options]) => (options as { text: string }).text);
-}
-
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(makeImageParagraphs).mockResolvedValue([]);
 });
 
 describe('makeHeaderSection', () => {
   it('always includes a HEADING_1 paragraph with the trip title', async () => {
-    const paragraphs = await makeHeaderSection(trip({ title: '東京行' }), 3);
+    const paragraphs = await makeHeaderSection(
+      makeTrip({ title: '東京行' }),
+      3,
+    );
 
     const heading = paragraphs.find(
       p =>
@@ -62,7 +32,7 @@ describe('makeHeaderSection', () => {
   });
 
   it('includes the total day count alongside the date range', async () => {
-    await makeHeaderSection(trip(), 3);
+    await makeHeaderSection(makeTrip(), 3);
 
     expect(textRuns().some(text => text.includes('( 3 天 )'))).toBe(true);
   });
@@ -77,7 +47,7 @@ describe('makeHeaderSection', () => {
   ])(
     'includes the destination paragraph only when destination is $description',
     async ({ value, expectParagraph }) => {
-      await makeHeaderSection(trip({ destination: value }), 3);
+      await makeHeaderSection(makeTrip({ destination: value }), 3);
 
       const matches = textRuns().filter(text => text === value);
       expect(matches).toHaveLength(expectParagraph ? 1 : 0);
@@ -96,7 +66,7 @@ describe('makeHeaderSection', () => {
   ])(
     'includes the description paragraph only when description is $description',
     async ({ value, expectParagraph }) => {
-      await makeHeaderSection(trip({ description: value }), 3);
+      await makeHeaderSection(makeTrip({ description: value }), 3);
 
       const matches = textRuns().filter(text => text === value);
       expect(matches).toHaveLength(expectParagraph ? 1 : 0);
@@ -118,7 +88,7 @@ describe('makeHeaderSection', () => {
   ])(
     'calls makeImageParagraphs once per trip image when $description',
     async ({ images, expectedCalls }) => {
-      await makeHeaderSection(trip({ images }), 3);
+      await makeHeaderSection(makeTrip({ images }), 3);
 
       expect(makeImageParagraphs).toHaveBeenCalledTimes(expectedCalls);
     },
@@ -135,7 +105,7 @@ describe('makeHeaderSection', () => {
       { id: 2, filename: 'b.jpg', title: 'B' },
     ];
 
-    const paragraphs = await makeHeaderSection(trip({ images }), 3);
+    const paragraphs = await makeHeaderSection(makeTrip({ images }), 3);
 
     expect(makeImageParagraphs).toHaveBeenNthCalledWith(1, images[0]);
     expect(makeImageParagraphs).toHaveBeenNthCalledWith(2, images[1]);
@@ -144,7 +114,7 @@ describe('makeHeaderSection', () => {
   });
 
   it('ends with a divider paragraph', async () => {
-    const paragraphs = await makeHeaderSection(trip(), 3);
+    const paragraphs = await makeHeaderSection(makeTrip(), 3);
 
     const last = paragraphs[paragraphs.length - 1] as unknown as {
       options: { border?: unknown };

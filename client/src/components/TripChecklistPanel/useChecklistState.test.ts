@@ -2,35 +2,33 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeTripChecklist,
+} from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 
 import { useChecklistState } from './useChecklistState';
 
-vi.mock('@/utils/storage', () => ({
-  getTripChecklist: vi.fn(),
-  setCheck: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 function makeChecklist(): TripChecklist {
-  return {
-    tripId: 1,
+  return makeTripChecklist({
     occasions: [{ id: 1, name: 'Occ A', checks: { 10: true } }],
     categories: [
-      {
-        id: 1,
+      makeChecklistCategory({
         name: 'Cat A',
         items: [
-          { id: 10, name: 'Item A' },
-          { id: 20, name: 'Item B' },
+          makeChecklistItem({ id: 10, name: 'Item A' }),
+          makeChecklistItem({ id: 20, name: 'Item B' }),
         ],
-      },
+      }),
     ],
-  };
+  });
 }
 
 async function renderLoaded(onDirtyChange = vi.fn()) {
@@ -40,7 +38,6 @@ async function renderLoaded(onDirtyChange = vi.fn()) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(getTripChecklist).mockResolvedValue(makeChecklist());
   vi.mocked(setCheck).mockResolvedValue(undefined);
 });
@@ -62,25 +59,13 @@ describe('useChecklistState', () => {
     expect(result.current.getCheck(1, 20)).toBe(false);
   });
 
-  it('handleToggleCheck flips the local value seen by getCheck', async () => {
+  it('handleToggleCheck flips the local value seen by getCheck and marks the state dirty', async () => {
     const { result } = await renderLoaded();
+    expect(result.current.isDirty).toBe(false);
 
     act(() => result.current.handleToggleCheck(1, 10));
 
     expect(result.current.getCheck(1, 10)).toBe(false);
-  });
-
-  it('isDirty is false with no local edits', async () => {
-    const { result } = await renderLoaded();
-
-    expect(result.current.isDirty).toBe(false);
-  });
-
-  it('isDirty is true once a local edit differs from the saved value', async () => {
-    const { result } = await renderLoaded();
-
-    act(() => result.current.handleToggleCheck(1, 10));
-
     expect(result.current.isDirty).toBe(true);
   });
 

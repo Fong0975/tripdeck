@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../attraction/attractionCrud');
 vi.mock('../connectionRepository');
 
+import { db } from '../../test-utils/dbMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
 import * as attractionCrud from '../attraction/attractionCrud';
 import * as connectionRepo from '../connectionRepository';
 
@@ -25,54 +27,31 @@ vi.mock('../../middleware/upload', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 
-const mockPoolExecute = vi.fn();
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnQuery = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn().mockResolvedValue({
-  beginTransaction: mockConnBeginTransaction,
-  execute: mockConnExecute,
-  query: mockConnQuery,
-  commit: mockConnCommit,
-  rollback: mockConnRollback,
-  release: mockConnRelease,
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
 });
 
-vi.mock('../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-    getConnection: () => mockGetConnection(),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
+const mockConnBeginTransaction = db.conn.beginTransaction;
+const mockConnExecute = db.conn.execute;
+const mockConnQuery = db.conn.query;
+const mockConnCommit = db.conn.commit;
+const mockConnRollback = db.conn.rollback;
+const mockConnRelease = db.conn.release;
+const mockGetConnection = db.pool.getConnection;
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
 describe('tripCrud', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetTripImages.mockResolvedValue([]);
     mockGetTripImagesBatch.mockResolvedValue(new Map());
     mockGetDayImagesBatch.mockResolvedValue(new Map());
     mockGetAttractionImagesBatch.mockResolvedValue(new Map());
-    mockGetConnection.mockResolvedValue({
-      beginTransaction: mockConnBeginTransaction,
-      execute: mockConnExecute,
-      query: mockConnQuery,
-      commit: mockConnCommit,
-      rollback: mockConnRollback,
-      release: mockConnRelease,
-    });
   });
 
   // Shared date-field fixtures exercising both branches of the private
@@ -163,36 +142,34 @@ describe('tripCrud', () => {
   });
 
   describe('findById', () => {
-    it.each(dateFieldCases)(
-      'maps a trip row with $label date fields',
-      async ({ dateFields, expected }) => {
-        const row = {
-          id: 7,
-          title: 'Trip B',
-          destination: null,
-          description: null,
-          ...dateFields,
-        };
-        mockPoolExecute.mockResolvedValueOnce([[row]]);
+    it('maps a trip row to a response with formatted dates', async () => {
+      const { dateFields, expected } = dateFieldCases[0];
+      const row = {
+        id: 7,
+        title: 'Trip B',
+        destination: null,
+        description: null,
+        ...dateFields,
+      };
+      mockPoolExecute.mockResolvedValueOnce([[row]]);
 
-        const result = await findById(7);
+      const result = await findById(7);
 
-        expect(result).toEqual({
-          id: 7,
-          title: 'Trip B',
-          destination: null,
-          startDate: expected.startDate,
-          endDate: expected.endDate,
-          description: null,
-          createdAt: expected.createdAt,
-          images: [],
-        });
-        expect(mockPoolExecute).toHaveBeenCalledWith(
-          'SELECT * FROM trips WHERE id = ?',
-          [7],
-        );
-      },
-    );
+      expect(result).toEqual({
+        id: 7,
+        title: 'Trip B',
+        destination: null,
+        startDate: expected.startDate,
+        endDate: expected.endDate,
+        description: null,
+        createdAt: expected.createdAt,
+        images: [],
+      });
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'SELECT * FROM trips WHERE id = ?',
+        [7],
+      );
+    });
 
     it('returns null when the trip does not exist', async () => {
       mockPoolExecute.mockResolvedValueOnce([[]]);
@@ -228,53 +205,40 @@ describe('tripCrud', () => {
   });
 
   describe('create', () => {
-    it.each([
-      {
-        label: 'single-day trip',
-        startDate: '2026-07-01',
-        endDate: '2026-07-01',
-        expectedDates: ['2026-07-01'],
-      },
-      {
-        label: 'multi-day trip',
-        startDate: '2026-07-01',
-        endDate: '2026-07-03',
-        expectedDates: ['2026-07-01', '2026-07-02', '2026-07-03'],
-      },
-    ])(
-      'inserts one trip_days row per day for a $label',
-      async ({ startDate, endDate, expectedDates }) => {
-        mockConnExecute.mockImplementation((sql: string) => {
-          if (sql.includes('INSERT INTO trips')) {
-            return Promise.resolve([{ insertId: 42 }]);
-          }
-          return Promise.resolve([{ affectedRows: 1 }]);
-        });
-        mockPoolExecute.mockResolvedValueOnce([
-          [
-            {
-              id: 42,
-              title: 'New Trip',
-              destination: null,
-              start_date: startDate,
-              end_date: endDate,
-              description: null,
-              created_at: '2026-07-01T00:00:00.000Z',
-            },
-          ],
-        ]);
+    it('inserts one trip_days row per day for a multi-day trip', async () => {
+      const startDate = '2026-07-01';
+      const endDate = '2026-07-03';
+      const expectedDates = ['2026-07-01', '2026-07-02', '2026-07-03'];
+      mockConnExecute.mockImplementation((sql: string) => {
+        if (sql.includes('INSERT INTO trips')) {
+          return Promise.resolve([{ insertId: 42 }]);
+        }
+        return Promise.resolve([{ affectedRows: 1 }]);
+      });
+      mockPoolExecute.mockResolvedValueOnce([
+        [
+          {
+            id: 42,
+            title: 'New Trip',
+            destination: null,
+            start_date: startDate,
+            end_date: endDate,
+            description: null,
+            created_at: '2026-07-01T00:00:00.000Z',
+          },
+        ],
+      ]);
 
-        await create({ title: 'New Trip', startDate, endDate });
+      await create({ title: 'New Trip', startDate, endDate });
 
-        const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
-          (sql as string).includes('INSERT INTO trip_days'),
-        );
-        expect(dayInserts).toHaveLength(expectedDates.length);
-        dayInserts.forEach(([, params], index) => {
-          expect(params).toEqual([42, index + 1, expectedDates[index]]);
-        });
-      },
-    );
+      const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO trip_days'),
+      );
+      expect(dayInserts).toHaveLength(expectedDates.length);
+      dayInserts.forEach(([, params], index) => {
+        expect(params).toEqual([42, index + 1, expectedDates[index]]);
+      });
+    });
 
     it('commits the transaction and returns the freshly selected trip on success', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
@@ -302,6 +266,12 @@ describe('tripCrud', () => {
       });
 
       expect(mockConnBeginTransaction).toHaveBeenCalled();
+      const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('INSERT INTO trip_days'),
+      );
+      expect(dayInserts.map(([, params]) => params)).toEqual([
+        [42, 1, '2026-07-01'],
+      ]);
       expect(mockConnCommit).toHaveBeenCalled();
       expect(mockConnRollback).not.toHaveBeenCalled();
       expect(mockPoolExecute).toHaveBeenCalledWith(
@@ -399,6 +369,8 @@ describe('tripCrud', () => {
       mockConnQuery.mockResolvedValueOnce([
         [{ id: 101 }, { id: 102 }, { id: 103 }],
       ]);
+      const images = [{ id: 9, filename: 'a.jpg', title: 'A' }];
+      mockGetTripImages.mockResolvedValueOnce(images);
 
       const result = await update(10, {
         title: 'New Title',
@@ -439,27 +411,6 @@ describe('tripCrud', () => {
       expect(mockConnCommit).toHaveBeenCalled();
       expect(mockConnRollback).not.toHaveBeenCalled();
       expect(result?.title).toBe('New Title');
-    });
-
-    it('attaches freshly-fetched images to the updated trip', async () => {
-      mockPoolExecute
-        .mockResolvedValueOnce([[tripRow()]]) // initial fetch
-        .mockResolvedValueOnce([
-          [
-            dayRow(101, 1, '2026-08-01'),
-            dayRow(102, 2, '2026-08-02'),
-            dayRow(103, 3, '2026-08-03'),
-          ],
-        ]) // trip_days
-        .mockResolvedValueOnce([[tripRow()]]); // fresh fetch
-      mockConnQuery.mockResolvedValueOnce([
-        [{ id: 101 }, { id: 102 }, { id: 103 }],
-      ]);
-      const images = [{ id: 9, filename: 'a.jpg', title: 'A' }];
-      mockGetTripImages.mockResolvedValueOnce(images);
-
-      const result = await update(10, { title: 'New Title' });
-
       expect(mockGetTripImages).toHaveBeenCalledWith(10);
       expect(result?.images).toEqual(images);
     });
@@ -754,23 +705,17 @@ describe('tripCrud', () => {
       vi.mocked(connectionRepo.deleteById).mockResolvedValue(true);
     });
 
-    it.each([
-      { affectedRows: 1, expected: true },
-      { affectedRows: 0, expected: false },
-    ])(
-      'returns $expected when affectedRows is $affectedRows',
-      async ({ affectedRows, expected }) => {
-        queueDeleteLookups({ affectedRows });
+    it('returns false when no trip row was deleted', async () => {
+      queueDeleteLookups({ affectedRows: 0 });
 
-        const result = await deleteById(5);
+      const result = await deleteById(5);
 
-        expect(result).toBe(expected);
-        expect(mockPoolExecute).toHaveBeenCalledWith(
-          'DELETE FROM trips WHERE id = ?',
-          [5],
-        );
-      },
-    );
+      expect(result).toBe(false);
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'DELETE FROM trips WHERE id = ?',
+        [5],
+      );
+    });
 
     it("deletes the trip's own images on disk when the trip is deleted", async () => {
       mockGetTripImages.mockResolvedValueOnce([
@@ -782,6 +727,11 @@ describe('tripCrud', () => {
       const result = await deleteById(5);
 
       expect(result).toBe(true);
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'DELETE FROM trips WHERE id = ?',
+        [5],
+      );
+      expect(connectionRepo.deleteById).not.toHaveBeenCalled();
       expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('a.jpg');
       expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('b.jpg');
     });
@@ -849,14 +799,6 @@ describe('tripCrud', () => {
       const tripDeleteOrder =
         mockPoolExecute.mock.invocationCallOrder[tripDeleteCallIndex];
       expect(connectionDeleteOrder).toBeLessThan(tripDeleteOrder);
-    });
-
-    it('does not call connectionRepo.deleteById when the trip has no connections', async () => {
-      queueDeleteLookups({ affectedRows: 1 });
-
-      await deleteById(5);
-
-      expect(connectionRepo.deleteById).not.toHaveBeenCalled();
     });
   });
 });

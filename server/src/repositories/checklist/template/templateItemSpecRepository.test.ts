@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db, routeSql } from '../../../test-utils/dbMocks';
 
 import {
   createItemSpec,
@@ -7,13 +9,12 @@ import {
   verifySpecBelongsToItem,
 } from './templateItemSpecRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 const CURRENT_SPEC_ROW = {
   id: 1,
@@ -23,10 +24,6 @@ const CURRENT_SPEC_ROW = {
 };
 
 describe('templateItemSpecRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('createItemSpec', () => {
     it('returns null and issues no INSERT when the item does not exist', async () => {
       mockPoolExecute.mockResolvedValue([[]]);
@@ -38,12 +35,11 @@ describe('templateItemSpecRepository', () => {
     });
 
     it('inserts a spec and defaults storage_location to null when omitted', async () => {
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if ((sql as string).trim().startsWith('SELECT')) {
-          return Promise.resolve([[{ id: 7 }]]);
-        }
-        return Promise.resolve([{ insertId: 20 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[{ id: 7 }]]]],
+        [{ insertId: 20 }],
+      );
 
       const result = await createItemSpec(7, { name: 'Spec A' });
 
@@ -57,12 +53,11 @@ describe('templateItemSpecRepository', () => {
 
   describe('updateItemSpec', () => {
     function mockSpecSelectThenUpdate(curRow = CURRENT_SPEC_ROW) {
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if ((sql as string).trim().startsWith('SELECT')) {
-          return Promise.resolve([[curRow]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[curRow]]]],
+        [{ affectedRows: 1 }],
+      );
     }
 
     it('returns null when the spec does not exist', async () => {

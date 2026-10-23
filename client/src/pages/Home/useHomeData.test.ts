@@ -1,38 +1,17 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { Trip } from '@/types';
+import { makeTrip } from '@/test-utils/fixtures';
 import { deleteTrip, getTrips } from '@/utils/storage';
 
 import { useHomeData } from './useHomeData';
 
-vi.mock('@/utils/storage', () => ({
-  getTrips: vi.fn(),
-  deleteTrip: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
-
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
+vi.mock('@/lib/toast');
 
 describe('useHomeData', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('starts in a loading state and loads trips once getTrips resolves', async () => {
     const trips = [makeTrip()];
     vi.mocked(getTrips).mockResolvedValue(trips);

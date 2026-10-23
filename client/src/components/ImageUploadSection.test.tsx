@@ -1,30 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { AttractionImage } from '@/types';
+import { makeImage } from '@/test-utils/fixtures';
+import { getFileInput, selectFile } from '@/test-utils/queries';
+import { setupUser } from '@/test-utils/render';
 
 import ImageUploadSection from './ImageUploadSection';
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-const images: AttractionImage[] = [
-  { id: 1, filename: 'a.jpg', title: 'Photo A' },
-  { id: 2, filename: 'b.jpg', title: 'Photo B' },
+const images = [
+  makeImage({ id: 1, filename: 'a.jpg', title: 'Photo A' }),
+  makeImage({ id: 2, filename: 'b.jpg', title: 'Photo B' }),
 ];
-
-// The upload <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
-function selectFile(container: HTMLElement, file: File) {
-  fireEvent.change(getFileInput(container), { target: { files: [file] } });
-}
 
 // The lightbox's close button (rendered via createPortal into document.body)
 // has no accessible label; the top-4 class is unique to it among the
@@ -32,12 +21,6 @@ function selectFile(container: HTMLElement, file: File) {
 function getLightboxCloseButton(): HTMLElement {
   return document.body.querySelector('.top-4') as HTMLElement;
 }
-
-beforeEach(() => {
-  // jsdom does not implement the Blob URL APIs used to preview a pending file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
 
 describe('ImageUploadSection', () => {
   it('shows the add-image trigger with no images', () => {
@@ -76,7 +59,7 @@ describe('ImageUploadSection', () => {
 
   it('requires a title before calling onUpload', async () => {
     const onUpload = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -90,7 +73,7 @@ describe('ImageUploadSection', () => {
 
   it('calls onUpload and clears the form on success', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -110,7 +93,7 @@ describe('ImageUploadSection', () => {
 
   it('shows an error and keeps the form when onUpload rejects', async () => {
     const onUpload = vi.fn().mockRejectedValue(new Error('upload failed'));
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
@@ -133,7 +116,7 @@ describe('ImageUploadSection', () => {
 
   it("calls onDelete with the clicked thumbnail's image id", async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(
       <ImageUploadSection
         images={images}
@@ -147,23 +130,8 @@ describe('ImageUploadSection', () => {
     expect(onDelete).toHaveBeenCalledWith(1);
   });
 
-  it('opens the lightbox when an existing thumbnail is clicked', async () => {
-    const user = userEvent.setup();
-    render(
-      <ImageUploadSection
-        images={images}
-        onUpload={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByAltText('Photo A'));
-
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
-  });
-
-  it('closes the lightbox when its close button is clicked', async () => {
-    const user = userEvent.setup();
+  it('opens the lightbox when an existing thumbnail is clicked and closes it via its close button', async () => {
+    const user = setupUser();
     render(
       <ImageUploadSection
         images={images}

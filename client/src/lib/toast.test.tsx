@@ -1,16 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { toast } from 'sonner';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from './toast';
 
 vi.mock('sonner', () => ({
   toast: { custom: vi.fn(), dismiss: vi.fn() },
 }));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('showToast', () => {
   it.each([

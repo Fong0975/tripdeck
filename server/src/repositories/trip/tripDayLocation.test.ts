@@ -1,28 +1,24 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db, routeSql } from '../../test-utils/dbMocks';
 
 import { addLocation, deleteLocation, updateLocation } from './tripDayLocation';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 describe('tripDayLocation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('addLocation', () => {
     it('derives sortOrder from the COUNT(*) query and trims the returned name', async () => {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ cnt: 3 }]]);
-        }
-        return Promise.resolve([{ insertId: 55 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [['COUNT(*)', [[{ cnt: 3 }]]]],
+        [{ insertId: 55 }],
+      );
 
       const result = await addLocation(10, { name: '  Place X  ' });
 

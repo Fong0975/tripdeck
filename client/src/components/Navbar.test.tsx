@@ -1,19 +1,16 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTheme } from '@/hooks/useTheme';
+import { makeJsonResponse } from '@/test-utils/fixtures';
 
 import Navbar from './Navbar';
 
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: vi.fn(),
 }));
-
-function makeFetchResponse(body: unknown): Response {
-  return { json: () => Promise.resolve(body) } as unknown as Response;
-}
 
 function renderNavbar() {
   return render(
@@ -27,7 +24,7 @@ beforeEach(() => {
   vi.mocked(useTheme).mockReturnValue({ theme: 'light', toggle: vi.fn() });
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue(makeFetchResponse({ version: '9.9.9' })),
+    vi.fn().mockResolvedValue(makeJsonResponse({ version: '9.9.9' })),
   );
 });
 
@@ -89,7 +86,9 @@ describe('Navbar', () => {
     );
     renderNavbar();
 
-    await screen.findByText('Tripdeck');
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    // Let the rejected request and the component's catch handler settle.
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(screen.queryByText(/API v/)).not.toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { listAutoBackups } from '@/api/backup';
 import { showToast } from '@/lib/toast';
@@ -14,13 +14,7 @@ vi.mock('@/api/backup', () => ({
   ),
 }));
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock('@/lib/toast');
 
 describe('AutoBackupsTab', () => {
   it('loads and renders the automatic backup list on mount', async () => {

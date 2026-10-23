@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+} from '@/test-utils/fixtures';
 import type { ChecklistCategory } from '@/types';
 
 import CategoryCard from './CategoryCard';
@@ -9,21 +14,20 @@ import CategoryCard from './CategoryCard';
 function makeCategory(
   overrides: Partial<ChecklistCategory> = {},
 ): ChecklistCategory {
-  return {
-    id: 1,
+  return makeChecklistCategory({
     name: 'Category A',
     items: [
-      {
+      makeChecklistItem({
         id: 10,
         name: 'Item A',
         quantity: 2,
         notes: 'note',
         storage_location: '託運',
         specs: [],
-      },
+      }),
     ],
     ...overrides,
-  };
+  });
 }
 
 describe('CategoryCard', () => {
@@ -109,7 +113,9 @@ describe('CategoryCard', () => {
     const user = userEvent.setup();
     render(
       <CategoryCard
-        category={makeCategory({ items: [{ id: 10, name: 'Item A' }] })}
+        category={makeCategory({
+          items: [makeChecklistItem({ id: 10, name: 'Item A' })],
+        })}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
       />,
@@ -125,14 +131,14 @@ describe('CategoryCard', () => {
       <CategoryCard
         category={makeCategory({
           items: [
-            {
+            makeChecklistItem({
               id: 10,
               name: 'Item A',
               specs: [
-                { id: 100, name: 'Spec A', storage_location: null },
-                { id: 101, name: 'Spec B', storage_location: null },
+                makeChecklistSpec({ id: 100, name: 'Spec A' }),
+                makeChecklistSpec({ id: 101, name: 'Spec B' }),
               ],
-            },
+            }),
           ],
         })}
         onEdit={vi.fn()}
@@ -153,11 +159,17 @@ describe('CategoryCard', () => {
       <CategoryCard
         category={makeCategory({
           items: [
-            {
+            makeChecklistItem({
               id: 10,
               name: 'Item A',
-              specs: [{ id: 100, name: 'Spec A', storage_location: '託運' }],
-            },
+              specs: [
+                makeChecklistSpec({
+                  id: 100,
+                  name: 'Spec A',
+                  storage_location: '託運',
+                }),
+              ],
+            }),
           ],
         })}
         onEdit={vi.fn()}

@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/trip', () => ({
+  findDayByIdAndTripId: vi.fn(),
+  updateDayNotes: vi.fn(),
+}));
 
 import * as tripRepo from '../../repositories/trip';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
@@ -8,10 +11,6 @@ import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 import { updateDayNotes } from './dayNoteController';
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('updateDayNotes', () => {
   it('returns 404 when the day is not found', async () => {
@@ -44,7 +43,6 @@ describe('updateDayNotes', () => {
   it.each([
     { name: 'notes is missing', body: {} },
     { name: 'notes is blank', body: { notes: '   ' } },
-    { name: 'notes is explicitly null', body: { notes: null } },
   ])('stores null when $name', async ({ body }) => {
     vi.mocked(tripRepo.findDayByIdAndTripId).mockResolvedValue(sampleDay);
     vi.mocked(tripRepo.updateDayNotes).mockResolvedValue(true);

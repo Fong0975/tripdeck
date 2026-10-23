@@ -1,10 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/trip', () => ({
+  addLocation: vi.fn(),
+  deleteLocation: vi.fn(),
+  findById: vi.fn(),
+  findDayByIdAndTripId: vi.fn(),
+  updateLocation: vi.fn(),
+}));
 
 import * as tripRepo from '../../repositories/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
-import type { DayLocation, TripResponse } from '../../types/trip';
+import { makeTrip } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
+import type { DayLocation } from '../../types/trip';
 
 import {
   addDayLocation,
@@ -12,16 +24,7 @@ import {
   updateDayLocation,
 } from './dayLocationController';
 
-const sampleTrip: TripResponse = {
-  id: 1,
-  title: 'Kyoto Trip',
-  destination: 'Kyoto',
-  startDate: '2024-05-10',
-  endDate: '2024-05-12',
-  description: null,
-  createdAt: '2024-01-01T00:00:00.000Z',
-  images: [],
-};
+const sampleTrip = makeTrip();
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -36,10 +39,6 @@ function expectNoContent(
   expect(res.status).toHaveBeenCalledWith(204);
   expect(res.send).toHaveBeenCalled();
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('Day locations', () => {
   describe('addDayLocation', () => {
@@ -187,18 +186,7 @@ describe('Day locations', () => {
 });
 
 describe('500 error handling', () => {
-  const rejection = new Error('unexpected failure');
-
-  const cases: Array<{
-    name: string;
-    handler: (
-      req: Parameters<typeof addDayLocation>[0],
-      res: Parameters<typeof addDayLocation>[1],
-    ) => Promise<void>;
-    req: Parameters<typeof createMockReqRes>[0];
-    arrange: () => void;
-    expectedError: string;
-  }> = [
+  const cases: Returns500Case[] = [
     {
       name: 'addDayLocation',
       handler: addDayLocation,
@@ -206,8 +194,8 @@ describe('500 error handling', () => {
         params: { tripId: '1', dayId: '10' },
         body: { name: 'Kyoto Station' },
       },
-      arrange: () =>
-        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
       expectedError: 'Failed to add location',
     },
     {
@@ -217,27 +205,17 @@ describe('500 error handling', () => {
         params: { tripId: '1', locationId: '300' },
         body: { name: 'Updated Location' },
       },
-      arrange: () => vi.mocked(tripRepo.findById).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
       expectedError: 'Failed to update location',
     },
     {
       name: 'deleteDayLocation',
       handler: deleteDayLocation,
       req: { params: { tripId: '1', locationId: '300' } },
-      arrange: () => vi.mocked(tripRepo.findById).mockRejectedValue(rejection),
+      arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
       expectedError: 'Failed to delete location',
     },
   ];
 
-  it.each(cases)(
-    'returns 500 when $name encounters an unexpected error',
-    async ({ handler, req, arrange, expectedError }) => {
-      arrange();
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await handler(mockReq, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(cases);
 });

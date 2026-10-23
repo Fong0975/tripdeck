@@ -54,3 +54,12 @@ export async function fetchDailyWeather(
   }
   return result;
 }
+
+/**
+ * Test-only: clears the session result cache and the memoized weather-enabled
+ * promise so each test starts from a clean module state.
+ */
+export function __resetCacheForTests(): void {
+  _cache.clear();
+  _enabled = null;
+}

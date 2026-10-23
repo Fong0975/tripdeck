@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { makeTrip } from '@/test-utils/fixtures';
 import type { Trip } from '@/types';
 
 import { useHomeData } from './useHomeData';
@@ -24,14 +25,7 @@ vi.mock('./ChecklistSection', () => ({
   default: () => <div>checklist-section</div>,
 }));
 
-const sampleTrip: Trip = {
-  id: 1,
-  title: 'Trip A',
-  destination: null,
-  startDate: '2026-01-01',
-  endDate: '2026-01-05',
-  createdAt: '2026-01-01',
-};
+const sampleTrip = makeTrip({ title: 'Trip A' });
 
 vi.mock('./TripList', () => ({
   default: ({
@@ -72,18 +66,7 @@ vi.mock('@/components/AddTripModal', () => ({
     <div>
       <span>add-trip-modal</span>
       <button onClick={onClose}>trigger-close</button>
-      <button
-        onClick={() =>
-          onAdded({
-            id: 9,
-            title: 'New Trip',
-            destination: null,
-            startDate: '2026-01-01',
-            endDate: '2026-01-05',
-            createdAt: '2026-01-01',
-          })
-        }
-      >
+      <button onClick={() => onAdded(makeTrip({ id: 9, title: 'New Trip' }))}>
         trigger-added
       </button>
     </div>
@@ -141,7 +124,6 @@ function makeHomeData(overrides: Partial<ReturnType<typeof useHomeData>> = {}) {
 
 describe('Home', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(useHomeData).mockReturnValue(makeHomeData());
   });
 
@@ -158,14 +140,7 @@ describe('Home', () => {
   });
 
   it('passes loading and trips from useHomeData through to TripList', () => {
-    const trip: Trip = {
-      id: 1,
-      title: 'Trip A',
-      destination: null,
-      startDate: '2026-01-01',
-      endDate: '2026-01-05',
-      createdAt: '2026-01-01',
-    };
+    const trip = makeTrip({ title: 'Trip A' });
     vi.mocked(useHomeData).mockReturnValue(
       makeHomeData({ trips: [trip], loading: true }),
     );

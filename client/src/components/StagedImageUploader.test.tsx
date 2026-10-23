@@ -1,24 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { getFileInput, selectFile } from '@/test-utils/queries';
+import { setupUser } from '@/test-utils/render';
 
 import StagedImageUploader from './StagedImageUploader';
-
-beforeEach(() => {
-  // jsdom does not implement the Blob URL APIs used to preview a staged file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
-
-// The staging <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
-function stageFile(container: HTMLElement, file: File) {
-  fireEvent.change(getFileInput(container), { target: { files: [file] } });
-}
 
 describe('StagedImageUploader', () => {
   it('shows the add-image trigger and no thumbnails initially', () => {
@@ -42,7 +28,7 @@ describe('StagedImageUploader', () => {
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
 
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
     expect(screen.getByText('加入圖片')).toBeInTheDocument();
@@ -50,11 +36,11 @@ describe('StagedImageUploader', () => {
   });
 
   it('shows a required-title error when confirming without a title', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     await user.click(screen.getByText('加入圖片'));
 
@@ -63,12 +49,12 @@ describe('StagedImageUploader', () => {
 
   it('stages the image and reports it once a title is provided', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
     const file = new File(['a'], 'a.jpg');
-    stageFile(container, file);
+    selectFile(container, file);
 
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
@@ -83,11 +69,11 @@ describe('StagedImageUploader', () => {
 
   it('clears the pending file without staging when the X button is clicked', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     // The pending-file preview's clear button has no accessible name, so
     // it is identified by position: it's the only button besides the
@@ -100,11 +86,11 @@ describe('StagedImageUploader', () => {
 
   it('removes a staged image and reports the updated list', async () => {
     const onImagesChange = vi.fn();
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
       'My Photo',
@@ -121,11 +107,11 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
-    stageFile(container, new File(['b'], 'b.jpg'));
+    selectFile(container, new File(['b'], 'b.jpg'));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
@@ -145,7 +131,7 @@ describe('StagedImageUploader', () => {
   });
 
   it('opens the file picker when the add-image button is clicked', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );

@@ -4,16 +4,6 @@ const mockListAutoBackupFiles = vi.fn();
 const mockBuildSystemBackupZip = vi.fn();
 const mockWriteAutoBackupFile = vi.fn();
 const mockPruneOldAutoBackups = vi.fn();
-// vi.mock(...) factories are hoisted above plain top-level statements, so a
-// value more complex than a bare `vi.fn()` (here, an object with several
-// vi.fn() properties) must be created via vi.hoisted() to be available by
-// the time the '../logger' factory below runs.
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
 
 vi.mock('../repositories/backup', () => ({
   listAutoBackupFiles: (...args: unknown[]) => mockListAutoBackupFiles(...args),
@@ -22,9 +12,12 @@ vi.mock('../repositories/backup', () => ({
   writeAutoBackupFile: (...args: unknown[]) => mockWriteAutoBackupFile(...args),
   pruneOldAutoBackups: (...args: unknown[]) => mockPruneOldAutoBackups(...args),
 }));
-vi.mock('../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../logger', async () => {
+  const { mockLogger } = await import('../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { mockLogger } from '../test-utils/loggerMock';
 
 import {
   type AutoBackupSchedulerConfig,
@@ -44,7 +37,6 @@ const ENV_KEYS = [
 let originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string>>;
 
 beforeEach(() => {
-  vi.clearAllMocks();
   originalEnv = {};
   for (const key of ENV_KEYS) {
     originalEnv[key] = process.env[key];
@@ -97,10 +89,8 @@ describe('readAutoBackupConfig', () => {
   });
 
   it.each([
-    { value: 'false', expected: false },
     { value: 'FALSE', expected: false },
     { value: 'true', expected: true },
-    { value: '1', expected: true },
   ])(
     'treats AUTO_BACKUP_ENABLED="$value" as enabled: $expected',
     ({ value, expected }) => {

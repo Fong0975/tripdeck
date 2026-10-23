@@ -1,47 +1,27 @@
-import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../logger', async () => {
+  const { mockLogger } = await import('../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { createMockReqRes } from '../test-utils/httpMocks';
+import { mockLogger } from '../test-utils/loggerMock';
 
 import { errorHandler } from './errorHandler';
 
-function createMockReqRes(): {
-  req: Request;
-  res: Response;
-  next: NextFunction;
-} {
-  const req = {
+function createErrorReqRes() {
+  return createMockReqRes({
     method: 'POST',
     originalUrl: '/api/trips/1/images',
     params: { tripId: '1' },
-  } as unknown as Request;
-
-  const res = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-  } as unknown as Response;
-
-  const next = vi.fn() as NextFunction;
-
-  return { req, res, next };
+  });
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('errorHandler', () => {
   it('logs a WARN and returns 400 for a MulterError', () => {
-    const { req, res, next } = createMockReqRes();
+    const { req, res, next } = createErrorReqRes();
     const err = new multer.MulterError('LIMIT_FILE_SIZE', 'image');
 
     errorHandler(err, req, res, next);
@@ -60,7 +40,7 @@ describe('errorHandler', () => {
   });
 
   it('logs an ERROR and returns 500 for any other error', () => {
-    const { req, res, next } = createMockReqRes();
+    const { req, res, next } = createErrorReqRes();
     const err = new Error('boom');
 
     errorHandler(err, req, res, next);
@@ -82,7 +62,7 @@ describe('errorHandler', () => {
   });
 
   it('never calls next(), since it always terminates the response itself', () => {
-    const { req, res, next } = createMockReqRes();
+    const { req, res, next } = createErrorReqRes();
 
     errorHandler(new Error('boom'), req, res, next);
 

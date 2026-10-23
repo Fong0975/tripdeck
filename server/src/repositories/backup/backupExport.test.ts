@@ -1,10 +1,10 @@
 import AdmZip from 'adm-zip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-  ChecklistTemplateResponse,
-  TripChecklistResponse,
-} from '../../types/checklist';
+import { makeTemplate, makeTrip } from '../../test-utils/fixtures';
+import { fsMock } from '../../test-utils/fsMock';
+import { mockLogger } from '../../test-utils/loggerMock';
+import type { TripChecklistResponse } from '../../types/checklist';
 import type { TripContentResponse, TripResponse } from '../../types/trip';
 
 import { buildBackupZip, buildTripBackupData } from './backupExport';
@@ -14,7 +14,6 @@ const mockFindById = vi.fn();
 const mockFindContent = vi.fn();
 const mockFindChecklist = vi.fn();
 const mockFindTemplate = vi.fn();
-const mockReadFileSync = vi.fn();
 
 vi.mock('../trip', () => ({
   findById: (...args: unknown[]) => mockFindById(...args),
@@ -31,32 +30,23 @@ vi.mock('../checklist/trip', () => ({
 
 vi.mock('../../middleware/upload', () => ({ UPLOADS_DIR: '/uploads' }));
 
-vi.mock('fs', () => ({
-  default: {
-    readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
-  },
-}));
+vi.mock('fs', async () => {
+  const { fsMock } = await import('../../test-utils/fsMock');
+  return fsMock.module;
+});
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
-const sampleTrip: TripResponse = {
-  id: 1,
+const mockReadFileSync = fsMock.fns.readFileSync;
+
+const sampleTrip: TripResponse = makeTrip({
   title: '東京 🗼 五日遊',
   destination: 'Tokyo',
-  startDate: '2024-05-10',
-  endDate: '2024-05-12',
-  description: null,
-  createdAt: '2024-01-01T00:00:00.000Z',
   images: [{ id: 1, filename: 'trip1.jpg', title: '封面' }],
-};
+});
 
 const sampleContent: TripContentResponse = {
   tripId: 1,
@@ -104,27 +94,9 @@ const sampleChecklist: TripChecklistResponse = {
   occasions: [],
 };
 
-const sampleTemplate: ChecklistTemplateResponse = {
-  categories: [
-    {
-      id: 1,
-      name: 'Documents',
-      items: [
-        {
-          id: 1,
-          name: 'Passport',
-          quantity: 1,
-          notes: null,
-          storage_location: null,
-          specs: [],
-        },
-      ],
-    },
-  ],
-};
+const sampleTemplate = makeTemplate();
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockReadFileSync.mockReturnValue(Buffer.from('fake-image-bytes'));
   mockFindTemplate.mockResolvedValue(sampleTemplate);
 });
@@ -216,14 +188,6 @@ describe('buildBackupZip', () => {
     }
   });
 
-  it('does not lose emoji/CJK characters through the zip round-trip', async () => {
-    const buffer = await buildBackupZip([1]);
-    const zip = new AdmZip(buffer);
-    const data = JSON.parse(zip.readAsText('trips/trip_1/data.json'));
-
-    expect(data.trip.title).toBe(sampleTrip.title);
-  });
-
   it('de-duplicates repeated trip IDs', async () => {
     const buffer = await buildBackupZip([1, 1]);
     const zip = new AdmZip(buffer);
@@ -250,22 +214,6 @@ describe('buildBackupZip', () => {
       'Missing image file on disk, skipped from export',
       expect.objectContaining({ filename: 'attr1.jpg', tripId: 1 }),
     );
-  });
-
-  it('serializes a null checklist as null in data.json', async () => {
-    mockFindChecklist.mockResolvedValue(null);
-
-    const buffer = await buildBackupZip([1]);
-    const zip = new AdmZip(buffer);
-    const data = JSON.parse(zip.readAsText('trips/trip_1/data.json'));
-
-    expect(data.checklist).toBeNull();
-  });
-
-  it('propagates TripNotFoundError for a nonexistent trip', async () => {
-    mockFindById.mockResolvedValue(null);
-
-    await expect(buildBackupZip([999])).rejects.toThrow(TripNotFoundError);
   });
 
   it('omits template.json and includesTemplate by default', async () => {

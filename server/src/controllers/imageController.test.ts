@@ -1,19 +1,36 @@
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../middleware/upload');
-vi.mock('../repositories/attraction');
-vi.mock('../repositories/connectionRepository');
-vi.mock('../repositories/imageRepository');
-vi.mock('../repositories/trip');
+vi.mock('../middleware/upload', () => ({ saveImageToDisk: vi.fn() }));
+vi.mock('../repositories/attraction', () => ({
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../repositories/connectionRepository', () => ({
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../repositories/imageRepository', () => ({
+  addAttractionImage: vi.fn(),
+  addConnectionImage: vi.fn(),
+  addDayImage: vi.fn(),
+  addTripImage: vi.fn(),
+  deleteAttractionImage: vi.fn(),
+  deleteConnectionImage: vi.fn(),
+  deleteDayImage: vi.fn(),
+  deleteTripImage: vi.fn(),
+}));
+vi.mock('../repositories/trip', () => ({
+  findById: vi.fn(),
+  findDayByIdAndTripId: vi.fn(),
+}));
 
 import { saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
 import * as tripRepo from '../repositories/trip';
+import { makeTrip } from '../test-utils/fixtures';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import type { ImageResponse, TripResponse } from '../types/trip';
+import type { ImageResponse } from '../types/trip';
 
 import {
   deleteAttractionImage,
@@ -31,16 +48,7 @@ const mockFile = {
   mimetype: 'image/jpeg',
 } as Express.Multer.File;
 
-const sampleTrip: TripResponse = {
-  id: 1,
-  title: 'Kyoto Trip',
-  destination: null,
-  startDate: '2026-05-10',
-  endDate: '2026-05-12',
-  description: null,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  images: [],
-};
+const sampleTrip = makeTrip();
 
 interface Variant {
   kind: 'attraction' | 'connection' | 'trip' | 'day';
@@ -137,6 +145,7 @@ const variants: Variant[] = [
   },
 ];
 
+/** Every entity runs the happy path and the parent-not-found path so each per-entity config and exported wrapper is exercised. */
 describe.each(variants)(
   '$kind image handlers',
   ({
@@ -147,14 +156,9 @@ describe.each(variants)(
     uploadHandler,
     deleteHandler,
     mockParentFound,
-    mockParentRejects,
     addImage,
     deleteImage,
   }) => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     describe('upload', () => {
       it('returns 404 when the parent is not found', async () => {
         mockParentFound(false);
@@ -171,6 +175,62 @@ describe.each(variants)(
         expect(addImage).not.toHaveBeenCalled();
       });
 
+      it('returns 201 with the created image on success', async () => {
+        const image: ImageResponse = {
+          id: 42,
+          filename: 'generated.jpg',
+          title: 'Title',
+        };
+        mockParentFound(true);
+        vi.mocked(saveImageToDisk).mockReturnValue('generated.jpg');
+        vi.mocked(addImage).mockResolvedValue(image);
+        const { req, res } = createMockReqRes({
+          params: uploadParams,
+          body: { title: 'Title' },
+          file: mockFile,
+        });
+
+        await uploadHandler(req, res);
+
+        expect(addImage).toHaveBeenCalledWith(
+          parentId,
+          'generated.jpg',
+          'Title',
+        );
+        expectJsonStatus(res, 201, image);
+      });
+    });
+
+    describe('delete', () => {
+      it('returns 204 on success', async () => {
+        mockParentFound(true);
+        vi.mocked(deleteImage).mockResolvedValue(true);
+        const { req, res } = createMockReqRes({ params: deleteParams });
+
+        await deleteHandler(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(204);
+        expect(res.send).toHaveBeenCalledWith();
+      });
+    });
+  },
+);
+
+/** The remaining paths live in the shared handlers, so one entity is enough. */
+describe.each(variants.slice(0, 1))(
+  '$kind image handlers (shared paths)',
+  ({
+    notFoundError,
+    uploadParams,
+    deleteParams,
+    uploadHandler,
+    deleteHandler,
+    mockParentFound,
+    mockParentRejects,
+    addImage,
+    deleteImage,
+  }) => {
+    describe('upload', () => {
       it('returns 400 when req.file is missing', async () => {
         mockParentFound(true);
         const { req, res } = createMockReqRes({
@@ -220,31 +280,6 @@ describe.each(variants)(
         expect(addImage).not.toHaveBeenCalled();
       });
 
-      it('returns 201 with the created image on success', async () => {
-        const image: ImageResponse = {
-          id: 42,
-          filename: 'generated.jpg',
-          title: 'Title',
-        };
-        mockParentFound(true);
-        vi.mocked(saveImageToDisk).mockReturnValue('generated.jpg');
-        vi.mocked(addImage).mockResolvedValue(image);
-        const { req, res } = createMockReqRes({
-          params: uploadParams,
-          body: { title: 'Title' },
-          file: mockFile,
-        });
-
-        await uploadHandler(req, res);
-
-        expect(addImage).toHaveBeenCalledWith(
-          parentId,
-          'generated.jpg',
-          'Title',
-        );
-        expectJsonStatus(res, 201, image);
-      });
-
       it('returns 500 when an unexpected error occurs', async () => {
         mockParentRejects(new Error('db error'));
         const { req, res } = createMockReqRes({
@@ -278,17 +313,6 @@ describe.each(variants)(
         await deleteHandler(req, res);
 
         expectJsonStatus(res, 404, { error: 'Image not found' });
-      });
-
-      it('returns 204 on success', async () => {
-        mockParentFound(true);
-        vi.mocked(deleteImage).mockResolvedValue(true);
-        const { req, res } = createMockReqRes({ params: deleteParams });
-
-        await deleteHandler(req, res);
-
-        expect(res.status).toHaveBeenCalledWith(204);
-        expect(res.send).toHaveBeenCalledWith();
       });
 
       it('returns 500 when an unexpected error occurs', async () => {

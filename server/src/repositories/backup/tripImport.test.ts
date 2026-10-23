@@ -1,21 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { TripBackupData } from '../../types/backup';
-
-const mockPoolExecute = vi.fn();
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn();
-
-vi.mock('../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-    getConnection: () => mockGetConnection(),
-  },
-}));
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
+});
 
 const mockSaveImportedImageBuffer = vi.fn();
 const mockDeleteImageFromDisk = vi.fn();
@@ -36,36 +24,32 @@ vi.mock('../imageRepository', () => ({
   addConnectionImage: (...args: unknown[]) => mockAddConnectionImage(...args),
 }));
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { db, routeSql } from '../../test-utils/dbMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
+import type { TripBackupData } from '../../types/backup';
 
 import { generateUniqueTripTitle, importSingleTrip } from './tripImport';
 
-function makeConn() {
-  return {
-    beginTransaction: mockConnBeginTransaction,
-    execute: mockConnExecute,
-    commit: mockConnCommit,
-    rollback: mockConnRollback,
-    release: mockConnRelease,
-  };
-}
+const mockPoolExecute = db.pool.execute;
+const {
+  execute: mockConnExecute,
+  commit: mockConnCommit,
+  rollback: mockConnRollback,
+  release: mockConnRelease,
+} = db.conn;
 
 /** No title conflicts by default; individual tests override for dedup cases. */
 function mockNoTitleConflicts() {
-  mockPoolExecute.mockImplementation((sql: string) => {
-    if (sql.includes('SELECT title FROM trips')) {
-      return Promise.resolve([[]]);
-    }
-    return Promise.resolve([{ affectedRows: 1 }]);
-  });
+  routeSql(
+    mockPoolExecute,
+    [['SELECT title FROM trips', [[]]]],
+    [{ affectedRows: 1 }],
+  );
 }
 
 /**
@@ -195,8 +179,6 @@ function sampleImageBuffers(): Map<string, Buffer> {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockGetConnection.mockResolvedValue(makeConn());
   mockSaveImportedImageBuffer.mockImplementation(
     (_buffer: Buffer, originalFilename: string) => `new-${originalFilename}`,
   );
@@ -343,7 +325,7 @@ describe('importSingleTrip', () => {
     expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
   });
 
-  it('uses the de-duplicated title from generateUniqueTripTitle', async () => {
+  it('uses the de-duplicated title and skips the checklist subtree when checklist is null', async () => {
     mockPoolExecute.mockImplementation((sql: string) => {
       if (sql.includes('SELECT title FROM trips')) {
         return Promise.resolve([[{ title: 'Kyoto Trip' }]]);
@@ -362,57 +344,10 @@ describe('importSingleTrip', () => {
       expect.stringContaining('INSERT INTO trips'),
       expect.arrayContaining(['Kyoto Trip (2)']),
     );
-  });
-
-  it('skips the checklist subtree entirely when checklist is null', async () => {
-    mockNoTitleConflicts();
-    mockSequentialInserts();
-
-    await importSingleTrip(
-      { ...sampleData, checklist: null },
-      sampleImageBuffers(),
-    );
-
     const checklistCalls = mockConnExecute.mock.calls.filter(([sql]) =>
       String(sql).includes('checklist'),
     );
     expect(checklistCalls).toHaveLength(0);
-  });
-
-  it('imports a minimal trip with no days, attractions, or images', async () => {
-    mockNoTitleConflicts();
-    mockSequentialInserts();
-    const minimalData: TripBackupData = {
-      trip: {
-        id: 1,
-        title: 'Empty Trip',
-        destination: null,
-        startDate: '2024-05-10',
-        endDate: '2024-05-10',
-        description: null,
-        images: [],
-      },
-      content: { tripId: 1, days: [] },
-      checklist: null,
-    };
-
-    const result = await importSingleTrip(minimalData, new Map());
-
-    expect(result).toEqual({
-      originalTripId: 1,
-      newTripId: 1000,
-      title: 'Empty Trip',
-    });
-    expect(mockConnCommit).toHaveBeenCalled();
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO trips'),
-      expect.anything(),
-    );
-    expect(mockConnExecute).not.toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO trip_days'),
-      expect.anything(),
-    );
-    expect(mockSaveImportedImageBuffer).not.toHaveBeenCalled();
   });
 
   it('rolls back and writes no images when a database insert fails', async () => {

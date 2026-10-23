@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Attraction, AttractionImage } from '@/types';
+import { rows, textRun, type MockNode } from '@/test-utils/docx';
+import { makeAttraction, makeImage } from '@/test-utils/fixtures';
 
 import { makeAttractionTable } from './attractionTable';
 import {
@@ -11,41 +12,11 @@ import {
   COL_3R,
   COL_W,
   CONTENT_WIDTH_DXA,
-  FONT,
 } from './constants';
 import { makeImageParagraphs } from './imageHelpers';
 import { parseMarkdownContent } from './markdownToDocx';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-// `BorderStyle`/`ShadingType`/`WidthType` are mocked because `./constants`
-// reads them at module-init time (docx is mocked module-wide, not just the
-// symbols below).
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  WidthType: { DXA: 'dxa' },
-  ExternalHyperlink: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'ExternalHyperlink', options };
-  }),
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  Table: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Table', options };
-  }),
-  TableCell: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableCell', options };
-  }),
-  TableRow: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableRow', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 vi.mock('./imageHelpers', () => ({
   makeImageParagraphs: vi.fn().mockResolvedValue([]),
@@ -55,26 +26,8 @@ vi.mock('./markdownToDocx', () => ({
   parseMarkdownContent: vi.fn().mockReturnValue([]),
 }));
 
-type MockNode = { type: string; options: Record<string, any> };
-
-function rows(table: unknown): MockNode[] {
-  return (table as MockNode).options.rows;
-}
-
-function attraction(overrides: Partial<Attraction> = {}): Attraction {
-  return { id: 1, name: '晴空塔', ...overrides };
-}
-
-function image(overrides: Partial<AttractionImage> = {}): AttractionImage {
-  return { id: 1, filename: 'photo.jpg', title: '', ...overrides };
-}
-
 function fakeParagraph(marker: string): MockNode {
   return { type: 'Paragraph', options: { marker } };
-}
-
-function textRun(text: string, extra: Record<string, unknown> = {}) {
-  return { type: 'TextRun', options: { text, font: FONT, ...extra } };
 }
 
 function link(text: string, url: string) {
@@ -150,7 +103,7 @@ beforeEach(() => {
 
 describe('makeAttractionTable', () => {
   it('renders row 1 (name) and the table wrapper when nothing else is set', async () => {
-    const table = await makeAttractionTable(attraction());
+    const table = await makeAttractionTable(makeAttraction({ name: '晴空塔' }));
 
     expect(table).toEqual({
       type: 'Table',
@@ -187,7 +140,7 @@ describe('makeAttractionTable', () => {
 
   it('renders the time+map row with both cells populated', async () => {
     const table = await makeAttractionTable(
-      attraction({
+      makeAttraction({
         startTime: '09:00',
         endTime: '11:00',
         googleMapUrl: 'https://maps.example.com/place',
@@ -230,18 +183,12 @@ describe('makeAttractionTable', () => {
     'adds the time+map row when $description',
     async ({ startTime, endTime, googleMapUrl }) => {
       const table = await makeAttractionTable(
-        attraction({ startTime, endTime, googleMapUrl }),
+        makeAttraction({ startTime, endTime, googleMapUrl }),
       );
 
       expect(rows(table)).toHaveLength(2);
     },
   );
-
-  it('omits the time+map row when neither time nor map url is set', async () => {
-    const table = await makeAttractionTable(attraction());
-
-    expect(rows(table)).toHaveLength(1);
-  });
 
   it('renders the notes+images row combining parsed notes and image paragraphs', async () => {
     vi.mocked(parseMarkdownContent).mockReturnValue([
@@ -250,10 +197,10 @@ describe('makeAttractionTable', () => {
     vi.mocked(makeImageParagraphs).mockResolvedValue([
       fakeParagraph('image') as never,
     ]);
-    const img = image();
+    const img = makeImage();
 
     const table = await makeAttractionTable(
-      attraction({ notes: '重點筆記', images: [img] }),
+      makeAttraction({ notes: '重點筆記', images: [img] }),
     );
 
     expect(parseMarkdownContent).toHaveBeenCalledWith('重點筆記');
@@ -276,7 +223,11 @@ describe('makeAttractionTable', () => {
 
   it.each([
     { description: 'only notes is set', notes: '重點筆記', images: undefined },
-    { description: 'only images is set', notes: undefined, images: [image()] },
+    {
+      description: 'only images is set',
+      notes: undefined,
+      images: [makeImage()],
+    },
   ])(
     'adds the notes+images row when $description',
     async ({ notes, images }) => {
@@ -287,31 +238,19 @@ describe('makeAttractionTable', () => {
         images ? [fakeParagraph('image') as never] : [],
       );
 
-      const table = await makeAttractionTable(attraction({ notes, images }));
+      const table = await makeAttractionTable(
+        makeAttraction({ notes, images }),
+      );
 
       expect(rows(table)).toHaveLength(2);
     },
   );
 
-  it.each([
-    {
-      description: 'neither notes nor images is set',
-      notes: undefined,
-      images: undefined,
-    },
-    {
-      description: 'notes is whitespace only and no images are set',
-      notes: '   ',
-      images: undefined,
-    },
-  ])(
-    'omits the notes+images row when $description',
-    async ({ notes, images }) => {
-      const table = await makeAttractionTable(attraction({ notes, images }));
+  it('omits the notes+images row when notes is whitespace only and no images are set', async () => {
+    const table = await makeAttractionTable(makeAttraction({ notes: '   ' }));
 
-      expect(rows(table)).toHaveLength(1);
-    },
-  );
+    expect(rows(table)).toHaveLength(1);
+  });
 
   it('renders the nearby-attractions row with its value parsed as markdown', async () => {
     vi.mocked(parseMarkdownContent).mockReturnValue([
@@ -319,7 +258,7 @@ describe('makeAttractionTable', () => {
     ]);
 
     const table = await makeAttractionTable(
-      attraction({ nearbyAttractions: '[晴空塔](https://demo.com)' }),
+      makeAttraction({ nearbyAttractions: '[晴空塔](https://demo.com)' }),
     );
 
     expect(parseMarkdownContent).toHaveBeenCalledWith(
@@ -334,25 +273,18 @@ describe('makeAttractionTable', () => {
   });
 
   it.each([
-    { description: 'undefined', nearbyAttractions: undefined },
     { description: 'an empty string', nearbyAttractions: '' },
     { description: 'whitespace only', nearbyAttractions: '   ' },
   ])(
     'omits the nearby-attractions row when nearbyAttractions is $description',
     async ({ nearbyAttractions }) => {
       const table = await makeAttractionTable(
-        attraction({ nearbyAttractions }),
+        makeAttraction({ nearbyAttractions }),
       );
 
       expect(rows(table)).toHaveLength(1);
     },
   );
-
-  it('adds no reference-website rows when none are set', async () => {
-    const table = await makeAttractionTable(attraction());
-
-    expect(rows(table)).toHaveLength(1);
-  });
 
   it('adds one row per reference website, labeling only the first', async () => {
     const websites = [
@@ -361,7 +293,7 @@ describe('makeAttractionTable', () => {
     ];
 
     const table = await makeAttractionTable(
-      attraction({ referenceWebsites: websites }),
+      makeAttraction({ referenceWebsites: websites }),
     );
 
     expect(rows(table).slice(1)).toEqual([

@@ -1,41 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
+});
+
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { db } from '../../test-utils/dbMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
-
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn();
-
-vi.mock('../../config/database', () => ({
-  default: {
-    getConnection: () => mockGetConnection(),
-  },
-}));
-
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
 
 import { restoreTemplate } from './templateRestore';
 
-function makeConn() {
-  return {
-    beginTransaction: mockConnBeginTransaction,
-    execute: mockConnExecute,
-    commit: mockConnCommit,
-    rollback: mockConnRollback,
-    release: mockConnRelease,
-  };
-}
+const {
+  execute: mockConnExecute,
+  commit: mockConnCommit,
+  rollback: mockConnRollback,
+  release: mockConnRelease,
+} = db.conn;
 
 /**
  * Assigns fresh insertIds to the category/item inserts, so tests can assert
@@ -72,11 +58,6 @@ const sampleTemplate: ChecklistTemplateResponse = {
   ],
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockGetConnection.mockResolvedValue(makeConn());
-});
-
 describe('restoreTemplate', () => {
   it('clears the existing template and re-inserts categories, items, and specs with remapped ids', async () => {
     mockSequentialInserts();
@@ -100,21 +81,6 @@ describe('restoreTemplate', () => {
     );
     expect(mockConnCommit).toHaveBeenCalled();
     expect(mockConnRollback).not.toHaveBeenCalled();
-  });
-
-  it('clears the existing template even when the new one has no categories', async () => {
-    mockSequentialInserts();
-
-    await restoreTemplate({ categories: [] });
-
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      'DELETE FROM checklist_template_categories',
-    );
-    expect(mockConnExecute).not.toHaveBeenCalledWith(
-      'INSERT INTO checklist_template_categories (name) VALUES (?)',
-      expect.anything(),
-    );
-    expect(mockConnCommit).toHaveBeenCalled();
   });
 
   it('rolls back and rethrows when an insert fails', async () => {

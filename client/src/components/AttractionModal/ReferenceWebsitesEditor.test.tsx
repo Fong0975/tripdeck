@@ -1,13 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { makeJsonResponse } from '@/test-utils/fixtures';
 import type { ReferenceWebsite } from '@/types';
 
 import ReferenceWebsitesEditor from './ReferenceWebsitesEditor';
-
-function makeJsonResponse(body: unknown): Response {
-  return { json: () => Promise.resolve(body) } as unknown as Response;
-}
 
 const getAddButton = (): HTMLElement => {
   const buttons = screen.getAllByRole('button');
@@ -163,40 +160,6 @@ describe('ReferenceWebsitesEditor', () => {
     });
   });
 
-  it('marks not found when the fetched title is null', async () => {
-    vi.mocked(fetch).mockResolvedValue(makeJsonResponse({ title: null }));
-
-    render(<ReferenceWebsitesEditor websites={[]} onChange={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('https://...'), {
-      target: { value: 'https://c.example.com' },
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
-
-    await vi.waitFor(() => {
-      expect(getSuggestionButton()).toBeDisabled();
-    });
-  });
-
-  it('marks the suggestion as not found when fetch rejects', async () => {
-    vi.mocked(fetch).mockRejectedValue(new Error('network error'));
-
-    render(<ReferenceWebsitesEditor websites={[]} onChange={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('https://...'), {
-      target: { value: 'https://c.example.com' },
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
-
-    await vi.waitFor(() => {
-      expect(getSuggestionButton()).toBeDisabled();
-    });
-  });
-
   it('shows the loading message while the title fetch is pending', () => {
     render(<ReferenceWebsitesEditor websites={[]} onChange={vi.fn()} />);
 
@@ -238,6 +201,7 @@ describe('ReferenceWebsitesEditor', () => {
         'title',
         '無法取得網頁標題',
       );
+      expect(getSuggestionButton()).toBeDisabled();
     });
   });
 

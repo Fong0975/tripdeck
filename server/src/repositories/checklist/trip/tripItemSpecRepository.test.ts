@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { db, routeSql } from '../../../test-utils/dbMocks';
 
 import {
   createTripItemSpec,
@@ -7,19 +9,14 @@ import {
   verifyTripSpecBelongsToItem,
 } from './tripItemSpecRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 describe('tripItemSpecRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('verifyTripSpecBelongsToItem', () => {
     it.each([
       { rows: [{ id: 1 }], expected: true },
@@ -46,12 +43,11 @@ describe('tripItemSpecRepository', () => {
     });
 
     it('inserts a spec and defaults storage_location to null when omitted', async () => {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[{ id: 1 }]]);
-        }
-        return Promise.resolve([{ insertId: 700 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[{ id: 1 }]]]],
+        [{ insertId: 700 }],
+      );
 
       const result = await createTripItemSpec(1, { name: '防水' });
 
@@ -87,12 +83,11 @@ describe('tripItemSpecRepository', () => {
         expected: '新位置',
       },
     ])('$name', async ({ data, expected }) => {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[CURRENT_SPEC]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[CURRENT_SPEC]]]],
+        [{ affectedRows: 1 }],
+      );
 
       const result = await updateTripItemSpec(1, data);
 

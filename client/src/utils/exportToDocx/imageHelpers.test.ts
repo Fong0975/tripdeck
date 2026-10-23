@@ -1,31 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AttractionImage } from '@/types';
+import { textRun } from '@/test-utils/docx';
+import { makeImage } from '@/test-utils/fixtures';
 
-import { CONTENT_WIDTH_PX, FONT, HALF_WIDTH_PX } from './constants';
+import { CONTENT_WIDTH_PX, HALF_WIDTH_PX } from './constants';
 import { makeImageParagraphs } from './imageHelpers';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  ImageRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'ImageRun', options };
-  }),
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
-
-function image(overrides: Partial<AttractionImage> = {}): AttractionImage {
-  return { id: 1, filename: 'photo.jpg', title: '', ...overrides };
-}
+vi.mock('docx');
 
 function makeResponse(
   ok: boolean,
@@ -37,10 +18,6 @@ function makeResponse(
     arrayBuffer: () => Promise.resolve(buffer),
     headers: { get: () => contentType },
   } as unknown as Response;
-}
-
-function textRun(text: string, extra: Record<string, unknown> = {}) {
-  return { type: 'TextRun', options: { text, font: FONT, ...extra } };
 }
 
 function errorParagraph(title?: string) {
@@ -82,11 +59,8 @@ class FakeImage {
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn());
-  vi.stubGlobal('URL', {
-    ...URL,
-    createObjectURL: vi.fn().mockReturnValue('blob:mock'),
-    revokeObjectURL: vi.fn(),
-  });
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   vi.stubGlobal('Image', FakeImage);
   FakeImage.naturalWidth = 800;
   FakeImage.naturalHeight = 600;
@@ -95,6 +69,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('makeImageParagraphs', () => {
@@ -136,7 +111,7 @@ describe('makeImageParagraphs', () => {
         makeResponse(true, new ArrayBuffer(4), contentType),
       );
 
-      const result = await makeImageParagraphs(image({ filename }));
+      const result = await makeImageParagraphs(makeImage({ filename }));
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -153,7 +128,9 @@ describe('makeImageParagraphs', () => {
       makeResponse(true, new ArrayBuffer(4), 'image/svg+xml'),
     );
 
-    const result = await makeImageParagraphs(image({ filename: 'icon.svg' }));
+    const result = await makeImageParagraphs(
+      makeImage({ filename: 'icon.svg' }),
+    );
 
     expect(result).toEqual([]);
   });
@@ -189,7 +166,7 @@ describe('makeImageParagraphs', () => {
         makeResponse(true, new ArrayBuffer(4), 'image/jpeg'),
       );
 
-      const result = await makeImageParagraphs(image());
+      const result = await makeImageParagraphs(makeImage());
 
       expect(result[0]).toMatchObject({
         options: {
@@ -218,7 +195,7 @@ describe('makeImageParagraphs', () => {
         makeResponse(true, new ArrayBuffer(4), 'image/jpeg'),
       );
 
-      const result = await makeImageParagraphs(image({ title }));
+      const result = await makeImageParagraphs(makeImage({ title }));
 
       expect(result).toHaveLength(expectCaption ? 2 : 1);
       if (expectCaption) {
@@ -245,7 +222,7 @@ describe('makeImageParagraphs', () => {
         makeResponse(false, new ArrayBuffer(0), null),
       );
 
-      const result = await makeImageParagraphs(image({ title }));
+      const result = await makeImageParagraphs(makeImage({ title }));
 
       expect(result).toEqual([errorParagraph(title || undefined)]);
     },
@@ -257,7 +234,7 @@ describe('makeImageParagraphs', () => {
       makeResponse(true, new ArrayBuffer(4), 'image/jpeg'),
     );
 
-    const result = await makeImageParagraphs(image());
+    const result = await makeImageParagraphs(makeImage());
 
     expect(result).toEqual([errorParagraph()]);
   });

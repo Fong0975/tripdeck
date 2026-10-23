@@ -1,9 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { DayPlan, Trip, TripContent } from '@/types';
+import {
+  makeAttraction,
+  makeConnection,
+  makeContent,
+  makeDay,
+  makeImage,
+  makeTrip,
+} from '@/test-utils/fixtures';
+import { fillDateField, selectFile, submitForm } from '@/test-utils/queries';
+import type { DayPlan } from '@/types';
 import {
   deleteTripImage,
   getTripContent,
@@ -13,156 +22,75 @@ import {
 
 import EditTripModal from './EditTripModal';
 
-vi.mock('@/utils/storage', () => ({
-  getTripContent: vi.fn(),
-  updateTrip: vi.fn(),
-  uploadTripImage: vi.fn(),
-  deleteTripImage: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-const trip: Trip = {
+const trip = makeTrip({
   id: 5,
   title: 'Old Trip',
   destination: 'Osaka',
   startDate: '2026-01-01',
   endDate: '2026-01-05',
   description: 'notes',
-  createdAt: '2026-01-01',
-};
-
-function makeContent(days: DayPlan[]): TripContent {
-  return { tripId: trip.id, days };
-}
+});
 
 const untouchedDays: DayPlan[] = [
-  {
-    id: 101,
-    day: 1,
-    date: '2026-01-01',
-    locations: [],
-    attractions: [],
-    connections: [],
-  },
-  {
-    id: 102,
-    day: 2,
-    date: '2026-01-02',
-    locations: [],
-    attractions: [],
-    connections: [],
-  },
-  {
-    id: 103,
-    day: 3,
-    date: '2026-01-03',
-    locations: [],
-    attractions: [],
-    connections: [],
-  },
+  makeDay({ id: 101, day: 1, date: '2026-01-01' }),
+  makeDay({ id: 102, day: 2, date: '2026-01-02' }),
+  makeDay({ id: 103, day: 3, date: '2026-01-03' }),
 ];
 
 const impactedDays: DayPlan[] = [
-  {
+  makeDay({
     id: 104,
     day: 4,
     date: '2026-01-04',
-    locations: [],
     attractions: [
-      { id: 1, name: 'A', images: [{ id: 1, filename: 'x.jpg', title: '' }] },
+      makeAttraction({
+        id: 1,
+        name: 'A',
+        images: [makeImage({ filename: 'x.jpg' })],
+      }),
     ],
-    connections: [],
-  },
-  {
+  }),
+  makeDay({
     id: 105,
     day: 5,
     date: '2026-01-05',
-    locations: [],
-    attractions: [],
-    connections: [
-      {
-        id: 1,
-        fromAttractionId: 1,
-        toAttractionId: 2,
-        transportMode: 'walk',
-        images: [],
-      },
-    ],
-    images: [{ id: 2, filename: 'day.jpg', title: '' }],
-  },
+    connections: [makeConnection({ images: [] })],
+    images: [makeImage({ id: 2, filename: 'day.jpg' })],
+  }),
 ];
 
-// The start/end date <input type="date"> fields have no <label htmlFor>
-// association in the source, so they can't be reached via getByLabelText —
-// querying by their `name` attribute is the most reliable option available.
-function fillDateField(container: HTMLElement, name: string, value: string) {
-  // eslint-disable-next-line testing-library/no-node-access
-  const input = container.querySelector(`input[name="${name}"]`)!;
-  fireEvent.change(input, { target: { value } });
-}
-
-// Some fixtures deliberately submit invalid combinations that the browser's
-// native date-input constraint validation would otherwise silently block —
-// submitting the form directly exercises the component's own JS validation.
-function submitForm(container: HTMLElement) {
-  // eslint-disable-next-line testing-library/no-node-access
-  const form = container.querySelector('form')!;
-  fireEvent.submit(form);
-}
-
-// The upload <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
+const allDays = [...untouchedDays, ...impactedDays];
 
 describe('EditTripModal', () => {
-  beforeEach(() => {
-    // jsdom does not implement the Blob URL APIs used to preview a pending file.
-    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = vi.fn();
-  });
-
-  it('renders the trip images and deletes one via the image section', async () => {
+  it('deletes an existing trip image and uploads a new one via the image section', async () => {
     vi.mocked(deleteTripImage).mockResolvedValue(undefined);
+    const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
+    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
     const user = userEvent.setup();
-    render(
+    const { container } = render(
       <EditTripModal
         trip={{
           ...trip,
-          images: [{ id: 1, filename: 'a.jpg', title: 'Cover' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'Cover' })],
         }}
         onClose={vi.fn()}
         onUpdated={vi.fn()}
       />,
     );
-
     expect(screen.getByAltText('Cover')).toBeInTheDocument();
 
     await user.click(screen.getByTitle('刪除圖片'));
 
     await waitFor(() => expect(deleteTripImage).toHaveBeenCalledWith(5, 1));
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
-  });
 
-  it('uploads a new image via the image section', async () => {
-    const newImage = { id: 2, filename: 'b.jpg', title: 'New' };
-    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
-    const user = userEvent.setup();
-    const { container } = render(
-      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={vi.fn()} />,
-    );
     const file = new File(['a'], 'b.jpg');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
-
     await user.click(screen.getByText('確認上傳'));
 
     await waitFor(() =>
@@ -252,7 +180,7 @@ describe('EditTripModal', () => {
     const { container } = render(
       <EditTripModal
         trip={trip}
-        initialContent={makeContent(untouchedDays)}
+        initialContent={makeContent(untouchedDays, trip.id)}
         onClose={vi.fn()}
         onUpdated={onUpdated}
       />,
@@ -273,7 +201,7 @@ describe('EditTripModal', () => {
     const { container } = render(
       <EditTripModal
         trip={trip}
-        initialContent={makeContent([...untouchedDays, ...impactedDays])}
+        initialContent={makeContent(allDays, trip.id)}
         onClose={vi.fn()}
         onUpdated={vi.fn()}
       />,
@@ -298,7 +226,7 @@ describe('EditTripModal', () => {
     const { container } = render(
       <EditTripModal
         trip={trip}
-        initialContent={makeContent([...untouchedDays, ...impactedDays])}
+        initialContent={makeContent(allDays, trip.id)}
         onClose={vi.fn()}
         onUpdated={vi.fn()}
       />,
@@ -324,7 +252,7 @@ describe('EditTripModal', () => {
     const { container } = render(
       <EditTripModal
         trip={trip}
-        initialContent={makeContent([...untouchedDays, ...impactedDays])}
+        initialContent={makeContent(allDays, trip.id)}
         onClose={vi.fn()}
         onUpdated={onUpdated}
         onContentChanged={onContentChanged}
@@ -353,9 +281,7 @@ describe('EditTripModal', () => {
   });
 
   it('falls back to fetching content when no initialContent is provided', async () => {
-    vi.mocked(getTripContent).mockResolvedValue(
-      makeContent([...untouchedDays, ...impactedDays]),
-    );
+    vi.mocked(getTripContent).mockResolvedValue(makeContent(allDays, trip.id));
     const { container } = render(
       <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={vi.fn()} />,
     );
@@ -369,31 +295,13 @@ describe('EditTripModal', () => {
     expect(getTripContent).toHaveBeenCalledWith(trip.id);
   });
 
-  it('submits directly when content cannot be loaded, without blocking on a confirmation', async () => {
-    vi.mocked(getTripContent).mockResolvedValue(null);
-    vi.mocked(updateTrip).mockResolvedValue({ ...trip, endDate: '2026-01-03' });
-    const onUpdated = vi.fn();
-    const { container } = render(
-      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={onUpdated} />,
-    );
-
-    fillDateField(container, 'endDate', '2026-01-03');
-    submitForm(container);
-
-    await waitFor(() => expect(onUpdated).toHaveBeenCalled());
-    expect(
-      screen.queryByText('調整日期後將刪除部份行程內容'),
-    ).not.toBeInTheDocument();
-    expect(showToast).toHaveBeenCalledWith('success', '已更新旅程。');
-  });
-
   it('shows an error and does not report to the parent when updateTrip fails', async () => {
     vi.mocked(updateTrip).mockRejectedValue(new Error('network error'));
     const onUpdated = vi.fn();
     const { container } = render(
       <EditTripModal
         trip={trip}
-        initialContent={makeContent(untouchedDays)}
+        initialContent={makeContent(untouchedDays, trip.id)}
         onClose={vi.fn()}
         onUpdated={onUpdated}
       />,

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockImportSingleTrip = vi.fn();
 vi.mock('./tripImport', () => ({
@@ -15,38 +15,19 @@ vi.mock('./backupValidate', () => ({
   parseBackupZip: (...args: unknown[]) => mockParseBackupZip(...args),
 }));
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
+import { makeTripBackupData } from '../../test-utils/fixtures';
+import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
 
 import { importBackupZip } from './backupImport';
 import type { ParsedBackup } from './backupValidate';
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-const sampleData: TripBackupData = {
-  trip: {
-    id: 1,
-    title: 'Kyoto Trip',
-    destination: 'Kyoto',
-    startDate: '2024-05-10',
-    endDate: '2024-05-11',
-    description: null,
-    images: [],
-  },
-  content: { tripId: 1, days: [] },
-  checklist: null,
-};
+const sampleData = makeTripBackupData();
 
 function makeParsedBackup(overrides: Partial<ParsedBackup> = {}): ParsedBackup {
   return {
@@ -63,46 +44,9 @@ function makeParsedBackup(overrides: Partial<ParsedBackup> = {}): ParsedBackup {
 }
 
 describe('importBackupZip', () => {
-  it('imports every trip parsed from the backup', async () => {
-    const parsed = makeParsedBackup({
-      trips: [
-        {
-          originalTripId: 1,
-          folder: 'trip_1',
-          data: sampleData,
-          imageBuffers: new Map(),
-        },
-      ],
-    });
-    mockParseBackupZip.mockReturnValue(parsed);
-    mockImportSingleTrip.mockResolvedValue({
-      originalTripId: 1,
-      newTripId: 1000,
-      title: 'Kyoto Trip',
-    });
-
-    const result = await importBackupZip(Buffer.from('zip'));
-
-    expect(mockImportSingleTrip).toHaveBeenCalledWith(
-      sampleData,
-      parsed.trips[0].imageBuffers,
-    );
-    expect(result.imported).toEqual([
-      { originalTripId: 1, newTripId: 1000, title: 'Kyoto Trip' },
-    ]);
-    expect(result.failed).toEqual([]);
-    expect(result.templateRestored).toBe(false);
-  });
-
   it('collects a failed entry without aborting the rest when one trip fails', async () => {
-    const tripA: TripBackupData = {
-      ...sampleData,
-      trip: { ...sampleData.trip, id: 1, title: 'Trip A' },
-    };
-    const tripB: TripBackupData = {
-      ...sampleData,
-      trip: { ...sampleData.trip, id: 2, title: 'Trip B' },
-    };
+    const tripA = makeTripBackupData({ trip: { id: 1, title: 'Trip A' } });
+    const tripB = makeTripBackupData({ trip: { id: 2, title: 'Trip B' } });
     const parsed = makeParsedBackup({
       trips: [
         {
@@ -236,6 +180,10 @@ describe('importBackupZip', () => {
       restoreTemplate: true,
     });
 
+    expect(mockImportSingleTrip).toHaveBeenCalledWith(
+      sampleData,
+      parsed.trips[0].imageBuffers,
+    );
     expect(result.imported).toEqual([
       { originalTripId: 1, newTripId: 1000, title: 'Kyoto Trip' },
     ]);

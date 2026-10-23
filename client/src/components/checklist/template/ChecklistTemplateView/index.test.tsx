@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+} from '@/test-utils/fixtures';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -12,15 +16,9 @@ import {
 
 import ChecklistTemplateView from './index';
 
-vi.mock('@/utils/storage', () => ({
-  addTemplateCategory: vi.fn(),
-  deleteTemplateCategory: vi.fn(),
-  getChecklistTemplate: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 vi.mock('../CategoryEditModal', () => ({
   default: ({
@@ -45,33 +43,29 @@ function makeTemplate(
 ): ChecklistTemplate {
   return {
     categories: [
-      {
-        id: 1,
+      makeChecklistCategory({
         name: 'Category A',
         items: [
-          {
+          makeChecklistItem({
             id: 10,
             name: 'Item A',
             quantity: 2,
             notes: 'note',
             storage_location: '託運',
             specs: [],
-          },
+          }),
         ],
-      },
+      }),
     ],
     ...overrides,
   };
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(getChecklistTemplate).mockResolvedValue(makeTemplate());
-  vi.mocked(addTemplateCategory).mockResolvedValue({
-    id: 2,
-    name: '新分類',
-    items: [],
-  });
+  vi.mocked(addTemplateCategory).mockResolvedValue(
+    makeChecklistCategory({ id: 2, name: '新分類' }),
+  );
   vi.mocked(deleteTemplateCategory).mockResolvedValue(undefined);
 });
 
@@ -84,14 +78,7 @@ describe('ChecklistTemplateView', () => {
     expect(screen.getByText('載入中…')).toBeInTheDocument();
   });
 
-  it('renders categories with their item counts once loaded', async () => {
-    render(<ChecklistTemplateView />);
-
-    expect(await screen.findByText('Category A')).toBeInTheDocument();
-    expect(screen.getByText('1 項')).toBeInTheDocument();
-  });
-
-  it('opens the edit modal when the pencil button is clicked', async () => {
+  it('opens the edit modal when the pencil button is clicked and closes it when onClose fires', async () => {
     const user = userEvent.setup();
     render(<ChecklistTemplateView />);
     await screen.findByText('Category A');
@@ -99,13 +86,6 @@ describe('ChecklistTemplateView', () => {
     await user.click(screen.getByLabelText('編輯分類'));
 
     expect(screen.getByText('Editing Category A')).toBeInTheDocument();
-  });
-
-  it('closes the edit modal when its onClose fires', async () => {
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-    await user.click(screen.getByLabelText('編輯分類'));
 
     await user.click(screen.getByText('close-modal'));
 
@@ -132,8 +112,8 @@ describe('ChecklistTemplateView', () => {
 
     await user.click(screen.getByLabelText('刪除分類'));
 
-    await waitFor(() => expect(deleteTemplateCategory).toHaveBeenCalledWith(1));
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(deleteTemplateCategory).toHaveBeenCalledWith(1);
     expect(showToast).toHaveBeenCalledWith('success', '已刪除分類。');
   });
 
@@ -163,10 +143,8 @@ describe('ChecklistTemplateView', () => {
 
     await user.click(screen.getByText('新增分類'));
 
-    await waitFor(() =>
-      expect(addTemplateCategory).toHaveBeenCalledWith('新分類'),
-    );
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(addTemplateCategory).toHaveBeenCalledWith('新分類');
     expect(showToast).toHaveBeenCalledWith('success', '已新增分類。');
   });
 

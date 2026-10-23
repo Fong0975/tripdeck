@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   exportTripsBackup,
@@ -8,14 +8,7 @@ import {
 } from './backup';
 import { apiBlob, apiJson, json } from './client';
 
-vi.mock('./client', async importOriginal => {
-  const actual = await importOriginal<typeof import('./client')>();
-  return { ...actual, apiBlob: vi.fn(), apiJson: vi.fn() };
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock('./client');
 
 describe('exportTripsBackup', () => {
   it('POSTs the selected trip ids to the export endpoint and resolves with the zip blob', async () => {

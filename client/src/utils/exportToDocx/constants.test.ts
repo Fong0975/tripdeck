@@ -13,11 +13,7 @@ import {
   TRANSPORT_BORDER,
 } from './constants';
 
-// `BorderStyle` is mocked because `./constants` reads it at module-init time.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-}));
+vi.mock('docx');
 
 describe('layout constants', () => {
   it.each([

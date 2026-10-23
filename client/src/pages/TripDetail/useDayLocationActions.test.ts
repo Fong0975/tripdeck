@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { Trip, TripContent } from '@/types';
+import { makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addDayLocation,
   deleteDayLocation,
@@ -10,48 +10,11 @@ import {
 
 import { useDayLocationActions } from './useDayLocationActions';
 
-vi.mock('@/utils/storage', () => ({
-  addDayLocation: vi.fn(),
-  deleteDayLocation: vi.fn(),
-  updateDayLocation: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
-
-function makeTrip(): Trip {
-  return {
-    id: 1,
-    title: 'Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-  };
-}
-
-function makeContent(): TripContent {
-  return {
-    tripId: 1,
-    days: [
-      {
-        id: 10,
-        day: 1,
-        date: '2026-01-01',
-        locations: [],
-        attractions: [],
-        connections: [],
-      },
-    ],
-  };
-}
+vi.mock('@/lib/toast');
 
 describe('useDayLocationActions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleAddLocation', () => {
     it.each([
       { description: 'trip is null', trip: null, content: makeContent() },

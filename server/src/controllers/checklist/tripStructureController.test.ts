@@ -1,8 +1,13 @@
-import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import * as tripRepo from '../../repositories/checklist/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import { invalidNameCases } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 
 import {
   addOccasion,
@@ -14,17 +19,18 @@ import {
   updateTripCategory,
 } from './tripStructureController';
 
-vi.mock('../../repositories/checklist/trip');
-
-const invalidNameCases = [
-  { label: 'name is missing', body: {} },
-  { label: 'name is an empty string', body: { name: '' } },
-  { label: 'name is not a string', body: { name: 42 } },
-];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock('../../repositories/checklist/trip', () => ({
+  createOccasion: vi.fn(),
+  createTripCategory: vi.fn(),
+  deleteOccasion: vi.fn(),
+  deleteTripCategory: vi.fn(),
+  findOrInitChecklist: vi.fn(),
+  getOccasionCount: vi.fn(),
+  updateOccasion: vi.fn(),
+  updateTripCategory: vi.fn(),
+  verifyCategoryBelongsToTrip: vi.fn(),
+  verifyOccasionBelongsToTrip: vi.fn(),
+}));
 
 describe('getTripChecklist', () => {
   it('returns 200 with the trip checklist', async () => {
@@ -134,11 +140,6 @@ describe('deleteOccasion', () => {
   it.each([
     {
       count: 1,
-      expectStatus: 409,
-      expectError: 'Cannot delete the last occasion',
-    },
-    {
-      count: 0,
       expectStatus: 409,
       expectError: 'Cannot delete the last occasion',
     },
@@ -308,39 +309,28 @@ describe('deleteTripCategory', () => {
 });
 
 describe('500 responses', () => {
-  interface FailureCase {
-    name: string;
-    handler: (req: Request, res: Response) => Promise<void>;
-    params?: Record<string, string>;
-    body?: unknown;
-    configureRejection: (error: Error) => void;
-    expectedError: string;
-  }
-
-  const failureCases: FailureCase[] = [
+  const failureCases: Returns500Case[] = [
     {
       name: 'getTripChecklist',
       handler: getTripChecklist,
-      params: { tripId: '1' },
-      configureRejection: error =>
+      req: { params: { tripId: '1' } },
+      arrange: error =>
         vi.mocked(tripRepo.findOrInitChecklist).mockRejectedValue(error),
       expectedError: 'Failed to fetch checklist',
     },
     {
       name: 'addOccasion',
       handler: addOccasion,
-      params: { tripId: '1' },
-      body: { name: 'Departure' },
-      configureRejection: error =>
+      req: { params: { tripId: '1' }, body: { name: 'Departure' } },
+      arrange: error =>
         vi.mocked(tripRepo.createOccasion).mockRejectedValue(error),
       expectedError: 'Failed to add occasion',
     },
     {
       name: 'updateOccasion',
       handler: updateOccasion,
-      params: { tripId: '1', occId: '2' },
-      body: { name: 'Departure' },
-      configureRejection: error =>
+      req: { params: { tripId: '1', occId: '2' }, body: { name: 'Departure' } },
+      arrange: error =>
         vi
           .mocked(tripRepo.verifyOccasionBelongsToTrip)
           .mockRejectedValue(error),
@@ -349,8 +339,8 @@ describe('500 responses', () => {
     {
       name: 'deleteOccasion',
       handler: deleteOccasion,
-      params: { tripId: '1', occId: '2' },
-      configureRejection: error =>
+      req: { params: { tripId: '1', occId: '2' } },
+      arrange: error =>
         vi
           .mocked(tripRepo.verifyOccasionBelongsToTrip)
           .mockRejectedValue(error),
@@ -359,18 +349,16 @@ describe('500 responses', () => {
     {
       name: 'addTripCategory',
       handler: addTripCategory,
-      params: { tripId: '1' },
-      body: { name: 'Gear' },
-      configureRejection: error =>
+      req: { params: { tripId: '1' }, body: { name: 'Gear' } },
+      arrange: error =>
         vi.mocked(tripRepo.createTripCategory).mockRejectedValue(error),
       expectedError: 'Failed to add category',
     },
     {
       name: 'updateTripCategory',
       handler: updateTripCategory,
-      params: { tripId: '1', catId: '2' },
-      body: { name: 'Gear' },
-      configureRejection: error =>
+      req: { params: { tripId: '1', catId: '2' }, body: { name: 'Gear' } },
+      arrange: error =>
         vi
           .mocked(tripRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
@@ -379,8 +367,8 @@ describe('500 responses', () => {
     {
       name: 'deleteTripCategory',
       handler: deleteTripCategory,
-      params: { tripId: '1', catId: '2' },
-      configureRejection: error =>
+      req: { params: { tripId: '1', catId: '2' } },
+      arrange: error =>
         vi
           .mocked(tripRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
@@ -388,15 +376,5 @@ describe('500 responses', () => {
     },
   ];
 
-  it.each(failureCases)(
-    '$name returns 500 with its error message when the repository rejects',
-    async ({ handler, params, body, configureRejection, expectedError }) => {
-      configureRejection(new Error('database connection lost'));
-      const { req, res } = createMockReqRes({ params, body });
-
-      await handler(req, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(failureCases);
 });

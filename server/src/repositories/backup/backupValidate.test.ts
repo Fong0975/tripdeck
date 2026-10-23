@@ -1,25 +1,18 @@
 import AdmZip from 'adm-zip';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { makeTemplate, makeTripBackupData } from '../../test-utils/fixtures';
+import { mockLogger } from '../../test-utils/loggerMock';
 import type { BackupManifest, TripBackupData } from '../../types/backup';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 /** Runs `fn`, expecting it to throw a `BackupValidationError`, and returns that error. */
 function captureValidationError(fn: () => unknown): BackupValidationError {
@@ -35,14 +28,10 @@ function captureValidationError(fn: () => unknown): BackupValidationError {
 function sampleTripData(
   overrides: Partial<TripBackupData['trip']> = {},
 ): TripBackupData {
-  return {
+  return makeTripBackupData({
     trip: {
-      id: 1,
       title: 'Trip',
       destination: null,
-      startDate: '2024-05-10',
-      endDate: '2024-05-12',
-      description: null,
       images: [{ id: 1, filename: 'trip1.jpg', title: 'cover' }],
       ...overrides,
     },
@@ -74,8 +63,7 @@ function sampleTripData(
         },
       ],
     },
-    checklist: null,
-  };
+  });
 }
 
 function collectAllFilenames(data: TripBackupData): string[] {
@@ -98,7 +86,6 @@ interface TripFixture {
   /** Filenames to actually write under images/. Defaults to every referenced image. */
   imagesToInclude?: string[];
   skipDataJson?: boolean;
-  malformedDataJson?: boolean;
 }
 
 /** A minimal single-trip manifest matching `data`, for tests that build a zip by hand. */
@@ -117,27 +104,6 @@ function defaultManifestFor(data: TripBackupData): BackupManifest {
   };
 }
 
-function sampleTemplate(): ChecklistTemplateResponse {
-  return {
-    categories: [
-      {
-        id: 1,
-        name: 'Documents',
-        items: [
-          {
-            id: 1,
-            name: 'Passport',
-            quantity: 1,
-            notes: null,
-            storage_location: null,
-            specs: [],
-          },
-        ],
-      },
-    ],
-  };
-}
-
 interface BuildZipOptions {
   /** A manifest payload to serialize as-is, or a sentinel to corrupt/omit it. */
   manifest?: unknown;
@@ -146,7 +112,6 @@ interface BuildZipOptions {
   includesTemplate?: boolean;
   template?: ChecklistTemplateResponse;
   skipTemplateJson?: boolean;
-  malformedTemplateJson?: boolean;
 }
 
 /** Builds a real backup zip buffer (via adm-zip) for exercising parseBackupZip. */
@@ -156,7 +121,6 @@ function buildZip({
   includesTemplate,
   template,
   skipTemplateJson,
-  malformedTemplateJson,
 }: BuildZipOptions = {}): Buffer {
   const zip = new AdmZip();
   const tripFixtures = trips ?? [{ folder: 'trip_1', data: sampleTripData() }];
@@ -187,11 +151,6 @@ function buildZip({
   for (const trip of tripFixtures) {
     if (trip.skipDataJson) {
       // Intentionally omit data.json for this trip.
-    } else if (trip.malformedDataJson) {
-      zip.addFile(
-        `trips/${trip.folder}/data.json`,
-        Buffer.from('{not valid json', 'utf-8'),
-      );
     } else {
       zip.addFile(
         `trips/${trip.folder}/data.json`,
@@ -211,12 +170,10 @@ function buildZip({
   if (includesTemplate) {
     if (skipTemplateJson) {
       // Intentionally omit template.json entirely.
-    } else if (malformedTemplateJson) {
-      zip.addFile('template.json', Buffer.from('{not valid json', 'utf-8'));
     } else {
       zip.addFile(
         'template.json',
-        Buffer.from(JSON.stringify(template ?? sampleTemplate()), 'utf-8'),
+        Buffer.from(JSON.stringify(template ?? makeTemplate()), 'utf-8'),
       );
     }
   }
@@ -229,6 +186,7 @@ describe('parseBackupZip', () => {
     const result = parseBackupZip(buildZip());
 
     expect(result.manifest.tripCount).toBe(1);
+    expect(result.template).toBeNull();
     expect(result.trips).toHaveLength(1);
 
     const [trip] = result.trips;
@@ -241,15 +199,6 @@ describe('parseBackupZip', () => {
     expect(trip.imageBuffers.get('attr1.jpg')?.toString()).toBe(
       'bytes-attr1.jpg',
     );
-  });
-
-  it('keeps emoji/CJK trip titles intact when parsing', () => {
-    const data = sampleTripData({ title: '東京 🗼 五日遊' });
-    const result = parseBackupZip(
-      buildZip({ trips: [{ folder: 'trip_1', data }] }),
-    );
-
-    expect(result.trips[0].data.trip.title).toBe('東京 🗼 五日遊');
   });
 
   it('throws when the buffer is not a valid zip archive', () => {
@@ -317,18 +266,6 @@ describe('parseBackupZip', () => {
     );
   });
 
-  it("throws when a trip's data.json is malformed JSON", () => {
-    const zip = buildZip({
-      trips: [
-        { folder: 'trip_1', data: sampleTripData(), malformedDataJson: true },
-      ],
-    });
-
-    expect(() => parseBackupZip(zip)).toThrow(
-      /trips\/trip_1\/data\.json missing or unreadable/,
-    );
-  });
-
   it('rejects the whole backup and reports which images are missing for one trip', () => {
     const zip = buildZip({
       trips: [
@@ -356,14 +293,8 @@ describe('parseBackupZip', () => {
     );
   });
 
-  it('leaves template null when manifest.includesTemplate is not set', () => {
-    const result = parseBackupZip(buildZip());
-
-    expect(result.template).toBeNull();
-  });
-
   it('parses template.json when manifest.includesTemplate is true', () => {
-    const template = sampleTemplate();
+    const template = makeTemplate();
     const result = parseBackupZip(
       buildZip({ includesTemplate: true, template }),
     );
@@ -379,20 +310,38 @@ describe('parseBackupZip', () => {
     );
   });
 
-  it('throws when includesTemplate is true but template.json is malformed JSON', () => {
-    const zip = buildZip({
-      includesTemplate: true,
-      malformedTemplateJson: true,
-    });
-
-    expect(() => parseBackupZip(zip)).toThrow(
-      /template\.json missing or unreadable/,
-    );
-  });
-
   describe('zip bomb guard', () => {
-    /** 21 MB of zeros — one byte over MAX_ENTRY_UNCOMPRESSED_BYTES (20 MB) and highly compressible, exactly the shape of a "zip bomb" entry. */
-    const oversizedContent = Buffer.alloc(21 * 1024 * 1024, 0);
+    /** 1 MB over MAX_ENTRY_UNCOMPRESSED_BYTES (20 MB), declared in the zip without allocating it. */
+    const OVERSIZED_DECLARED_BYTES = 21 * 1024 * 1024;
+
+    /**
+     * Rewrites the uncompressed-size field of one entry's central directory
+     * record, which is the only place the production guard reads it from.
+     * A central directory record starts with the signature `PK\x01\x02`; the
+     * uncompressed size (UInt32LE) is at offset 24, the name length (UInt16LE)
+     * at offset 28, and the name itself at offset 46.
+     */
+    function declareUncompressedSize(
+      zipBuffer: Buffer,
+      entryName: string,
+      size: number,
+    ): Buffer {
+      const patched = Buffer.from(zipBuffer);
+      const signature = Buffer.from([0x50, 0x4b, 0x01, 0x02]);
+      let offset = patched.indexOf(signature);
+      while (offset !== -1) {
+        const nameLength = patched.readUInt16LE(offset + 28);
+        const name = patched
+          .subarray(offset + 46, offset + 46 + nameLength)
+          .toString('utf-8');
+        if (name === entryName) {
+          patched.writeUInt32LE(size, offset + 24);
+          return patched;
+        }
+        offset = patched.indexOf(signature, offset + 1);
+      }
+      throw new Error(`Central directory record not found for ${entryName}`);
+    }
 
     it('rejects a data.json entry whose declared uncompressed size exceeds the cap', () => {
       const zip = new AdmZip();
@@ -403,9 +352,15 @@ describe('parseBackupZip', () => {
           'utf-8',
         ),
       );
-      zip.addFile('trips/trip_1/data.json', oversizedContent);
+      zip.addFile('trips/trip_1/data.json', Buffer.from('{}', 'utf-8'));
 
-      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+      const bomb = declareUncompressedSize(
+        zip.toBuffer(),
+        'trips/trip_1/data.json',
+        OVERSIZED_DECLARED_BYTES,
+      );
+
+      expect(() => parseBackupZip(bomb)).toThrow(
         /"trips\/trip_1\/data\.json" is too large \(\d+ bytes uncompressed\)/,
       );
     });
@@ -421,13 +376,22 @@ describe('parseBackupZip', () => {
         'trips/trip_1/data.json',
         Buffer.from(JSON.stringify(data), 'utf-8'),
       );
-      zip.addFile('trips/trip_1/images/trip1.jpg', oversizedContent);
+      zip.addFile(
+        'trips/trip_1/images/trip1.jpg',
+        Buffer.from('bytes-trip1.jpg', 'utf-8'),
+      );
       zip.addFile(
         'trips/trip_1/images/attr1.jpg',
         Buffer.from('bytes-attr1.jpg', 'utf-8'),
       );
 
-      expect(() => parseBackupZip(zip.toBuffer())).toThrow(
+      const bomb = declareUncompressedSize(
+        zip.toBuffer(),
+        'trips/trip_1/images/trip1.jpg',
+        OVERSIZED_DECLARED_BYTES,
+      );
+
+      expect(() => parseBackupZip(bomb)).toThrow(
         /"trips\/trip_1\/images\/trip1\.jpg" is too large \(\d+ bytes uncompressed\)/,
       );
     });

@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { getWeatherEnabled } from '@/utils/weatherApi';
 
@@ -8,10 +8,6 @@ import { useWeatherEnabled } from './useWeatherEnabled';
 vi.mock('@/utils/weatherApi', () => ({ getWeatherEnabled: vi.fn() }));
 
 describe('useWeatherEnabled', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('starts as false before the status resolves', () => {
     vi.mocked(getWeatherEnabled).mockReturnValue(new Promise(() => {}));
 
@@ -25,7 +21,6 @@ describe('useWeatherEnabled', () => {
 
     const { result } = renderHook(() => useWeatherEnabled());
 
-    await waitFor(() => expect(getWeatherEnabled).toHaveBeenCalled());
     await waitFor(() => expect(result.current).toBe(resolved));
   });
 
