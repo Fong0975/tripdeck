@@ -23,7 +23,7 @@ tripdeck/
 │   │   ├── lib/              # Toast notification system
 │   │   ├── pages/            # Route-level page components
 │   │   ├── types/            # TypeScript type definitions
-│   │   └── utils/            # Docx export, weather API, and other shared helpers
+│   │   └── utils/            # Docx export, weather lookup cache, and other shared helpers
 │   ├── Dockerfile            # Multi-stage build: Vite → nginx
 │   ├── eslint.config.js      # ESLint 9 flat config
 │   ├── nginx.conf.template   # nginx config template (port + proxy via envsubst)
@@ -31,7 +31,7 @@ tripdeck/
 │   └── vite.config.ts
 ├── server/                   # Node.js REST API backend (Express + TypeScript)
 │   ├── src/
-│   │   ├── config/           # Database connection setup
+│   │   ├── config/           # Database connection and Docker secret loading
 │   │   ├── controllers/      # Handles API business logic and responses
 │   │   ├── db/               # Schema definitions and table initialization
 │   │   ├── logger/           # File-based logger (levels, rotation, config)
@@ -41,6 +41,7 @@ tripdeck/
 │   │   ├── scheduler/        # Periodic automatic full-system backup checker
 │   │   ├── test-utils/       # Shared test helpers (Express request/response mocks)
 │   │   ├── types/            # Request/response type definitions
+│   │   ├── weather/          # Weather proxy (OpenWeatherMap + Visual Crossing, cached)
 │   │   └── index.ts          # Express server entry point
 │   ├── backups/              # Automatic backup files (git-ignored, timestamped filenames)
 │   ├── logs/                 # Rotated log files (git-ignored)

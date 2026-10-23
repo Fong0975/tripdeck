@@ -1,9 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('../logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { fetchOwmWeather, geocode, type GeoResult } from './openWeatherMap';
 
-function makeResponse(ok: boolean, body: unknown): Response {
-  return { ok, json: () => Promise.resolve(body) } as unknown as Response;
+const API_KEY = 'owm-secret';
+
+function makeResponse(ok: boolean, body: unknown, status = 200): Response {
+  return { ok, status, json: () => Promise.resolve(body) } as Response;
 }
 
 interface ForecastEntryOverrides {
@@ -33,6 +45,7 @@ function makeForecastEntry(overrides: ForecastEntryOverrides = {}) {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn());
 });
 
@@ -41,16 +54,31 @@ afterEach(() => {
 });
 
 describe('geocode', () => {
-  it('returns null when the response is not ok', async () => {
-    vi.mocked(fetch).mockResolvedValue(makeResponse(false, []));
+  it('sends the API key with a timeout signal', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeResponse(true, []));
 
-    expect(await geocode('Tokyo')).toBeNull();
+    await geocode('東京', API_KEY);
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain(`q=${encodeURIComponent('東京')}`);
+    expect(url).toContain(`appid=${API_KEY}`);
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('returns null and logs only the status when the response is not ok', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeResponse(false, [], 401));
+
+    expect(await geocode('Tokyo', API_KEY)).toBeNull();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'OWM geocoding request failed',
+      { status: 401 },
+    );
   });
 
   it('returns null when no results are found', async () => {
     vi.mocked(fetch).mockResolvedValue(makeResponse(true, []));
 
-    expect(await geocode('Nowhere')).toBeNull();
+    expect(await geocode('Nowhere', API_KEY)).toBeNull();
   });
 
   it.each([
@@ -67,7 +95,7 @@ describe('geocode', () => {
   ])('resolves the name when $description', async ({ row, expectedName }) => {
     vi.mocked(fetch).mockResolvedValue(makeResponse(true, [row]));
 
-    expect(await geocode('Tokyo')).toEqual({
+    expect(await geocode('Tokyo', API_KEY)).toEqual({
       lat: 1,
       lon: 2,
       resolvedName: expectedName,
@@ -78,12 +106,29 @@ describe('geocode', () => {
 describe('fetchOwmWeather', () => {
   const geo: GeoResult = { lat: 1, lon: 2, resolvedName: 'Tokyo' };
 
-  it('returns error status when the response is not ok', async () => {
-    vi.mocked(fetch).mockResolvedValue(makeResponse(false, {}));
+  it('sends the coordinates and API key with a timeout signal', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeResponse(true, { list: [makeForecastEntry()] }),
+    );
 
-    expect(await fetchOwmWeather(geo, '2026-01-01')).toEqual({
+    await fetchOwmWeather(geo, '2026-01-01', API_KEY);
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain('lat=1&lon=2');
+    expect(url).toContain(`appid=${API_KEY}`);
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('returns error status and logs only the status when the response is not ok', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeResponse(false, {}, 500));
+
+    expect(await fetchOwmWeather(geo, '2026-01-01', API_KEY)).toEqual({
       status: 'error',
     });
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'OWM forecast request failed',
+      { status: 500 },
+    );
   });
 
   it('returns out_of_range status when no entries match the date', async () => {
@@ -93,7 +138,7 @@ describe('fetchOwmWeather', () => {
       }),
     );
 
-    expect(await fetchOwmWeather(geo, '2026-01-01')).toEqual({
+    expect(await fetchOwmWeather(geo, '2026-01-01', API_KEY)).toEqual({
       status: 'out_of_range',
     });
   });
@@ -122,7 +167,7 @@ describe('fetchOwmWeather', () => {
       }),
     );
 
-    expect(await fetchOwmWeather(geo, '2026-01-01')).toEqual({
+    expect(await fetchOwmWeather(geo, '2026-01-01', API_KEY)).toEqual({
       status: 'success',
       data: {
         resolvedName: 'Tokyo',
@@ -159,7 +204,7 @@ describe('fetchOwmWeather', () => {
       }),
     );
 
-    const result = await fetchOwmWeather(geo, '2026-01-01');
+    const result = await fetchOwmWeather(geo, '2026-01-01', API_KEY);
 
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -178,7 +223,7 @@ describe('fetchOwmWeather', () => {
       makeResponse(true, { list: [entryWithoutPop] }),
     );
 
-    const result = await fetchOwmWeather(geo, '2026-01-01');
+    const result = await fetchOwmWeather(geo, '2026-01-01', API_KEY);
 
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -204,7 +249,7 @@ describe('fetchOwmWeather', () => {
         makeResponse(true, { list: [makeForecastEntry({ icon: code })] }),
       );
 
-      const result = await fetchOwmWeather(geo, '2026-01-01');
+      const result = await fetchOwmWeather(geo, '2026-01-01', API_KEY);
 
       expect(result.status).toBe('success');
       if (result.status === 'success') {

@@ -7,9 +7,9 @@ import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { Plus } from 'lucide-react';
 
+import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isPastDate } from '@/utils/date';
-import { isWeatherEnabled } from '@/utils/weatherApi';
 
 import AttractionCard from '../AttractionCard';
 import DayWeather from '../DayWeather';
@@ -54,6 +54,7 @@ export default function DayColumn({
   onDeleteLocation,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}` });
+  const isWeatherEnabled = useWeatherEnabled();
 
   const dateLabel = (() => {
     try {

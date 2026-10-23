@@ -5,7 +5,7 @@ import { Document, Packer, Paragraph, Table, TextRun } from 'docx';
 import type { Trip, TripContent, TravelConnection } from '@/types';
 import { daysFromToday } from '@/utils/date';
 import { downloadBlob } from '@/utils/download';
-import { fetchDailyWeather, isWeatherEnabled } from '@/utils/weatherApi';
+import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { FONT } from './constants';
@@ -21,6 +21,8 @@ export async function exportToDocx(
   const children: DocChild[] = [];
 
   children.push(...(await makeHeaderSection(trip, content.days.length)));
+
+  const isWeatherEnabled = await getWeatherEnabled();
 
   // === Day sections ========================================================
 
