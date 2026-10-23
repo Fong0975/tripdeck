@@ -28,12 +28,12 @@ export default function ImageStrip({
             src={`/uploads/${img.filename}`}
             alt={img.title}
             title={img.title}
-            className='border-card size-7 rounded-md border-2 object-cover'
+            className='size-7 rounded-md border-2 border-card object-cover'
           />
         ))}
       </div>
       {images.length > 3 && (
-        <span className='text-muted-foreground flex items-center gap-0.5 text-sm'>
+        <span className='flex items-center gap-0.5 text-sm text-muted-foreground'>
           <Images size={10} />+{images.length - 3}
         </span>
       )}

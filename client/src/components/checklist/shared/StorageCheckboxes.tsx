@@ -21,7 +21,7 @@ export default function StorageCheckboxes({
     <>
       <Package
         size={compact ? 10 : 12}
-        className='text-muted-foreground shrink-0'
+        className='shrink-0 text-muted-foreground'
       />
       {STORAGE_OPTIONS.map(option => (
         <label key={option} className='flex cursor-pointer items-center gap-1'>
@@ -29,9 +29,9 @@ export default function StorageCheckboxes({
             type='checkbox'
             checked={hasStorageOption(value, option)}
             onChange={() => onChange(toggleStorageOption(value, option))}
-            className={`accent-primary cursor-pointer ${compact ? 'size-3' : 'size-3.5'}`}
+            className={`cursor-pointer accent-primary ${compact ? 'size-3' : 'size-3.5'}`}
           />
-          <span className='text-muted-foreground text-xs'>{option}</span>
+          <span className='text-xs text-muted-foreground'>{option}</span>
         </label>
       ))}
     </>

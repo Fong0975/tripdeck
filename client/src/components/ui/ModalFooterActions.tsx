@@ -17,14 +17,14 @@ export default function ModalFooterActions({
       <button
         type='button'
         onClick={onCancel}
-        className='border-border text-foreground hover:bg-accent flex-1 rounded-xl border px-4 py-2 transition-colors'
+        className='flex-1 rounded-xl border border-border px-4 py-2 text-foreground transition-colors hover:bg-accent'
       >
         {cancelLabel}
       </button>
       <button
         type='submit'
         disabled={disabled}
-        className='bg-primary text-primary-foreground flex-1 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50'
+        className='flex-1 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50'
       >
         {submitLabel}
       </button>

@@ -6,7 +6,7 @@ interface Props {
 export default function LoadingIndicator({ className = '' }: Props) {
   return (
     <p
-      className={`text-muted-foreground animate-pulse text-sm ${className}`.trim()}
+      className={`animate-pulse text-sm text-muted-foreground ${className}`.trim()}
     >
       載入中…
     </p>

@@ -35,20 +35,20 @@ export default function Modal({
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
       <div
-        className='absolute inset-0 bg-black/50 backdrop-blur-sm'
+        className='absolute inset-0 bg-black/50 backdrop-blur-xs'
         onClick={onClose}
       />
 
       <div
-        className={`animate-slide-up border-border bg-card relative w-full ${maxWidth} rounded-2xl border p-6 shadow-2xl ${
+        className={`relative w-full animate-slide-up border-border bg-card ${maxWidth} rounded-2xl border p-6 shadow-2xl ${
           scrollable ? 'max-h-[90vh] overflow-y-auto' : ''
         }`}
       >
         <div className='mb-6 flex items-center justify-between'>
-          <h2 className='text-foreground text-xl font-bold'>{title}</h2>
+          <h2 className='text-xl font-bold text-foreground'>{title}</h2>
           <button
             onClick={onClose}
-            className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-colors'
+            className='rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
           >
             <X size={20} />
           </button>

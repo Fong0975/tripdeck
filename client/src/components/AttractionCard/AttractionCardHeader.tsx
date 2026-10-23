@@ -22,7 +22,7 @@ export default function AttractionCardHeader({
 
   return (
     <div className='relative'>
-      <h4 className='text-foreground text-base font-semibold'>
+      <h4 className='text-base font-semibold text-foreground'>
         {attraction.name}
         {attraction.googleMapUrl && (
           <a
@@ -30,20 +30,20 @@ export default function AttractionCardHeader({
             target='_blank'
             rel='noopener noreferrer'
             onClick={e => e.stopPropagation()}
-            className='text-primary/60 hover:text-primary ml-1.5 inline-flex align-middle transition-colors'
+            className='ml-1.5 inline-flex align-middle text-primary/60 transition-colors hover:text-primary'
             title='Google Maps'
           >
             <MapPin size={14} />
           </a>
         )}
       </h4>
-      <div className='bg-card absolute right-0 top-0 flex items-center gap-1 rounded opacity-0 transition-opacity group-hover:opacity-100'>
+      <div className='absolute top-0 right-0 flex items-center gap-1 rounded-sm bg-card transition-opacity group-hover:opacity-100 can-hover:opacity-0'>
         <button
           onClick={e => {
             e.stopPropagation();
             onEdit(attraction);
           }}
-          className='text-muted-foreground hover:text-foreground rounded p-1 transition-colors'
+          className='rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground'
           title='編輯'
         >
           <Pencil size={14} />
@@ -54,7 +54,7 @@ export default function AttractionCardHeader({
               e.stopPropagation();
               onDuplicate(attraction);
             }}
-            className='text-muted-foreground hover:text-foreground rounded p-1 transition-colors'
+            className='rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground'
             title='複製'
           >
             <Copy size={14} />
@@ -65,7 +65,7 @@ export default function AttractionCardHeader({
             e.stopPropagation();
             setShowDeleteConfirm(true);
           }}
-          className='text-muted-foreground hover:text-destructive rounded p-1 transition-colors'
+          className='rounded-sm p-1 text-muted-foreground transition-colors hover:text-destructive'
           title='刪除'
         >
           <Trash2 size={14} />

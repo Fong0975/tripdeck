@@ -42,17 +42,17 @@ export default function ImageLightbox({
   const current = images[index];
 
   return createPortal(
-    <div className='fixed inset-0 z-[60] flex items-center justify-center'>
+    <div className='fixed inset-0 z-60 flex items-center justify-center'>
       {/* Backdrop */}
       <div
-        className='absolute inset-0 bg-black/85 backdrop-blur-sm'
+        className='absolute inset-0 bg-black/85 backdrop-blur-xs'
         onClick={onClose}
       />
 
       {/* Close */}
       <button
         onClick={onClose}
-        className='absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20'
+        className='absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20'
       >
         <X size={20} />
       </button>

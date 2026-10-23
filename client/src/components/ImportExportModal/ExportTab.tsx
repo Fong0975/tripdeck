@@ -70,16 +70,16 @@ export default function ExportTab({ trips, onClose }: Props) {
 
   return (
     <form onSubmit={handleExportSubmit} className='space-y-4'>
-      <label className='border-border hover:bg-accent flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5'>
+      <label className='flex cursor-pointer items-center gap-2 rounded-lg border border-border px-2 py-1.5 hover:bg-accent'>
         <input
           type='checkbox'
           checked={includeTemplate}
           onChange={toggleTemplate}
-          className='accent-primary size-3.5 cursor-pointer'
+          className='size-3.5 cursor-pointer accent-primary'
         />
         <div className='flex-1'>
-          <p className='text-foreground text-sm'>打包清單範本</p>
-          <p className='text-muted-foreground text-xs'>
+          <p className='text-sm text-foreground'>打包清單範本</p>
+          <p className='text-xs text-muted-foreground'>
             所有旅程共用的全域打包清單範本
           </p>
         </div>
@@ -90,34 +90,34 @@ export default function ExportTab({ trips, onClose }: Props) {
       ) : (
         <>
           <div className='flex items-center justify-between'>
-            <span className='text-foreground text-sm font-medium'>
+            <span className='text-sm font-medium text-foreground'>
               選擇要匯出的旅程
             </span>
             <button
               type='button'
               onClick={toggleAll}
-              className='text-primary text-sm hover:underline'
+              className='text-sm text-primary hover:underline'
             >
               {allSelected ? '取消全選' : '全選'}
             </button>
           </div>
 
-          <div className='border-border max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2'>
+          <div className='max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-2'>
             {trips.map(trip => (
               <label
                 key={trip.id}
-                className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5'
+                className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent'
               >
                 <input
                   type='checkbox'
                   checked={selectedIds.has(trip.id)}
                   onChange={() => toggleTrip(trip.id)}
-                  className='accent-primary size-3.5 cursor-pointer'
+                  className='size-3.5 cursor-pointer accent-primary'
                 />
-                <span className='text-foreground flex-1 truncate text-sm'>
+                <span className='flex-1 truncate text-sm text-foreground'>
                   {trip.title}
                 </span>
-                <span className='text-muted-foreground shrink-0 text-xs'>
+                <span className='shrink-0 text-xs text-muted-foreground'>
                   {trip.startDate} ~ {trip.endDate}
                 </span>
               </label>

@@ -41,12 +41,12 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
       <div className='flex flex-1 items-center justify-center py-24 text-center'>
         <div>
           <p className='mb-2 text-4xl'>🧳</p>
-          <p className='text-muted-foreground mb-4 text-sm'>
+          <p className='mb-4 text-sm text-muted-foreground'>
             尚未有任何分類，請點擊「編輯清單」以開始建立行李清單。
           </p>
           <button
             onClick={() => setShowEditModal(true)}
-            className='border-border text-muted-foreground hover:border-primary hover:text-primary inline-flex items-center gap-1 rounded-lg border border-dashed px-3 py-1.5 text-xs transition-colors'
+            className='inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary'
           >
             <Plus size={12} />
             編輯清單
@@ -72,13 +72,13 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       {/* Toolbar */}
-      <div className='border-border flex shrink-0 items-center justify-between border-b px-4 py-2'>
-        <span className='text-muted-foreground text-xs'>
+      <div className='flex shrink-0 items-center justify-between border-b border-border px-4 py-2'>
+        <span className='text-xs text-muted-foreground'>
           共 {totalItems} 項
         </span>
         <button
           onClick={() => setShowEditModal(true)}
-          className='text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors'
+          className='flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
         >
           <Pencil size={14} />
           編輯清單

@@ -1,5 +1,5 @@
 # Multi-stage build for Node.js TypeScript backend
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY server/ .
 RUN npm run build
 
 # Final stage
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 

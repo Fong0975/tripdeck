@@ -32,8 +32,7 @@ function renderLightbox(images: AttractionImage[], initialIndex: number) {
 // backdrop is a bare decorative div with no accessible role/name — the
 // only way to reach it is by its own class name.
 function getBackdrop(): HTMLElement {
-  // eslint-disable-next-line testing-library/no-node-access
-  return document.body.querySelector('.backdrop-blur-sm') as HTMLElement;
+  return document.body.querySelector('.backdrop-blur-xs') as HTMLElement;
 }
 
 describe('ImageLightbox', () => {

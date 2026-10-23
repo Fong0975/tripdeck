@@ -51,15 +51,15 @@ export default function TravelConnectionItem({
     <div className='group my-1 flex items-center gap-2 px-3'>
       {/* Vertical line */}
       <div className='flex w-6 shrink-0 flex-col items-center'>
-        <div className='bg-border h-3 w-px' />
-        <div className='bg-primary/50 size-1.5 rounded-full' />
-        <div className='bg-border h-3 w-px' />
+        <div className='h-3 w-px bg-border' />
+        <div className='size-1.5 rounded-full bg-primary/50' />
+        <div className='h-3 w-px bg-border' />
       </div>
 
       {/* Connection info */}
       <div
         onClick={() => onEdit(connection)}
-        className='bg-muted/50 hover:border-border hover:bg-muted flex flex-1 cursor-pointer flex-col gap-1 rounded-lg border border-transparent px-3 py-2 text-sm transition-all'
+        className='flex flex-1 cursor-pointer flex-col gap-1 rounded-lg border border-transparent bg-muted/50 px-3 py-2 text-sm transition-all hover:border-border hover:bg-muted'
       >
         <div className='flex items-center justify-between gap-2'>
           <div className='flex flex-col'>
@@ -70,12 +70,12 @@ export default function TravelConnectionItem({
               </span>
             </span>
             {durationDisplay && (
-              <span className='text-muted-foreground text-xs'>
+              <span className='text-xs text-muted-foreground'>
                 {durationDisplay}
               </span>
             )}
           </div>
-          <div className='flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+          <div className='flex shrink-0 items-center gap-1 transition-opacity group-hover:opacity-100 can-hover:opacity-0'>
             <Pencil size={12} className='text-muted-foreground' />
             <button
               type='button'
@@ -83,7 +83,7 @@ export default function TravelConnectionItem({
                 e.stopPropagation();
                 setShowDeleteConfirm(true);
               }}
-              className='text-muted-foreground hover:text-destructive rounded p-0.5 transition-colors'
+              className='rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive'
               title='刪除'
             >
               <Trash2 size={12} />

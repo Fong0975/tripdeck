@@ -111,7 +111,7 @@ export default function DayWeather({ locations, date }: Props) {
   return (
     <div
       className={[
-        'mt-2.5 flex min-h-[140px] select-none flex-col rounded-xl bg-blue-50 px-3 py-2.5 dark:bg-blue-950/20',
+        'mt-2.5 flex min-h-[140px] flex-col rounded-xl bg-blue-50 px-3 py-2.5 select-none dark:bg-blue-950/20',
         locations.length > 1 ? 'cursor-grab active:cursor-grabbing' : '',
       ].join(' ')}
       style={{ touchAction: locations.length > 1 ? 'pan-y' : undefined }}
@@ -126,18 +126,18 @@ export default function DayWeather({ locations, date }: Props) {
           <button
             onClick={() => setIdx(i => i - 1)}
             disabled={!canPrev}
-            className='text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30'
+            className='text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30'
             aria-label='上一個地區'
           >
             <ChevronLeft size={13} />
           </button>
-          <span className='text-muted-foreground max-w-[120px] truncate text-xs'>
+          <span className='max-w-30 truncate text-xs text-muted-foreground'>
             {location.name}
           </span>
           <button
             onClick={() => setIdx(i => i + 1)}
             disabled={!canNext}
-            className='text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30'
+            className='text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30'
             aria-label='下一個地區'
           >
             <ChevronRight size={13} />
@@ -147,25 +147,25 @@ export default function DayWeather({ locations, date }: Props) {
 
       <div className='flex flex-1 flex-col items-center justify-center'>
         {current?.status === 'loading' && (
-          <p className='text-muted-foreground animate-pulse text-center text-xs'>
+          <p className='animate-pulse text-center text-xs text-muted-foreground'>
             查詢中…
           </p>
         )}
 
         {current?.status === 'not_found' && (
-          <p className='text-muted-foreground text-center text-xs'>
+          <p className='text-center text-xs text-muted-foreground'>
             找不到「{location.name}」的天氣資料
           </p>
         )}
 
         {current?.status === 'out_of_range' && (
-          <p className='text-muted-foreground text-center text-xs'>
+          <p className='text-center text-xs text-muted-foreground'>
             超出預報範圍（僅支援今日起 5 天內）
           </p>
         )}
 
         {current?.status === 'error' && (
-          <p className='text-muted-foreground text-center text-xs'>
+          <p className='text-center text-xs text-muted-foreground'>
             天氣資料取得失敗
           </p>
         )}
@@ -174,13 +174,13 @@ export default function DayWeather({ locations, date }: Props) {
           <div className='flex flex-col items-center gap-1'>
             <WeatherIcon code={current.data.icon} />
             <div className='text-center'>
-              <p className='text-foreground text-xs font-medium capitalize'>
+              <p className='text-xs font-medium text-foreground capitalize'>
                 {current.data.description}
               </p>
-              <p className='text-foreground/80 text-xs'>
+              <p className='text-xs text-foreground/80'>
                 {current.data.tempMin}° / {current.data.tempMax}°C
               </p>
-              <div className='text-muted-foreground mt-0.5 flex items-center justify-center gap-2 text-xs'>
+              <div className='mt-0.5 flex items-center justify-center gap-2 text-xs text-muted-foreground'>
                 <span className='flex items-center gap-0.5'>
                   <Droplets size={10} />
                   {current.data.humidity}%

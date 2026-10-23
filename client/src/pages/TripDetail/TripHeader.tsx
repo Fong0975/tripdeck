@@ -23,11 +23,11 @@ export default function TripHeader({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className='border-border bg-card/50 relative border-b'>
-      <div className='mx-auto flex max-w-screen-xl items-center gap-4 p-4'>
+    <div className='relative border-b border-border bg-card/50'>
+      <div className='mx-auto flex max-w-7xl items-center gap-4 p-4'>
         <button
           onClick={onBack}
-          className='text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors'
+          className='flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
           aria-label='返回首頁'
         >
           <ArrowLeft size={20} />
@@ -44,7 +44,7 @@ export default function TripHeader({
         <button
           onClick={onExport}
           disabled={exporting}
-          className='text-muted-foreground hover:bg-accent hover:text-foreground flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm transition-colors disabled:opacity-50'
+          className='flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50'
           title='匯出行程'
         >
           {exporting ? (
@@ -63,7 +63,7 @@ export default function TripHeader({
         onClick={() => setExpanded(v => !v)}
         aria-label={expanded ? '收合旅程詳細資訊' : '展開旅程詳細資訊'}
         title={expanded ? '收合旅程詳細資訊' : '展開旅程詳細資訊'}
-        className='border-border bg-card text-muted-foreground hover:text-foreground absolute bottom-0 left-1/2 z-10 flex size-7 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors'
+        className='absolute bottom-0 left-1/2 z-10 flex size-7 -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-xs transition-colors hover:text-foreground'
       >
         <ChevronDown
           size={14}

@@ -95,7 +95,7 @@ export default function ImageUploadSection({
           {images.map((img, idx) => (
             <div
               key={img.id}
-              className='border-border group relative overflow-hidden rounded-lg border'
+              className='group relative overflow-hidden rounded-lg border border-border'
             >
               <img
                 src={`/uploads/${img.filename}`}
@@ -105,7 +105,7 @@ export default function ImageUploadSection({
               />
               <div
                 onClick={() => setLightboxIndex(idx)}
-                className='absolute inset-0 flex cursor-zoom-in flex-col justify-end bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100'
+                className='absolute inset-0 flex cursor-zoom-in flex-col justify-end bg-linear-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100'
               >
                 <p className='truncate text-xs font-medium text-white'>
                   {img.title}
@@ -116,7 +116,7 @@ export default function ImageUploadSection({
                 tabIndex={-1}
                 onClick={() => handleDelete(img.id)}
                 disabled={deletingId === img.id}
-                className='hover:bg-destructive absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity disabled:opacity-50 group-hover:opacity-100'
+                className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white transition-opacity group-hover:opacity-100 hover:bg-destructive disabled:opacity-50 can-hover:opacity-0'
                 title='刪除圖片'
               >
                 <Trash2 size={12} />
@@ -128,7 +128,7 @@ export default function ImageUploadSection({
 
       {/* Upload form */}
       {pendingFile ? (
-        <div className='border-border space-y-2 rounded-lg border border-dashed p-3'>
+        <div className='space-y-2 rounded-lg border border-dashed border-border p-3'>
           {previewUrl && (
             <div className='relative'>
               <img
@@ -140,7 +140,7 @@ export default function ImageUploadSection({
                 type='button'
                 tabIndex={-1}
                 onClick={clearPending}
-                className='absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
+                className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
               >
                 <X size={12} />
               </button>
@@ -155,12 +155,12 @@ export default function ImageUploadSection({
             placeholder='圖片標題（必填）'
             className={`${INPUT_CLS} text-sm`}
           />
-          {error && <p className='text-destructive text-xs'>{error}</p>}
+          {error && <p className='text-xs text-destructive'>{error}</p>}
           <button
             type='button'
             onClick={handleUpload}
             disabled={uploading}
-            className='bg-primary text-primary-foreground w-full rounded-lg py-2 text-sm font-medium transition-all hover:opacity-90 disabled:opacity-50'
+            className='w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 disabled:opacity-50'
           >
             {uploading ? '上傳中...' : '確認上傳'}
           </button>
@@ -169,7 +169,7 @@ export default function ImageUploadSection({
         <button
           type='button'
           onClick={() => fileInputRef.current?.click()}
-          className='border-border text-muted-foreground hover:border-primary/50 hover:text-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 text-sm transition-colors'
+          className='flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary'
         >
           <ImagePlus size={16} />
           新增圖片

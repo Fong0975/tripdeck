@@ -113,14 +113,14 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
           {stagedImages.map(img => (
             <div
               key={img.localId}
-              className='border-border group relative overflow-hidden rounded-lg border'
+              className='group relative overflow-hidden rounded-lg border border-border'
             >
               <img
                 src={img.previewUrl}
                 alt={img.title}
                 className='h-24 w-full object-cover'
               />
-              <div className='absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100'>
+              <div className='absolute inset-0 flex flex-col justify-end bg-linear-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100'>
                 <p className='truncate text-xs font-medium text-white'>
                   {img.title}
                 </p>
@@ -129,7 +129,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
                 type='button'
                 tabIndex={-1}
                 onClick={() => removeStagedImage(img.localId)}
-                className='hover:bg-destructive absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100'
+                className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white transition-opacity group-hover:opacity-100 hover:bg-destructive can-hover:opacity-0'
                 title='移除圖片'
               >
                 <Trash2 size={12} />
@@ -139,7 +139,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
         </div>
       )}
       {pendingFile ? (
-        <div className='border-border space-y-2 rounded-lg border border-dashed p-3'>
+        <div className='space-y-2 rounded-lg border border-dashed border-border p-3'>
           {pendingPreview && (
             <div className='relative'>
               <img
@@ -151,7 +151,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
                 type='button'
                 tabIndex={-1}
                 onClick={clearPendingStage}
-                className='absolute right-1 top-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
+                className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
               >
                 <X size={12} />
               </button>
@@ -164,15 +164,15 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
               setStagingError('');
             }}
             placeholder='圖片標題（必填）'
-            className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2'
+            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
           />
           {stagingError && (
-            <p className='text-destructive text-xs'>{stagingError}</p>
+            <p className='text-xs text-destructive'>{stagingError}</p>
           )}
           <button
             type='button'
             onClick={confirmStage}
-            className='bg-primary text-primary-foreground w-full rounded-lg py-2 text-sm font-medium transition-all hover:opacity-90'
+            className='w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90'
           >
             加入圖片
           </button>
@@ -181,7 +181,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
         <button
           type='button'
           onClick={() => stageFileInputRef.current?.click()}
-          className='border-border text-muted-foreground hover:border-primary/50 hover:text-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 text-sm transition-colors'
+          className='flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary'
         >
           <ImagePlus size={16} />
           新增圖片

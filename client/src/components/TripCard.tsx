@@ -27,7 +27,7 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
   return (
     <div
       onClick={() => navigate(`/trip/${trip.id}`)}
-      className='card-hover border-border bg-card group relative cursor-pointer overflow-hidden rounded-2xl border p-6'
+      className='group relative card-hover cursor-pointer overflow-hidden rounded-2xl border border-border bg-card p-6'
     >
       {/* Glow accent */}
       <div
@@ -40,16 +40,16 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
 
       <div className='relative'>
         <div className='mb-3 flex items-start justify-between'>
-          <h3 className='text-foreground pr-8 text-lg font-bold leading-tight'>
+          <h3 className='pr-8 text-lg leading-tight font-bold text-foreground'>
             {trip.title}
           </h3>
-          <div className='absolute right-0 top-0 flex gap-1'>
+          <div className='absolute top-0 right-0 flex gap-1'>
             <button
               onClick={e => {
                 e.stopPropagation();
                 onEdit(trip);
               }}
-              className='text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-1.5 opacity-0 transition-all group-hover:opacity-100'
+              className='rounded-lg p-1.5 text-muted-foreground transition-all group-hover:opacity-100 hover:bg-accent hover:text-foreground can-hover:opacity-0'
               title='編輯旅程'
             >
               <Pencil size={16} />
@@ -59,7 +59,7 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
                 e.stopPropagation();
                 setShowDeleteConfirm(true);
               }}
-              className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5 opacity-0 transition-all group-hover:opacity-100'
+              className='rounded-lg p-1.5 text-muted-foreground transition-all group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive can-hover:opacity-0'
               title='刪除旅程'
             >
               <Trash2 size={16} />
@@ -68,13 +68,13 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
         </div>
 
         {trip.destination && (
-          <div className='text-muted-foreground mb-3 flex items-center gap-1.5 text-sm'>
+          <div className='mb-3 flex items-center gap-1.5 text-sm text-muted-foreground'>
             <MapPin size={14} />
             <span>{trip.destination}</span>
           </div>
         )}
 
-        <div className='text-muted-foreground mb-4 flex items-center gap-1.5 text-sm'>
+        <div className='mb-4 flex items-center gap-1.5 text-sm text-muted-foreground'>
           <Calendar size={14} />
           <span>
             {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
@@ -82,16 +82,16 @@ export default function TripCard({ trip, onDelete, onEdit }: Props) {
         </div>
 
         {trip.description && (
-          <p className='text-muted-foreground mb-4 line-clamp-2 text-sm'>
+          <p className='mb-4 line-clamp-2 text-sm text-muted-foreground'>
             {trip.description}
           </p>
         )}
 
         <div className='flex items-center justify-between'>
-          <span className='bg-primary/10 text-primary rounded-full px-2.5 py-1 text-xs font-semibold'>
+          <span className='rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'>
             {totalDays} 天
           </span>
-          <span className='text-muted-foreground text-xs opacity-0 transition-opacity group-hover:opacity-100'>
+          <span className='text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100'>
             點擊進入 →
           </span>
         </div>

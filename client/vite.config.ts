@@ -2,6 +2,7 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -10,7 +11,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   envDir: path.resolve(__dirname, '..'),
   resolve: {
     alias: {

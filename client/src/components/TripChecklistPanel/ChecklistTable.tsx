@@ -22,8 +22,8 @@ export default function ChecklistTable({
       <div className='min-w-max'>
         <table className='w-full border-collapse text-sm'>
           <thead>
-            <tr className='border-border border-b'>
-              <th className='bg-background text-foreground sticky left-0 z-20 min-w-[220px] px-4 py-3 text-left font-semibold'>
+            <tr className='border-b border-border'>
+              <th className='sticky left-0 z-20 min-w-55 bg-background px-4 py-3 text-left font-semibold text-foreground'>
                 項目
               </th>
               {checklist.occasions.map(occ => {
@@ -34,18 +34,18 @@ export default function ChecklistTable({
                 return (
                   <th
                     key={occ.id}
-                    className='min-w-[120px] px-4 py-2 text-center align-top'
+                    className='min-w-30 px-4 py-2 text-center align-top'
                   >
                     <div className='flex flex-col items-center gap-1'>
-                      <span className='text-foreground text-sm font-semibold'>
+                      <span className='text-sm font-semibold text-foreground'>
                         {occ.name}
                       </span>
-                      <span className='text-muted-foreground text-xs'>
+                      <span className='text-xs text-muted-foreground'>
                         {checked} / {totalItems}
                       </span>
-                      <div className='bg-muted h-1 w-full overflow-hidden rounded-full'>
+                      <div className='h-1 w-full overflow-hidden rounded-full bg-muted'>
                         <div
-                          className='bg-primary h-full rounded-full transition-all duration-300'
+                          className='h-full rounded-full bg-primary transition-all duration-300'
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -61,12 +61,12 @@ export default function ChecklistTable({
             {checklist.categories.map(cat => (
               <Fragment key={cat.id}>
                 {/* Category row */}
-                <tr className='border-border bg-muted/40 border-b'>
+                <tr className='border-b border-border bg-muted/40'>
                   <td
                     colSpan={checklist.occasions.length + 2}
-                    className='bg-muted/40 sticky left-0 z-10 px-4 py-2'
+                    className='sticky left-0 z-10 bg-muted/40 px-4 py-2'
                   >
-                    <span className='text-muted-foreground text-xs font-semibold uppercase tracking-wide'>
+                    <span className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
                       {cat.name}
                     </span>
                   </td>

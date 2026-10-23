@@ -85,7 +85,7 @@ export default function ReferenceWebsitesEditor({
 
   return (
     <div>
-      <label className='text-foreground mb-1.5 block text-sm font-medium'>
+      <label className='mb-1.5 block text-sm font-medium text-foreground'>
         參考網站
       </label>
       <div className='space-y-2'>
@@ -95,7 +95,7 @@ export default function ReferenceWebsitesEditor({
               href={site.url}
               target='_blank'
               rel='noopener noreferrer'
-              className='text-primary flex-1 truncate text-sm hover:underline'
+              className='flex-1 truncate text-sm text-primary hover:underline'
             >
               {site.title || site.url}
             </a>
@@ -103,7 +103,7 @@ export default function ReferenceWebsitesEditor({
               type='button'
               tabIndex={-1}
               onClick={() => removeWebsite(idx)}
-              className='text-muted-foreground hover:text-destructive p-1 transition-colors'
+              className='p-1 text-muted-foreground transition-colors hover:text-destructive'
             >
               <Trash2 size={14} />
             </button>
@@ -157,7 +157,7 @@ export default function ReferenceWebsitesEditor({
                 className={`shrink-0 rounded-lg p-2 transition-colors ${
                   titleFetchStatus === 'found'
                     ? 'text-primary hover:bg-primary/10'
-                    : 'text-muted-foreground cursor-not-allowed'
+                    : 'cursor-not-allowed text-muted-foreground'
                 }`}
               >
                 <Wand2 size={16} />
@@ -166,7 +166,7 @@ export default function ReferenceWebsitesEditor({
             <button
               type='button'
               onClick={addWebsite}
-              className='text-primary hover:bg-primary/10 shrink-0 rounded-lg p-2 transition-colors'
+              className='shrink-0 rounded-lg p-2 text-primary transition-colors hover:bg-primary/10'
             >
               <Plus size={18} />
             </button>

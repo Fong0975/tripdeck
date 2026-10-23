@@ -39,7 +39,7 @@ export default function ImportExportModal({
       maxWidth='max-w-lg'
       scrollable
     >
-      <div className='border-border mb-4 flex gap-1 border-b'>
+      <div className='mb-4 flex gap-1 border-b border-border'>
         <button
           type='button'
           onClick={() => setActiveTab('export')}

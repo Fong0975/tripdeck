@@ -51,7 +51,7 @@ export default function TripHeaderSummary({
     >
       <div className='flex min-h-9 items-center gap-2'>
         <div className='flex min-w-0 flex-1 items-center gap-3'>
-          <h1 className='text-foreground min-w-0 shrink truncate text-xl font-bold'>
+          <h1 className='min-w-0 shrink truncate text-xl font-bold text-foreground'>
             {trip.title}
           </h1>
 
@@ -65,7 +65,7 @@ export default function TripHeaderSummary({
           >
             <div className='min-w-0 overflow-hidden'>
               <div
-                className={`border-border text-muted-foreground flex min-w-0 shrink flex-col justify-center gap-0.5 border-l pl-3 text-xs leading-tight transition-opacity duration-200 ${
+                className={`flex min-w-0 shrink flex-col justify-center gap-0.5 border-l border-border pl-3 text-xs leading-tight text-muted-foreground transition-opacity duration-200 ${
                   expanded ? 'opacity-0' : 'opacity-100 delay-100'
                 }`}
               >
@@ -86,7 +86,7 @@ export default function TripHeaderSummary({
 
         <button
           onClick={onEdit}
-          className='text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors'
+          className='flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
           aria-label='編輯旅程資訊'
           title='編輯旅程資訊'
         >
@@ -104,13 +104,13 @@ export default function TripHeaderSummary({
       >
         <div className='overflow-hidden'>
           <div
-            className={`border-border text-muted-foreground mt-2 flex flex-col gap-1 border-t pt-2 text-sm transition-opacity duration-200 ${
+            className={`mt-2 flex flex-col gap-1 border-t border-border pt-2 text-sm text-muted-foreground transition-opacity duration-200 ${
               expanded ? 'opacity-100 delay-100' : 'opacity-0'
             }`}
           >
             <div className='flex items-center gap-3'>
               <span>{dateRange}</span>
-              <span className='text-primary font-medium'>{totalDays} 天</span>
+              <span className='font-medium text-primary'>{totalDays} 天</span>
             </div>
             {trip.destination && (
               <span className='flex items-center gap-1'>

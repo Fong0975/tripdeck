@@ -50,14 +50,14 @@ export default function AutoBackupsTab() {
   return (
     <div className='space-y-4'>
       <div className='flex items-center justify-between'>
-        <p className='text-muted-foreground text-xs'>
+        <p className='text-xs text-muted-foreground'>
           系統每隔一段時間自動建立的完整備份（所有旅程、打包清單範本與圖片），只保留最新幾份。下載後可至「匯入旅程」分頁上傳還原。
         </p>
         <button
           type='button'
           onClick={() => void loadAutoBackups()}
           disabled={autoBackupsLoading}
-          className='text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 pl-2 text-xs disabled:opacity-50'
+          className='flex shrink-0 items-center gap-1 pl-2 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50'
         >
           <RefreshCw size={12} />
           重新整理
@@ -71,24 +71,24 @@ export default function AutoBackupsTab() {
       )}
 
       {!autoBackupsError && autoBackups.length > 0 && (
-        <div className='border-border max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2'>
+        <div className='max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-2'>
           {autoBackups.map(file => (
             <div
               key={file.filename}
               className='flex items-center justify-between gap-2 rounded-md px-2 py-1.5'
             >
               <div className='min-w-0 flex-1'>
-                <p className='text-foreground truncate text-sm'>
+                <p className='truncate text-sm text-foreground'>
                   {new Date(file.createdAt).toLocaleString()}
                 </p>
-                <p className='text-muted-foreground text-xs'>
+                <p className='text-xs text-muted-foreground'>
                   {formatFileSize(file.sizeBytes)}
                 </p>
               </div>
               <a
                 href={getAutoBackupDownloadUrl(file.filename)}
                 download={file.filename}
-                className='text-primary shrink-0 text-sm hover:underline'
+                className='shrink-0 text-sm text-primary hover:underline'
               >
                 下載
               </a>

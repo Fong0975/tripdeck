@@ -54,14 +54,14 @@ export default function AttractionCard({
     <div
       ref={setNodeRef}
       style={style}
-      className='border-border bg-card hover:border-primary/30 group rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md'
+      className='group rounded-xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:border-primary/30 hover:shadow-md'
     >
       <div className='flex items-start gap-2'>
         {/* Drag handle */}
         <button
           {...attributes}
           {...listeners}
-          className='text-muted-foreground hover:text-foreground mt-0.5 shrink-0 cursor-grab transition-colors active:cursor-grabbing'
+          className='mt-0.5 shrink-0 cursor-grab text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing'
           aria-label='拖曳排序'
         >
           <GripVertical size={16} />
@@ -76,7 +76,7 @@ export default function AttractionCard({
           />
 
           {(attraction.startTime || attraction.endTime) && (
-            <p className='text-muted-foreground mt-1 flex items-center gap-1 text-xs'>
+            <p className='mt-1 flex items-center gap-1 text-xs text-muted-foreground'>
               <Clock size={11} className='shrink-0' />
               {attraction.startTime ?? '–'}
               {' ～ '}

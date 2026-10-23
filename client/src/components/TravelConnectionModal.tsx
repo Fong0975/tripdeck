@@ -92,18 +92,18 @@ export default function TravelConnectionModal({
   return (
     <Modal title='移動資訊' onClose={onClose} maxWidth='max-w-md' scrollable>
       <div className='mb-6 flex items-center gap-2 text-sm'>
-        <span className='bg-primary/10 text-primary max-w-[130px] truncate rounded-full px-2.5 py-1 font-medium'>
+        <span className='max-w-[130px] truncate rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary'>
           {fromName}
         </span>
         <span className='text-muted-foreground'>→</span>
-        <span className='bg-primary/10 text-primary max-w-[130px] truncate rounded-full px-2.5 py-1 font-medium'>
+        <span className='max-w-[130px] truncate rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary'>
           {toName}
         </span>
       </div>
 
       <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
-          <label className='text-foreground mb-2 block text-sm font-medium'>
+          <label className='mb-2 block text-sm font-medium text-foreground'>
             交通方式
           </label>
           <div className='grid grid-cols-3 gap-2'>
@@ -126,7 +126,7 @@ export default function TravelConnectionModal({
         </div>
 
         <div>
-          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+          <label className='mb-1.5 block text-sm font-medium text-foreground'>
             所需時間
           </label>
           <div className='flex items-center gap-2'>
@@ -138,7 +138,7 @@ export default function TravelConnectionModal({
               onChange={e => setHours(Math.max(0, Number(e.target.value) || 0))}
               className={INPUT_CLS}
             />
-            <span className='text-muted-foreground shrink-0 text-sm'>小時</span>
+            <span className='shrink-0 text-sm text-muted-foreground'>小時</span>
             <input
               type='number'
               inputMode='numeric'
@@ -152,7 +152,7 @@ export default function TravelConnectionModal({
               }
               className={INPUT_CLS}
             />
-            <span className='text-muted-foreground shrink-0 text-sm'>分鐘</span>
+            <span className='shrink-0 text-sm text-muted-foreground'>分鐘</span>
           </div>
         </div>
 
@@ -166,7 +166,7 @@ export default function TravelConnectionModal({
         />
 
         <div>
-          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+          <label className='mb-1.5 block text-sm font-medium text-foreground'>
             備註
           </label>
           <textarea
@@ -179,7 +179,7 @@ export default function TravelConnectionModal({
         </div>
 
         <div>
-          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+          <label className='mb-1.5 block text-sm font-medium text-foreground'>
             圖片
           </label>
           {isEditing ? (

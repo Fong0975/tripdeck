@@ -101,7 +101,6 @@ function mockEditState(
 // The modal backdrop is a bare decorative div with no accessible role/name;
 // 'absolute' uniquely identifies it (the modal wrapper itself uses 'fixed').
 function getBackdrop(container: HTMLElement): HTMLElement {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   return container.querySelector('.absolute') as HTMLElement;
 }
 

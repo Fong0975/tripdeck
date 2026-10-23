@@ -41,7 +41,7 @@ export default function EditDayNoteModal({
     <Modal title={`第 ${day.day} 天備註`} onClose={onClose} scrollable>
       <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
-          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+          <label className='mb-1.5 block text-sm font-medium text-foreground'>
             備註
           </label>
           <textarea
@@ -49,12 +49,12 @@ export default function EditDayNoteModal({
             onChange={e => setNotes(e.target.value)}
             placeholder='這天的備註...'
             rows={4}
-            className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full resize-none rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+            className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
           />
         </div>
 
         <div>
-          <label className='text-foreground mb-1.5 block text-sm font-medium'>
+          <label className='mb-1.5 block text-sm font-medium text-foreground'>
             圖片
           </label>
           <ImageUploadSection
