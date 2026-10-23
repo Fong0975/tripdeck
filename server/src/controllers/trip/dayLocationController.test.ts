@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/trip');
 
@@ -36,10 +36,6 @@ function expectNoContent(
   expect(res.status).toHaveBeenCalledWith(204);
   expect(res.send).toHaveBeenCalled();
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('Day locations', () => {
   describe('addDayLocation', () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { findDayByIdAndTripId, updateDayNotes } from './tripDay';
 
@@ -9,10 +9,6 @@ vi.mock('../../config/database', () => ({
     execute: (...args: unknown[]) => mockPoolExecute(...args),
   },
 }));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('findDayByIdAndTripId', () => {
   it.each([

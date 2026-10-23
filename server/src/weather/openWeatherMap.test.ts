@@ -45,7 +45,6 @@ function makeForecastEntry(overrides: ForecastEntryOverrides = {}) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn());
 });
 

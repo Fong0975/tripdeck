@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
@@ -42,10 +42,6 @@ function makeContent(): TripContent {
 }
 
 describe('useDayNoteActions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it.each([
     { description: 'trip is null', trip: null, content: makeContent() },
     { description: 'content is null', trip: makeTrip(), content: null },

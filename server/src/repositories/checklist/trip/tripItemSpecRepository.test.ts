@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createTripItemSpec,
@@ -16,10 +16,6 @@ vi.mock('../../../config/database', () => ({
 }));
 
 describe('tripItemSpecRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('verifyTripSpecBelongsToItem', () => {
     it.each([
       { rows: [{ id: 1 }], expected: true },

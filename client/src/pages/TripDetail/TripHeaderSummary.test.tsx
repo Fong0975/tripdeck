@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Trip } from '@/types';

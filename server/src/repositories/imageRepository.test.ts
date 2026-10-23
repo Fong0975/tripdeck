@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   addAttractionImage,
@@ -83,10 +83,6 @@ const variants: Variant[] = [
 describe.each(variants)(
   '$kind images',
   ({ idColumn, getImages, getImagesBatch, addImage, deleteImage }) => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     describe('getImages', () => {
       it('maps rows to ImageResponse[]', async () => {
         mockPoolExecute.mockResolvedValue([

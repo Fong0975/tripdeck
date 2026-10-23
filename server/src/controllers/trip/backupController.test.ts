@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/backup', async () => {
   const actual = await vi.importActual<
@@ -15,10 +15,6 @@ import * as backupRepo from '../../repositories/backup';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 
 import { exportTrips, importTrips } from './backupController';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('exportTrips', () => {
   it.each([

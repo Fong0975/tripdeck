@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
@@ -20,13 +20,6 @@ vi.mock('@/lib/toast', () => ({
 // Pin the timezone so the startDate -> endDate auto-calculation (which round
 // trips through Date/toISOString) produces a deterministic result.
 process.env.TZ = 'UTC';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  // jsdom does not implement the Blob URL APIs used to preview a staged file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
 
 // The staged-image <input type="file"> has no accessible label, so it can
 // only be reached by its type attribute rather than a testing-library query.

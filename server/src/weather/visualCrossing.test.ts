@@ -39,7 +39,6 @@ function makeVcDay(overrides: VcDayOverrides = {}) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn());
 });
 

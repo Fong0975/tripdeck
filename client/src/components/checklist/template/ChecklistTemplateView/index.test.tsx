@@ -65,7 +65,6 @@ function makeTemplate(
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(getChecklistTemplate).mockResolvedValue(makeTemplate());
   vi.mocked(addTemplateCategory).mockResolvedValue({
     id: 2,

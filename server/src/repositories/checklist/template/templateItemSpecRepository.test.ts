@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createItemSpec,
@@ -23,10 +23,6 @@ const CURRENT_SPEC_ROW = {
 };
 
 describe('templateItemSpecRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('createItemSpec', () => {
     it('returns null and issues no INSERT when the item does not exist', async () => {
       mockPoolExecute.mockResolvedValue([[]]);

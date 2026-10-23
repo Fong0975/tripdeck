@@ -44,7 +44,6 @@ const ENV_KEYS = [
 let originalEnv: Partial<Record<(typeof ENV_KEYS)[number], string>>;
 
 beforeEach(() => {
-  vi.clearAllMocks();
   originalEnv = {};
   for (const key of ENV_KEYS) {
     originalEnv[key] = process.env[key];

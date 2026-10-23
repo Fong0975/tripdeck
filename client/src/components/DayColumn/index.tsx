@@ -4,7 +4,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { Plus } from 'lucide-react';
 
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';

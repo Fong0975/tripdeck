@@ -99,7 +99,6 @@ async function save(edit: ReturnType<typeof unchangedEdit>) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(addOccasion).mockResolvedValue({
     id: 50,
     name: 'New',

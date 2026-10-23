@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { api, json } from './client';
 import {
@@ -13,10 +13,6 @@ import {
 vi.mock('./client', async importOriginal => {
   const actual = await importOriginal<typeof import('./client')>();
   return { ...actual, api: vi.fn() };
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
 });
 
 describe('getTrips', () => {

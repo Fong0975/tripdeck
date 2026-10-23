@@ -10,6 +10,14 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
   version: string;
 };
 
+const NODE_TEST_FILES = [
+  'src/api/**/*.test.ts',
+  'src/constants/**/*.test.ts',
+  'src/utils/{date,duration,connectionAdjacency}.test.ts',
+  'src/utils/weatherApi/**/*.test.ts',
+  'src/utils/exportToDocx/{attractionTable,constants,dayNotesSection,headerSection,index,markdownToDocx,transportTable}.test.ts',
+];
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   envDir: path.resolve(__dirname, '..'),
@@ -28,11 +36,32 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/setupTests.ts'],
     css: false,
-    include: ['src/**/*.test.{ts,tsx}'],
+    pool: 'threads',
+    clearMocks: true,
+    // Pure-logic suites skip jsdom and the DOM setup file; everything that
+    // renders or touches browser globals stays on jsdom.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'node',
+          include: NODE_TEST_FILES,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          setupFiles: ['./src/setupTests.ts'],
+          include: ['src/**/*.test.{ts,tsx}'],
+          exclude: NODE_TEST_FILES,
+        },
+      },
+    ],
     reporters: process.env.CI ? ['default', 'json'] : ['default'],
     outputFile: process.env.CI ? { json: './test-results.json' } : undefined,
     coverage: {

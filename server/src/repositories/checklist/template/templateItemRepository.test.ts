@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createItem,
@@ -32,10 +32,6 @@ const CURRENT_ITEM_ROW = {
 };
 
 describe('templateItemRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('createItem', () => {
     it('returns null and issues no INSERT when the category does not exist', async () => {
       mockPoolExecute.mockResolvedValue([[]]);

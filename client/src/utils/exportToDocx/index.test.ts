@@ -118,7 +118,6 @@ const dayNotesSentinel = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(Packer.toBlob).mockResolvedValue(new Blob(['docx']));
   vi.mocked(makeHeaderSection).mockResolvedValue([
     headerSentinel as unknown as Paragraph,

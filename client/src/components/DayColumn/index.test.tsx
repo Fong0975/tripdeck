@@ -2,7 +2,7 @@ import { DndContext } from '@dnd-kit/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';

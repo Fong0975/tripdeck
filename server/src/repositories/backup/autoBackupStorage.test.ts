@@ -37,10 +37,6 @@ import {
   writeAutoBackupFile,
 } from './autoBackupStorage';
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe('buildAutoBackupFilename', () => {
   it('builds a filename with the ISO timestamp, colons/dots as dashes', () => {
     const now = new Date('2026-08-26T12:00:00.000Z');

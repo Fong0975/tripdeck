@@ -60,7 +60,6 @@ function mockFindContentQueries(opts: {
 
 describe('tripContent', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetAttractionImagesBatch.mockResolvedValue(new Map());
     mockGetConnectionImagesBatch.mockResolvedValue(new Map());
     mockGetDayImagesBatch.mockResolvedValue(new Map());

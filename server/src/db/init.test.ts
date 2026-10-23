@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // eslint-disable-next-line import/order -- import/order flip-flops on newlines-between for this type-only sibling import; pin it here instead of fighting --fix
 import type { ColumnDef, TableDef } from './schema';
@@ -85,10 +85,6 @@ function setUpInitDatabaseMock(): void {
 }
 
 describe('db/init', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('buildColumnSql', () => {
     const cases: Array<{ name: string; col: ColumnDef; expected: string }> = [
       {

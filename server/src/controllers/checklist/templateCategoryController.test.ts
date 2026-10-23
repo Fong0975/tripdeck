@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import * as templateRepo from '../../repositories/checklist/template';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
@@ -18,10 +18,6 @@ const invalidNameCases = [
   { label: 'name is an empty string', body: { name: '' } },
   { label: 'name is not a string', body: { name: 42 } },
 ];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('getTemplate', () => {
   it('returns 200 with the template', async () => {

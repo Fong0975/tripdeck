@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { DayPlan, Trip, TripContent } from '@/types';
@@ -23,10 +23,6 @@ vi.mock('@/utils/storage', () => ({
 vi.mock('@/lib/toast', () => ({
   showToast: vi.fn(),
 }));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 const trip: Trip = {
   id: 5,
@@ -124,12 +120,6 @@ function getFileInput(container: HTMLElement): HTMLInputElement {
 }
 
 describe('EditTripModal', () => {
-  beforeEach(() => {
-    // jsdom does not implement the Blob URL APIs used to preview a pending file.
-    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = vi.fn();
-  });
-
   it('renders the trip images and deletes one via the image section', async () => {
     vi.mocked(deleteTripImage).mockResolvedValue(undefined);
     const user = userEvent.setup();

@@ -124,7 +124,6 @@ const sampleTemplate: ChecklistTemplateResponse = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockReadFileSync.mockReturnValue(Buffer.from('fake-image-bytes'));
   mockFindTemplate.mockResolvedValue(sampleTemplate);
 });

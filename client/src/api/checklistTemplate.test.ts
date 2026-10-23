@@ -20,7 +20,6 @@ vi.mock('./client', async importOriginal => {
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(api).mockResolvedValue(undefined);
 });
 

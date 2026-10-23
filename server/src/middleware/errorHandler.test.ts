@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockLogger = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -34,10 +34,6 @@ function createMockReqRes(): {
 
   return { req, res, next };
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('errorHandler', () => {
   it('logs a WARN and returns 400 for a MulterError', () => {

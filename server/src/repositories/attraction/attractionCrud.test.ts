@@ -51,7 +51,6 @@ vi.mock('../../middleware/upload', () => ({
 
 describe('attractionCrud', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetConnection.mockResolvedValue({
       beginTransaction: mockConnBeginTransaction,
       execute: mockConnExecute,

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { Trip } from '@/types';
 
@@ -33,10 +33,6 @@ function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
     </MemoryRouter>,
   );
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('TripCard', () => {
   it('navigates to the trip detail page when clicked', async () => {

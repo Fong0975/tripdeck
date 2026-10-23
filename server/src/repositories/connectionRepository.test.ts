@@ -38,7 +38,6 @@ const CURRENT_ROW = {
 
 describe('connectionRepository', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetConnectionImages.mockResolvedValue([]);
   });
 

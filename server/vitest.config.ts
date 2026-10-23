@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    pool: 'threads',
+    clearMocks: true,
     include: ['src/**/*.test.ts'],
     reporters: process.env.CI ? ['default', 'json'] : ['default'],
     outputFile: process.env.CI ? { json: './test-results.json' } : undefined,

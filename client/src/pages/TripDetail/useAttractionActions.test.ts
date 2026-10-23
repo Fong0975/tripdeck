@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { Attraction, Trip, TripContent } from '@/types';
@@ -56,10 +56,6 @@ function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
 }
 
 describe('useAttractionActions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleSaveAttraction', () => {
     it.each([
       { description: 'trip is null', trip: null, content: makeContent() },

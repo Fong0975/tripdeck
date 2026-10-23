@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
@@ -34,10 +34,6 @@ function renderLastToast(variant: 'success' | 'error' | 'info') {
 function getFileInput(container: HTMLElement): HTMLInputElement {
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('ImportTab', () => {
   it('shows the file picker with the submit button disabled by default', () => {

@@ -32,7 +32,6 @@ const config: LoggerConfig = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockReaddirSync.mockReturnValue([]);
   // writeLogLine no-ops under Vitest unless explicitly forced — see the
   // comment on isDisabledForTests() in fileTransport.ts.

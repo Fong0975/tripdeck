@@ -141,7 +141,6 @@ function makeHomeData(overrides: Partial<ReturnType<typeof useHomeData>> = {}) {
 
 describe('Home', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(useHomeData).mockReturnValue(makeHomeData());
   });
 

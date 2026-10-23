@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../middleware/upload');
 vi.mock('../repositories/attraction');
@@ -151,10 +151,6 @@ describe.each(variants)(
     addImage,
     deleteImage,
   }) => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
     describe('upload', () => {
       it('returns 404 when the parent is not found', async () => {
         mockParentFound(false);

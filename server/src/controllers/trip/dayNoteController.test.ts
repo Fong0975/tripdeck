@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/trip');
 
@@ -8,10 +8,6 @@ import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 import { updateDayNotes } from './dayNoteController';
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('updateDayNotes', () => {
   it('returns 404 when the day is not found', async () => {

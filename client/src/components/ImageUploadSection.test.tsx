@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
@@ -32,12 +32,6 @@ function selectFile(container: HTMLElement, file: File) {
 function getLightboxCloseButton(): HTMLElement {
   return document.body.querySelector('.top-4') as HTMLElement;
 }
-
-beforeEach(() => {
-  // jsdom does not implement the Blob URL APIs used to preview a pending file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
 
 describe('ImageUploadSection', () => {
   it('shows the add-image trigger with no images', () => {

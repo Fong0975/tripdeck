@@ -1,6 +1,6 @@
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { TripContent } from '@/types';
@@ -100,10 +100,6 @@ function makeDragEndEvent(
 // (getBoundingClientRect) that jsdom cannot compute, so a real drag would not
 // be representative. See the plan's "明確排除範圍".
 describe('useDragAndDrop', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleDragEnd', () => {
     it.each([
       {

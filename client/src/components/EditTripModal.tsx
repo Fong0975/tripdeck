@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { useState } from 'react';
 
 import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';

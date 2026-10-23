@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { addLocation, deleteLocation, updateLocation } from './tripDayLocation';
 
@@ -11,10 +11,6 @@ vi.mock('../../config/database', () => ({
 }));
 
 describe('tripDayLocation', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('addLocation', () => {
     it('derives sortOrder from the COUNT(*) query and trims the returned name', async () => {
       mockPoolExecute.mockImplementation((sql: string) => {

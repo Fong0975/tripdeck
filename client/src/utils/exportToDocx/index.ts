@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { Document, Packer, Paragraph, Table, TextRun } from 'docx';
 
 import type { Trip, TripContent, TravelConnection } from '@/types';

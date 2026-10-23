@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockImportSingleTrip = vi.fn();
 vi.mock('./tripImport', () => ({
@@ -29,10 +29,6 @@ import type { TripBackupData } from '../../types/backup';
 
 import { importBackupZip } from './backupImport';
 import type { ParsedBackup } from './backupValidate';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 const sampleData: TripBackupData = {
   trip: {

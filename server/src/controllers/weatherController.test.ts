@@ -21,7 +21,6 @@ vi.mock('../logger', () => ({
 const VALID_QUERY = { location: 'Tokyo', date: '2026-08-20', days: '3' };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(isWeatherEnabled).mockReturnValue(true);
 });
 

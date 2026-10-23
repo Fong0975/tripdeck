@@ -435,7 +435,6 @@ function renderTripDetail() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(useTripData).mockReturnValue(makeTripData());
   vi.mocked(useAttractionActions).mockReturnValue(makeAttractionActions());
   vi.mocked(useConnectionActions).mockReturnValue(makeConnectionActions());

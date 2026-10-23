@@ -31,7 +31,6 @@ vi.mock('../../../config/database', () => ({
 
 describe('tripChecklistCore', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetConnection.mockResolvedValue({
       beginTransaction: mockConnBeginTransaction,
       execute: mockConnExecute,

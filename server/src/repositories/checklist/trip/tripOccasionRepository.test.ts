@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createOccasion,
@@ -17,10 +17,6 @@ vi.mock('../../../config/database', () => ({
 }));
 
 describe('tripOccasionRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('verifyOccasionBelongsToTrip', () => {
     it.each([
       { rows: [{ id: 1 }], expected: true },

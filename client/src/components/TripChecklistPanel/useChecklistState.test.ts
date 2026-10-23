@@ -40,7 +40,6 @@ async function renderLoaded(onDirtyChange = vi.fn()) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(getTripChecklist).mockResolvedValue(makeChecklist());
   vi.mocked(setCheck).mockResolvedValue(undefined);
 });

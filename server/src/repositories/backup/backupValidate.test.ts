@@ -1,5 +1,5 @@
 import AdmZip from 'adm-zip';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { BackupManifest, TripBackupData } from '../../types/backup';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
@@ -16,10 +16,6 @@ vi.mock('../../logger', () => ({
 
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 /** Runs `fn`, expecting it to throw a `BackupValidationError`, and returns that error. */
 function captureValidationError(fn: () => unknown): BackupValidationError {

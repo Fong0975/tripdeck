@@ -105,7 +105,6 @@ function getBackdrop(container: HTMLElement): HTMLElement {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockEditState();
 });
 

@@ -36,7 +36,6 @@ vi.mock('../imageRepository', () => ({
 
 describe('attractionOrder', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetConnection.mockResolvedValue({
       beginTransaction: mockConnBeginTransaction,
       execute: mockConnExecute,

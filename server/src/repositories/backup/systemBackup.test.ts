@@ -80,7 +80,6 @@ const sampleTemplate: ChecklistTemplateResponse = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockFindAll.mockResolvedValue(sampleTrips);
   mockFindById.mockImplementation((id: number) =>
     Promise.resolve(sampleTrips.find(trip => trip.id === id) ?? null),

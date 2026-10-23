@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { AttractionImage } from '@/types';
@@ -13,10 +13,6 @@ vi.mock('@/lib/toast', () => ({
 const images: AttractionImage[] = [{ id: 1, filename: 'a.jpg', title: 'A' }];
 
 describe('useEntityImages', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('initializes images from initialImages', () => {
     const { result } = renderHook(() =>
       useEntityImages({

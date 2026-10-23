@@ -76,7 +76,6 @@ function makeState(
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(useChecklistState).mockReturnValue(makeState());
 });
 

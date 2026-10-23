@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createCategory,
@@ -23,10 +23,6 @@ function isSelectFrom(sql: unknown, table: string): boolean {
 }
 
 describe('templateCategoryRepository', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('findTemplate', () => {
     it('returns an empty categories array when there are no categories', async () => {
       mockPoolExecute.mockResolvedValue([[]]);

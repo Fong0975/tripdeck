@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { exportTripsBackup } from '@/api/backup';
 import { showToast } from '@/lib/toast';
@@ -32,10 +32,6 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     ...overrides,
   };
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('ExportTab', () => {
   it('shows an empty state with the submit button disabled when there are no trips', () => {

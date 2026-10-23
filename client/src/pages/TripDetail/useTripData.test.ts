@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
@@ -33,10 +33,6 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
 }
 
 describe('useTripData', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it.each([
     { description: 'id is undefined', id: undefined, expectNavigate: false },
     {

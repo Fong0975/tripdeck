@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   exportTripsBackup,
@@ -11,10 +11,6 @@ import { apiBlob, apiJson, json } from './client';
 vi.mock('./client', async importOriginal => {
   const actual = await importOriginal<typeof import('./client')>();
   return { ...actual, apiBlob: vi.fn(), apiJson: vi.fn() };
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
 });
 
 describe('exportTripsBackup', () => {

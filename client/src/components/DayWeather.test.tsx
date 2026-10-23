@@ -53,7 +53,6 @@ function getSwipeArea(container: HTMLElement): HTMLElement {
 }
 
 beforeEach(() => {
-  Element.prototype.setPointerCapture = vi.fn();
   mockedFetch.mockReset();
 });
 

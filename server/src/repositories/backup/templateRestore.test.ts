@@ -73,7 +73,6 @@ const sampleTemplate: ChecklistTemplateResponse = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockGetConnection.mockResolvedValue(makeConn());
 });
 

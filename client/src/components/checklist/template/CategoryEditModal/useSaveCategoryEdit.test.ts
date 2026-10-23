@@ -75,7 +75,6 @@ async function save(edit: EditCategory) {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(addTemplateItem).mockResolvedValue({
     id: 999,
     name: 'Brand New',

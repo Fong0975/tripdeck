@@ -60,7 +60,6 @@ vi.mock('../../logger', () => ({
 
 describe('tripCrud', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetTripImages.mockResolvedValue([]);
     mockGetTripImagesBatch.mockResolvedValue(new Map());
     mockGetDayImagesBatch.mockResolvedValue(new Map());

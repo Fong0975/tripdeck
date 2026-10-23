@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const mockListAutoBackupFiles = vi.fn();
 const mockResolveAutoBackupPath = vi.fn();
@@ -20,10 +20,6 @@ vi.mock('fs', () => ({
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 
 import { downloadAutoBackup, listAutoBackups } from './backupController';
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe('listAutoBackups', () => {
   it('responds with the list of automatic backups', () => {

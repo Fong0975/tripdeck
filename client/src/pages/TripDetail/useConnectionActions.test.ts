@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
 import type { TravelConnection, Trip, TripContent } from '@/types';
@@ -62,10 +62,6 @@ function makeConnection(
 }
 
 describe('useConnectionActions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('handleAddConnection', () => {
     it('builds a pending connection and opens the connection modal', () => {
       const openConnectionModal = vi.fn();

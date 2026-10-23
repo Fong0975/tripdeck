@@ -1,14 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import StagedImageUploader from './StagedImageUploader';
-
-beforeEach(() => {
-  // jsdom does not implement the Blob URL APIs used to preview a staged file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
 
 // The staging <input type="file"> has no accessible label, so it can only
 // be reached by its type attribute rather than a testing-library query.

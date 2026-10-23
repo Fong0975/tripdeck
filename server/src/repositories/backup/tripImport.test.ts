@@ -195,7 +195,6 @@ function sampleImageBuffers(): Map<string, Buffer> {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   mockGetConnection.mockResolvedValue(makeConn());
   mockSaveImportedImageBuffer.mockImplementation(
     (_buffer: Buffer, originalFilename: string) => `new-${originalFilename}`,

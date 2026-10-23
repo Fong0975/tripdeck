@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('fs', () => ({
   default: {
@@ -67,10 +67,6 @@ const mimeCases: MimeCase[] = [
 ];
 
 describe('saveImageToDisk', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe.each(mimeCases)('$mime', ({ mime, ext, validBuffer }) => {
     it(`returns a filename ending in ${ext} and writes the buffer to disk when magic bytes are valid`, () => {
       const filename = saveImageToDisk(validBuffer, mime);
@@ -118,10 +114,6 @@ describe('saveImageToDisk', () => {
 });
 
 describe('copyImageFile', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('copies the file to a new UUID-based filename with the same extension', () => {
     const result = copyImageFile('original.jpg');
 
@@ -151,10 +143,6 @@ describe('copyImageFile', () => {
 });
 
 describe('saveImportedImageBuffer', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it.each(mimeCases)(
     'writes the buffer to disk under a new UUID filename for $ext when magic bytes are valid',
     ({ ext, validBuffer }) => {
@@ -195,10 +183,6 @@ describe('saveImportedImageBuffer', () => {
 });
 
 describe('deleteImageFromDisk', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('deletes the file from disk without throwing', () => {
     expect(() => deleteImageFromDisk('to-delete.jpg')).not.toThrow();
     expect(fs.unlinkSync).toHaveBeenCalledWith(

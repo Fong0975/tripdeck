@@ -43,7 +43,6 @@ function textRuns(): string[] {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
   vi.mocked(makeImageParagraphs).mockResolvedValue([]);
 });
 

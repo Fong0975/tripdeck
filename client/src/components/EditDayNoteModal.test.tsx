@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { DayPlan } from '@/types';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
@@ -27,13 +27,6 @@ const day: DayPlan = {
 function getFileInput(container: HTMLElement): HTMLInputElement {
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  // jsdom does not implement the Blob URL APIs used to preview a pending file.
-  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-  URL.revokeObjectURL = vi.fn();
-});
 
 describe('EditDayNoteModal', () => {
   it('shows the day number in the title and pre-fills the notes textarea', () => {
