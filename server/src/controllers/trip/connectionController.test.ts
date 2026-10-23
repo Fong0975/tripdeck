@@ -1,11 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/connectionRepository');
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/connectionRepository', () => ({
+  create: vi.fn(),
+  deleteById: vi.fn(),
+  update: vi.fn(),
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../../repositories/trip', () => ({
+  findDayByIdAndTripId: vi.fn(),
+}));
 
 import * as connectionRepo from '../../repositories/connectionRepository';
 import * as tripRepo from '../../repositories/trip';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 import type { ConnectionResponse } from '../../types/trip';
 
 import {
@@ -169,18 +181,7 @@ describe('Connections', () => {
 });
 
 describe('500 error handling', () => {
-  const rejection = new Error('unexpected failure');
-
-  const cases: Array<{
-    name: string;
-    handler: (
-      req: Parameters<typeof addConnection>[0],
-      res: Parameters<typeof addConnection>[1],
-    ) => Promise<void>;
-    req: Parameters<typeof createMockReqRes>[0];
-    arrange: () => void;
-    expectedError: string;
-  }> = [
+  const cases: Returns500Case[] = [
     {
       name: 'addConnection',
       handler: addConnection,
@@ -192,8 +193,8 @@ describe('500 error handling', () => {
           transportMode: 'walk',
         },
       },
-      arrange: () =>
-        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
       expectedError: 'Failed to add connection',
     },
     {
@@ -203,33 +204,19 @@ describe('500 error handling', () => {
         params: { tripId: '1', connectionId: '200' },
         body: { transportMode: 'walk' },
       },
-      arrange: () =>
-        vi
-          .mocked(connectionRepo.verifyBelongsToTrip)
-          .mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(connectionRepo.verifyBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to update connection',
     },
     {
       name: 'deleteConnection',
       handler: deleteConnection,
       req: { params: { tripId: '1', connectionId: '200' } },
-      arrange: () =>
-        vi
-          .mocked(connectionRepo.verifyBelongsToTrip)
-          .mockRejectedValue(rejection),
+      arrange: error =>
+        vi.mocked(connectionRepo.verifyBelongsToTrip).mockRejectedValue(error),
       expectedError: 'Failed to delete connection',
     },
   ];
 
-  it.each(cases)(
-    'returns 500 when $name encounters an unexpected error',
-    async ({ handler, req, arrange, expectedError }) => {
-      arrange();
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await handler(mockReq, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(cases);
 });

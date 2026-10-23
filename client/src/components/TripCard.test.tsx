@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeTrip } from '@/test-utils/fixtures';
 import type { Trip } from '@/types';
 
 import TripCard from './TripCard';
@@ -13,18 +14,6 @@ vi.mock('react-router-dom', async importOriginal => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
-
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Tokyo Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
 
 function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
   return render(
@@ -37,7 +26,7 @@ function renderCard(trip: Trip, onDelete = vi.fn(), onEdit = vi.fn()) {
 describe('TripCard', () => {
   it('navigates to the trip detail page when clicked', async () => {
     const user = userEvent.setup();
-    renderCard(makeTrip({ id: 42 }));
+    renderCard(makeTrip({ id: 42, title: 'Tokyo Trip' }));
 
     await user.click(screen.getByText('Tokyo Trip'));
 

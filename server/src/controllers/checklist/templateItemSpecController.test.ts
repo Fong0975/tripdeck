@@ -1,8 +1,13 @@
-import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
 import * as templateRepo from '../../repositories/checklist/template';
-import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import { invalidNameCases } from '../../test-utils/fixtures';
+import {
+  createMockReqRes,
+  expectJsonStatus,
+  itReturns500,
+  type Returns500Case,
+} from '../../test-utils/httpMocks';
 
 import {
   addTemplateItemSpec,
@@ -10,13 +15,13 @@ import {
   updateTemplateItemSpec,
 } from './templateItemSpecController';
 
-vi.mock('../../repositories/checklist/template');
-
-const invalidNameCases = [
-  { label: 'name is missing', body: {} },
-  { label: 'name is an empty string', body: { name: '' } },
-  { label: 'name is not a string', body: { name: 42 } },
-];
+vi.mock('../../repositories/checklist/template', () => ({
+  createItemSpec: vi.fn(),
+  deleteItemSpec: vi.fn(),
+  updateItemSpec: vi.fn(),
+  verifyItemBelongsToCategory: vi.fn(),
+  verifySpecBelongsToItem: vi.fn(),
+}));
 
 describe('addTemplateItemSpec', () => {
   it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
@@ -207,22 +212,15 @@ describe('deleteTemplateItemSpec', () => {
 });
 
 describe('500 responses', () => {
-  interface FailureCase {
-    name: string;
-    handler: (req: Request, res: Response) => Promise<void>;
-    params?: Record<string, string>;
-    body?: unknown;
-    configureRejection: (error: Error) => void;
-    expectedError: string;
-  }
-
-  const failureCases: FailureCase[] = [
+  const failureCases: Returns500Case[] = [
     {
       name: 'addTemplateItemSpec',
       handler: addTemplateItemSpec,
-      params: { catId: '1', itemId: '2' },
-      body: { name: 'Type-C charger' },
-      configureRejection: error =>
+      req: {
+        params: { catId: '1', itemId: '2' },
+        body: { name: 'Type-C charger' },
+      },
+      arrange: error =>
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
@@ -231,9 +229,11 @@ describe('500 responses', () => {
     {
       name: 'updateTemplateItemSpec',
       handler: updateTemplateItemSpec,
-      params: { catId: '1', itemId: '2', specId: '3' },
-      body: { name: 'Type-C charger' },
-      configureRejection: error =>
+      req: {
+        params: { catId: '1', itemId: '2', specId: '3' },
+        body: { name: 'Type-C charger' },
+      },
+      arrange: error =>
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
@@ -242,8 +242,8 @@ describe('500 responses', () => {
     {
       name: 'deleteTemplateItemSpec',
       handler: deleteTemplateItemSpec,
-      params: { catId: '1', itemId: '2', specId: '3' },
-      configureRejection: error =>
+      req: { params: { catId: '1', itemId: '2', specId: '3' } },
+      arrange: error =>
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
@@ -251,15 +251,5 @@ describe('500 responses', () => {
     },
   ];
 
-  it.each(failureCases)(
-    '$name returns 500 with its error message when the repository rejects',
-    async ({ handler, params, body, configureRejection, expectedError }) => {
-      configureRejection(new Error('database connection lost'));
-      const { req, res } = createMockReqRes({ params, body });
-
-      await handler(req, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
-    },
-  );
+  itReturns500(failureCases);
 });

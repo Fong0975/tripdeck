@@ -1,16 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeImage } from '@/test-utils/fixtures';
 import type { AttractionImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
 
 function makeImages(count: number): AttractionImage[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i + 1,
-    filename: `img-${i + 1}.jpg`,
-    title: `Image ${i + 1}`,
-  }));
+  return Array.from({ length: count }, (_, i) =>
+    makeImage({
+      id: i + 1,
+      filename: `img-${i + 1}.jpg`,
+      title: `Image ${i + 1}`,
+    }),
+  );
 }
 
 function renderLightbox(images: AttractionImage[], initialIndex: number) {

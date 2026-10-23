@@ -1,18 +1,15 @@
 import AdmZip from 'adm-zip';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeTemplate, makeTripBackupData } from '../../test-utils/fixtures';
+import { mockLogger } from '../../test-utils/loggerMock';
 import type { BackupManifest, TripBackupData } from '../../types/backup';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
@@ -31,14 +28,10 @@ function captureValidationError(fn: () => unknown): BackupValidationError {
 function sampleTripData(
   overrides: Partial<TripBackupData['trip']> = {},
 ): TripBackupData {
-  return {
+  return makeTripBackupData({
     trip: {
-      id: 1,
       title: 'Trip',
       destination: null,
-      startDate: '2024-05-10',
-      endDate: '2024-05-12',
-      description: null,
       images: [{ id: 1, filename: 'trip1.jpg', title: 'cover' }],
       ...overrides,
     },
@@ -70,8 +63,7 @@ function sampleTripData(
         },
       ],
     },
-    checklist: null,
-  };
+  });
 }
 
 function collectAllFilenames(data: TripBackupData): string[] {
@@ -108,27 +100,6 @@ function defaultManifestFor(data: TripBackupData): BackupManifest {
         originalTripId: data.trip.id,
         folder: 'trip_1',
         title: data.trip.title,
-      },
-    ],
-  };
-}
-
-function sampleTemplate(): ChecklistTemplateResponse {
-  return {
-    categories: [
-      {
-        id: 1,
-        name: 'Documents',
-        items: [
-          {
-            id: 1,
-            name: 'Passport',
-            quantity: 1,
-            notes: null,
-            storage_location: null,
-            specs: [],
-          },
-        ],
       },
     ],
   };
@@ -212,7 +183,7 @@ function buildZip({
     } else {
       zip.addFile(
         'template.json',
-        Buffer.from(JSON.stringify(template ?? sampleTemplate()), 'utf-8'),
+        Buffer.from(JSON.stringify(template ?? makeTemplate()), 'utf-8'),
       );
     }
   }
@@ -359,7 +330,7 @@ describe('parseBackupZip', () => {
   });
 
   it('parses template.json when manifest.includesTemplate is true', () => {
-    const template = sampleTemplate();
+    const template = makeTemplate();
     const result = parseBackupZip(
       buildZip({ includesTemplate: true, template }),
     );

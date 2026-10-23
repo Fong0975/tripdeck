@@ -1,46 +1,15 @@
-import { TextRun, type Paragraph } from 'docx';
+import type { Paragraph } from 'docx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DayPlan } from '@/types';
+import { textRuns } from '@/test-utils/docx';
+import { makeDay } from '@/test-utils/fixtures';
 
 import { makeDayNotesSection } from './dayNotesSection';
 import { makeImageParagraphs } from './imageHelpers';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-// `BorderStyle` is mocked because `./constants` reads it at module-init time.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 vi.mock('./imageHelpers', () => ({ makeImageParagraphs: vi.fn() }));
-
-function dayPlan(overrides: Partial<DayPlan> = {}): DayPlan {
-  return {
-    id: 1,
-    day: 1,
-    date: '2026-08-20',
-    locations: [],
-    attractions: [],
-    connections: [],
-    ...overrides,
-  };
-}
-
-function textRuns(): string[] {
-  return vi
-    .mocked(TextRun)
-    .mock.calls.map(([options]) => (options as { text: string }).text);
-}
 
 beforeEach(() => {
   vi.mocked(makeImageParagraphs).mockResolvedValue([]);
@@ -48,7 +17,7 @@ beforeEach(() => {
 
 describe('makeDayNotesSection', () => {
   it('does not add a "備註：" heading — notes render as plain body text', async () => {
-    await makeDayNotesSection(dayPlan({ notes: 'Bring an umbrella' }));
+    await makeDayNotesSection(makeDay({ notes: 'Bring an umbrella' }));
 
     expect(textRuns()).not.toContain('備註：');
     expect(textRuns()).toContain('Bring an umbrella');
@@ -67,7 +36,7 @@ describe('makeDayNotesSection', () => {
   ])(
     'includes a notes paragraph only when notes is $description',
     async ({ notes, expectParagraph }) => {
-      const paragraphs = await makeDayNotesSection(dayPlan({ notes }));
+      const paragraphs = await makeDayNotesSection(makeDay({ notes }));
 
       expect(paragraphs.length > 0).toBe(expectParagraph);
     },
@@ -75,7 +44,7 @@ describe('makeDayNotesSection', () => {
 
   it('splits multi-line notes into one paragraph per line', async () => {
     await makeDayNotesSection(
-      dayPlan({ notes: 'Bring an umbrella\nPack sunscreen' }),
+      makeDay({ notes: 'Bring an umbrella\nPack sunscreen' }),
     );
 
     expect(textRuns()).toContain('Bring an umbrella');
@@ -97,7 +66,7 @@ describe('makeDayNotesSection', () => {
   ])(
     'calls makeImageParagraphs once per day image when $description',
     async ({ images, expectedCalls }) => {
-      await makeDayNotesSection(dayPlan({ images }));
+      await makeDayNotesSection(makeDay({ images }));
 
       expect(makeImageParagraphs).toHaveBeenCalledTimes(expectedCalls);
     },
@@ -114,7 +83,7 @@ describe('makeDayNotesSection', () => {
       { id: 2, filename: 'b.jpg', title: 'B' },
     ];
 
-    const paragraphs = await makeDayNotesSection(dayPlan({ images }));
+    const paragraphs = await makeDayNotesSection(makeDay({ images }));
 
     expect(makeImageParagraphs).toHaveBeenNthCalledWith(1, images[0]);
     expect(makeImageParagraphs).toHaveBeenNthCalledWith(2, images[1]);
@@ -124,7 +93,7 @@ describe('makeDayNotesSection', () => {
 
   it('returns an empty array when the day has no notes and no images', async () => {
     const paragraphs = await makeDayNotesSection(
-      dayPlan({ notes: null, images: [] }),
+      makeDay({ notes: null, images: [] }),
     );
 
     expect(paragraphs).toEqual([]);

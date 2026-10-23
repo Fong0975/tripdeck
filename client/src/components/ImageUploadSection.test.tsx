@@ -3,28 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { AttractionImage } from '@/types';
+import { makeImage } from '@/test-utils/fixtures';
+import { getFileInput, selectFile } from '@/test-utils/queries';
 
 import ImageUploadSection from './ImageUploadSection';
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-const images: AttractionImage[] = [
-  { id: 1, filename: 'a.jpg', title: 'Photo A' },
-  { id: 2, filename: 'b.jpg', title: 'Photo B' },
+const images = [
+  makeImage({ id: 1, filename: 'a.jpg', title: 'Photo A' }),
+  makeImage({ id: 2, filename: 'b.jpg', title: 'Photo B' }),
 ];
-
-// The upload <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
-function selectFile(container: HTMLElement, file: File) {
-  fireEvent.change(getFileInput(container), { target: { files: [file] } });
-}
 
 // The lightbox's close button (rendered via createPortal into document.body)
 // has no accessible label; the top-4 class is unique to it among the

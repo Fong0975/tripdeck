@@ -2,26 +2,24 @@ import path from 'path';
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockMkdirSync = vi.fn();
-const mockStatSync = vi.fn();
-const mockAppendFileSync = vi.fn();
-const mockReaddirSync = vi.fn();
-const mockRenameSync = vi.fn();
-const mockUnlinkSync = vi.fn();
+vi.mock('fs', async () => {
+  const { fsMock } = await import('../test-utils/fsMock');
+  return fsMock.module;
+});
 
-vi.mock('fs', () => ({
-  default: {
-    mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
-    statSync: (...args: unknown[]) => mockStatSync(...args),
-    appendFileSync: (...args: unknown[]) => mockAppendFileSync(...args),
-    readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
-    renameSync: (...args: unknown[]) => mockRenameSync(...args),
-    unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
-  },
-}));
+import { fsMock } from '../test-utils/fsMock';
 
 import { writeLogLine } from './fileTransport';
 import type { LoggerConfig } from './types';
+
+const {
+  mkdirSync: mockMkdirSync,
+  statSync: mockStatSync,
+  appendFileSync: mockAppendFileSync,
+  readdirSync: mockReaddirSync,
+  renameSync: mockRenameSync,
+  unlinkSync: mockUnlinkSync,
+} = fsMock.fns;
 
 const config: LoggerConfig = {
   level: 'info',

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { db, routeSql } from '../test-utils/dbMocks';
+
 import {
   create,
   deleteById,
@@ -7,13 +9,12 @@ import {
   verifyBelongsToTrip,
 } from './connectionRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../config/database', async () => {
+  const { db } = await import('../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 const mockGetConnectionImages = vi.fn().mockResolvedValue([]);
 vi.mock('./imageRepository', () => ({
@@ -99,12 +100,11 @@ describe('connectionRepository', () => {
 
   describe('update', () => {
     function mockSelectThenUpdate(updatedRow = CURRENT_ROW) {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[updatedRow]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[updatedRow]]]],
+        [{ affectedRows: 1 }],
+      );
     }
 
     it('returns null when the connection does not exist', async () => {

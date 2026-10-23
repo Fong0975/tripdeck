@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Attraction, DayPlan, TravelConnection } from '@/types';
+import { makeAttraction, makeBoardDays } from '@/test-utils/fixtures';
 
 import ItineraryBoard from './ItineraryBoard';
 
@@ -24,128 +24,15 @@ vi.mock('@/components/AttractionCard', () => ({
   default: () => <div>attraction-card</div>,
 }));
 
-vi.mock('@/components/DayColumn', () => ({
-  default: ({
-    day,
-    dayIndex,
-    onEditDayNote,
-    onAddAttraction,
-    onEditAttraction,
-    onDeleteAttraction,
-    onDuplicateAttraction,
-    onEditConnection,
-    onDeleteConnection,
-    onAddConnection,
-    onAddLocation,
-    onUpdateLocation,
-    onDeleteLocation,
-  }: {
-    day: DayPlan;
-    dayIndex: number;
-    onEditDayNote: (dayIndex: number) => void;
-    onAddAttraction: (dayIndex: number) => void;
-    onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
-    onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
-    onDeleteConnection: (dayIndex: number, connectionId: number) => void;
-    onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
-    onAddLocation: (dayIndex: number, name: string) => void;
-    onUpdateLocation: (
-      dayIndex: number,
-      locationId: number,
-      name: string,
-    ) => void;
-    onDeleteLocation: (dayIndex: number, locationId: number) => void;
-  }) => (
-    <div>
-      <span>day-column-{dayIndex}</span>
-      <button onClick={() => onEditDayNote(dayIndex)}>
-        edit-day-note-{dayIndex}
-      </button>
-      <button onClick={() => onAddAttraction(dayIndex)}>
-        add-attraction-{dayIndex}
-      </button>
-      <button onClick={() => onEditAttraction(dayIndex, day.attractions[0])}>
-        edit-attraction-{dayIndex}
-      </button>
-      <button
-        onClick={() => onDeleteAttraction(dayIndex, day.attractions[0].id)}
-      >
-        delete-attraction-{dayIndex}
-      </button>
-      <button
-        onClick={() => onDuplicateAttraction(dayIndex, day.attractions[0])}
-      >
-        duplicate-attraction-{dayIndex}
-      </button>
-      {day.connections[0] && (
-        <button onClick={() => onEditConnection(dayIndex, day.connections[0])}>
-          edit-connection-{dayIndex}
-        </button>
-      )}
-      {day.connections[0] && (
-        <button
-          onClick={() => onDeleteConnection(dayIndex, day.connections[0].id)}
-        >
-          delete-connection-{dayIndex}
-        </button>
-      )}
-      <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
-        add-connection-{dayIndex}
-      </button>
-      <button onClick={() => onAddLocation(dayIndex, 'New Location')}>
-        add-location-{dayIndex}
-      </button>
-      <button
-        onClick={() => onUpdateLocation(dayIndex, 50, 'Updated Location')}
-      >
-        update-location-{dayIndex}
-      </button>
-      <button onClick={() => onDeleteLocation(dayIndex, 50)}>
-        delete-location-{dayIndex}
-      </button>
-    </div>
-  ),
+vi.mock('@/components/DayColumn', async () => ({
+  default: (await import('@/test-utils/stubs')).DayColumnStub,
 }));
-
-function makeDays(overrides: Partial<DayPlan>[] = []): DayPlan[] {
-  const base: DayPlan[] = [
-    {
-      id: 1,
-      day: 1,
-      date: '2026-01-01',
-      locations: [],
-      attractions: [
-        { id: 10, name: 'Attraction A' },
-        { id: 11, name: 'Attraction B' },
-      ],
-      connections: [
-        {
-          id: 100,
-          fromAttractionId: 10,
-          toAttractionId: 11,
-          transportMode: 'walk',
-        },
-      ],
-    },
-    {
-      id: 2,
-      day: 2,
-      date: '2026-01-02',
-      locations: [],
-      attractions: [{ id: 20, name: 'Attraction C' }],
-      connections: [],
-    },
-  ];
-  return base.map((day, i) => ({ ...day, ...overrides[i] }));
-}
 
 function renderBoard(
   overrides: Partial<Parameters<typeof ItineraryBoard>[0]> = {},
 ) {
   const props: Parameters<typeof ItineraryBoard>[0] = {
-    days: makeDays(),
+    days: makeBoardDays(),
     sensors: [],
     onDragStart: vi.fn(),
     onDragEnd: vi.fn(),
@@ -306,7 +193,9 @@ describe('ItineraryBoard', () => {
   it('renders the drag overlay attraction card when a drag is active', () => {
     renderBoard({
       activeAttractionId: 10,
-      getActiveAttraction: vi.fn(() => ({ id: 10, name: 'Attraction A' })),
+      getActiveAttraction: vi.fn(() =>
+        makeAttraction({ id: 10, name: 'Attraction A' }),
+      ),
     });
 
     expect(screen.getByText('attraction-card')).toBeInTheDocument();

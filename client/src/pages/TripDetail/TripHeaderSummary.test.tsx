@@ -4,21 +4,11 @@ import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale/zh-TW';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeImage, makeTrip } from '@/test-utils/fixtures';
+import { byAriaLabel } from '@/test-utils/queries';
 import type { Trip } from '@/types';
 
 import TripHeaderSummary from './TripHeaderSummary';
-
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Japan Trip',
-    destination: null,
-    startDate: '2026-08-20',
-    endDate: '2026-08-22',
-    createdAt: '2026-08-01',
-    ...overrides,
-  };
-}
 
 function renderSummary(
   options: {
@@ -31,7 +21,12 @@ function renderSummary(
 ) {
   return render(
     <TripHeaderSummary
-      trip={makeTrip(options.trip)}
+      trip={makeTrip({
+        title: 'Japan Trip',
+        startDate: '2026-08-20',
+        endDate: '2026-08-22',
+        ...options.trip,
+      })}
       expanded={options.expanded ?? false}
       onMouseEnter={options.onMouseEnter ?? vi.fn()}
       onMouseLeave={options.onMouseLeave ?? vi.fn()}
@@ -50,14 +45,9 @@ function renderSummary(
  * Per the ARIA accname spec, an `aria-hidden="true"` element's computed
  * accessible name is always `""` regardless of its `aria-label` — so a
  * literal `name` string never matches whichever group is currently
- * collapsed. A matcher function reading the raw `aria-label` attribute
- * sidesteps that.
+ * collapsed. `byAriaLabel` reads the raw `aria-label` attribute to
+ * sidestep that.
  */
-function byAriaLabel(label: string) {
-  return (_accessibleName: string, element: Element) =>
-    element.getAttribute('aria-label') === label;
-}
-
 function getSummaryGroup() {
   return screen.getByRole('group', {
     name: byAriaLabel('旅程摘要資訊'),
@@ -145,8 +135,8 @@ describe('TripHeaderSummary', () => {
       trip: {
         description: '記得帶護照',
         images: [
-          { id: 1, filename: 'a.jpg', title: 'A' },
-          { id: 2, filename: 'b.jpg', title: 'B' },
+          makeImage({ id: 1, filename: 'a.jpg', title: 'A' }),
+          makeImage({ id: 2, filename: 'b.jpg', title: 'B' }),
         ],
       },
     });
@@ -158,7 +148,7 @@ describe('TripHeaderSummary', () => {
     renderSummary({
       trip: {
         description: null,
-        images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
+        images: [makeImage({ id: 1, filename: 'a.jpg', title: 'A' })],
       },
     });
 
@@ -174,7 +164,9 @@ describe('TripHeaderSummary', () => {
   it('shows an ImageStrip while expanded, which opens the lightbox on click', async () => {
     const user = userEvent.setup();
     renderSummary({
-      trip: { images: [{ id: 1, filename: 'a.jpg', title: 'Cover' }] },
+      trip: {
+        images: [makeImage({ id: 1, filename: 'a.jpg', title: 'Cover' })],
+      },
       expanded: true,
     });
 

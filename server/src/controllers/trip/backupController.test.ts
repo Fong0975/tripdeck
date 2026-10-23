@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/backup', async () => {
-  const actual = await vi.importActual<
-    typeof import('../../repositories/backup')
-  >('../../repositories/backup');
+  const { BackupValidationError, TripNotFoundError } = await vi.importActual<
+    typeof import('../../repositories/backup/errors')
+  >('../../repositories/backup/errors');
   return {
-    ...actual,
+    BackupValidationError,
+    TripNotFoundError,
     buildBackupZip: vi.fn(),
     importBackupZip: vi.fn(),
   };

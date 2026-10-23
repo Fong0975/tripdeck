@@ -2,17 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { getFileInput, selectFile } from '@/test-utils/queries';
+
 import StagedImageUploader from './StagedImageUploader';
-
-// The staging <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
-function stageFile(container: HTMLElement, file: File) {
-  fireEvent.change(getFileInput(container), { target: { files: [file] } });
-}
 
 describe('StagedImageUploader', () => {
   it('shows the add-image trigger and no thumbnails initially', () => {
@@ -36,7 +28,7 @@ describe('StagedImageUploader', () => {
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
 
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
     expect(screen.getByText('加入圖片')).toBeInTheDocument();
@@ -48,7 +40,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     await user.click(screen.getByText('加入圖片'));
 
@@ -62,7 +54,7 @@ describe('StagedImageUploader', () => {
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
     const file = new File(['a'], 'a.jpg');
-    stageFile(container, file);
+    selectFile(container, file);
 
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
@@ -81,7 +73,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     // The pending-file preview's clear button has no accessible name, so
     // it is identified by position: it's the only button besides the
@@ -98,7 +90,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
       'My Photo',
@@ -115,11 +107,11 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    stageFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg'));
 
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
-    stageFile(container, new File(['b'], 'b.jpg'));
+    selectFile(container, new File(['b'], 'b.jpg'));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });

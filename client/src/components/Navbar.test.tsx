@@ -4,16 +4,13 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTheme } from '@/hooks/useTheme';
+import { makeJsonResponse } from '@/test-utils/fixtures';
 
 import Navbar from './Navbar';
 
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: vi.fn(),
 }));
-
-function makeFetchResponse(body: unknown): Response {
-  return { json: () => Promise.resolve(body) } as unknown as Response;
-}
 
 function renderNavbar() {
   return render(
@@ -27,7 +24,7 @@ beforeEach(() => {
   vi.mocked(useTheme).mockReturnValue({ theme: 'light', toggle: vi.fn() });
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue(makeFetchResponse({ version: '9.9.9' })),
+    vi.fn().mockResolvedValue(makeJsonResponse({ version: '9.9.9' })),
   );
 });
 

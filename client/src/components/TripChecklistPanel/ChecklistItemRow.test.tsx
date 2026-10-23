@@ -2,12 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeChecklistItem } from '@/test-utils/fixtures';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
 
 import ChecklistItemRow from './ChecklistItemRow';
 
 function makeItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
-  return {
+  return makeChecklistItem({
     id: 10,
     name: 'Item A',
     quantity: null,
@@ -15,7 +16,7 @@ function makeItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
     storage_location: null,
     specs: [],
     ...overrides,
-  };
+  });
 }
 
 const occasions: ChecklistOccasion[] = [

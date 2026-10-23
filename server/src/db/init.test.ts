@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { db } from '../test-utils/dbMocks';
+
 // eslint-disable-next-line import/order -- import/order flip-flops on newlines-between for this type-only sibling import; pin it here instead of fighting --fix
 import type { ColumnDef, TableDef } from './schema';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../config/database', async () => {
+  const { db } = await import('../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 // vi.mock(...) below is hoisted above these fixtures' declarations, so the
 // values it references must come from vi.hoisted(...) instead of plain

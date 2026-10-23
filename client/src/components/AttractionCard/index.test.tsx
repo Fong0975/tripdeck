@@ -15,17 +15,11 @@ import {
   type Mock,
 } from 'vitest';
 
+import { mockElementOverflow } from '@/test-utils/dom';
+import { makeAttraction, makeImage } from '@/test-utils/fixtures';
 import type { Attraction, AttractionImage } from '@/types';
 
 import AttractionCard from './index';
-
-function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
-  return {
-    id: 1,
-    name: 'Test Attraction',
-    ...overrides,
-  };
-}
 
 interface RenderCardOptions {
   attraction?: Attraction;
@@ -70,7 +64,7 @@ const conditionalRenderingCases: {
   {
     description: 'has images',
     attraction: makeAttraction({
-      images: [{ id: 1, filename: 'a.jpg', title: 'Photo A' }],
+      images: [makeImage({ filename: 'a.jpg', title: 'Photo A' })],
     }),
     query: () => screen.queryByAltText('Photo A'),
     expectPresent: true,
@@ -177,7 +171,9 @@ describe('AttractionCard', () => {
       'and does not bubble',
     async () => {
       const user = userEvent.setup();
-      const { onDelete, onParentClick } = renderCard();
+      const { onDelete, onParentClick } = renderCard({
+        attraction: makeAttraction({ name: 'Test Attraction' }),
+      });
 
       await user.click(screen.getByTitle('刪除'));
 
@@ -238,8 +234,8 @@ describe('AttractionCard', () => {
     async () => {
       const user = userEvent.setup();
       const images: AttractionImage[] = [
-        { id: 1, filename: 'a.jpg', title: 'Img 1' },
-        { id: 2, filename: 'b.jpg', title: 'Img 2' },
+        makeImage({ filename: 'a.jpg', title: 'Img 1' }),
+        makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
       ];
       const { onParentClick } = renderCard({
         attraction: makeAttraction({ images }),
@@ -255,8 +251,8 @@ describe('AttractionCard', () => {
   it('closes the lightbox when it requests to close', async () => {
     const user = userEvent.setup();
     const images: AttractionImage[] = [
-      { id: 1, filename: 'a.jpg', title: 'Img 1' },
-      { id: 2, filename: 'b.jpg', title: 'Img 2' },
+      makeImage({ filename: 'a.jpg', title: 'Img 1' }),
+      makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
     ];
     renderCard({ attraction: makeAttraction({ images }) });
     await user.click(screen.getByRole('button', { name: /Img 1/ }));
@@ -302,7 +298,7 @@ describe('AttractionCard', () => {
         description: 'images follow',
         attraction: makeAttraction({
           nearbyAttractions: '附近有一間博物館',
-          images: [{ id: 1, filename: 'a.jpg', title: 'Photo A' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'Photo A' })],
         }),
         expectedSeparators: 2,
       },
@@ -327,20 +323,17 @@ describe('AttractionCard', () => {
   });
 
   describe('line-clamped toggle buttons', () => {
+    let restoreOverflow: () => void;
+
     beforeEach(() => {
-      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-        configurable: true,
-        value: 100,
-      });
-      Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
-        configurable: true,
-        value: 40,
+      restoreOverflow = mockElementOverflow({
+        scrollHeight: 100,
+        clientHeight: 40,
       });
     });
 
     afterEach(() => {
-      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
+      restoreOverflow();
     });
 
     it.each([

@@ -9,17 +9,17 @@ vi.mock('../repositories/backup', () => ({
     mockResolveAutoBackupPath(...args),
 }));
 
-const mockReadFileSync = vi.fn();
+vi.mock('fs', async () => {
+  const { fsMock } = await import('../test-utils/fsMock');
+  return fsMock.module;
+});
 
-vi.mock('fs', () => ({
-  default: {
-    readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
-  },
-}));
-
+import { fsMock } from '../test-utils/fsMock';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 
 import { downloadAutoBackup, listAutoBackups } from './backupController';
+
+const mockReadFileSync = fsMock.fns.readFileSync;
 
 describe('listAutoBackups', () => {
   it('responds with the list of automatic backups', () => {

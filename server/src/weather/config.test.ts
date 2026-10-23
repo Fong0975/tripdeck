@@ -2,14 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const readSecretOrEmpty = vi.hoisted(() => vi.fn());
 vi.mock('../config/secrets', () => ({ readSecretOrEmpty }));
-vi.mock('../logger', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
 
 async function loadConfig() {
   vi.resetModules();

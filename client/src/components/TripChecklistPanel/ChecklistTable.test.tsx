@@ -1,29 +1,32 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeTripChecklist,
+} from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
 
 import ChecklistTable from './ChecklistTable';
 
 function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
-  return {
-    tripId: 1,
+  return makeTripChecklist({
     occasions: [
       { id: 1, name: 'Occ A', checks: {} },
       { id: 2, name: 'Occ B', checks: {} },
     ],
     categories: [
-      {
-        id: 1,
+      makeChecklistCategory({
         name: 'Category A',
         items: [
-          { id: 10, name: 'Item A' },
-          { id: 20, name: 'Item B' },
+          makeChecklistItem({ id: 10, name: 'Item A' }),
+          makeChecklistItem({ id: 20, name: 'Item B' }),
         ],
-      },
+      }),
     ],
     ...overrides,
-  };
+  });
 }
 
 describe('ChecklistTable', () => {

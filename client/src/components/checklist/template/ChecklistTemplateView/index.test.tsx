@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+} from '@/test-utils/fixtures';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,
@@ -12,15 +16,9 @@ import {
 
 import ChecklistTemplateView from './index';
 
-vi.mock('@/utils/storage', () => ({
-  addTemplateCategory: vi.fn(),
-  deleteTemplateCategory: vi.fn(),
-  getChecklistTemplate: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 vi.mock('../CategoryEditModal', () => ({
   default: ({
@@ -45,20 +43,19 @@ function makeTemplate(
 ): ChecklistTemplate {
   return {
     categories: [
-      {
-        id: 1,
+      makeChecklistCategory({
         name: 'Category A',
         items: [
-          {
+          makeChecklistItem({
             id: 10,
             name: 'Item A',
             quantity: 2,
             notes: 'note',
             storage_location: '託運',
             specs: [],
-          },
+          }),
         ],
-      },
+      }),
     ],
     ...overrides,
   };
@@ -66,11 +63,9 @@ function makeTemplate(
 
 beforeEach(() => {
   vi.mocked(getChecklistTemplate).mockResolvedValue(makeTemplate());
-  vi.mocked(addTemplateCategory).mockResolvedValue({
-    id: 2,
-    name: '新分類',
-    items: [],
-  });
+  vi.mocked(addTemplateCategory).mockResolvedValue(
+    makeChecklistCategory({ id: 2, name: '新分類' }),
+  );
   vi.mocked(deleteTemplateCategory).mockResolvedValue(undefined);
 });
 

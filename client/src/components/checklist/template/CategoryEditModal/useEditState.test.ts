@@ -1,28 +1,28 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ChecklistCategory } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+} from '@/test-utils/fixtures';
 
 import { useEditState } from './useEditState';
 
-function makeCategory(
-  overrides: Partial<ChecklistCategory> = {},
-): ChecklistCategory {
-  return {
-    id: 1,
+function makeCategory() {
+  return makeChecklistCategory({
     name: 'Category A',
     items: [
-      {
+      makeChecklistItem({
         id: 10,
         name: 'Item A',
         quantity: 2,
         notes: 'note',
         storage_location: '託運',
-        specs: [{ id: 100, name: 'Spec A', storage_location: null }],
-      },
+        specs: [makeChecklistSpec({ id: 100, name: 'Spec A' })],
+      }),
     ],
-    ...overrides,
-  };
+  });
 }
 
 describe('useEditState', () => {

@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { showToast } from '@/lib/toast';
+import {
+  makeBoardDays,
+  makeConnection,
+  makeContent,
+  makeTrip,
+} from '@/test-utils/fixtures';
 import type { Attraction, DayPlan, Trip, TravelConnection } from '@/types';
 import { exportToDocx } from '@/utils/exportToDocx';
 
@@ -35,7 +41,7 @@ vi.mock('@/hooks/useUnsavedChangesGuard', () => ({
   useUnsavedChangesGuard: vi.fn(),
 }));
 vi.mock('@/utils/exportToDocx', () => ({ exportToDocx: vi.fn() }));
-vi.mock('@/lib/toast', () => ({ showToast: vi.fn() }));
+vi.mock('@/lib/toast');
 
 vi.mock('@/components/Navbar', () => ({
   default: () => <div>navbar</div>,
@@ -74,97 +80,8 @@ vi.mock('./TripHeader', () => ({
 // buttons per day so TripDetail's own composition logic (which modal opens,
 // which handler receives which args) can be tested without a real drag
 // context.
-vi.mock('./ItineraryBoard', () => ({
-  default: ({
-    days,
-    onEditDayNote,
-    onAddAttraction,
-    onEditAttraction,
-    onDeleteAttraction,
-    onDuplicateAttraction,
-    onEditConnection,
-    onDeleteConnection,
-    onAddConnection,
-    onAddLocation,
-    onUpdateLocation,
-    onDeleteLocation,
-  }: {
-    days: DayPlan[];
-    onEditDayNote: (dayIndex: number) => void;
-    onAddAttraction: (dayIndex: number) => void;
-    onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
-    onDuplicateAttraction: (dayIndex: number, attraction: Attraction) => void;
-    onEditConnection: (dayIndex: number, connection: TravelConnection) => void;
-    onDeleteConnection: (dayIndex: number, connectionId: number) => void;
-    onAddConnection: (dayIndex: number, fromId: number, toId: number) => void;
-    onAddLocation: (dayIndex: number, name: string) => void;
-    onUpdateLocation: (
-      dayIndex: number,
-      locationId: number,
-      name: string,
-    ) => void;
-    onDeleteLocation: (dayIndex: number, locationId: number) => void;
-  }) => (
-    <div>
-      {days.map((day, dayIndex) => (
-        <div key={day.id}>
-          <span>day-column-{dayIndex}</span>
-          <button onClick={() => onEditDayNote(dayIndex)}>
-            edit-day-note-{dayIndex}
-          </button>
-          <button onClick={() => onAddAttraction(dayIndex)}>
-            add-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onEditAttraction(dayIndex, day.attractions[0])}
-          >
-            edit-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onDeleteAttraction(dayIndex, day.attractions[0].id)}
-          >
-            delete-attraction-{dayIndex}
-          </button>
-          <button
-            onClick={() => onDuplicateAttraction(dayIndex, day.attractions[0])}
-          >
-            duplicate-attraction-{dayIndex}
-          </button>
-          {day.connections[0] && (
-            <button
-              onClick={() => onEditConnection(dayIndex, day.connections[0])}
-            >
-              edit-connection-{dayIndex}
-            </button>
-          )}
-          {day.connections[0] && (
-            <button
-              onClick={() =>
-                onDeleteConnection(dayIndex, day.connections[0].id)
-              }
-            >
-              delete-connection-{dayIndex}
-            </button>
-          )}
-          <button onClick={() => onAddConnection(dayIndex, 10, 11)}>
-            add-connection-{dayIndex}
-          </button>
-          <button onClick={() => onAddLocation(dayIndex, 'New Location')}>
-            add-location-{dayIndex}
-          </button>
-          <button
-            onClick={() => onUpdateLocation(dayIndex, 50, 'Updated Location')}
-          >
-            update-location-{dayIndex}
-          </button>
-          <button onClick={() => onDeleteLocation(dayIndex, 50)}>
-            delete-location-{dayIndex}
-          </button>
-        </div>
-      ))}
-    </div>
-  ),
+vi.mock('./ItineraryBoard', async () => ({
+  default: (await import('@/test-utils/stubs')).ItineraryBoardStub,
 }));
 
 vi.mock('@/components/AttractionModal', () => ({
@@ -302,56 +219,20 @@ vi.mock('@/components/ui/ConfirmDialog', () => ({
   ),
 }));
 
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
+function makeBoardTrip(): Trip {
+  return makeTrip({
     title: 'Trip A',
     destination: 'Tokyo',
-    startDate: '2026-01-01',
     endDate: '2026-01-02',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
-
-function makeDays(overrides: Partial<DayPlan>[] = []): DayPlan[] {
-  const base: DayPlan[] = [
-    {
-      id: 1,
-      day: 1,
-      date: '2026-01-01',
-      locations: [],
-      attractions: [
-        { id: 10, name: 'Attraction A' },
-        { id: 11, name: 'Attraction B' },
-      ],
-      connections: [
-        {
-          id: 100,
-          fromAttractionId: 10,
-          toAttractionId: 11,
-          transportMode: 'walk',
-        },
-      ],
-    },
-    {
-      id: 2,
-      day: 2,
-      date: '2026-01-02',
-      locations: [],
-      attractions: [{ id: 20, name: 'Attraction C' }],
-      connections: [],
-    },
-  ];
-  return base.map((day, i) => ({ ...day, ...overrides[i] }));
+  });
 }
 
 function makeTripData(
   overrides: Partial<ReturnType<typeof useTripData>> = {},
 ): ReturnType<typeof useTripData> {
   return {
-    trip: makeTrip(),
-    content: { tripId: 1, days: makeDays() },
+    trip: makeBoardTrip(),
+    content: makeContent(makeBoardDays()),
     reloadContent: vi.fn(),
     setTrip: vi.fn(),
     loadError: false,
@@ -537,8 +418,8 @@ describe('TripDetail', () => {
       resolveExport = resolve;
     });
     vi.mocked(exportToDocx).mockReturnValue(exportPromise);
-    const trip = makeTrip();
-    const content = { tripId: 1, days: makeDays() };
+    const trip = makeBoardTrip();
+    const content = makeContent(makeBoardDays());
     vi.mocked(useTripData).mockReturnValue(makeTripData({ trip, content }));
     const user = userEvent.setup();
     renderTripDetail();
@@ -765,12 +646,12 @@ describe('TripDetail', () => {
 
     const calls = vi.mocked(useConnectionActions).mock.calls;
     const openConnectionModal = calls[calls.length - 1][4];
-    const connection: TravelConnection = {
+    const connection = makeConnection({
       id: 0,
       fromAttractionId: 10,
       toAttractionId: 11,
       transportMode: 'transit',
-    };
+    });
 
     act(() => {
       openConnectionModal(0, connection);
@@ -797,21 +678,19 @@ describe('TripDetail', () => {
   it('falls back to empty names when the connection references unknown attractions', async () => {
     vi.mocked(useTripData).mockReturnValue(
       makeTripData({
-        content: {
-          tripId: 1,
-          days: makeDays([
+        content: makeContent(
+          makeBoardDays([
             {
               connections: [
-                {
+                makeConnection({
                   id: 100,
                   fromAttractionId: 999,
                   toAttractionId: 998,
-                  transportMode: 'walk',
-                },
+                }),
               ],
             },
           ]),
-        },
+        ),
       }),
     );
     const user = userEvent.setup();

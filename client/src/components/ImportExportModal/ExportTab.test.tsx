@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { exportTripsBackup } from '@/api/backup';
 import { showToast } from '@/lib/toast';
-import type { Trip } from '@/types';
+import { makeTrip } from '@/test-utils/fixtures';
 import { downloadBlob } from '@/utils/download';
 
 import ExportTab from './ExportTab';
@@ -17,21 +17,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
 }));
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
-
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Trip A',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
+vi.mock('@/lib/toast');
 
 describe('ExportTab', () => {
   it('shows an empty state with the submit button disabled when there are no trips', () => {

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../attraction/attractionCrud');
 vi.mock('../connectionRepository');
 
+import { db } from '../../test-utils/dbMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
 import * as attractionCrud from '../attraction/attractionCrud';
 import * as connectionRepo from '../connectionRepository';
 
@@ -25,38 +27,24 @@ vi.mock('../../middleware/upload', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 
-const mockPoolExecute = vi.fn();
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnQuery = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn().mockResolvedValue({
-  beginTransaction: mockConnBeginTransaction,
-  execute: mockConnExecute,
-  query: mockConnQuery,
-  commit: mockConnCommit,
-  rollback: mockConnRollback,
-  release: mockConnRelease,
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
 });
 
-vi.mock('../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-    getConnection: () => mockGetConnection(),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
+const mockConnBeginTransaction = db.conn.beginTransaction;
+const mockConnExecute = db.conn.execute;
+const mockConnQuery = db.conn.query;
+const mockConnCommit = db.conn.commit;
+const mockConnRollback = db.conn.rollback;
+const mockConnRelease = db.conn.release;
+const mockGetConnection = db.pool.getConnection;
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
 describe('tripCrud', () => {
   beforeEach(() => {
@@ -64,14 +52,6 @@ describe('tripCrud', () => {
     mockGetTripImagesBatch.mockResolvedValue(new Map());
     mockGetDayImagesBatch.mockResolvedValue(new Map());
     mockGetAttractionImagesBatch.mockResolvedValue(new Map());
-    mockGetConnection.mockResolvedValue({
-      beginTransaction: mockConnBeginTransaction,
-      execute: mockConnExecute,
-      query: mockConnQuery,
-      commit: mockConnCommit,
-      rollback: mockConnRollback,
-      release: mockConnRelease,
-    });
   });
 
   // Shared date-field fixtures exercising both branches of the private

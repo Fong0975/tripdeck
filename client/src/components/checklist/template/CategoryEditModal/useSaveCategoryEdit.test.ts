@@ -2,7 +2,11 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { ChecklistCategory } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+} from '@/test-utils/fixtures';
 import {
   addTemplateItem,
   addTemplateItemSpec,
@@ -17,34 +21,23 @@ import type { EditCategory } from '../../shared/types';
 
 import { useSaveCategoryEdit } from './useSaveCategoryEdit';
 
-vi.mock('@/utils/storage', () => ({
-  updateTemplateCategory: vi.fn(),
-  updateTemplateItem: vi.fn(),
-  addTemplateItem: vi.fn(),
-  deleteTemplateItem: vi.fn(),
-  addTemplateItemSpec: vi.fn(),
-  updateTemplateItemSpec: vi.fn(),
-  deleteTemplateItemSpec: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-const category: ChecklistCategory = {
-  id: 1,
+const category = makeChecklistCategory({
   name: 'Category A',
   items: [
-    {
+    makeChecklistItem({
       id: 10,
       name: 'Item A',
       quantity: 2,
       notes: 'note',
       storage_location: '託運',
-      specs: [{ id: 100, name: 'Spec A', storage_location: null }],
-    },
+      specs: [makeChecklistSpec({ id: 100, name: 'Spec A' })],
+    }),
   ],
-};
+});
 
 function unchangedEdit(): EditCategory {
   return {
@@ -75,19 +68,19 @@ async function save(edit: EditCategory) {
 }
 
 beforeEach(() => {
-  vi.mocked(addTemplateItem).mockResolvedValue({
-    id: 999,
-    name: 'Brand New',
-    quantity: null,
-    notes: null,
-    storage_location: null,
-    specs: [],
-  });
-  vi.mocked(addTemplateItemSpec).mockResolvedValue({
-    id: 999,
-    name: 'Brand New Spec',
-    storage_location: null,
-  });
+  vi.mocked(addTemplateItem).mockResolvedValue(
+    makeChecklistItem({
+      id: 999,
+      name: 'Brand New',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    }),
+  );
+  vi.mocked(addTemplateItemSpec).mockResolvedValue(
+    makeChecklistSpec({ id: 999, name: 'Brand New Spec' }),
+  );
 });
 
 describe('useSaveCategoryEdit', () => {

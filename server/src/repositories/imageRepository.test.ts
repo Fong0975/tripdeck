@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { db, routeSql } from '../test-utils/dbMocks';
+
 import {
   addAttractionImage,
   addConnectionImage,
@@ -19,13 +21,12 @@ import {
   getTripImagesBatch,
 } from './imageRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../config/database', async () => {
+  const { db } = await import('../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 const mockDeleteImageFromDisk = vi.fn();
 vi.mock('../middleware/upload', () => ({
@@ -160,12 +161,16 @@ describe.each(variants)(
       });
 
       it('deletes the row and the file on disk when found', async () => {
-        mockPoolExecute.mockImplementation((sql: string) => {
-          if (sql.trim().startsWith('SELECT')) {
-            return Promise.resolve([[{ id: 1, filename: 'a.jpg' }]]);
-          }
-          return Promise.resolve([{ affectedRows: 1 }]);
-        });
+        routeSql(
+          mockPoolExecute,
+          [
+            [
+              sql => sql.trim().startsWith('SELECT'),
+              [[{ id: 1, filename: 'a.jpg' }]],
+            ],
+          ],
+          [{ affectedRows: 1 }],
+        );
 
         const result = await deleteImage(1, 10);
 

@@ -1,9 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
-import type { Attraction } from '@/types';
+import { makeAttraction } from '@/test-utils/fixtures';
+import { makeMounter } from '@/test-utils/render';
 
 import AttractionModal from './index';
 
@@ -77,7 +79,12 @@ vi.mock('../StagedImageUploader', () => ({
   ),
 }));
 
-const editingAttraction: Attraction = { id: 5, name: 'Existing' };
+const editingAttraction = makeAttraction({ id: 5, name: 'Existing' });
+
+const renderModal = makeMounter<ComponentProps<typeof AttractionModal>>(
+  AttractionModal,
+  () => ({ onClose: vi.fn(), onSave: vi.fn() }),
+);
 
 describe('AttractionModal', () => {
   beforeEach(() => {
@@ -106,13 +113,7 @@ describe('AttractionModal', () => {
   ])(
     'renders the matching title and image uploader when $description',
     ({ attraction, expectedTitle, expectedImageTestId, otherImageTestId }) => {
-      render(
-        <AttractionModal
-          attraction={attraction}
-          onClose={vi.fn()}
-          onSave={vi.fn()}
-        />,
-      );
+      renderModal({ attraction });
 
       expect(
         screen.getByRole('heading', { name: expectedTitle }),
@@ -130,7 +131,7 @@ describe('AttractionModal', () => {
     async ({ name }) => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(<AttractionModal onClose={vi.fn()} onSave={onSave} />);
+      renderModal({ onSave });
 
       if (name) {
         await user.type(screen.getByPlaceholderText('例：淺草寺'), name);
@@ -153,7 +154,7 @@ describe('AttractionModal', () => {
     },
     {
       description: 'editing an existing attraction',
-      attraction: { id: 5, name: '  Existing  ' } as Attraction,
+      attraction: makeAttraction({ id: 5, name: '  Existing  ' }),
       typedName: null,
       expectedName: 'Existing',
       stageImage: false,
@@ -170,13 +171,7 @@ describe('AttractionModal', () => {
     }) => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(
-        <AttractionModal
-          attraction={attraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      renderModal({ attraction, onSave });
 
       if (typedName !== null) {
         const nameInput = screen.getByPlaceholderText('例：淺草寺');
@@ -196,17 +191,13 @@ describe('AttractionModal', () => {
   );
 
   it('shows the Google Maps external link when a URL is set', () => {
-    render(
-      <AttractionModal
-        attraction={{
-          id: 5,
-          name: 'A',
-          googleMapUrl: 'https://maps.google.com/x',
-        }}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />,
-    );
+    renderModal({
+      attraction: makeAttraction({
+        id: 5,
+        name: 'A',
+        googleMapUrl: 'https://maps.google.com/x',
+      }),
+    });
 
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
@@ -215,13 +206,9 @@ describe('AttractionModal', () => {
   });
 
   it('hides the Google Maps external link when no URL is set', () => {
-    render(
-      <AttractionModal
-        attraction={{ id: 5, name: 'A', googleMapUrl: '' }}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />,
-    );
+    renderModal({
+      attraction: makeAttraction({ id: 5, name: 'A', googleMapUrl: '' }),
+    });
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
@@ -229,7 +216,7 @@ describe('AttractionModal', () => {
   it('calls onClose when the cancel button is clicked', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    render(<AttractionModal onClose={onClose} onSave={vi.fn()} />);
+    renderModal({ onClose });
 
     await user.click(screen.getByRole('button', { name: '取消' }));
 
@@ -257,13 +244,7 @@ describe('AttractionModal', () => {
     async ({ field, placeholder, typed }) => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      renderModal({ attraction: editingAttraction, onSave });
 
       await user.type(screen.getByPlaceholderText(placeholder), typed);
       await user.click(screen.getByRole('button', { name: '儲存' }));
@@ -282,13 +263,10 @@ describe('AttractionModal', () => {
     'sets $field to the typed time, and to null when cleared',
     ({ field, index }) => {
       const onSave = vi.fn();
-      const { container } = render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      const { container } = renderModal({
+        attraction: editingAttraction,
+        onSave,
+      });
       // The start/end time <input type="time"> fields have no <label htmlFor>
       // association in the source, so they can't be reached via
       // getByLabelText — querying by their type attribute is the most
@@ -319,13 +297,7 @@ describe('AttractionModal', () => {
   it('includes the updated reference websites list in the saved attraction', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(
-      <AttractionModal
-        attraction={editingAttraction}
-        onClose={vi.fn()}
-        onSave={onSave}
-      />,
-    );
+    renderModal({ attraction: editingAttraction, onSave });
 
     await user.click(screen.getByRole('button', { name: 'change websites' }));
     await user.click(screen.getByRole('button', { name: '儲存' }));
@@ -342,13 +314,7 @@ describe('AttractionModal', () => {
     it('asks for confirmation instead of saving when a website draft is pending', async () => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      renderModal({ attraction: editingAttraction, onSave });
 
       await user.click(
         screen.getByRole('button', { name: 'set website draft' }),
@@ -366,13 +332,7 @@ describe('AttractionModal', () => {
     it('returns to the form without saving when the save confirmation is cancelled', async () => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      renderModal({ attraction: editingAttraction, onSave });
 
       await user.click(
         screen.getByRole('button', { name: 'set website draft' }),
@@ -389,13 +349,7 @@ describe('AttractionModal', () => {
     it('asks for confirmation instead of closing when cancel is clicked with a pending website draft', async () => {
       const user = userEvent.setup();
       const onClose = vi.fn();
-      render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={onClose}
-          onSave={vi.fn()}
-        />,
-      );
+      renderModal({ attraction: editingAttraction, onClose });
 
       await user.click(
         screen.getByRole('button', { name: 'set website draft' }),
@@ -413,13 +367,7 @@ describe('AttractionModal', () => {
     it('saves directly without a confirmation once the website draft is cleared', async () => {
       const user = userEvent.setup();
       const onSave = vi.fn();
-      render(
-        <AttractionModal
-          attraction={editingAttraction}
-          onClose={vi.fn()}
-          onSave={onSave}
-        />,
-      );
+      renderModal({ attraction: editingAttraction, onSave });
 
       await user.click(
         screen.getByRole('button', { name: 'set website draft' }),
@@ -445,13 +393,7 @@ describe('AttractionModal', () => {
       handleDelete,
     });
     const user = userEvent.setup();
-    render(
-      <AttractionModal
-        attraction={editingAttraction}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />,
-    );
+    renderModal({ attraction: editingAttraction });
 
     await user.click(screen.getByRole('button', { name: 'upload image' }));
     expect(handleUpload).toHaveBeenCalledWith(

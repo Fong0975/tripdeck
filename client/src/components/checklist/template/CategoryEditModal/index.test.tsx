@@ -2,9 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ChecklistCategory } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+} from '@/test-utils/fixtures';
+import { getBackdrop } from '@/test-utils/queries';
 
-import type { EditItem, EditSpec } from '../../shared/types';
+import type { EditItem } from '../../shared/types';
 
 import { useEditState } from './useEditState';
 import { useSaveCategoryEdit } from './useSaveCategoryEdit';
@@ -13,61 +17,23 @@ import CategoryEditModal from './index';
 
 vi.mock('./useEditState', () => ({ useEditState: vi.fn() }));
 vi.mock('./useSaveCategoryEdit', () => ({ useSaveCategoryEdit: vi.fn() }));
-vi.mock('../../shared/EditableItemRow', () => ({
-  default: ({
-    item,
-    onUpdateItem,
-    onDeleteItem,
-    onAddSpec,
-    onUpdateSpec,
-    onDeleteSpec,
-  }: {
-    item: EditItem;
-    onUpdateItem: (itemId: number, fields: Partial<EditItem>) => void;
-    onDeleteItem: (itemId: number) => void;
-    onAddSpec: (itemId: number) => void;
-    onUpdateSpec: (
-      itemId: number,
-      specId: number,
-      fields: Partial<EditSpec>,
-    ) => void;
-    onDeleteSpec: (itemId: number, specId: number) => void;
-  }) => (
-    <div>
-      <span>{item.name}</span>
-      <button onClick={() => onUpdateItem(item.id, { name: 'Updated' })}>
-        update-item-{item.id}
-      </button>
-      <button onClick={() => onDeleteItem(item.id)}>
-        delete-item-{item.id}
-      </button>
-      <button onClick={() => onAddSpec(item.id)}>add-spec-{item.id}</button>
-      <button
-        onClick={() => onUpdateSpec(item.id, 100, { name: 'Updated Spec' })}
-      >
-        update-spec-{item.id}
-      </button>
-      <button onClick={() => onDeleteSpec(item.id, 100)}>
-        delete-spec-{item.id}
-      </button>
-    </div>
-  ),
+vi.mock('../../shared/EditableItemRow', async () => ({
+  default: (await import('@/test-utils/stubs')).EditableItemRowStub,
 }));
 
-const category: ChecklistCategory = {
-  id: 1,
+const category = makeChecklistCategory({
   name: 'Category A',
   items: [
-    {
+    makeChecklistItem({
       id: 10,
       name: 'Item A',
       quantity: null,
       notes: null,
       storage_location: null,
       specs: [],
-    },
+    }),
   ],
-};
+});
 
 const editItems: EditItem[] = [
   {
@@ -96,12 +62,6 @@ function mockEditState(
     addSpec: vi.fn(),
     ...overrides,
   });
-}
-
-// The modal backdrop is a bare decorative div with no accessible role/name;
-// 'absolute' uniquely identifies it (the modal wrapper itself uses 'fixed').
-function getBackdrop(container: HTMLElement): HTMLElement {
-  return container.querySelector('.absolute') as HTMLElement;
 }
 
 beforeEach(() => {

@@ -1,32 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockMkdirSync = vi.fn();
-const mockWriteFileSync = vi.fn();
-const mockStatSync = vi.fn();
-const mockExistsSync = vi.fn();
-const mockReaddirSync = vi.fn();
-const mockUnlinkSync = vi.fn();
+vi.mock('fs', async () => {
+  const { fsMock } = await import('../../test-utils/fsMock');
+  return fsMock.module;
+});
 
-vi.mock('fs', () => ({
-  default: {
-    mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
-    writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
-    statSync: (...args: unknown[]) => mockStatSync(...args),
-    existsSync: (...args: unknown[]) => mockExistsSync(...args),
-    readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
-    unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
-  },
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+import { fsMock } from '../../test-utils/fsMock';
+import { mockLogger } from '../../test-utils/loggerMock';
 
 import {
   buildAutoBackupFilename,
@@ -36,6 +21,15 @@ import {
   resolveAutoBackupPath,
   writeAutoBackupFile,
 } from './autoBackupStorage';
+
+const {
+  mkdirSync: mockMkdirSync,
+  writeFileSync: mockWriteFileSync,
+  statSync: mockStatSync,
+  existsSync: mockExistsSync,
+  readdirSync: mockReaddirSync,
+  unlinkSync: mockUnlinkSync,
+} = fsMock.fns;
 
 describe('buildAutoBackupFilename', () => {
   it('builds a filename with the ISO timestamp, colons/dots as dashes', () => {

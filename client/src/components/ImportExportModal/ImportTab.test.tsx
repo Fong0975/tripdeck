@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
 import { showToast } from '@/lib/toast';
+import { getFileInput, selectFile, submitForm } from '@/test-utils/queries';
 import type { ImportBackupErrorDetails } from '@/types';
 
 import ImportTab from './ImportTab';
@@ -14,9 +15,7 @@ vi.mock('@/api/backup', () => ({
   importTripsBackup: vi.fn(),
 }));
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 vi.mock('@/lib/ToastList', () => ({
   ToastList: ({ children }: { children: ReactNode }) => <ul>{children}</ul>,
@@ -27,12 +26,6 @@ function renderLastToast(variant: 'success' | 'error' | 'info') {
   const calls = vi.mocked(showToast).mock.calls.filter(c => c[0] === variant);
   expect(calls.length).toBeGreaterThan(0);
   render(<>{calls[calls.length - 1][1]}</>);
-}
-
-// The backup-file <input type="file"> has no accessible label, so it can
-// only be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
 
 describe('ImportTab', () => {
@@ -59,9 +52,7 @@ describe('ImportTab', () => {
   it('does nothing when the import form is submitted with no file selected', () => {
     const { container } = render(<ImportTab onClose={vi.fn()} />);
 
-    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
-    const form = container.querySelector('form')!;
-    fireEvent.submit(form);
+    submitForm(container);
 
     expect(importTripsBackup).not.toHaveBeenCalled();
   });
@@ -80,7 +71,7 @@ describe('ImportTab', () => {
     const { container } = render(<ImportTab onClose={vi.fn()} />);
 
     const file = new File(['zip-bytes'], 'backup.zip');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
 
     expect(screen.getByText('backup.zip')).toBeInTheDocument();
     expect(screen.getByText('匯入')).toBeEnabled();
@@ -103,7 +94,7 @@ describe('ImportTab', () => {
       <ImportTab onClose={vi.fn()} onImported={onImported} />,
     );
     const file = new File(['zip-bytes'], 'backup.zip');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
 
     await user.click(screen.getByText('匯入'));
 
@@ -130,9 +121,7 @@ describe('ImportTab', () => {
     const { container } = render(
       <ImportTab onClose={vi.fn()} onImported={onImported} />,
     );
-    fireEvent.change(getFileInput(container), {
-      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
-    });
+    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
 
     await user.click(screen.getByText('匯入'));
 
@@ -163,9 +152,7 @@ describe('ImportTab', () => {
       ),
     );
     const { container } = render(<ImportTab onClose={vi.fn()} />);
-    fireEvent.change(getFileInput(container), {
-      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
-    });
+    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
 
     await user.click(screen.getByText('匯入'));
 
@@ -185,9 +172,7 @@ describe('ImportTab', () => {
     const user = userEvent.setup();
     vi.mocked(importTripsBackup).mockRejectedValue(new Error('network error'));
     const { container } = render(<ImportTab onClose={vi.fn()} />);
-    fireEvent.change(getFileInput(container), {
-      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
-    });
+    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
 
     await user.click(screen.getByText('匯入'));
 
@@ -203,9 +188,7 @@ describe('ImportTab', () => {
     const user = userEvent.setup();
     vi.mocked(importTripsBackup).mockRejectedValue('unexpected failure');
     const { container } = render(<ImportTab onClose={vi.fn()} />);
-    fireEvent.change(getFileInput(container), {
-      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
-    });
+    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
 
     await user.click(screen.getByText('匯入'));
 
@@ -225,7 +208,7 @@ describe('ImportTab', () => {
     });
     const { container } = render(<ImportTab onClose={vi.fn()} />);
     const file = new File(['zip-bytes'], 'backup.zip');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
 
     expect(screen.getByRole('checkbox')).not.toBeChecked();
 
@@ -245,7 +228,7 @@ describe('ImportTab', () => {
     });
     const { container } = render(<ImportTab onClose={vi.fn()} />);
     const file = new File(['zip-bytes'], 'backup.zip');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
 
     await user.click(screen.getByRole('checkbox'));
     await user.click(screen.getByText('匯入'));
@@ -266,9 +249,7 @@ describe('ImportTab', () => {
       templateRestored: false,
     });
     const { container } = render(<ImportTab onClose={vi.fn()} />);
-    fireEvent.change(getFileInput(container), {
-      target: { files: [new File(['zip-bytes'], 'backup.zip')] },
-    });
+    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
 
     await user.click(screen.getByText('匯入'));
 

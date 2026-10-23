@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { Trip, TripContent } from '@/types';
+import { makeContent, makeDay, makeTrip } from '@/test-utils/fixtures';
 import { getTrip, getTripContent } from '@/utils/storage';
 
 import { useTripData } from './useTripData';
@@ -13,24 +13,9 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock('@/utils/storage', () => ({
-  getTrip: vi.fn(),
-  getTripContent: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({ showToast: vi.fn() }));
-
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
+vi.mock('@/lib/toast');
 
 describe('useTripData', () => {
   it.each([
@@ -53,7 +38,7 @@ describe('useTripData', () => {
 
   it('navigates home when the fetched trip is not found', async () => {
     vi.mocked(getTrip).mockResolvedValue(null);
-    vi.mocked(getTripContent).mockResolvedValue({ tripId: 1, days: [] });
+    vi.mocked(getTripContent).mockResolvedValue(makeContent([]));
 
     const { result } = renderHook(() => useTripData('1'));
 
@@ -65,7 +50,7 @@ describe('useTripData', () => {
 
   it('loads the trip and content for a valid numeric id', async () => {
     const trip = makeTrip();
-    const content: TripContent = { tripId: 1, days: [] };
+    const content = makeContent([]);
     vi.mocked(getTrip).mockResolvedValue(trip);
     vi.mocked(getTripContent).mockResolvedValue(content);
 
@@ -81,7 +66,7 @@ describe('useTripData', () => {
   describe('load failure', () => {
     it('sets loadError and shows a toast when fetching fails, then recovers via retryLoad', async () => {
       const trip = makeTrip();
-      const content: TripContent = { tripId: 1, days: [] };
+      const content = makeContent([]);
       vi.mocked(getTrip).mockRejectedValueOnce(new Error('network error'));
       vi.mocked(getTripContent).mockResolvedValue(content);
 
@@ -120,20 +105,8 @@ describe('useTripData', () => {
 
     it('refetches and replaces content for a valid id', async () => {
       const trip = makeTrip();
-      const initialContent: TripContent = { tripId: 1, days: [] };
-      const refreshedContent: TripContent = {
-        tripId: 1,
-        days: [
-          {
-            id: 1,
-            day: 1,
-            date: '2026-01-01',
-            locations: [],
-            attractions: [],
-            connections: [],
-          },
-        ],
-      };
+      const initialContent = makeContent([]);
+      const refreshedContent = makeContent([makeDay()]);
       vi.mocked(getTrip).mockResolvedValue(trip);
       vi.mocked(getTripContent)
         .mockResolvedValueOnce(initialContent)
@@ -155,7 +128,7 @@ describe('useTripData', () => {
   describe('setTrip', () => {
     it('updates the trip in state without refetching', async () => {
       const trip = makeTrip();
-      const content: TripContent = { tripId: 1, days: [] };
+      const content = makeContent([]);
       vi.mocked(getTrip).mockResolvedValue(trip);
       vi.mocked(getTripContent).mockResolvedValue(content);
 

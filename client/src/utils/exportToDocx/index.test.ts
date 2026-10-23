@@ -1,14 +1,16 @@
-import { Document, Packer, TextRun, type Paragraph, type Table } from 'docx';
+import { Document, Packer, type Paragraph, type Table } from 'docx';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-  Attraction,
-  DayLocation,
-  DayPlan,
-  TravelConnection,
-  Trip,
-  TripContent,
-} from '@/types';
+import { textRuns } from '@/test-utils/docx';
+import {
+  makeAttraction,
+  makeConnection,
+  makeContent,
+  makeDay,
+  makeTrip,
+  makeWeatherSuccess,
+} from '@/test-utils/fixtures';
+import type { DayLocation } from '@/types';
 import { daysFromToday } from '@/utils/date';
 import { downloadBlob } from '@/utils/download';
 import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
@@ -20,25 +22,7 @@ import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 import { exportToDocx } from './index';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-// `BorderStyle` is mocked because `./constants` reads it at module-init time.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  Packer: { toBlob: vi.fn() },
-  Document: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Document', options };
-  }),
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 vi.mock('@/utils/date', () => ({ daysFromToday: vi.fn() }));
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }));
@@ -59,57 +43,6 @@ vi.mock('./transportTable', () => ({
   makeDayHeaderTable: vi.fn(),
   makeTransportTable: vi.fn(),
 }));
-
-function trip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: '東京行',
-    destination: '東京',
-    startDate: '2026-08-20',
-    endDate: '2026-08-22',
-    description: '第一次去東京',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-function content(days: DayPlan[]): TripContent {
-  return { tripId: 1, days };
-}
-
-function dayPlan(overrides: Partial<DayPlan> = {}): DayPlan {
-  return {
-    id: 1,
-    day: 1,
-    date: '2026-08-20',
-    locations: [],
-    attractions: [],
-    connections: [],
-    ...overrides,
-  };
-}
-
-function attraction(overrides: Partial<Attraction> = {}): Attraction {
-  return { id: 1, name: '晴空塔', ...overrides };
-}
-
-function connection(
-  overrides: Partial<TravelConnection> = {},
-): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 1,
-    toAttractionId: 2,
-    transportMode: 'walk',
-    ...overrides,
-  };
-}
-
-function textRuns(): string[] {
-  return vi
-    .mocked(TextRun)
-    .mock.calls.map(([options]) => (options as { text: string }).text);
-}
 
 const headerSentinel = { type: 'Paragraph', options: { sentinel: 'header' } };
 const dayNotesSentinel = {
@@ -144,7 +77,7 @@ beforeEach(() => {
 
 describe('exportToDocx', () => {
   it('builds the document, packs it, and downloads it under the trip title', async () => {
-    await exportToDocx(trip({ title: '東京行' }), content([]));
+    await exportToDocx(makeTrip({ title: '東京行' }), makeContent([]));
 
     expect(Packer.toBlob).toHaveBeenCalledTimes(1);
     expect(downloadBlob).toHaveBeenCalledTimes(1);
@@ -153,18 +86,18 @@ describe('exportToDocx', () => {
 
   it('builds the header section with the trip and its total day count', async () => {
     const days = [
-      dayPlan({ id: 1, day: 1, date: '2026-08-20' }),
-      dayPlan({ id: 2, day: 2, date: '2026-08-21' }),
+      makeDay({ id: 1, day: 1, date: '2026-08-20' }),
+      makeDay({ id: 2, day: 2, date: '2026-08-21' }),
     ];
-    const aTrip = trip();
+    const aTrip = makeTrip();
 
-    await exportToDocx(aTrip, content(days));
+    await exportToDocx(aTrip, makeContent(days));
 
     expect(makeHeaderSection).toHaveBeenCalledWith(aTrip, 2);
   });
 
   it('places the header section paragraphs before the day sections', async () => {
-    await exportToDocx(trip(), content([]));
+    await exportToDocx(makeTrip(), makeContent([]));
 
     const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
       sections: [{ children: unknown[] }];
@@ -174,11 +107,11 @@ describe('exportToDocx', () => {
 
   it('calls makeDayHeaderTable once per day with isFirstDay true only for the first day', async () => {
     const days = [
-      dayPlan({ id: 1, day: 1, date: '2026-08-20' }),
-      dayPlan({ id: 2, day: 2, date: '2026-08-21' }),
+      makeDay({ id: 1, day: 1, date: '2026-08-20' }),
+      makeDay({ id: 2, day: 2, date: '2026-08-21' }),
     ];
 
-    await exportToDocx(trip(), content(days));
+    await exportToDocx(makeTrip(), makeContent(days));
 
     expect(makeDayHeaderTable).toHaveBeenCalledTimes(2);
     expect(vi.mocked(makeDayHeaderTable).mock.calls[0][1]).toBe(true);
@@ -186,11 +119,11 @@ describe('exportToDocx', () => {
   });
 
   it('calls makeAttractionTable once per attraction, in order', async () => {
-    const a1 = attraction({ id: 1, name: '晴空塔' });
-    const a2 = attraction({ id: 2, name: '淺草寺' });
-    const day = dayPlan({ attractions: [a1, a2] });
+    const a1 = makeAttraction({ id: 1, name: '晴空塔' });
+    const a2 = makeAttraction({ id: 2, name: '淺草寺' });
+    const day = makeDay({ attractions: [a1, a2] });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     expect(makeAttractionTable).toHaveBeenCalledTimes(2);
     expect(vi.mocked(makeAttractionTable).mock.calls).toEqual([[a1], [a2]]);
@@ -210,12 +143,12 @@ describe('exportToDocx', () => {
   ])(
     'resolves toName when $description',
     async ({ toAttractionId, expectedToName }) => {
-      const a1 = attraction({ id: 1, name: '晴空塔' });
-      const a2 = attraction({ id: 2, name: '淺草寺' });
-      const conn = connection({ fromAttractionId: 1, toAttractionId });
-      const day = dayPlan({ attractions: [a1, a2], connections: [conn] });
+      const a1 = makeAttraction({ id: 1, name: '晴空塔' });
+      const a2 = makeAttraction({ id: 2, name: '淺草寺' });
+      const conn = makeConnection({ fromAttractionId: 1, toAttractionId });
+      const day = makeDay({ attractions: [a1, a2], connections: [conn] });
 
-      await exportToDocx(trip(), content([day]));
+      await exportToDocx(makeTrip(), makeContent([day]));
 
       expect(makeTransportTable).toHaveBeenCalledWith(conn, expectedToName);
     },
@@ -245,9 +178,9 @@ describe('exportToDocx', () => {
     async ({ enabled, locations, daysFromTodayValue }) => {
       vi.mocked(getWeatherEnabled).mockResolvedValue(enabled);
       vi.mocked(daysFromToday).mockReturnValue(daysFromTodayValue);
-      const day = dayPlan({ locations });
+      const day = makeDay({ locations });
 
-      await exportToDocx(trip(), content([day]));
+      await exportToDocx(makeTrip(), makeContent([day]));
 
       expect(fetchDailyWeather).not.toHaveBeenCalled();
     },
@@ -255,22 +188,16 @@ describe('exportToDocx', () => {
 
   it('adds a weather paragraph when fetchDailyWeather resolves a success status', async () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
-    vi.mocked(fetchDailyWeather).mockResolvedValue({
-      status: 'success',
-      source: 'openweathermap',
-      data: {
+    vi.mocked(fetchDailyWeather).mockResolvedValue(
+      makeWeatherSuccess({
         resolvedName: '東京',
-        icon: 'clear',
         description: '晴天',
-        tempMin: 20,
-        tempMax: 28,
-        humidity: 55,
         pop: 0,
-      },
-    });
-    const day = dayPlan({ locations: [{ id: 1, name: '東京' }] });
+      }),
+    );
+    const day = makeDay({ locations: [{ id: 1, name: '東京' }] });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     expect(fetchDailyWeather).toHaveBeenCalledWith('東京', day.date);
     expect(
@@ -280,10 +207,8 @@ describe('exportToDocx', () => {
 
   it('appends the rain probability text when pop is greater than 0', async () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
-    vi.mocked(fetchDailyWeather).mockResolvedValue({
-      status: 'success',
-      source: 'openweathermap',
-      data: {
+    vi.mocked(fetchDailyWeather).mockResolvedValue(
+      makeWeatherSuccess({
         resolvedName: '東京',
         icon: 'rain',
         description: '雨天',
@@ -291,11 +216,11 @@ describe('exportToDocx', () => {
         tempMax: 22,
         humidity: 80,
         pop: 60,
-      },
-    });
-    const day = dayPlan({ locations: [{ id: 1, name: '東京' }] });
+      }),
+    );
+    const day = makeDay({ locations: [{ id: 1, name: '東京' }] });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     expect(textRuns().some(text => text.includes('☂ 60%'))).toBe(true);
   });
@@ -303,18 +228,18 @@ describe('exportToDocx', () => {
   it('adds no weather paragraph when fetchDailyWeather resolves a non-success status', async () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
     vi.mocked(fetchDailyWeather).mockResolvedValue({ status: 'error' });
-    const day = dayPlan({ locations: [{ id: 1, name: '東京' }] });
+    const day = makeDay({ locations: [{ id: 1, name: '東京' }] });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     expect(fetchDailyWeather).toHaveBeenCalled();
     expect(textRuns().some(text => text.includes('東京：'))).toBe(false);
   });
 
   it('builds the day notes section with the day', async () => {
-    const day = dayPlan({ notes: 'Bring an umbrella' });
+    const day = makeDay({ notes: 'Bring an umbrella' });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     expect(makeDayNotesSection).toHaveBeenCalledWith(day);
   });
@@ -328,9 +253,9 @@ describe('exportToDocx', () => {
     vi.mocked(makeAttractionTable).mockResolvedValueOnce(
       attractionTable as unknown as Table,
     );
-    const day = dayPlan({ attractions: [attraction()] });
+    const day = makeDay({ attractions: [makeAttraction()] });
 
-    await exportToDocx(trip(), content([day]));
+    await exportToDocx(makeTrip(), makeContent([day]));
 
     const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
       sections: [{ children: unknown[] }];

@@ -2,30 +2,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DayPlan } from '@/types';
+import { makeDay } from '@/test-utils/fixtures';
+import { byAriaLabel } from '@/test-utils/queries';
 
 import DayNotesSection from './DayNotesSection';
-
-function makeDay(overrides: Partial<DayPlan> = {}): DayPlan {
-  return {
-    id: 1,
-    day: 1,
-    date: '2026-08-20',
-    locations: [],
-    attractions: [],
-    connections: [],
-    ...overrides,
-  };
-}
-
-// Per the accname spec, an `aria-hidden='true'` element's computed
-// accessible name is always '', so matching by computed name would fail to
-// find the drawer whenever it's currently collapsed. Reading the raw
-// `aria-label` attribute instead works regardless of hidden state.
-function byAriaLabel(label: string) {
-  return (_accessibleName: string, element: Element) =>
-    element.getAttribute('aria-label') === label;
-}
 
 function getDrawer() {
   return screen.getByRole('group', {

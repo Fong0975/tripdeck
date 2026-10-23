@@ -2,7 +2,12 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { TripChecklist } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+  makeTripChecklist,
+} from '@/test-utils/fixtures';
 import {
   addOccasion,
   addTripCategory,
@@ -22,45 +27,28 @@ import type { EditCategory, EditOccasion } from '../../shared/types';
 
 import { useSaveChecklist } from './useSaveChecklist';
 
-vi.mock('@/utils/storage', () => ({
-  addOccasion: vi.fn(),
-  addTripCategory: vi.fn(),
-  addTripItem: vi.fn(),
-  addTripItemSpec: vi.fn(),
-  deleteOccasion: vi.fn(),
-  deleteTripCategory: vi.fn(),
-  deleteTripItem: vi.fn(),
-  deleteTripItemSpec: vi.fn(),
-  updateOccasion: vi.fn(),
-  updateTripCategory: vi.fn(),
-  updateTripItem: vi.fn(),
-  updateTripItemSpec: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-const checklist: TripChecklist = {
-  tripId: 1,
+const checklist = makeTripChecklist({
   occasions: [{ id: 1, name: 'Occasion A', checks: {} }],
   categories: [
-    {
-      id: 1,
+    makeChecklistCategory({
       name: 'Category A',
       items: [
-        {
+        makeChecklistItem({
           id: 10,
           name: 'Item A',
           quantity: null,
           notes: null,
           storage_location: null,
-          specs: [{ id: 100, name: 'Spec A', storage_location: null }],
-        },
+          specs: [makeChecklistSpec({ id: 100, name: 'Spec A' })],
+        }),
       ],
-    },
+    }),
   ],
-};
+});
 
 function unchangedEdit(): {
   occasions: EditOccasion[];
@@ -104,24 +92,22 @@ beforeEach(() => {
     name: 'New',
     checks: {},
   });
-  vi.mocked(addTripCategory).mockResolvedValue({
-    id: 60,
-    name: 'New',
-    items: [],
-  });
-  vi.mocked(addTripItem).mockResolvedValue({
-    id: 70,
-    name: 'New',
-    quantity: null,
-    notes: null,
-    storage_location: null,
-    specs: [],
-  });
-  vi.mocked(addTripItemSpec).mockResolvedValue({
-    id: 80,
-    name: 'New',
-    storage_location: null,
-  });
+  vi.mocked(addTripCategory).mockResolvedValue(
+    makeChecklistCategory({ id: 60, name: 'New' }),
+  );
+  vi.mocked(addTripItem).mockResolvedValue(
+    makeChecklistItem({
+      id: 70,
+      name: 'New',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    }),
+  );
+  vi.mocked(addTripItemSpec).mockResolvedValue(
+    makeChecklistSpec({ id: 80, name: 'New' }),
+  );
 });
 
 describe('useSaveChecklist', () => {

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { db, isSelectFrom, routeSql } from '../../../test-utils/dbMocks';
+
 import {
   createItem,
   deleteItem,
@@ -7,20 +9,12 @@ import {
   verifyItemBelongsToCategory,
 } from './templateItemRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
-
-function isSelectFrom(sql: unknown, table: string): boolean {
-  return (
-    (sql as string).trim().startsWith('SELECT') &&
-    (sql as string).includes(table)
-  );
-}
+const mockPoolExecute = db.pool.execute;
 
 const CURRENT_ITEM_ROW = {
   id: 1,
@@ -43,12 +37,11 @@ describe('templateItemRepository', () => {
     });
 
     it('inserts an item and defaults quantity/notes/storage_location to null when omitted', async () => {
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if ((sql as string).trim().startsWith('SELECT')) {
-          return Promise.resolve([[{ id: 3 }]]);
-        }
-        return Promise.resolve([{ insertId: 50 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[{ id: 3 }]]]],
+        [{ insertId: 50 }],
+      );
 
       const result = await createItem(3, { name: 'Item A' });
 
@@ -65,15 +58,14 @@ describe('templateItemRepository', () => {
 
   describe('updateItem', () => {
     function mockItemSelectThenUpdate(curRow = CURRENT_ITEM_ROW) {
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if (isSelectFrom(sql, 'checklist_template_item_specs')) {
-          return Promise.resolve([[]]);
-        }
-        if ((sql as string).trim().startsWith('SELECT')) {
-          return Promise.resolve([[curRow]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [
+          [sql => isSelectFrom(sql, 'checklist_template_item_specs'), [[]]],
+          [sql => sql.trim().startsWith('SELECT'), [[curRow]]],
+        ],
+        [{ affectedRows: 1 }],
+      );
     }
 
     it('returns null when the item does not exist', async () => {

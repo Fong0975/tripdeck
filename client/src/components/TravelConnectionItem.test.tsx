@@ -2,21 +2,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { TransportMode, TravelConnection } from '@/types';
+import { makeConnection, makeImage } from '@/test-utils/fixtures';
+import type { TransportMode } from '@/types';
 
 import TravelConnectionItem from './TravelConnectionItem';
-
-function makeConnection(
-  overrides: Partial<TravelConnection> = {},
-): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 10,
-    toAttractionId: 20,
-    transportMode: 'walk',
-    ...overrides,
-  };
-}
 
 describe('TravelConnectionItem', () => {
   it.each([
@@ -121,7 +110,7 @@ describe('TravelConnectionItem', () => {
     render(
       <TravelConnectionItem
         connection={makeConnection({
-          images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'A' })],
         })}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
@@ -151,8 +140,8 @@ describe('TravelConnectionItem', () => {
         <TravelConnectionItem
           connection={makeConnection({
             images: [
-              { id: 1, filename: 'a.jpg', title: 'Img 1' },
-              { id: 2, filename: 'b.jpg', title: 'Img 2' },
+              makeImage({ filename: 'a.jpg', title: 'Img 1' }),
+              makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
             ],
           })}
           onEdit={onEdit}

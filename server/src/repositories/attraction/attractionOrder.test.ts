@@ -1,29 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { db } from '../../test-utils/dbMocks';
 import * as imageRepo from '../imageRepository';
 
 import { updateOrder } from './attractionOrder';
 
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnQuery = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn().mockResolvedValue({
-  beginTransaction: mockConnBeginTransaction,
-  execute: mockConnExecute,
-  query: mockConnQuery,
-  commit: mockConnCommit,
-  rollback: mockConnRollback,
-  release: mockConnRelease,
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
 });
 
-vi.mock('../../config/database', () => ({
-  default: {
-    getConnection: () => mockGetConnection(),
-  },
-}));
+const mockConnExecute = db.conn.execute;
+const mockConnQuery = db.conn.query;
+const mockConnCommit = db.conn.commit;
+const mockConnRollback = db.conn.rollback;
+const mockGetConnection = db.pool.getConnection;
 
 const mockDeleteImageFromDisk = vi.fn();
 vi.mock('../../middleware/upload', () => ({
@@ -36,14 +27,6 @@ vi.mock('../imageRepository', () => ({
 
 describe('attractionOrder', () => {
   beforeEach(() => {
-    mockGetConnection.mockResolvedValue({
-      beginTransaction: mockConnBeginTransaction,
-      execute: mockConnExecute,
-      query: mockConnQuery,
-      commit: mockConnCommit,
-      rollback: mockConnRollback,
-      release: mockConnRelease,
-    });
     vi.mocked(imageRepo.getConnectionImagesBatch).mockResolvedValue(new Map());
   });
 

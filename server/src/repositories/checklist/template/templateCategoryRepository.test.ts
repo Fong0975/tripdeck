@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { db, isSelectFrom, routeSql } from '../../../test-utils/dbMocks';
+
 import {
   createCategory,
   deleteCategory,
@@ -7,20 +9,12 @@ import {
   updateCategory,
 } from './templateCategoryRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
-
-function isSelectFrom(sql: unknown, table: string): boolean {
-  return (
-    (sql as string).trim().startsWith('SELECT') &&
-    (sql as string).includes(table)
-  );
-}
+const mockPoolExecute = db.pool.execute;
 
 describe('templateCategoryRepository', () => {
   describe('findTemplate', () => {
@@ -65,18 +59,21 @@ describe('templateCategoryRepository', () => {
         },
       ];
 
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if (isSelectFrom(sql, 'checklist_template_item_specs')) {
-          return Promise.resolve([specRows]);
-        }
-        if (isSelectFrom(sql, 'checklist_template_items')) {
-          return Promise.resolve([itemRows]);
-        }
-        if (isSelectFrom(sql, 'checklist_template_categories')) {
-          return Promise.resolve([catRows]);
-        }
-        return Promise.resolve([[]]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [
+          [
+            sql => isSelectFrom(sql, 'checklist_template_item_specs'),
+            [specRows],
+          ],
+          [sql => isSelectFrom(sql, 'checklist_template_items'), [itemRows]],
+          [
+            sql => isSelectFrom(sql, 'checklist_template_categories'),
+            [catRows],
+          ],
+        ],
+        [[]],
+      );
 
       const result = await findTemplate();
 
@@ -156,18 +153,21 @@ describe('templateCategoryRepository', () => {
         },
       ];
 
-      mockPoolExecute.mockImplementation((sql: unknown) => {
-        if (isSelectFrom(sql, 'checklist_template_item_specs')) {
-          return Promise.resolve([specRows]);
-        }
-        if (isSelectFrom(sql, 'checklist_template_items')) {
-          return Promise.resolve([itemRows]);
-        }
-        if (isSelectFrom(sql, 'checklist_template_categories')) {
-          return Promise.resolve([[catRow]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [
+          [
+            sql => isSelectFrom(sql, 'checklist_template_item_specs'),
+            [specRows],
+          ],
+          [sql => isSelectFrom(sql, 'checklist_template_items'), [itemRows]],
+          [
+            sql => isSelectFrom(sql, 'checklist_template_categories'),
+            [[catRow]],
+          ],
+        ],
+        [{ affectedRows: 1 }],
+      );
 
       const result = await updateCategory(4, 'New Name');
 

@@ -2,15 +2,13 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { showToast } from '@/lib/toast';
-import type { AttractionImage } from '@/types';
+import { makeImage } from '@/test-utils/fixtures';
 
 import { useEntityImages } from './useEntityImages';
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
-const images: AttractionImage[] = [{ id: 1, filename: 'a.jpg', title: 'A' }];
+const images = [makeImage({ filename: 'a.jpg', title: 'A' })];
 
 describe('useEntityImages', () => {
   it('initializes images from initialImages', () => {
@@ -42,7 +40,7 @@ describe('useEntityImages', () => {
   });
 
   it('calls upload and appends the returned image', async () => {
-    const newImage: AttractionImage = { id: 2, filename: 'b.jpg', title: 'B' };
+    const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'B' });
     const upload = vi.fn().mockResolvedValue(newImage);
     const file = new File(['b'], 'b.jpg');
     const { result } = renderHook(() =>

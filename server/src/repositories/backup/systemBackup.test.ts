@@ -1,7 +1,8 @@
 import AdmZip from 'adm-zip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ChecklistTemplateResponse } from '../../types/checklist';
+import { makeTemplate, makeTrip } from '../../test-utils/fixtures';
+import { fsMock } from '../../test-utils/fsMock';
 import type { TripContentResponse, TripResponse } from '../../types/trip';
 
 import { buildSystemBackupZip } from './systemBackup';
@@ -11,7 +12,6 @@ const mockFindById = vi.fn();
 const mockFindContent = vi.fn();
 const mockFindChecklist = vi.fn();
 const mockFindTemplate = vi.fn();
-const mockReadFileSync = vi.fn();
 
 vi.mock('../trip', () => ({
   findAll: (...args: unknown[]) => mockFindAll(...args),
@@ -29,55 +29,21 @@ vi.mock('../checklist/template', () => ({
 
 vi.mock('../../middleware/upload', () => ({ UPLOADS_DIR: '/uploads' }));
 
-vi.mock('fs', () => ({
-  default: {
-    readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
-  },
-}));
+vi.mock('fs', async () => {
+  const { fsMock } = await import('../../test-utils/fsMock');
+  return fsMock.module;
+});
+
+const mockReadFileSync = fsMock.fns.readFileSync;
 
 const sampleTrips: TripResponse[] = [
-  {
-    id: 1,
-    title: '東京 🗼 五日遊',
-    destination: 'Tokyo',
-    startDate: '2024-05-10',
-    endDate: '2024-05-12',
-    description: null,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    images: [],
-  },
-  {
-    id: 2,
-    title: '大阪二日遊',
-    destination: 'Osaka',
-    startDate: '2024-06-01',
-    endDate: '2024-06-02',
-    description: null,
-    createdAt: '2024-02-01T00:00:00.000Z',
-    images: [],
-  },
+  makeTrip({ title: '東京 🗼 五日遊', destination: 'Tokyo' }),
+  makeTrip({ id: 2, title: '大阪二日遊', destination: 'Osaka' }),
 ];
 
 const sampleContent: TripContentResponse = { tripId: 1, days: [] };
 
-const sampleTemplate: ChecklistTemplateResponse = {
-  categories: [
-    {
-      id: 1,
-      name: 'Documents',
-      items: [
-        {
-          id: 1,
-          name: 'Passport',
-          quantity: 1,
-          notes: null,
-          storage_location: null,
-          specs: [],
-        },
-      ],
-    },
-  ],
-};
+const sampleTemplate = makeTemplate();
 
 beforeEach(() => {
   mockFindAll.mockResolvedValue(sampleTrips);

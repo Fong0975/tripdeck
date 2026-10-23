@@ -1,32 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DayPlan } from '@/types';
+import { makeDay, makeImage } from '@/test-utils/fixtures';
+import { selectFile } from '@/test-utils/queries';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
 
 import EditDayNoteModal from './EditDayNoteModal';
 
-vi.mock('@/utils/storage', () => ({
-  uploadDayImage: vi.fn(),
-  deleteDayImage: vi.fn(),
-}));
+vi.mock('@/utils/storage');
 
-const day: DayPlan = {
+const day = makeDay({
   id: 10,
   day: 2,
   date: '2026-01-02',
   notes: 'Bring an umbrella',
-  locations: [],
-  attractions: [],
-  connections: [],
-};
-
-// The upload <input type="file"> has no accessible label, so it can only
-// be reached by its type attribute rather than a testing-library query.
-function getFileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
+});
 
 describe('EditDayNoteModal', () => {
   it('shows the day number in the title and pre-fills the notes textarea', () => {
@@ -83,7 +72,7 @@ describe('EditDayNoteModal', () => {
   });
 
   it('uploads a new image via the image section', async () => {
-    const newImage = { id: 2, filename: 'b.jpg', title: 'New' };
+    const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
     vi.mocked(uploadDayImage).mockResolvedValue(newImage);
     const user = userEvent.setup();
     const { container } = render(
@@ -95,7 +84,7 @@ describe('EditDayNoteModal', () => {
       />,
     );
     const file = new File(['a'], 'b.jpg');
-    fireEvent.change(getFileInput(container), { target: { files: [file] } });
+    selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
 
     await user.click(screen.getByText('確認上傳'));
@@ -114,7 +103,7 @@ describe('EditDayNoteModal', () => {
         tripId={1}
         day={{
           ...day,
-          images: [{ id: 1, filename: 'a.jpg', title: 'Cover' }],
+          images: [makeImage({ filename: 'a.jpg', title: 'Cover' })],
         }}
         onClose={vi.fn()}
         onSave={vi.fn()}

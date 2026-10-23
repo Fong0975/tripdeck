@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeTripChecklist,
+} from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
 
 import { useChecklistState } from './useChecklistState';
@@ -52,10 +57,13 @@ vi.mock('../checklist/trip/TripChecklistEditModal', () => ({
 
 function makeChecklist(
   categories: TripChecklist['categories'] = [
-    { id: 1, name: 'Cat A', items: [{ id: 10, name: 'Item A' }] },
+    makeChecklistCategory({
+      name: 'Cat A',
+      items: [makeChecklistItem({ id: 10, name: 'Item A' })],
+    }),
   ],
 ): TripChecklist {
-  return { tripId: 1, occasions: [], categories };
+  return makeTripChecklist({ categories });
 }
 
 function makeState(

@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { TripChecklist } from '@/types';
+import { makeTripChecklist } from '@/test-utils/fixtures';
+import { getBackdrop } from '@/test-utils/queries';
 
 import { useEditState } from './useEditState';
 import { useSaveChecklist } from './useSaveChecklist';
@@ -18,7 +19,7 @@ vi.mock('./OccasionEditList', () => ({
   default: () => <div>occasion-edit-list</div>,
 }));
 
-const checklist: TripChecklist = { tripId: 1, categories: [], occasions: [] };
+const checklist = makeTripChecklist();
 
 function mockEditState() {
   vi.mocked(useEditState).mockReturnValue({
@@ -41,12 +42,6 @@ function mockEditState() {
     updateSpec: vi.fn(),
     removeSpec: vi.fn(),
   });
-}
-
-// The modal backdrop is a bare decorative div with no accessible role/name;
-// 'absolute' uniquely identifies it (the modal wrapper itself uses 'fixed').
-function getBackdrop(container: HTMLElement): HTMLElement {
-  return container.querySelector('.absolute') as HTMLElement;
 }
 
 beforeEach(() => {

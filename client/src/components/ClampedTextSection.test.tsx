@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { mockElementOverflow } from '@/test-utils/dom';
 
 import ClampedTextSection from './ClampedTextSection';
 
@@ -95,21 +97,9 @@ describe('ClampedTextSection', () => {
   );
 
   describe('when the content overflows its clamp', () => {
-    beforeEach(() => {
-      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-        configurable: true,
-        value: 100,
-      });
-      Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
-        configurable: true,
-        value: 40,
-      });
-    });
-
-    afterEach(() => {
-      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
-    });
+    beforeEach(() =>
+      mockElementOverflow({ scrollHeight: 100, clientHeight: 40 }),
+    );
 
     it('shows a toggle button that switches between 展開 and 收起', async () => {
       const user = userEvent.setup();
@@ -169,21 +159,9 @@ describe('ClampedTextSection', () => {
   });
 
   describe('when the content does not overflow its clamp', () => {
-    beforeEach(() => {
-      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
-        configurable: true,
-        value: 40,
-      });
-      Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
-        configurable: true,
-        value: 40,
-      });
-    });
-
-    afterEach(() => {
-      delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
-      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight;
-    });
+    beforeEach(() =>
+      mockElementOverflow({ scrollHeight: 40, clientHeight: 40 }),
+    );
 
     it('does not show a toggle button', () => {
       render(<ClampedTextSection content='短內容' showBottomDivider={false} />);

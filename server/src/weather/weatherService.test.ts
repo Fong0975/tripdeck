@@ -30,14 +30,6 @@ async function loadService(config: LoadConfig = {}) {
   const geocode = vi.fn();
   const fetchVcWeather = vi.fn();
 
-  vi.doMock('../logger', () => ({
-    createLogger: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    }),
-  }));
   vi.doMock('./config', () => ({
     getWeatherKeys: () => ({
       owmKey: config.owmKey ?? '',

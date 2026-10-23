@@ -1,13 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { makeJsonResponse } from '@/test-utils/fixtures';
 import type { ReferenceWebsite } from '@/types';
 
 import ReferenceWebsitesEditor from './ReferenceWebsitesEditor';
-
-function makeJsonResponse(body: unknown): Response {
-  return { json: () => Promise.resolve(body) } as unknown as Response;
-}
 
 const getAddButton = (): HTMLElement => {
   const buttons = screen.getAllByRole('button');

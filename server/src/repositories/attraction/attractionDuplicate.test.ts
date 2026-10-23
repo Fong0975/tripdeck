@@ -1,32 +1,21 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { copyImageFile } from '../../middleware/upload';
+import { db } from '../../test-utils/dbMocks';
 import * as imageRepo from '../imageRepository';
 
 import { duplicate } from './attractionDuplicate';
 
-const mockPoolExecute = vi.fn();
-const mockConnBeginTransaction = vi.fn();
-const mockConnExecute = vi.fn();
-const mockConnQuery = vi.fn();
-const mockConnCommit = vi.fn();
-const mockConnRollback = vi.fn();
-const mockConnRelease = vi.fn();
-const mockGetConnection = vi.fn().mockResolvedValue({
-  beginTransaction: mockConnBeginTransaction,
-  execute: mockConnExecute,
-  query: mockConnQuery,
-  commit: mockConnCommit,
-  rollback: mockConnRollback,
-  release: mockConnRelease,
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
+  return db.module;
 });
 
-vi.mock('../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-    getConnection: () => mockGetConnection(),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
+const mockConnExecute = db.conn.execute;
+const mockConnCommit = db.conn.commit;
+const mockConnRollback = db.conn.rollback;
+const mockGetConnection = db.pool.getConnection;
 
 vi.mock('../imageRepository', () => ({
   getAttractionImages: vi.fn().mockResolvedValue([]),
@@ -39,17 +28,6 @@ vi.mock('../../middleware/upload', () => ({
 }));
 
 describe('attractionDuplicate', () => {
-  beforeEach(() => {
-    mockGetConnection.mockResolvedValue({
-      beginTransaction: mockConnBeginTransaction,
-      execute: mockConnExecute,
-      query: mockConnQuery,
-      commit: mockConnCommit,
-      rollback: mockConnRollback,
-      release: mockConnRelease,
-    });
-  });
-
   describe('duplicate', () => {
     const originalRow = {
       id: 5,

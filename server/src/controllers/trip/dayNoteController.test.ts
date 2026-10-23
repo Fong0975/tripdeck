@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../repositories/trip');
+vi.mock('../../repositories/trip', () => ({
+  findDayByIdAndTripId: vi.fn(),
+  updateDayNotes: vi.fn(),
+}));
 
 import * as tripRepo from '../../repositories/trip';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';

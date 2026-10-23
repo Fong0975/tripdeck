@@ -2,17 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Attraction } from '@/types';
+import { makeAttraction } from '@/test-utils/fixtures';
 
 import AttractionCardHeader from './AttractionCardHeader';
-
-function makeAttraction(overrides: Partial<Attraction> = {}): Attraction {
-  return {
-    id: 1,
-    name: 'Test Attraction',
-    ...overrides,
-  };
-}
 
 describe('AttractionCardHeader', () => {
   it.each([

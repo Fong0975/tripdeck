@@ -1,70 +1,73 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+} from '@/test-utils/fixtures';
 import type { ChecklistCategory } from '@/types';
 
 import { useCategoryEditState } from './useCategoryEditState';
 
 function makeCategories(): ChecklistCategory[] {
   return [
-    {
-      id: 1,
+    makeChecklistCategory({
       name: 'Category A',
       items: [
-        {
+        makeChecklistItem({
           id: 10,
           name: 'Item A',
           quantity: 2,
           notes: 'note',
           storage_location: '託運',
-          specs: [{ id: 100, name: 'Spec A', storage_location: null }],
-        },
+          specs: [makeChecklistSpec({ id: 100, name: 'Spec A' })],
+        }),
       ],
-    },
+    }),
   ];
 }
 
 function makeMultiCategories(): ChecklistCategory[] {
   return [
-    {
-      id: 1,
+    makeChecklistCategory({
       name: 'Category A',
       items: [
-        {
+        makeChecklistItem({
           id: 10,
           name: 'Item A',
           quantity: 2,
           notes: 'note',
           storage_location: '託運',
           specs: [
-            { id: 100, name: 'Spec A', storage_location: null },
-            { id: 101, name: 'Spec B', storage_location: null },
+            makeChecklistSpec({ id: 100, name: 'Spec A' }),
+            makeChecklistSpec({ id: 101, name: 'Spec B' }),
           ],
-        },
-        {
+        }),
+        makeChecklistItem({
           id: 11,
           name: 'Item B',
           quantity: null,
           notes: null,
           storage_location: null,
           specs: [],
-        },
+        }),
       ],
-    },
-    {
+    }),
+    makeChecklistCategory({
       id: 2,
       name: 'Category B',
       items: [
-        {
+        makeChecklistItem({
           id: 20,
           name: 'Item C',
           quantity: null,
           notes: null,
           storage_location: null,
           specs: [],
-        },
+        }),
       ],
-    },
+    }),
   ];
 }
 

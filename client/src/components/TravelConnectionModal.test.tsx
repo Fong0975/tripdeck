@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { makeConnection } from '@/test-utils/fixtures';
 import type { TravelConnection } from '@/types';
 
 import TravelConnectionModal from './TravelConnectionModal';
@@ -65,20 +66,18 @@ const TRANSPORT_LABELS = [
 const ACTIVE_CLASSES = ['border-primary', 'bg-primary/10', 'text-primary'];
 const INACTIVE_CLASSES = ['border-border'];
 
-function makeConnection(
+// The modal reads every optional text field, so start them all as
+// explicit nulls (as the API returns them) rather than undefined.
+function makeFormConnection(
   overrides: Partial<TravelConnection> = {},
 ): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 10,
-    toAttractionId: 20,
-    transportMode: 'walk',
+  return makeConnection({
     duration: null,
     route: null,
     notes: null,
     images: [],
     ...overrides,
-  };
+  });
 }
 
 const baseProps = {
@@ -105,7 +104,7 @@ describe('TravelConnectionModal', () => {
         render(
           <TravelConnectionModal
             {...baseProps}
-            connection={makeConnection({ transportMode: value })}
+            connection={makeFormConnection({ transportMode: value })}
           />,
         );
 
@@ -148,7 +147,7 @@ describe('TravelConnectionModal', () => {
       render(
         <TravelConnectionModal
           {...baseProps}
-          connection={makeConnection({ duration })}
+          connection={makeFormConnection({ duration })}
         />,
       );
 
@@ -165,7 +164,7 @@ describe('TravelConnectionModal', () => {
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ duration: null })}
+        connection={makeFormConnection({ duration: null })}
       />,
     );
 
@@ -188,7 +187,7 @@ describe('TravelConnectionModal', () => {
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ duration: null })}
+        connection={makeFormConnection({ duration: null })}
       />,
     );
 
@@ -201,7 +200,7 @@ describe('TravelConnectionModal', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 
@@ -212,7 +211,7 @@ describe('TravelConnectionModal', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 0 })}
+        connection={makeFormConnection({ id: 0 })}
       />,
     );
 
@@ -229,7 +228,7 @@ describe('TravelConnectionModal', () => {
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ id: 0 })}
+        connection={makeFormConnection({ id: 0 })}
       />,
     );
 
@@ -248,7 +247,7 @@ describe('TravelConnectionModal', () => {
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 
@@ -267,7 +266,7 @@ describe('TravelConnectionModal', () => {
       <TravelConnectionModal
         {...baseProps}
         onSave={onSave}
-        connection={makeConnection({ transportMode: 'walk' })}
+        connection={makeFormConnection({ transportMode: 'walk' })}
       />,
     );
 
@@ -300,7 +299,7 @@ describe('TravelConnectionModal', () => {
         <TravelConnectionModal
           {...baseProps}
           onSave={onSave}
-          connection={makeConnection()}
+          connection={makeFormConnection()}
         />,
       );
 
@@ -326,7 +325,7 @@ describe('TravelConnectionModal', () => {
     render(
       <TravelConnectionModal
         {...baseProps}
-        connection={makeConnection({ id: 5 })}
+        connection={makeFormConnection({ id: 5 })}
       />,
     );
 

@@ -15,34 +15,19 @@ vi.mock('./backupValidate', () => ({
   parseBackupZip: (...args: unknown[]) => mockParseBackupZip(...args),
 }));
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
 
+import { makeTripBackupData } from '../../test-utils/fixtures';
+import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
 
 import { importBackupZip } from './backupImport';
 import type { ParsedBackup } from './backupValidate';
 
-const sampleData: TripBackupData = {
-  trip: {
-    id: 1,
-    title: 'Kyoto Trip',
-    destination: 'Kyoto',
-    startDate: '2024-05-10',
-    endDate: '2024-05-11',
-    description: null,
-    images: [],
-  },
-  content: { tripId: 1, days: [] },
-  checklist: null,
-};
+const sampleData = makeTripBackupData();
 
 function makeParsedBackup(overrides: Partial<ParsedBackup> = {}): ParsedBackup {
   return {
@@ -91,14 +76,8 @@ describe('importBackupZip', () => {
   });
 
   it('collects a failed entry without aborting the rest when one trip fails', async () => {
-    const tripA: TripBackupData = {
-      ...sampleData,
-      trip: { ...sampleData.trip, id: 1, title: 'Trip A' },
-    };
-    const tripB: TripBackupData = {
-      ...sampleData,
-      trip: { ...sampleData.trip, id: 2, title: 'Trip B' },
-    };
+    const tripA = makeTripBackupData({ trip: { id: 1, title: 'Trip A' } });
+    const tripB = makeTripBackupData({ trip: { id: 2, title: 'Trip B' } });
     const parsed = makeParsedBackup({
       trips: [
         {

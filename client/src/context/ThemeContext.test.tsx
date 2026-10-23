@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTheme } from '@/hooks/useTheme';
+import { createMatchMedia } from '@/test-utils/dom';
 
 import { ThemeContext } from './ThemeContext.ts';
 import { ThemeProvider } from './ThemeContext.tsx';
@@ -29,16 +30,7 @@ function RawContextConsumer() {
 }
 
 function mockMatchMedia(matches: boolean) {
-  vi.spyOn(window, 'matchMedia').mockReturnValue({
-    matches,
-    media: '(prefers-color-scheme: dark)',
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  } as unknown as MediaQueryList);
+  vi.spyOn(window, 'matchMedia').mockImplementation(createMatchMedia(matches));
 }
 
 beforeEach(() => {

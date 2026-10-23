@@ -1,20 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeWeatherSuccess } from '@/test-utils/fixtures';
+
 import type { WeatherResult } from './types';
 
-const SUCCESS: WeatherResult = {
-  status: 'success',
-  source: 'openweathermap',
-  data: {
-    resolvedName: 'Tokyo',
-    icon: 'clear',
-    description: 'Clear',
-    tempMin: 20,
-    tempMax: 28,
-    humidity: 50,
-    pop: 0,
-  },
-};
+const SUCCESS = makeWeatherSuccess();
 
 /** Loads a fresh module instance so each test starts with empty caches. */
 async function loadWeatherApi(daysFromTodayValue = 0) {

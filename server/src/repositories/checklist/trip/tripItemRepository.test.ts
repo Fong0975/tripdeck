@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { db, routeSql } from '../../../test-utils/dbMocks';
+
 import {
   createTripItem,
   deleteTripItem,
@@ -8,13 +10,12 @@ import {
   verifyItemBelongsToTrip,
 } from './tripItemRepository';
 
-const mockPoolExecute = vi.fn();
+vi.mock('../../../config/database', async () => {
+  const { db } = await import('../../../test-utils/dbMocks');
+  return db.module;
+});
 
-vi.mock('../../../config/database', () => ({
-  default: {
-    execute: (...args: unknown[]) => mockPoolExecute(...args),
-  },
-}));
+const mockPoolExecute = db.pool.execute;
 
 describe('tripItemRepository', () => {
   describe('verifyItemBelongsToTrip', () => {
@@ -97,12 +98,11 @@ describe('tripItemRepository', () => {
     };
 
     function mockSelectThenUpdate(row = CURRENT_ITEM) {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([[row]]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[row]]]],
+        [{ affectedRows: 1 }],
+      );
     }
 
     it('returns null when the item does not exist', async () => {

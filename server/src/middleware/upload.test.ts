@@ -2,26 +2,17 @@ import fs from 'fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('fs', () => ({
-  default: {
-    writeFileSync: vi.fn(),
-    copyFileSync: vi.fn(),
-    unlinkSync: vi.fn(),
-  },
-}));
+vi.mock('fs', async () => (await import('../test-utils/fsMock')).fsMock.module);
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'fixed-uuid'),
 }));
 
-const mockLogger = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-vi.mock('../logger', () => ({
-  createLogger: () => mockLogger,
-}));
+vi.mock('../logger', async () => {
+  const { mockLogger } = await import('../test-utils/loggerMock');
+  return { createLogger: () => mockLogger };
+});
+
+import { mockLogger } from '../test-utils/loggerMock';
 
 import {
   copyImageFile,

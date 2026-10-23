@@ -1,43 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AttractionImage, TravelConnection } from '@/types';
+import { rows, textRun, type MockNode } from '@/test-utils/docx';
+import { makeConnection, makeImage } from '@/test-utils/fixtures';
 
-import {
-  CONTENT_WIDTH_DXA,
-  FONT,
-  NO_BORDER,
-  TRANSPORT_BORDER,
-} from './constants';
+import { CONTENT_WIDTH_DXA, NO_BORDER, TRANSPORT_BORDER } from './constants';
 import { makeImageParagraphs } from './imageHelpers';
 import { parseMarkdownContent } from './markdownToDocx';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
-// `docx` constructors are captured as plain, comparable objects instead of
-// real component instances (see markdownToDocx.test.ts for the rationale).
-// They are invoked with `new`, so the mock implementation must be a real
-// `function` — an arrow function cannot be used as a constructor target.
-// `BorderStyle`/`WidthType`/`ShadingType` are mocked because `./constants`
-// and this module read them at module-init time.
-vi.mock('docx', () => ({
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  WidthType: { DXA: 'dxa' },
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  Table: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Table', options };
-  }),
-  TableCell: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableCell', options };
-  }),
-  TableRow: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableRow', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 vi.mock('./imageHelpers', () => ({
   makeImageParagraphs: vi.fn().mockResolvedValue([]),
@@ -47,34 +18,8 @@ vi.mock('./markdownToDocx', () => ({
   parseMarkdownContent: vi.fn().mockReturnValue([]),
 }));
 
-type MockNode = { type: string; options: Record<string, any> };
-
-function rows(table: unknown): MockNode[] {
-  return (table as MockNode).options.rows;
-}
-
 function cellChildren(table: unknown): MockNode[] {
   return rows(table)[0].options.children[0].options.children;
-}
-
-function connection(
-  overrides: Partial<TravelConnection> = {},
-): TravelConnection {
-  return {
-    id: 1,
-    fromAttractionId: 1,
-    toAttractionId: 2,
-    transportMode: 'walk',
-    ...overrides,
-  };
-}
-
-function image(overrides: Partial<AttractionImage> = {}): AttractionImage {
-  return { id: 1, filename: 'photo.jpg', title: '', ...overrides };
-}
-
-function textRun(text: string, extra: Record<string, unknown> = {}) {
-  return { type: 'TextRun', options: { text, font: FONT, ...extra } };
 }
 
 function paragraph(children: unknown[], extra: Record<string, unknown> = {}) {
@@ -167,7 +112,7 @@ describe('makeDayHeaderTable', () => {
 
 describe('makeTransportTable', () => {
   it('wraps the cell content in a 1x1 table with top/bottom transport borders', async () => {
-    const table = await makeTransportTable(connection(), '');
+    const table = await makeTransportTable(makeConnection(), '');
 
     expect(table).toMatchObject({
       type: 'Table',
@@ -241,7 +186,10 @@ describe('makeTransportTable', () => {
   ])(
     'builds the header text when $description',
     async ({ duration, toName, expectedHeader }) => {
-      const table = await makeTransportTable(connection({ duration }), toName);
+      const table = await makeTransportTable(
+        makeConnection({ duration }),
+        toName,
+      );
 
       expect(cellChildren(table)[0]).toEqual(
         paragraph([textRun(expectedHeader, { bold: true })], {
@@ -257,10 +205,10 @@ describe('makeTransportTable', () => {
     ]);
 
     const withRoute = await makeTransportTable(
-      connection({ route: '[JR山手線](https://demo.com)' }),
+      makeConnection({ route: '[JR山手線](https://demo.com)' }),
       '',
     );
-    const withoutRoute = await makeTransportTable(connection(), '');
+    const withoutRoute = await makeTransportTable(makeConnection(), '');
 
     expect(parseMarkdownContent).toHaveBeenCalledWith(
       '[JR山手線](https://demo.com)',
@@ -276,7 +224,7 @@ describe('makeTransportTable', () => {
 
   it('splits multi-line notes into one paragraph per line', async () => {
     const table = await makeTransportTable(
-      connection({ notes: '注意月台\n\n記得刷卡' }),
+      makeConnection({ notes: '注意月台\n\n記得刷卡' }),
       '',
     );
 
@@ -288,14 +236,14 @@ describe('makeTransportTable', () => {
   });
 
   it('delegates to makeImageParagraphs for each connection image, in order', async () => {
-    const img1 = image({ id: 1, filename: 'a.jpg' });
-    const img2 = image({ id: 2, filename: 'b.jpg' });
+    const img1 = makeImage({ id: 1, filename: 'a.jpg' });
+    const img2 = makeImage({ id: 2, filename: 'b.jpg' });
     vi.mocked(makeImageParagraphs).mockImplementation(async img => [
       { type: 'Paragraph', options: { marker: img.filename } } as never,
     ]);
 
     const table = await makeTransportTable(
-      connection({ images: [img1, img2] }),
+      makeConnection({ images: [img1, img2] }),
       '',
     );
 

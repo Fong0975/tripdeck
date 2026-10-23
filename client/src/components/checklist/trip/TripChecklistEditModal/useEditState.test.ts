@@ -1,32 +1,34 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { TripChecklist } from '@/types';
+import {
+  makeChecklistCategory,
+  makeChecklistItem,
+  makeChecklistSpec,
+  makeTripChecklist,
+} from '@/test-utils/fixtures';
 
 import { useEditState } from './useEditState';
 
-function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
-  return {
-    tripId: 1,
+function makeChecklist() {
+  return makeTripChecklist({
     occasions: [{ id: 1, name: 'Occasion A', checks: {} }],
     categories: [
-      {
-        id: 1,
+      makeChecklistCategory({
         name: 'Category A',
         items: [
-          {
+          makeChecklistItem({
             id: 10,
             name: 'Item A',
             quantity: 2,
             notes: 'note',
             storage_location: '託運',
-            specs: [{ id: 100, name: 'Spec A', storage_location: null }],
-          },
+            specs: [makeChecklistSpec({ id: 100, name: 'Spec A' })],
+          }),
         ],
-      },
+      }),
     ],
-    ...overrides,
-  };
+  });
 }
 
 // useEditState is a thin composer over useOccasionEditState and

@@ -1,19 +1,36 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../middleware/upload');
-vi.mock('../repositories/attraction');
-vi.mock('../repositories/connectionRepository');
-vi.mock('../repositories/imageRepository');
-vi.mock('../repositories/trip');
+vi.mock('../middleware/upload', () => ({ saveImageToDisk: vi.fn() }));
+vi.mock('../repositories/attraction', () => ({
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../repositories/connectionRepository', () => ({
+  verifyBelongsToTrip: vi.fn(),
+}));
+vi.mock('../repositories/imageRepository', () => ({
+  addAttractionImage: vi.fn(),
+  addConnectionImage: vi.fn(),
+  addDayImage: vi.fn(),
+  addTripImage: vi.fn(),
+  deleteAttractionImage: vi.fn(),
+  deleteConnectionImage: vi.fn(),
+  deleteDayImage: vi.fn(),
+  deleteTripImage: vi.fn(),
+}));
+vi.mock('../repositories/trip', () => ({
+  findById: vi.fn(),
+  findDayByIdAndTripId: vi.fn(),
+}));
 
 import { saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
 import * as tripRepo from '../repositories/trip';
+import { makeTrip } from '../test-utils/fixtures';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import type { ImageResponse, TripResponse } from '../types/trip';
+import type { ImageResponse } from '../types/trip';
 
 import {
   deleteAttractionImage,
@@ -31,16 +48,7 @@ const mockFile = {
   mimetype: 'image/jpeg',
 } as Express.Multer.File;
 
-const sampleTrip: TripResponse = {
-  id: 1,
-  title: 'Kyoto Trip',
-  destination: null,
-  startDate: '2026-05-10',
-  endDate: '2026-05-12',
-  description: null,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  images: [],
-};
+const sampleTrip = makeTrip();
 
 interface Variant {
   kind: 'attraction' | 'connection' | 'trip' | 'day';

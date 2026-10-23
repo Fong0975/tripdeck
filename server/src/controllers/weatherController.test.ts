@@ -9,14 +9,6 @@ vi.mock('../weather/weatherService', () => ({
   getDailyWeather: vi.fn(),
   isWeatherEnabled: vi.fn(),
 }));
-vi.mock('../logger', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
 
 const VALID_QUERY = { location: 'Tokyo', date: '2026-08-20', days: '3' };
 

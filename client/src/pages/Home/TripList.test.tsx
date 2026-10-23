@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { makeTrip } from '@/test-utils/fixtures';
+import { makeMounter } from '@/test-utils/render';
 import type { Trip } from '@/types';
 
 import TripList from './TripList';
@@ -24,30 +26,18 @@ vi.mock('@/components/TripCard', () => ({
   ),
 }));
 
-function makeTrip(overrides: Partial<Trip> = {}): Trip {
-  return {
-    id: 1,
-    title: 'Trip',
-    destination: null,
-    startDate: '2026-01-01',
-    endDate: '2026-01-05',
-    createdAt: '2026-01-01',
-    ...overrides,
-  };
-}
+const renderTripList = makeMounter(TripList, () => ({
+  trips: [] as Trip[],
+  loading: false,
+  onAdd: vi.fn(),
+  onDelete: vi.fn(),
+  onEdit: vi.fn(),
+  onImportExport: vi.fn(),
+}));
 
 describe('TripList', () => {
   it('shows the loading indicator and no trip cards or empty state while loading', () => {
-    render(
-      <TripList
-        trips={[]}
-        loading={true}
-        onAdd={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList({ loading: true });
 
     expect(screen.getByText('載入中…')).toBeInTheDocument();
     expect(screen.queryByText('✈️')).not.toBeInTheDocument();
@@ -57,16 +47,7 @@ describe('TripList', () => {
   });
 
   it('shows the empty state when not loading and there are no trips', () => {
-    render(
-      <TripList
-        trips={[]}
-        loading={false}
-        onAdd={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList();
 
     expect(screen.getByText('✈️')).toBeInTheDocument();
     expect(
@@ -80,16 +61,7 @@ describe('TripList', () => {
       makeTrip({ id: 1, title: 'Trip A' }),
       makeTrip({ id: 2, title: 'Trip B' }),
     ];
-    render(
-      <TripList
-        trips={trips}
-        loading={false}
-        onAdd={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList({ trips });
 
     expect(screen.getByText('Trip A')).toBeInTheDocument();
     expect(screen.getByText('Trip B')).toBeInTheDocument();
@@ -98,16 +70,7 @@ describe('TripList', () => {
   it('calls onAdd when the "新增旅程" button is clicked', async () => {
     const user = userEvent.setup();
     const onAdd = vi.fn();
-    render(
-      <TripList
-        trips={[]}
-        loading={false}
-        onAdd={onAdd}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList({ onAdd });
 
     await user.click(screen.getByRole('button', { name: /新增旅程/ }));
 
@@ -117,16 +80,7 @@ describe('TripList', () => {
   it('calls onImportExport when the "匯入 / 匯出" button is clicked', async () => {
     const user = userEvent.setup();
     const onImportExport = vi.fn();
-    render(
-      <TripList
-        trips={[]}
-        loading={false}
-        onAdd={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={vi.fn()}
-        onImportExport={onImportExport}
-      />,
-    );
+    renderTripList({ onImportExport });
 
     await user.click(screen.getByRole('button', { name: /匯入 \/ 匯出/ }));
 
@@ -137,16 +91,7 @@ describe('TripList', () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
     const trips = [makeTrip({ id: 5, title: 'Trip A' })];
-    render(
-      <TripList
-        trips={trips}
-        loading={false}
-        onAdd={vi.fn()}
-        onDelete={onDelete}
-        onEdit={vi.fn()}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList({ trips, onDelete });
 
     await user.click(screen.getByRole('button', { name: 'delete-5' }));
 
@@ -157,16 +102,7 @@ describe('TripList', () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
     const trip = makeTrip({ id: 5, title: 'Trip A' });
-    render(
-      <TripList
-        trips={[trip]}
-        loading={false}
-        onAdd={vi.fn()}
-        onDelete={vi.fn()}
-        onEdit={onEdit}
-        onImportExport={vi.fn()}
-      />,
-    );
+    renderTripList({ trips: [trip], onEdit });
 
     await user.click(screen.getByRole('button', { name: 'edit-5' }));
 

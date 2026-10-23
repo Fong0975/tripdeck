@@ -14,9 +14,7 @@ vi.mock('@/api/backup', () => ({
   ),
 }));
 
-vi.mock('@/lib/toast', () => ({
-  showToast: vi.fn(),
-}));
+vi.mock('@/lib/toast');
 
 describe('AutoBackupsTab', () => {
   it('loads and renders the automatic backup list on mount', async () => {

@@ -18,6 +18,7 @@ export default defineConfig({
         'src/**/*.test.ts',
         'src/**/index.ts',
         'src/test-utils/**',
+        'src/**/__mocks__/**',
         'src/index.ts',
         'src/routes/**',
         'src/config/database.ts',

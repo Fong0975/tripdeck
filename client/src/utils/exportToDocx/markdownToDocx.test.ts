@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { textRun } from '@/test-utils/docx';
+
 import {
   ALL_BORDERS,
   CELL_BORDER,
   CODE_SHADING,
-  FONT,
   HR_BORDER,
   MONO_FONT,
   QUOTE_BORDER,
@@ -12,38 +13,7 @@ import {
 } from './constants';
 import { parseMarkdownContent } from './markdownToDocx';
 
-// `docx` builds a nested XML component tree that isn't practical to assert
-// against directly. Mock the constructors so each call is captured as a plain,
-// comparable object instead. `BorderStyle`/`ShadingType` are also mocked
-// because `./constants` reads them at module-init time (docx is mocked
-// module-wide, not just the symbols below). These constructors are invoked
-// with `new`, so their mock implementation must be a real `function` — an
-// arrow function cannot be used as a constructor target and would throw when
-// Vitest calls it via `new`.
-vi.mock('docx', () => ({
-  AlignmentType: { LEFT: 'left', CENTER: 'center', RIGHT: 'right' },
-  BorderStyle: { NONE: 'none', SINGLE: 'single' },
-  ShadingType: { SOLID: 'solid' },
-  WidthType: { DXA: 'dxa', PERCENTAGE: 'pct' },
-  ExternalHyperlink: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'ExternalHyperlink', options };
-  }),
-  Paragraph: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Paragraph', options };
-  }),
-  Table: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'Table', options };
-  }),
-  TableCell: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableCell', options };
-  }),
-  TableRow: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TableRow', options };
-  }),
-  TextRun: vi.fn().mockImplementation(function (options: unknown) {
-    return { type: 'TextRun', options };
-  }),
-}));
+vi.mock('docx');
 
 const BLOCK_SPACING = { before: 40, after: 40 };
 const HEADING_SPACING = { before: 80, after: 40 };
@@ -69,10 +39,6 @@ interface MockTable {
       };
     }[];
   };
-}
-
-function textRun(text: string, extra: Record<string, unknown> = {}) {
-  return { type: 'TextRun', options: { text, font: FONT, ...extra } };
 }
 
 function codeRun(text: string, extra: Record<string, unknown> = {}) {
