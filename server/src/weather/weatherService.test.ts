@@ -11,6 +11,7 @@ const GEO = { lat: 35, lon: 139, resolvedName: 'Tokyo' };
 
 const SUCCESS: WeatherResult = {
   status: 'success',
+  source: 'openweathermap',
   data: {
     resolvedName: 'Tokyo',
     icon: 'clear',

@@ -3,7 +3,12 @@ import { daysFromToday } from '@/utils/date';
 
 import type { WeatherResult } from './types';
 
-export type { DailyWeatherData, WeatherIconCode, WeatherResult } from './types';
+export type {
+  DailyWeatherData,
+  WeatherIconCode,
+  WeatherResult,
+  WeatherSource,
+} from './types';
 
 let _enabled: Promise<boolean> | null = null;
 

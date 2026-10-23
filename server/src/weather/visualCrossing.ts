@@ -90,6 +90,7 @@ export async function fetchVcWeather(
 
   return {
     status: 'success',
+    source: 'visualcrossing',
     data: {
       resolvedName: json.resolvedAddress || resolvedName,
       icon: normalizeVcIcon(day.icon),

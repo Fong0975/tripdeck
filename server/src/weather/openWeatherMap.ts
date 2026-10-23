@@ -127,6 +127,7 @@ export async function fetchOwmWeather(
 
   return {
     status: 'success',
+    source: 'openweathermap',
     data: {
       resolvedName: geo.resolvedName,
       icon: normalizeOwmIcon(midday.weather[0].icon),

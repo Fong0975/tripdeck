@@ -109,6 +109,7 @@ describe('fetchVcWeather', () => {
       await fetchVcWeather('Tokyo', 'Fallback', '2026-01-01', API_KEY),
     ).toEqual({
       status: 'success',
+      source: 'visualcrossing',
       data: {
         resolvedName: 'Tokyo, JP',
         icon: 'clear',

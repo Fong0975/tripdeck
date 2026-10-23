@@ -4,6 +4,7 @@ import type { WeatherResult } from './types';
 
 const SUCCESS: WeatherResult = {
   status: 'success',
+  source: 'openweathermap',
   data: {
     resolvedName: 'Tokyo',
     icon: 'clear',

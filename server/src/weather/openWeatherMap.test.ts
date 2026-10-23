@@ -169,6 +169,7 @@ describe('fetchOwmWeather', () => {
 
     expect(await fetchOwmWeather(geo, '2026-01-01', API_KEY)).toEqual({
       status: 'success',
+      source: 'openweathermap',
       data: {
         resolvedName: 'Tokyo',
         icon: 'clear',

@@ -18,11 +18,14 @@ export interface DailyWeatherData {
   pop: number;
 }
 
+/** Provider that supplied a successful result. */
+export type WeatherSource = 'openweathermap' | 'visualcrossing';
+
 export type WeatherResult =
   | { status: 'not_found' }
   | { status: 'out_of_range' }
   | { status: 'error' }
-  | { status: 'success'; data: DailyWeatherData };
+  | { status: 'success'; source: WeatherSource; data: DailyWeatherData };
 
 /** Upper bound for every weather provider request. */
 export const WEATHER_FETCH_TIMEOUT_MS = 8000;

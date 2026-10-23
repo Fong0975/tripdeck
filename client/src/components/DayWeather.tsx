@@ -19,12 +19,18 @@ import {
   fetchDailyWeather,
   type WeatherIconCode,
   type WeatherResult,
+  type WeatherSource,
 } from '@/utils/weatherApi';
 
 interface Props {
   locations: DayLocation[];
   date: string;
 }
+
+const SOURCE_LABELS: Record<WeatherSource, string> = {
+  openweathermap: 'OpenWeatherMap',
+  visualcrossing: 'Visual Crossing',
+};
 
 function WeatherIcon({
   code,
@@ -171,7 +177,10 @@ export default function DayWeather({ locations, date }: Props) {
         )}
 
         {current?.status === 'success' && (
-          <div className='flex flex-col items-center gap-1'>
+          <div
+            className='flex flex-col items-center gap-1'
+            title={`資料來源：${SOURCE_LABELS[current.source]}`}
+          >
             <WeatherIcon code={current.data.icon} />
             <div className='text-center'>
               <p className='text-xs font-medium text-foreground capitalize'>

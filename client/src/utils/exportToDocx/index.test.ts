@@ -258,6 +258,7 @@ describe('exportToDocx', () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
     vi.mocked(fetchDailyWeather).mockResolvedValue({
       status: 'success',
+      source: 'openweathermap',
       data: {
         resolvedName: '東京',
         icon: 'clear',
@@ -282,6 +283,7 @@ describe('exportToDocx', () => {
     vi.mocked(daysFromToday).mockReturnValue(0);
     vi.mocked(fetchDailyWeather).mockResolvedValue({
       status: 'success',
+      source: 'openweathermap',
       data: {
         resolvedName: '東京',
         icon: 'rain',

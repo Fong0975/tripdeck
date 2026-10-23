@@ -43,6 +43,7 @@ export const getWeather = async (
              type: 'object',
              properties: {
                status: { type: 'string', enum: ['success', 'not_found', 'out_of_range', 'error'] },
+               source: { type: 'string', enum: ['openweathermap', 'visualcrossing'], description: 'Provider that supplied the data; present only on success' },
                data: {
                  type: 'object',
                  properties: {
