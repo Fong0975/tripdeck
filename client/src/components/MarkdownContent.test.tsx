@@ -81,7 +81,7 @@ describe('MarkdownContent', () => {
       'bg-muted',
       'mb-1.5',
       'overflow-x-auto',
-      'rounded',
+      'rounded-sm',
       'p-2',
       'font-mono',
       'text-xs',
@@ -106,7 +106,7 @@ describe('MarkdownContent', () => {
     const wrapper = container.querySelector('.markdown-content');
     expect(wrapper).toHaveClass(
       'markdown-content',
-      'break-words',
+      'wrap-break-word',
       'my-extra-class',
     );
   });

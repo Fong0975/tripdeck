@@ -63,7 +63,7 @@ export default function ChecklistTemplateView() {
 
       <button
         onClick={() => void handleAddCategory()}
-        className='border-border text-muted-foreground hover:border-primary hover:text-primary flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm transition-colors'
+        className='flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary'
       >
         <Plus size={15} />
         新增分類

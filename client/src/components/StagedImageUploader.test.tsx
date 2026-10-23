@@ -13,7 +13,6 @@ beforeEach(() => {
 // The staging <input type="file"> has no accessible label, so it can only
 // be reached by its type attribute rather than a testing-library query.
 function getFileInput(container: HTMLElement): HTMLInputElement {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
 

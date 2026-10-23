@@ -23,7 +23,7 @@ export default function EditSpecRow({
     <div className='flex items-center gap-2'>
       <span
         /* v8 ignore next -- compact/regular are both purely cosmetic width variants */
-        className={`text-muted-foreground shrink-0 text-xs ${compact ? 'w-4' : 'w-5'}`}
+        className={`shrink-0 text-xs text-muted-foreground ${compact ? 'w-4' : 'w-5'}`}
       >
         {index + 1}.
       </span>
@@ -32,7 +32,7 @@ export default function EditSpecRow({
         onFocus={e => e.target.select()}
         onChange={e => onUpdate({ name: e.target.value })}
         placeholder='規格名稱'
-        className='text-foreground/80 min-w-0 flex-1 bg-transparent text-xs focus:outline-none'
+        className='min-w-0 flex-1 bg-transparent text-xs text-foreground/80 focus:outline-hidden'
       />
       <StorageCheckboxes
         value={spec.storage_location}
@@ -41,7 +41,7 @@ export default function EditSpecRow({
       />
       <button
         onClick={onDelete}
-        className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 transition-colors'
+        className='shrink-0 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive'
         aria-label='刪除規格'
       >
         <Trash2 size={11} />

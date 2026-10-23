@@ -18,35 +18,35 @@ export default function CategoryCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className='border-border bg-card overflow-hidden rounded-xl border'>
+    <div className='overflow-hidden rounded-xl border border-border bg-card'>
       <div
-        className={`border-border bg-muted/40 flex items-center gap-2 px-4 py-3${expanded ? 'border-b' : ''}`}
+        className={`flex items-center gap-2 border-border bg-muted/40 px-4 py-3${expanded ? 'border-b' : ''}`}
       >
         <button
           onClick={() => setExpanded(prev => !prev)}
           className='flex min-w-0 flex-1 items-center gap-2 text-left'
           aria-expanded={expanded}
         >
-          <span className='text-muted-foreground shrink-0'>
+          <span className='shrink-0 text-muted-foreground'>
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
-          <span className='text-foreground min-w-0 flex-1 text-sm font-semibold'>
+          <span className='min-w-0 flex-1 text-sm font-semibold text-foreground'>
             {category.name}
           </span>
-          <span className='text-muted-foreground shrink-0 text-xs'>
+          <span className='shrink-0 text-xs text-muted-foreground'>
             {category.items.length} 項
           </span>
         </button>
         <button
           onClick={onEdit}
-          className='text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-md p-1 transition-colors'
+          className='rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary'
           aria-label='編輯分類'
         >
           <Pencil size={14} />
         </button>
         <button
           onClick={onDelete}
-          className='text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1 transition-colors'
+          className='rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive'
           aria-label='刪除分類'
         >
           <Trash2 size={14} />
@@ -54,29 +54,29 @@ export default function CategoryCard({
       </div>
 
       {expanded && (
-        <div className='divide-border divide-y'>
+        <div className='divide-y divide-border'>
           {category.items.length === 0 && (
             <div className='px-4 py-3'>
-              <span className='text-muted-foreground text-xs'>尚無項目</span>
+              <span className='text-xs text-muted-foreground'>尚無項目</span>
             </div>
           )}
           {category.items.map(item => (
             <div key={item.id} className='px-4 py-3'>
               <div className='flex items-start gap-2'>
-                <span className='text-muted-foreground mt-0.5 shrink-0 text-sm'>
+                <span className='mt-0.5 shrink-0 text-sm text-muted-foreground'>
                   •
                 </span>
                 <div className='min-w-0 flex-1 space-y-1'>
                   <div className='flex flex-wrap items-center gap-x-2 gap-y-0.5'>
-                    <span className='text-foreground text-sm font-medium'>
+                    <span className='text-sm font-medium text-foreground'>
                       {item.name}
                     </span>
-                    <span className='text-muted-foreground text-xs'>
+                    <span className='text-xs text-muted-foreground'>
                       {item.quantity ? `× ${item.quantity}` : '些許'}
                     </span>
                   </div>
                   {item.notes && (
-                    <p className='text-muted-foreground text-xs'>
+                    <p className='text-xs text-muted-foreground'>
                       {item.notes}
                     </p>
                   )}
@@ -86,16 +86,16 @@ export default function CategoryCard({
                     </div>
                   )}
                   {(item.specs ?? []).length > 0 && (
-                    <div className='border-border mt-1 space-y-1 border-l-2 pl-3'>
+                    <div className='mt-1 space-y-1 border-l-2 border-border pl-3'>
                       {(item.specs ?? []).map((spec, idx) => (
                         <div
                           key={spec.id}
                           className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5'
                         >
-                          <span className='text-muted-foreground text-xs'>
+                          <span className='text-xs text-muted-foreground'>
                             {idx + 1}.
                           </span>
-                          <span className='text-foreground/80 text-xs'>
+                          <span className='text-xs text-foreground/80'>
                             {spec.name}
                           </span>
                           {spec.storage_location && (

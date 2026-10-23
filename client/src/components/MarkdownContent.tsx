@@ -13,7 +13,7 @@ interface Props {
  */
 export default function MarkdownContent({ children, className = '' }: Props) {
   return (
-    <div className={`markdown-content break-words ${className}`}>
+    <div className={`markdown-content wrap-break-word ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
@@ -50,21 +50,21 @@ export default function MarkdownContent({ children, className = '' }: Props) {
             </a>
           ),
           code: ({ children }) => (
-            <code className='bg-muted rounded px-1 py-0.5 font-mono text-xs'>
+            <code className='rounded-sm bg-muted px-1 py-0.5 font-mono text-xs'>
               {children}
             </code>
           ),
           pre: ({ children }) => (
-            <pre className='bg-muted mb-1.5 overflow-x-auto rounded p-2 font-mono text-xs'>
+            <pre className='mb-1.5 overflow-x-auto rounded-sm bg-muted p-2 font-mono text-xs'>
               {children}
             </pre>
           ),
           blockquote: ({ children }) => (
-            <blockquote className='border-border border-l-2 pl-3 italic'>
+            <blockquote className='border-l-2 border-border pl-3 italic'>
               {children}
             </blockquote>
           ),
-          hr: () => <hr className='border-border my-2' />,
+          hr: () => <hr className='my-2 border-border' />,
         }}
       >
         {children}

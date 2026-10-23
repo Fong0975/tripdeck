@@ -25,7 +25,7 @@ export default function Home() {
   const [showImportExportModal, setShowImportExportModal] = useState(false);
 
   return (
-    <div className='bg-background min-h-screen'>
+    <div className='min-h-screen bg-background'>
       <Navbar />
       <HeroSection />
       <TripList

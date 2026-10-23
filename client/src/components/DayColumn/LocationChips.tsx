@@ -72,23 +72,23 @@ export default function LocationChips({
               }
             }}
             autoFocus
-            className='border-primary text-foreground w-24 rounded border bg-transparent px-1.5 py-0.5 text-center text-xs focus:outline-none'
+            className='w-24 rounded-sm border border-primary bg-transparent px-1.5 py-0.5 text-center text-xs text-foreground focus:outline-hidden'
           />
         ) : (
           <span
             key={loc.id}
-            className='bg-muted text-muted-foreground flex items-center gap-1 rounded-full px-2 py-0.5 text-xs'
+            className='flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground'
           >
             <MapPin size={10} className='shrink-0' />
             <button
               onClick={() => startEditing(loc.id, loc.name)}
-              className='hover:text-foreground max-w-[100px] truncate transition-colors'
+              className='max-w-25 truncate transition-colors hover:text-foreground'
             >
               {loc.name}
             </button>
             <button
               onClick={() => onDelete(dayIndex, loc.id)}
-              className='hover:text-destructive shrink-0 transition-colors'
+              className='shrink-0 transition-colors hover:text-destructive'
               aria-label='刪除地區'
             >
               <X size={10} />
@@ -113,12 +113,12 @@ export default function LocationChips({
             }
           }}
           placeholder='地區名稱'
-          className='border-primary text-foreground w-24 rounded border bg-transparent px-1.5 py-0.5 text-center text-xs focus:outline-none'
+          className='w-24 rounded-sm border border-primary bg-transparent px-1.5 py-0.5 text-center text-xs text-foreground focus:outline-hidden'
         />
       ) : (
         <button
           onClick={startAdding}
-          className='text-muted-foreground hover:text-primary flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs transition-colors'
+          className='flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:text-primary'
         >
           <Plus size={10} />
           地區

@@ -45,25 +45,25 @@ export default function CategoryEditModal({
       onWheel={e => e.stopPropagation()}
     >
       <div className='absolute inset-0 bg-black/50' onClick={onClose} />
-      <div className='bg-card border-border relative flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border shadow-xl'>
+      <div className='relative flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl'>
         {/* Header */}
-        <div className='border-border flex items-center gap-3 border-b px-5 py-4'>
-          <Pencil size={16} className='text-muted-foreground shrink-0' />
+        <div className='flex items-center gap-3 border-b border-border px-5 py-4'>
+          <Pencil size={16} className='shrink-0 text-muted-foreground' />
           <div className='min-w-0 flex-1'>
-            <label className='text-muted-foreground mb-0.5 block text-xs'>
+            <label className='mb-0.5 block text-xs text-muted-foreground'>
               分類名稱
             </label>
             <input
               value={edit.name}
               onFocus={e => e.target.select()}
               onChange={e => updateCategoryName(e.target.value)}
-              className='text-foreground w-full bg-transparent text-sm font-semibold focus:outline-none'
+              className='w-full bg-transparent text-sm font-semibold text-foreground focus:outline-hidden'
               placeholder='分類名稱'
             />
           </div>
           <button
             onClick={onClose}
-            className='text-muted-foreground hover:text-foreground shrink-0 rounded-md p-1.5 transition-colors'
+            className='shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground'
             aria-label='關閉'
           >
             <X size={16} />
@@ -90,7 +90,7 @@ export default function CategoryEditModal({
 
           <button
             onClick={addItem}
-            className='border-border text-muted-foreground hover:border-primary hover:text-primary flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-sm transition-colors'
+            className='flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary'
           >
             <Plus size={14} />
             新增項目
@@ -98,17 +98,17 @@ export default function CategoryEditModal({
         </div>
 
         {/* Footer */}
-        <div className='border-border flex items-center justify-end gap-3 border-t px-5 py-4'>
+        <div className='flex items-center justify-end gap-3 border-t border-border px-5 py-4'>
           <button
             onClick={onClose}
-            className='text-muted-foreground hover:text-foreground px-4 py-2 text-sm transition-colors'
+            className='px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground'
           >
             取消
           </button>
           <button
             onClick={() => void handleSave()}
             disabled={saving}
-            className='bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50'
+            className='rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50'
           >
             {saving ? '儲存中…' : '儲存'}
           </button>

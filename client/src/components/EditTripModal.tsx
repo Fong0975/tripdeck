@@ -106,7 +106,7 @@ export default function EditTripModal({
       <Modal title='編輯旅程' onClose={onClose}>
         <form onSubmit={e => void handleSubmit(e)} className='space-y-4'>
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               旅程名稱 *
             </label>
             <input
@@ -114,12 +114,12 @@ export default function EditTripModal({
               value={form.title}
               onChange={handleChange}
               placeholder='例：東京五日遊'
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
             />
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               目的地
             </label>
             <input
@@ -127,13 +127,13 @@ export default function EditTripModal({
               value={form.destination}
               onChange={handleChange}
               placeholder='例：日本東京'
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
             />
           </div>
 
           <div className='grid grid-cols-2 gap-3'>
             <div>
-              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+              <label className='mb-1.5 block text-sm font-medium text-foreground'>
                 開始日期 *
               </label>
               <input
@@ -141,11 +141,11 @@ export default function EditTripModal({
                 name='startDate'
                 value={form.startDate}
                 onChange={handleChange}
-                className='border-border bg-background text-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
               />
             </div>
             <div>
-              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+              <label className='mb-1.5 block text-sm font-medium text-foreground'>
                 結束日期 *
               </label>
               <input
@@ -154,13 +154,13 @@ export default function EditTripModal({
                 value={form.endDate}
                 onChange={handleChange}
                 min={form.startDate}
-                className='border-border bg-background text-foreground focus:border-primary focus:ring-primary/50 w-full rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
               />
             </div>
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               備註
             </label>
             <textarea
@@ -169,12 +169,12 @@ export default function EditTripModal({
               onChange={handleChange}
               placeholder='旅程相關備註...'
               rows={3}
-              className='border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/50 w-full resize-none rounded-lg border px-3 py-2 transition-colors focus:outline-none focus:ring-2'
+              className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
             />
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               圖片
             </label>
             <ImageUploadSection
@@ -184,7 +184,7 @@ export default function EditTripModal({
             />
           </div>
 
-          {error && <p className='text-destructive text-sm'>{error}</p>}
+          {error && <p className='text-sm text-destructive'>{error}</p>}
 
           <ModalFooterActions onCancel={onClose} />
         </form>

@@ -28,15 +28,15 @@ export default function ClampedTextSection({
 
   return (
     <div className='my-3'>
-      <hr className='border-border mb-3' />
+      <hr className='mb-3 border-border' />
       {label && (
-        <p className='text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide'>
+        <p className='mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase'>
           {label}
         </p>
       )}
       <div
         ref={ref}
-        className={`text-muted-foreground text-sm ${expanded ? '' : 'line-clamp-3'}`}
+        className={`text-sm text-muted-foreground ${expanded ? '' : 'line-clamp-3'}`}
       >
         {markdown ? (
           <MarkdownContent>{content}</MarkdownContent>
@@ -50,12 +50,12 @@ export default function ClampedTextSection({
             e.stopPropagation();
             toggle();
           }}
-          className='text-primary/60 hover:text-primary mt-0.5 text-sm transition-colors'
+          className='mt-0.5 text-sm text-primary/60 transition-colors hover:text-primary'
         >
           {expanded ? '收起' : '展開'}
         </button>
       )}
-      {showBottomDivider && <hr className='border-border mt-3' />}
+      {showBottomDivider && <hr className='mt-3 border-border' />}
     </div>
   );
 }

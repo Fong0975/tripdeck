@@ -103,7 +103,7 @@ const impactedDays: DayPlan[] = [
 // association in the source, so they can't be reached via getByLabelText —
 // querying by their `name` attribute is the most reliable option available.
 function fillDateField(container: HTMLElement, name: string, value: string) {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+  // eslint-disable-next-line testing-library/no-node-access
   const input = container.querySelector(`input[name="${name}"]`)!;
   fireEvent.change(input, { target: { value } });
 }
@@ -112,7 +112,7 @@ function fillDateField(container: HTMLElement, name: string, value: string) {
 // native date-input constraint validation would otherwise silently block —
 // submitting the form directly exercises the component's own JS validation.
 function submitForm(container: HTMLElement) {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+  // eslint-disable-next-line testing-library/no-node-access
   const form = container.querySelector('form')!;
   fireEvent.submit(form);
 }
@@ -120,7 +120,6 @@ function submitForm(container: HTMLElement) {
 // The upload <input type="file"> has no accessible label, so it can only
 // be reached by its type attribute rather than a testing-library query.
 function getFileInput(container: HTMLElement): HTMLInputElement {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
 

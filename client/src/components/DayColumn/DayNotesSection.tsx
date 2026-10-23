@@ -36,13 +36,13 @@ export default function DayNotesSection({ day, onEdit }: Props) {
           onClick={onEdit}
           aria-label='編輯日備註'
           title='編輯日備註'
-          className='text-muted-foreground hover:bg-accent hover:text-foreground flex size-7 items-center justify-center rounded-lg transition-colors'
+          className='flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
         >
           <Pencil size={14} />
         </button>
 
         {hasSummary && (
-          <div className='border-border text-muted-foreground flex items-center gap-1.5 border-l pl-1.5 text-xs'>
+          <div className='flex items-center gap-1.5 border-l border-border pl-1.5 text-xs text-muted-foreground'>
             {hasNotes && <FileText size={12} aria-label='含備註文字' />}
             {images.length > 0 && (
               <span className='flex items-center gap-0.5'>
@@ -69,12 +69,12 @@ export default function DayNotesSection({ day, onEdit }: Props) {
         >
           <div className='overflow-hidden'>
             <div
-              className={`bg-muted/60 border-border mt-2 space-y-2 rounded-xl border p-3 text-left shadow-inner transition-opacity duration-200 ${
+              className={`mt-2 space-y-2 rounded-xl border border-border bg-muted/60 p-3 text-left shadow-inner transition-opacity duration-200 ${
                 expanded ? 'opacity-100 delay-100' : 'opacity-0'
               }`}
             >
               {hasNotes && (
-                <p className='text-foreground whitespace-pre-wrap text-xs'>
+                <p className='text-xs whitespace-pre-wrap text-foreground'>
                   {day.notes}
                 </p>
               )}

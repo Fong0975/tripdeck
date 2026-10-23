@@ -31,19 +31,19 @@ export default function ConfirmDialog({
   return createPortal(
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
       <div className='absolute inset-0 bg-black/50' />
-      <div className='bg-card border-border relative w-full max-w-sm rounded-2xl border p-6 shadow-xl'>
-        <p className='text-foreground font-semibold'>{title}</p>
-        <p className='text-muted-foreground mt-1 text-sm'>{message}</p>
+      <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl'>
+        <p className='font-semibold text-foreground'>{title}</p>
+        <p className='mt-1 text-sm text-muted-foreground'>{message}</p>
         <div className='mt-5 flex items-center justify-end gap-3'>
           <button
             onClick={onCancel}
-            className='text-muted-foreground hover:text-foreground px-4 py-2 text-sm transition-colors'
+            className='px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground'
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className='bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm font-medium transition-colors'
+            className='rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90'
           >
             {confirmLabel}
           </button>

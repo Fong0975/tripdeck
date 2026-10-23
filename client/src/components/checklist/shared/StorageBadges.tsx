@@ -23,7 +23,7 @@ export default function StorageBadges({ value, compact = false }: Props) {
       {matches.map(opt => (
         <span
           key={opt}
-          className={`bg-primary/10 text-primary rounded py-0.5 text-xs ${compact ? 'px-1' : 'px-1.5'}`}
+          className={`rounded-sm bg-primary/10 py-0.5 text-xs text-primary ${compact ? 'px-1' : 'px-1.5'}`}
         >
           {opt}
         </span>

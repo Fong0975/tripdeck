@@ -46,7 +46,6 @@ const successResult = (
 // only reachable via its cursor-grab class, which is present when there is
 // more than one location.
 function getSwipeArea(container: HTMLElement): HTMLElement {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   return container.querySelector('.cursor-grab') as HTMLElement;
 }
 

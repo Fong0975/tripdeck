@@ -32,10 +32,10 @@ export function ToastCard({ variant, id, children }: ToastCardProps) {
       role='status'
       aria-live='polite'
       onClick={() => toast.dismiss(id)}
-      className={`bg-card border-border flex w-[356px] max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-2.5 rounded-lg border border-l-4 p-4 shadow-2xl ${accentClassName}`}
+      className={`flex w-89 max-w-[calc(100vw-2rem)] cursor-pointer items-start gap-2.5 rounded-lg border border-l-4 border-border bg-card p-4 shadow-2xl ${accentClassName}`}
     >
       <Icon size={16} className={`mt-0.5 shrink-0 ${iconClassName}`} />
-      <div className='text-foreground min-w-0 flex-1 text-sm'>{children}</div>
+      <div className='min-w-0 flex-1 text-sm text-foreground'>{children}</div>
     </div>
   );
 }

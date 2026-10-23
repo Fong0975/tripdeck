@@ -112,7 +112,7 @@ export default function AttractionModal({
       >
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               景點名稱 *
             </label>
             <input
@@ -128,7 +128,7 @@ export default function AttractionModal({
 
           <div className='flex gap-3'>
             <div className='flex-1'>
-              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+              <label className='mb-1.5 block text-sm font-medium text-foreground'>
                 開始時間
               </label>
               <input
@@ -139,7 +139,7 @@ export default function AttractionModal({
               />
             </div>
             <div className='flex-1'>
-              <label className='text-foreground mb-1.5 block text-sm font-medium'>
+              <label className='mb-1.5 block text-sm font-medium text-foreground'>
                 結束時間
               </label>
               <input
@@ -152,7 +152,7 @@ export default function AttractionModal({
           </div>
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               Google Maps 連結
             </label>
             <div className='flex gap-2'>
@@ -168,7 +168,7 @@ export default function AttractionModal({
                   target='_blank'
                   rel='noopener noreferrer'
                   tabIndex={-1}
-                  className='text-primary hover:bg-primary/10 rounded-lg p-2 transition-colors'
+                  className='rounded-lg p-2 text-primary transition-colors hover:bg-primary/10'
                 >
                   <ExternalLink size={18} />
                 </a>
@@ -201,7 +201,7 @@ export default function AttractionModal({
           />
 
           <div>
-            <label className='text-foreground mb-1.5 block text-sm font-medium'>
+            <label className='mb-1.5 block text-sm font-medium text-foreground'>
               圖片
             </label>
             {isEditing ? (
@@ -215,7 +215,7 @@ export default function AttractionModal({
             )}
           </div>
 
-          {error && <p className='text-destructive text-sm'>{error}</p>}
+          {error && <p className='text-sm text-destructive'>{error}</p>}
 
           <ModalFooterActions onCancel={handleClose} />
         </form>

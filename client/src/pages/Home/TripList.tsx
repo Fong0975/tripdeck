@@ -22,20 +22,20 @@ export default function TripList({
   onImportExport,
 }: Props) {
   return (
-    <main className='mx-auto max-w-screen-xl px-4 pb-20'>
+    <main className='mx-auto max-w-7xl px-4 pb-20'>
       <div className='mb-8 flex items-center justify-between'>
-        <h2 className='text-foreground text-2xl font-bold'>我的旅程</h2>
+        <h2 className='text-2xl font-bold text-foreground'>我的旅程</h2>
         <div className='flex items-center gap-2'>
           <button
             onClick={onImportExport}
-            className='border-border text-foreground hover:bg-accent flex items-center gap-2 rounded-xl border px-4 py-2 font-medium transition-colors'
+            className='flex items-center gap-2 rounded-xl border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent'
           >
             <FolderInput size={18} />
             匯入 / 匯出
           </button>
           <button
             onClick={onAdd}
-            className='bg-primary text-primary-foreground flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
+            className='flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
           >
             <Plus size={18} />
             新增旅程
@@ -50,7 +50,7 @@ export default function TripList({
       ) : trips.length === 0 ? (
         <div className='py-24 text-center'>
           <p className='mb-4 text-5xl'>✈️</p>
-          <p className='text-muted-foreground text-lg'>
+          <p className='text-lg text-muted-foreground'>
             還沒有旅程，點擊「新增旅程」開始規劃吧！
           </p>
         </div>

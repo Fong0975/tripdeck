@@ -43,7 +43,7 @@ export default function CategoryEditList({
 }: Props) {
   return (
     <div className='px-6 py-5'>
-      <h3 className='text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide'>
+      <h3 className='mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
         分類與項目
       </h3>
       <div className='space-y-2'>
@@ -53,13 +53,13 @@ export default function CategoryEditList({
           return (
             <div
               key={cat.id}
-              className='border-border overflow-hidden rounded-xl border'
+              className='overflow-hidden rounded-xl border border-border'
             >
               {/* Category header */}
-              <div className='bg-muted/40 flex items-center gap-2 px-3 py-2.5'>
+              <div className='flex items-center gap-2 bg-muted/40 px-3 py-2.5'>
                 <button
                   onClick={() => onToggleExpand(cat.id)}
-                  className='text-muted-foreground shrink-0'
+                  className='shrink-0 text-muted-foreground'
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? (
@@ -73,15 +73,15 @@ export default function CategoryEditList({
                   /* v8 ignore next -- select-all-on-focus convenience UX, low risk */
                   onFocus={e => e.target.select()}
                   onChange={e => onUpdateName(cat.id, e.target.value)}
-                  className='text-foreground min-w-0 flex-1 bg-transparent text-sm font-semibold focus:outline-none'
+                  className='min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground focus:outline-hidden'
                   placeholder='分類名稱'
                 />
-                <span className='text-muted-foreground shrink-0 text-xs'>
+                <span className='shrink-0 text-xs text-muted-foreground'>
                   {visibleItems.length} 項
                 </span>
                 <button
                   onClick={() => onRemove(cat.id)}
-                  className='text-muted-foreground hover:text-destructive shrink-0 rounded p-0.5 transition-colors'
+                  className='shrink-0 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive'
                   aria-label='刪除分類'
                 >
                   <Trash2 size={13} />
@@ -90,7 +90,7 @@ export default function CategoryEditList({
 
               {/* Items */}
               {isExpanded && (
-                <div className='divide-border divide-y px-3 py-2'>
+                <div className='divide-y divide-border px-3 py-2'>
                   <div className='space-y-3 pb-2'>
                     {visibleItems.map((item, itemIdx) => (
                       <EditableItemRow
@@ -115,7 +115,7 @@ export default function CategoryEditList({
                   <div className='pt-2'>
                     <button
                       onClick={() => onAddItem(cat.id)}
-                      className='text-muted-foreground hover:text-primary flex items-center gap-1 text-xs transition-colors'
+                      className='flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary'
                     >
                       <Plus size={12} />
                       新增項目
@@ -129,7 +129,7 @@ export default function CategoryEditList({
 
         <button
           onClick={onAddCategory}
-          className='border-border text-muted-foreground hover:border-primary hover:text-primary flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm transition-colors'
+          className='flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary'
         >
           <Plus size={14} />
           新增分類

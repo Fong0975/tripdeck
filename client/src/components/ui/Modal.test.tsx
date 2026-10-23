@@ -26,7 +26,7 @@ describe('Modal', () => {
     // The overlay backdrop is a bare decorative div with no accessible
     // role/name/text, so there is no query-by-user-facing-content option.
     // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
-    fireEvent.click(container.querySelector('.backdrop-blur-sm')!);
+    fireEvent.click(container.querySelector('.backdrop-blur-xs')!);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

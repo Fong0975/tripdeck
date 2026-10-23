@@ -113,13 +113,13 @@ export default function TripDetail() {
 
   if (loadError) {
     return (
-      <div className='bg-background flex min-h-screen flex-col items-center justify-center gap-4 p-4'>
+      <div className='flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-4'>
         <StatusMessage variant='error'>
           載入旅程資料失敗，請稍後再試
         </StatusMessage>
         <button
           onClick={() => void retryLoad()}
-          className='bg-primary text-primary-foreground rounded-xl px-4 py-2 font-medium transition-all hover:opacity-90 active:scale-95'
+          className='rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
         >
           重試
         </button>
@@ -129,14 +129,14 @@ export default function TripDetail() {
 
   if (!trip || !content) {
     return (
-      <div className='bg-background flex min-h-screen items-center justify-center'>
+      <div className='flex min-h-screen items-center justify-center bg-background'>
         <LoadingIndicator />
       </div>
     );
   }
 
   return (
-    <div className='bg-background flex h-dvh flex-col overflow-hidden'>
+    <div className='flex h-dvh flex-col overflow-hidden bg-background'>
       <Navbar />
 
       <TripHeader
@@ -151,8 +151,8 @@ export default function TripDetail() {
       />
 
       {/* Tab bar */}
-      <div className='border-border bg-background border-b'>
-        <div className='mx-auto flex max-w-screen-xl px-4'>
+      <div className='border-b border-border bg-background'>
+        <div className='mx-auto flex max-w-7xl px-4'>
           {(
             [
               { key: 'itinerary', label: '行程規劃' },
@@ -165,7 +165,7 @@ export default function TripDetail() {
               className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? 'border-primary text-primary'
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}

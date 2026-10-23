@@ -19,7 +19,6 @@ const images: AttractionImage[] = [
 // The upload <input type="file"> has no accessible label, so it can only
 // be reached by its type attribute rather than a testing-library query.
 function getFileInput(container: HTMLElement): HTMLInputElement {
-  // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
 
@@ -31,7 +30,6 @@ function selectFile(container: HTMLElement, file: File) {
 // has no accessible label; the top-4 class is unique to it among the
 // lightbox's close/prev/next buttons.
 function getLightboxCloseButton(): HTMLElement {
-  // eslint-disable-next-line testing-library/no-node-access
   return document.body.querySelector('.top-4') as HTMLElement;
 }
 

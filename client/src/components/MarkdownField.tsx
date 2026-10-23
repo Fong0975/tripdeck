@@ -31,8 +31,8 @@ export default function MarkdownField({
   return (
     <div>
       <div className='mb-1.5 flex items-center justify-between'>
-        <label className='text-foreground text-sm font-medium'>{label}</label>
-        <div className='border-border flex overflow-hidden rounded-md border text-xs'>
+        <label className='text-sm font-medium text-foreground'>{label}</label>
+        <div className='flex overflow-hidden rounded-md border border-border text-xs'>
           <button
             type='button'
             tabIndex={-1}
@@ -74,7 +74,7 @@ export default function MarkdownField({
           {value.trim() ? (
             <MarkdownContent>{value}</MarkdownContent>
           ) : (
-            <span className='text-muted-foreground text-xs'>尚無內容</span>
+            <span className='text-xs text-muted-foreground'>尚無內容</span>
           )}
         </div>
       )}

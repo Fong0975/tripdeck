@@ -112,19 +112,19 @@ export default function ImportTab({ onClose, onImported }: Props) {
 
   return (
     <form onSubmit={handleImportSubmit} className='space-y-4'>
-      <p className='text-muted-foreground text-xs'>
+      <p className='text-xs text-muted-foreground'>
         選擇備份檔案匯入，一律以新旅程方式建立；若旅程名稱重複，會自動加上流水號。
       </p>
 
       {importFile ? (
-        <div className='border-border flex items-center justify-between gap-2 rounded-lg border border-dashed p-3'>
-          <span className='text-foreground truncate text-sm'>
+        <div className='flex items-center justify-between gap-2 rounded-lg border border-dashed border-border p-3'>
+          <span className='truncate text-sm text-foreground'>
             {importFile.name}
           </span>
           <button
             type='button'
             onClick={clearImportFile}
-            className='text-muted-foreground hover:text-destructive shrink-0 text-xs'
+            className='shrink-0 text-xs text-muted-foreground hover:text-destructive'
           >
             移除
           </button>
@@ -133,7 +133,7 @@ export default function ImportTab({ onClose, onImported }: Props) {
         <button
           type='button'
           onClick={() => importFileInputRef.current?.click()}
-          className='border-border text-muted-foreground hover:border-primary/50 hover:text-primary flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 text-sm transition-colors'
+          className='flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary'
         >
           <FileUp size={16} />
           選擇備份檔案
@@ -152,11 +152,11 @@ export default function ImportTab({ onClose, onImported }: Props) {
           type='checkbox'
           checked={restoreTemplate}
           onChange={e => setRestoreTemplate(e.target.checked)}
-          className='accent-primary mt-0.5 size-3.5 cursor-pointer'
+          className='mt-0.5 size-3.5 cursor-pointer accent-primary'
         />
-        <span className='text-foreground text-sm'>
+        <span className='text-sm text-foreground'>
           同時還原打包清單範本
-          <span className='text-muted-foreground block text-xs'>
+          <span className='block text-xs text-muted-foreground'>
             若備份檔案包含範本快照，將覆蓋目前的範本內容；一般旅程匯出不含範本，此選項無效果。
           </span>
         </span>

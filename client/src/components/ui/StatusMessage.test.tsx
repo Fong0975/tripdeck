@@ -19,7 +19,7 @@ describe('StatusMessage', () => {
       // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
       const message = container.querySelector('p')!;
       expect(message).toHaveClass(...classNames);
-      // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+      // eslint-disable-next-line testing-library/no-node-access
       expect(message.querySelector('svg')).not.toBeNull();
     },
   );

@@ -14,7 +14,7 @@ export default function AttractionReferenceLinks({
 }: AttractionReferenceLinksProps) {
   return (
     <>
-      {showTopDivider && <hr className='border-border mt-3' />}
+      {showTopDivider && <hr className='mt-3 border-border' />}
       <div className='mt-2 flex flex-wrap gap-1'>
         {referenceWebsites.map((site, i) => (
           <a
@@ -23,7 +23,7 @@ export default function AttractionReferenceLinks({
             target='_blank'
             rel='noopener noreferrer'
             onClick={e => e.stopPropagation()}
-            className='text-primary flex items-center gap-0.5 text-sm hover:underline'
+            className='flex items-center gap-0.5 text-sm text-primary hover:underline'
           >
             <ExternalLink size={10} />
             <span>{site.title || site.url}</span>

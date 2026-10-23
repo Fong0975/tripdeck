@@ -9,11 +9,11 @@ export default function HeroSection() {
           backgroundSize: '40px 40px',
         }}
       />
-      <div className='relative mx-auto max-w-screen-xl text-center'>
-        <h1 className='shimmer-text mb-4 text-5xl font-extrabold'>
+      <div className='relative mx-auto max-w-7xl text-center'>
+        <h1 className='mb-4 shimmer-text text-5xl font-extrabold'>
           規劃你的旅程
         </h1>
-        <p className='text-muted-foreground mx-auto max-w-md text-lg'>
+        <p className='mx-auto max-w-md text-lg text-muted-foreground'>
           像卡牌一樣排列景點，輕鬆安排每一天的行程
         </p>
       </div>
