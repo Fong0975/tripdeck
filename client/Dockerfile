@@ -22,6 +22,13 @@ RUN npm run build
 # Final stage
 FROM nginx:alpine
 
+# Lets nginx start as the arbitrary non-root user docker-compose runs this
+# image as (APP_UID/APP_GID): the `user` directive only applies to root, the
+# default pid path and cache dir are root-owned, and the CMD below renders
+# the server config into conf.d at startup.
+RUN sed -i -e '/^user /d' -e 's#^pid .*#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
+    && chmod -R a+rwX /var/cache/nginx /etc/nginx/conf.d
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /tmp/nginx.conf.template
 

@@ -8,6 +8,7 @@ services:
       network: host
     container_name: tripdeck-backend
     image: fong/tripdeck-backend
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     network_mode: host
     environment:
       DB_HOST: ${DB_HOST:-localhost}
@@ -53,6 +54,7 @@ services:
         VITE_VC_API_KEY: ${VITE_VC_API_KEY:-}
     container_name: tripdeck-frontend
     image: fong/tripdeck-frontend
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     network_mode: host
     environment:
       FRONTEND_PORT: ${FRONTEND_PORT:-3000}
