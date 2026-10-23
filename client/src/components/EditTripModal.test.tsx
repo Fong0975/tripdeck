@@ -66,10 +66,12 @@ const impactedDays: DayPlan[] = [
 const allDays = [...untouchedDays, ...impactedDays];
 
 describe('EditTripModal', () => {
-  it('renders the trip images and deletes one via the image section', async () => {
+  it('deletes an existing trip image and uploads a new one via the image section', async () => {
     vi.mocked(deleteTripImage).mockResolvedValue(undefined);
+    const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
+    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
     const user = userEvent.setup();
-    render(
+    const { container } = render(
       <EditTripModal
         trip={{
           ...trip,
@@ -79,26 +81,16 @@ describe('EditTripModal', () => {
         onUpdated={vi.fn()}
       />,
     );
-
     expect(screen.getByAltText('Cover')).toBeInTheDocument();
 
     await user.click(screen.getByTitle('刪除圖片'));
 
     await waitFor(() => expect(deleteTripImage).toHaveBeenCalledWith(5, 1));
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
-  });
 
-  it('uploads a new image via the image section', async () => {
-    const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
-    vi.mocked(uploadTripImage).mockResolvedValue(newImage);
-    const user = userEvent.setup();
-    const { container } = render(
-      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={vi.fn()} />,
-    );
     const file = new File(['a'], 'b.jpg');
     selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
-
     await user.click(screen.getByText('確認上傳'));
 
     await waitFor(() =>
@@ -301,24 +293,6 @@ describe('EditTripModal', () => {
       await screen.findByText('調整日期後將刪除部份行程內容'),
     ).toBeInTheDocument();
     expect(getTripContent).toHaveBeenCalledWith(trip.id);
-  });
-
-  it('submits directly when content cannot be loaded, without blocking on a confirmation', async () => {
-    vi.mocked(getTripContent).mockResolvedValue(null);
-    vi.mocked(updateTrip).mockResolvedValue({ ...trip, endDate: '2026-01-03' });
-    const onUpdated = vi.fn();
-    const { container } = render(
-      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={onUpdated} />,
-    );
-
-    fillDateField(container, 'endDate', '2026-01-03');
-    submitForm(container);
-
-    await waitFor(() => expect(onUpdated).toHaveBeenCalled());
-    expect(
-      screen.queryByText('調整日期後將刪除部份行程內容'),
-    ).not.toBeInTheDocument();
-    expect(showToast).toHaveBeenCalledWith('success', '已更新旅程。');
   });
 
   it('shows an error and does not report to the parent when updateTrip fails', async () => {

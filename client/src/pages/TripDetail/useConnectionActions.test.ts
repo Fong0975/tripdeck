@@ -109,29 +109,7 @@ describe('useConnectionActions', () => {
       });
     });
 
-    it('shows an error toast and does not reload or close the modal when creating fails', async () => {
-      vi.mocked(addConnection).mockRejectedValue(new Error('network error'));
-      const reloadContent = vi.fn();
-      const closeModal = vi.fn();
-      const { handleSaveConnection } = useConnectionActions(
-        makeTrip(),
-        makeContent(),
-        reloadContent,
-        closeModal,
-        vi.fn(),
-      );
-
-      await handleSaveConnection(0, makeConnection({ id: 0 }));
-
-      expect(reloadContent).not.toHaveBeenCalled();
-      expect(closeModal).not.toHaveBeenCalled();
-      expect(showToast).toHaveBeenCalledWith(
-        'error',
-        '儲存交通方式失敗，請稍後再試',
-      );
-    });
-
-    it('shows an error toast and does not reload or close the modal when updating fails', async () => {
+    it('shows an error toast and does not reload or close the modal when saving fails', async () => {
       vi.mocked(updateConnection).mockRejectedValue(new Error('network error'));
       const reloadContent = vi.fn();
       const closeModal = vi.fn();

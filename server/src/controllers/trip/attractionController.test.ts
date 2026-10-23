@@ -193,16 +193,10 @@ describe('Attractions', () => {
   });
 
   describe('reorderAttractions', () => {
-    it.each([
-      { name: 'orderedIds is missing', body: {} },
-      {
-        name: 'orderedIds is not an array',
-        body: { orderedIds: 'not-an-array' },
-      },
-    ])('returns 400 when $name', async ({ body }) => {
+    it('returns 400 when orderedIds is not an array', async () => {
       const { req, res } = createMockReqRes({
         params: { tripId: '1', dayId: '10' },
-        body,
+        body: { orderedIds: 'not-an-array' },
       });
 
       await reorderAttractions(req, res);

@@ -172,7 +172,7 @@ describe('db/init', () => {
   });
 
   describe('initDatabase', () => {
-    it('creates a table that does not exist yet', async () => {
+    it('creates missing tables, skips ALTER for complete tables, and adds missing columns', async () => {
       setUpInitDatabaseMock();
 
       await initDatabase();
@@ -182,23 +182,11 @@ describe('db/init', () => {
       );
       expect(createCalls).toHaveLength(1);
       expect(createCalls[0][0]).toContain('CREATE TABLE IF NOT EXISTS foo');
-    });
-
-    it('does not issue ALTER TABLE for an existing table with no missing columns', async () => {
-      setUpInitDatabaseMock();
-
-      await initDatabase();
 
       const barAlterCalls = mockPoolExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('ALTER TABLE bar'),
       );
       expect(barAlterCalls).toHaveLength(0);
-    });
-
-    it('adds missing columns to an existing table via ALTER TABLE ADD COLUMN', async () => {
-      setUpInitDatabaseMock();
-
-      await initDatabase();
 
       const bazAlterCalls = mockPoolExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('ALTER TABLE baz'),

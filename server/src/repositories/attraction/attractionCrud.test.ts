@@ -107,27 +107,10 @@ describe('attractionCrud', () => {
   });
 
   describe('create', () => {
-    it('computes sortOrder from the count of existing attractions in the day', async () => {
+    it('computes sortOrder from the existing count and defaults optional fields to null', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
         if (sql.includes('COUNT(*)')) {
           return Promise.resolve([[{ count: 3 }]]);
-        }
-        if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
-          return Promise.resolve([{ insertId: 55 }]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
-
-      const result = await create(10, { name: 'Museum' });
-
-      expect(result.sortOrder).toBe(3);
-      expect(mockConnCommit).toHaveBeenCalled();
-    });
-
-    it('defaults googleMapUrl, notes, nearbyAttractions, startTime, and endTime to null when omitted', async () => {
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 0 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 1 }]);
@@ -139,8 +122,9 @@ describe('attractionCrud', () => {
 
       expect(mockConnExecute).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO trip_attractions'),
-        [10, 'Museum', null, null, null, null, null, 0],
+        [10, 'Museum', null, null, null, null, null, 3],
       );
+      expect(mockConnCommit).toHaveBeenCalled();
       expect(result).toEqual({
         id: 1,
         name: 'Museum',
@@ -151,7 +135,7 @@ describe('attractionCrud', () => {
         endTime: null,
         referenceWebsites: [],
         images: [],
-        sortOrder: 0,
+        sortOrder: 3,
       });
     });
 
@@ -245,28 +229,31 @@ describe('attractionCrud', () => {
     });
 
     describe('per-field fallback semantics', () => {
-      it.each([
-        {
-          field: 'googleMapUrl',
-          paramIndex: 1,
-          curValue: currentRow.google_map_url,
-        },
-        { field: 'notes', paramIndex: 2, curValue: currentRow.notes },
-        { field: 'startTime', paramIndex: 4, curValue: currentRow.start_time },
-      ])(
-        'keeps the current value for $field when it is omitted from data',
-        async ({ paramIndex, curValue }) => {
-          mockSelectSequence(currentRow, currentRow);
-          mockConnExecute.mockResolvedValue([{ affectedRows: 1 }]);
+      it('keeps every current value when only the name is provided', async () => {
+        mockSelectSequence(currentRow, currentRow);
+        mockConnExecute.mockResolvedValue([{ affectedRows: 1 }]);
 
-          await update(currentRow.id, { name: 'New Name' });
+        await update(currentRow.id, { name: 'New Name' });
 
-          const updateCall = mockConnExecute.mock.calls.find(([sql]) =>
-            sql.includes('UPDATE trip_attractions'),
-          );
-          expect(updateCall?.[1][paramIndex]).toBe(curValue);
-        },
-      );
+        const updateCall = mockConnExecute.mock.calls.find(([sql]) =>
+          sql.includes('UPDATE trip_attractions'),
+        );
+        expect(updateCall?.[1]).toEqual([
+          'New Name',
+          currentRow.google_map_url,
+          currentRow.notes,
+          currentRow.nearby_attractions,
+          currentRow.start_time,
+          currentRow.end_time,
+          currentRow.id,
+        ]);
+        expect(mockConnExecute).not.toHaveBeenCalledWith(
+          'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
+          expect.anything(),
+        );
+        expect(mockConnCommit).toHaveBeenCalled();
+        expect(mockConnRollback).not.toHaveBeenCalled();
+      });
 
       it.each([
         { field: 'googleMapUrl', paramIndex: 1, newValue: 'https://new.com' },
@@ -304,28 +291,6 @@ describe('attractionCrud', () => {
         'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
         [currentRow.id, 'https://a.com', 'A'],
       );
-    });
-
-    it('does not issue a DELETE for reference websites when referenceWebsites is omitted', async () => {
-      mockSelectSequence(currentRow, currentRow);
-      mockConnExecute.mockResolvedValue([{ affectedRows: 1 }]);
-
-      await update(currentRow.id, { name: 'New Name' });
-
-      expect(mockConnExecute).not.toHaveBeenCalledWith(
-        'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
-        expect.anything(),
-      );
-    });
-
-    it('commits the transaction on success', async () => {
-      mockSelectSequence(currentRow, currentRow);
-      mockConnExecute.mockResolvedValue([{ affectedRows: 1 }]);
-
-      await update(currentRow.id, { name: 'New Name' });
-
-      expect(mockConnCommit).toHaveBeenCalled();
-      expect(mockConnRollback).not.toHaveBeenCalled();
     });
 
     it('rolls back the transaction and rethrows when a query fails', async () => {

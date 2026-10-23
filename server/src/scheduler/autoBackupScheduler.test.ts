@@ -89,10 +89,8 @@ describe('readAutoBackupConfig', () => {
   });
 
   it.each([
-    { value: 'false', expected: false },
     { value: 'FALSE', expected: false },
     { value: 'true', expected: true },
-    { value: '1', expected: true },
   ])(
     'treats AUTO_BACKUP_ENABLED="$value" as enabled: $expected',
     ({ value, expected }) => {

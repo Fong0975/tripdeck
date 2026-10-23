@@ -41,7 +41,7 @@ afterAll(() => {
 });
 
 describe('writeLogLine', () => {
-  it('ensures the log directory exists before writing', () => {
+  it('ensures the log directory exists and appends without rotating when the file does not exist yet', () => {
     mockStatSync.mockImplementation(() => {
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
@@ -49,15 +49,6 @@ describe('writeLogLine', () => {
     writeLogLine(config, 'hello');
 
     expect(mockMkdirSync).toHaveBeenCalledWith('/logs', { recursive: true });
-  });
-
-  it('appends without rotating when the file does not exist yet', () => {
-    mockStatSync.mockImplementation(() => {
-      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
-    });
-
-    writeLogLine(config, 'hello');
-
     expect(mockRenameSync).not.toHaveBeenCalled();
     expect(mockAppendFileSync).toHaveBeenCalledWith(
       path.join('/logs', 'app.log'),

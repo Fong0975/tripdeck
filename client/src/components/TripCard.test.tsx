@@ -102,16 +102,7 @@ describe('TripCard', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('does not navigate when the delete button is clicked', async () => {
-    const user = userEvent.setup();
-    renderCard(makeTrip());
-
-    await user.click(screen.getByTitle('刪除旅程'));
-
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('calls onEdit with the trip when the edit button is clicked', async () => {
+  it('calls onEdit with the trip when the edit button is clicked, without navigating', async () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
     const trip = makeTrip({ id: 9 });
@@ -120,14 +111,6 @@ describe('TripCard', () => {
     await user.click(screen.getByTitle('編輯旅程'));
 
     expect(onEdit).toHaveBeenCalledWith(trip);
-  });
-
-  it('does not navigate when the edit button is clicked', async () => {
-    const user = userEvent.setup();
-    renderCard(makeTrip());
-
-    await user.click(screen.getByTitle('編輯旅程'));
-
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

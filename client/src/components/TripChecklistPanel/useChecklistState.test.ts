@@ -59,25 +59,13 @@ describe('useChecklistState', () => {
     expect(result.current.getCheck(1, 20)).toBe(false);
   });
 
-  it('handleToggleCheck flips the local value seen by getCheck', async () => {
+  it('handleToggleCheck flips the local value seen by getCheck and marks the state dirty', async () => {
     const { result } = await renderLoaded();
+    expect(result.current.isDirty).toBe(false);
 
     act(() => result.current.handleToggleCheck(1, 10));
 
     expect(result.current.getCheck(1, 10)).toBe(false);
-  });
-
-  it('isDirty is false with no local edits', async () => {
-    const { result } = await renderLoaded();
-
-    expect(result.current.isDirty).toBe(false);
-  });
-
-  it('isDirty is true once a local edit differs from the saved value', async () => {
-    const { result } = await renderLoaded();
-
-    act(() => result.current.handleToggleCheck(1, 10));
-
     expect(result.current.isDirty).toBe(true);
   });
 

@@ -76,13 +76,24 @@ describe('templateItemRepository', () => {
       expect(result).toBeNull();
     });
 
+    it('falls back to the current quantity, notes, and storage_location when omitted', async () => {
+      mockItemSelectThenUpdate();
+
+      await updateItem(1, { name: 'New Name' });
+
+      const updateCall = mockPoolExecute.mock.calls.find(([sql]) =>
+        (sql as string).trim().startsWith('UPDATE'),
+      );
+      expect(updateCall?.[1]).toEqual([
+        'New Name',
+        CURRENT_ITEM_ROW.quantity,
+        CURRENT_ITEM_ROW.notes,
+        CURRENT_ITEM_ROW.storage_location,
+        1,
+      ]);
+    });
+
     it.each([
-      {
-        name: 'quantity omitted falls back to the current value',
-        data: { name: 'New Name' },
-        paramIndex: 1,
-        expectedParam: CURRENT_ITEM_ROW.quantity,
-      },
       {
         name: 'quantity provided overrides the current value',
         data: { name: 'New Name', quantity: 9 },
@@ -90,22 +101,10 @@ describe('templateItemRepository', () => {
         expectedParam: 9,
       },
       {
-        name: 'notes omitted falls back to the current value',
-        data: { name: 'New Name' },
-        paramIndex: 2,
-        expectedParam: CURRENT_ITEM_ROW.notes,
-      },
-      {
         name: 'notes provided overrides the current value',
         data: { name: 'New Name', notes: 'new notes' },
         paramIndex: 2,
         expectedParam: 'new notes',
-      },
-      {
-        name: 'storage_location omitted falls back to the current value',
-        data: { name: 'New Name' },
-        paramIndex: 3,
-        expectedParam: CURRENT_ITEM_ROW.storage_location,
       },
       {
         name: 'storage_location provided overrides the current value',

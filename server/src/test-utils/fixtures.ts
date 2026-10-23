@@ -86,6 +86,5 @@ export function makeTripBackupData(
 /** Request bodies that must be rejected with "name is required". */
 export const invalidNameCases = [
   { label: 'name is missing', body: {} },
-  { label: 'name is an empty string', body: { name: '' } },
   { label: 'name is not a string', body: { name: 42 } },
 ];

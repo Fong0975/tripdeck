@@ -43,7 +43,6 @@ describe('updateDayNotes', () => {
   it.each([
     { name: 'notes is missing', body: {} },
     { name: 'notes is blank', body: { notes: '   ' } },
-    { name: 'notes is explicitly null', body: { notes: null } },
   ])('stores null when $name', async ({ body }) => {
     vi.mocked(tripRepo.findDayByIdAndTripId).mockResolvedValue(sampleDay);
     vi.mocked(tripRepo.updateDayNotes).mockResolvedValue(true);

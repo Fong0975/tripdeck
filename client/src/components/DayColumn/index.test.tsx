@@ -198,7 +198,7 @@ describe('DayColumn', () => {
     );
   });
 
-  it('wraps the connection edit callback with the dayIndex', async () => {
+  it('wraps connection callbacks with the dayIndex', async () => {
     const connection = makeConnection({ id: 5 });
     const day = makeDay({
       attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
@@ -208,26 +208,13 @@ describe('DayColumn', () => {
     const callbacks = setupColumn(day, 2);
 
     await user.click(screen.getByText('connection-5'));
-
-    expect(callbacks.onEditConnection).toHaveBeenCalledWith(2, connection);
-  });
-
-  it('wraps the connection delete callback with the dayIndex', async () => {
-    const connection = makeConnection({ id: 5 });
-    const day = makeDay({
-      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
-      connections: [connection],
-    });
-    const user = userEvent.setup();
-    const callbacks = setupColumn(day, 2);
-
     await user.click(screen.getByText('delete-connection-5'));
 
+    expect(callbacks.onEditConnection).toHaveBeenCalledWith(2, connection);
     expect(callbacks.onDeleteConnection).toHaveBeenCalledWith(2, 5);
   });
 
   it('shows DayWeather when enabled, the day is not past, and locations exist', () => {
-    vi.mocked(isPastDate).mockReturnValue(false);
     const day = makeDay({ locations: [makeLocation()] });
 
     setupColumn(day);

@@ -130,22 +130,7 @@ describe('ImageUploadSection', () => {
     expect(onDelete).toHaveBeenCalledWith(1);
   });
 
-  it('opens the lightbox when an existing thumbnail is clicked', async () => {
-    const user = userEvent.setup();
-    render(
-      <ImageUploadSection
-        images={images}
-        onUpload={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByAltText('Photo A'));
-
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
-  });
-
-  it('closes the lightbox when its close button is clicked', async () => {
+  it('opens the lightbox when an existing thumbnail is clicked and closes it via its close button', async () => {
     const user = userEvent.setup();
     render(
       <ImageUploadSection

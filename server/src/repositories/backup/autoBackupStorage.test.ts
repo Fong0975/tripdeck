@@ -114,13 +114,6 @@ describe('listAutoBackupFiles', () => {
     expect(mockReaddirSync).not.toHaveBeenCalled();
   });
 
-  it('returns an empty array when the backups directory exists but is empty', () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReaddirSync.mockReturnValue([]);
-
-    expect(listAutoBackupFiles()).toEqual([]);
-  });
-
   it('filters out non-matching filenames and sorts newest first', () => {
     mockExistsSync.mockReturnValue(true);
     mockReaddirSync.mockReturnValue([

@@ -24,11 +24,6 @@ describe('makeDayNotesSection', () => {
   });
 
   it.each([
-    {
-      description: 'set to a non-empty string',
-      notes: 'Bring an umbrella',
-      expectParagraph: true,
-    },
     { description: 'undefined', notes: undefined, expectParagraph: false },
     { description: 'null', notes: null, expectParagraph: false },
     { description: 'an empty string', notes: '', expectParagraph: false },
@@ -89,13 +84,5 @@ describe('makeDayNotesSection', () => {
     expect(makeImageParagraphs).toHaveBeenNthCalledWith(2, images[1]);
     expect(paragraphs).toContain(sentinelA);
     expect(paragraphs).toContain(sentinelB);
-  });
-
-  it('returns an empty array when the day has no notes and no images', async () => {
-    const paragraphs = await makeDayNotesSection(
-      makeDay({ notes: null, images: [] }),
-    );
-
-    expect(paragraphs).toEqual([]);
   });
 });

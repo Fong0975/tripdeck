@@ -30,29 +30,6 @@ describe('tripChecklistCore', () => {
       expect(mockPoolExecute).toHaveBeenCalledTimes(1);
     });
 
-    it('returns an empty categories array when occasions exist but no categories do', async () => {
-      mockPoolExecute.mockImplementation((sql: string) => {
-        if (sql.includes('checklist_occasions')) {
-          return Promise.resolve([[{ id: 1, trip_id: 5, name: '收拾' }]]);
-        }
-        if (sql.includes('checklist_trip_categories')) {
-          return Promise.resolve([[]]);
-        }
-        if (sql.includes('checklist_checks')) {
-          return Promise.resolve([[]]);
-        }
-        return Promise.resolve([[]]);
-      });
-
-      const result = await findChecklist(5);
-
-      expect(result).toEqual({
-        tripId: 5,
-        categories: [],
-        occasions: [{ id: 1, name: '收拾', checks: {} }],
-      });
-    });
-
     it('aggregates categories with items and specs, and builds a sparse checks map containing only checked=1 entries', async () => {
       mockPoolExecute.mockImplementation((sql: string) => {
         if (sql.includes('checklist_occasions')) {

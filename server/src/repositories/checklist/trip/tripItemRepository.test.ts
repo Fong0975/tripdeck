@@ -115,11 +115,6 @@ describe('tripItemRepository', () => {
 
     it.each([
       {
-        name: 'name omitted keeps the current value',
-        data: {},
-        expected: CURRENT_ITEM.name,
-      },
-      {
         name: 'name provided as a non-empty string overrides the current value',
         data: { name: '新名稱' },
         expected: '新名稱',
@@ -137,11 +132,12 @@ describe('tripItemRepository', () => {
       expect(result?.name).toBe(expected);
     });
 
-    it('keeps the current quantity when quantity is omitted from data', async () => {
+    it('keeps the current name and quantity when data is empty', async () => {
       mockSelectThenUpdate();
 
       const result = await updateTripItem(1, {});
 
+      expect(result?.name).toBe(CURRENT_ITEM.name);
       expect(result?.quantity).toBe(CURRENT_ITEM.quantity);
     });
 

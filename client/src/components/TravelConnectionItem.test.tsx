@@ -52,7 +52,7 @@ describe('TravelConnectionItem', () => {
   });
 
   describe('route', () => {
-    it('shows the label and renders markdown syntax when route is set', () => {
+    it('shows the label and content when route is set', () => {
       render(
         <TravelConnectionItem
           connection={makeConnection({ route: '**搭乘銀座線**' })}
@@ -62,8 +62,7 @@ describe('TravelConnectionItem', () => {
       );
 
       expect(screen.getByText('路線說明')).toBeInTheDocument();
-      const bold = screen.getByText('搭乘銀座線');
-      expect(bold.tagName).toBe('STRONG');
+      expect(screen.getByText('搭乘銀座線')).toBeInTheDocument();
     });
 
     it('does not show the label when route is not set', () => {

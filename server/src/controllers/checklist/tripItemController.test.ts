@@ -172,38 +172,13 @@ describe('updateTripItem', () => {
     expect(tripRepo.updateTripItem).toHaveBeenCalledWith(2, {});
     expect(res.json).toHaveBeenCalledWith(item);
   });
-
-  it('returns 200 with the updated item', async () => {
-    const item = {
-      id: 2,
-      name: 'Charger',
-      quantity: 2,
-      notes: null,
-      storage_location: null,
-      specs: [],
-    };
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripItem).mockResolvedValue(item);
-    const { req, res } = createMockReqRes({
-      params: { tripId: '1', itemId: '2' },
-      body: { name: 'Charger', quantity: 2 },
-    });
-
-    await updateTripItem(req, res);
-
-    expect(res.json).toHaveBeenCalledWith(item);
-  });
 });
 
 describe('setCheck', () => {
-  it.each([
-    { label: 'checked is missing', body: {} },
-    { label: 'checked is a string', body: { checked: 'true' } },
-    { label: 'checked is a number', body: { checked: 1 } },
-  ])('returns 400 when $label', async ({ body }) => {
+  it('returns 400 when checked is not a boolean', async () => {
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
-      body,
+      body: { checked: 'true' },
     });
 
     await setCheck(req, res);

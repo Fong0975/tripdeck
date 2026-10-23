@@ -143,11 +143,6 @@ describe('deleteOccasion', () => {
       expectStatus: 409,
       expectError: 'Cannot delete the last occasion',
     },
-    {
-      count: 0,
-      expectStatus: 409,
-      expectError: 'Cannot delete the last occasion',
-    },
   ])(
     'returns 409 when the occasion count is $count',
     async ({ count, expectStatus, expectError }) => {

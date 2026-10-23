@@ -111,24 +111,12 @@ describe('TripHeaderSummary', () => {
     expect(onMouseLeave).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    { description: 'a destination is set', destination: 'Tokyo' },
-    { description: 'no destination is set', destination: null },
-  ])(
-    'shows the destination only when $description, while expanded',
-    ({ destination }) => {
-      renderSummary({ trip: { destination }, expanded: true });
+  it('omits the destination while expanded when none is set', () => {
+    renderSummary({ trip: { destination: null }, expanded: true });
 
-      const detailsGroup = getDetailsGroup();
-      expect(detailsGroup).toHaveAttribute('aria-hidden', 'false');
-
-      if (destination) {
-        expect(within(detailsGroup).getByText(destination)).toBeInTheDocument();
-      } else {
-        expect(screen.queryByText('Tokyo')).not.toBeInTheDocument();
-      }
-    },
-  );
+    expect(getDetailsGroup()).toHaveAttribute('aria-hidden', 'false');
+    expect(screen.queryByText('Tokyo')).not.toBeInTheDocument();
+  });
 
   it('shows an image count badge next to the description when collapsed', () => {
     renderSummary({

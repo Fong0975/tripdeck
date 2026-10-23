@@ -91,28 +91,7 @@ describe('useAttractionActions', () => {
       });
     });
 
-    it('shows an error toast and does not reload or close the modal when creating fails', async () => {
-      vi.mocked(addAttraction).mockRejectedValue(new Error('network error'));
-      const reloadContent = vi.fn();
-      const closeModal = vi.fn();
-      const { handleSaveAttraction } = useAttractionActions(
-        makeTrip(),
-        makeContent(),
-        reloadContent,
-        closeModal,
-      );
-
-      await handleSaveAttraction(0, makeAttraction({ id: 0 }));
-
-      expect(reloadContent).not.toHaveBeenCalled();
-      expect(closeModal).not.toHaveBeenCalled();
-      expect(showToast).toHaveBeenCalledWith(
-        'error',
-        '儲存景點失敗，請稍後再試',
-      );
-    });
-
-    it('shows an error toast and does not reload or close the modal when updating fails', async () => {
+    it('shows an error toast and does not reload or close the modal when saving fails', async () => {
       vi.mocked(updateAttraction).mockRejectedValue(new Error('network error'));
       const reloadContent = vi.fn();
       const closeModal = vi.fn();

@@ -1,12 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useContext } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTheme } from '@/hooks/useTheme';
 import { createMatchMedia } from '@/test-utils/dom';
 
-import { ThemeContext } from './ThemeContext.ts';
 import { ThemeProvider } from './ThemeContext.tsx';
 
 function TestConsumer() {
@@ -20,7 +18,7 @@ function TestConsumer() {
 }
 
 function RawContextConsumer() {
-  const { theme, toggle } = useContext(ThemeContext);
+  const { theme, toggle } = useTheme();
   return (
     <div>
       <span data-testid='theme'>{theme}</span>

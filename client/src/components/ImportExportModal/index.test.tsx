@@ -47,16 +47,6 @@ describe('ImportExportModal', () => {
     expect(screen.queryByTestId('auto-backups-tab')).not.toBeInTheDocument();
   });
 
-  it('switches to the import tab', async () => {
-    const user = userEvent.setup();
-    render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
-
-    await user.click(screen.getByText('匯入旅程'));
-
-    expect(screen.getByTestId('import-tab')).toBeInTheDocument();
-    expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
-  });
-
   it('switches to the automatic backups tab', async () => {
     const user = userEvent.setup();
     render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
@@ -67,10 +57,12 @@ describe('ImportExportModal', () => {
     expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
   });
 
-  it('switches back to the export tab', async () => {
+  it('switches to the import tab and back to the export tab', async () => {
     const user = userEvent.setup();
     render(<ImportExportModal trips={[]} onClose={vi.fn()} />);
     await user.click(screen.getByText('匯入旅程'));
+    expect(screen.getByTestId('import-tab')).toBeInTheDocument();
+    expect(screen.queryByTestId('export-tab')).not.toBeInTheDocument();
 
     await user.click(screen.getByText('匯出旅程'));
 

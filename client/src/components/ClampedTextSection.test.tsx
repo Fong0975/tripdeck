@@ -7,35 +7,14 @@ import { mockElementOverflow } from '@/test-utils/dom';
 import ClampedTextSection from './ClampedTextSection';
 
 describe('ClampedTextSection', () => {
-  it('renders the markdown content', () => {
+  it('renders markdown syntax as formatted content by default', () => {
     render(
-      <ClampedTextSection
-        content='這是一段備註內容'
-        showBottomDivider={false}
-      />,
+      <ClampedTextSection content='**bold text**' showBottomDivider={false} />,
     );
 
-    expect(screen.getByText('這是一段備註內容')).toBeInTheDocument();
+    const bold = screen.getByText('bold text');
+    expect(bold.tagName).toBe('STRONG');
   });
-
-  it.each([
-    { description: 'markdown is enabled (default)', markdown: undefined },
-    { description: 'markdown is explicitly enabled', markdown: true },
-  ])(
-    'renders markdown syntax as formatted content when $description',
-    ({ markdown }) => {
-      render(
-        <ClampedTextSection
-          content='**bold text**'
-          showBottomDivider={false}
-          markdown={markdown}
-        />,
-      );
-
-      const bold = screen.getByText('bold text');
-      expect(bold.tagName).toBe('STRONG');
-    },
-  );
 
   it('renders markdown syntax as literal text when markdown is disabled', () => {
     render(

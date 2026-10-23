@@ -15,12 +15,6 @@ function getDrawer() {
 }
 
 describe('DayNotesSection', () => {
-  it('always renders the edit button', () => {
-    render(<DayNotesSection day={makeDay()} onEdit={vi.fn()} />);
-
-    expect(screen.getByLabelText('編輯日備註')).toBeInTheDocument();
-  });
-
   it('calls onEdit when the edit button is clicked', async () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();

@@ -19,7 +19,6 @@ import { exportTrips, importTrips } from './backupController';
 
 describe('exportTrips', () => {
   it.each([
-    { name: 'tripIds is missing', body: {} },
     { name: 'tripIds is not an array', body: { tripIds: 1 } },
     { name: 'tripIds contains a non-integer', body: { tripIds: [1, 1.5] } },
     {

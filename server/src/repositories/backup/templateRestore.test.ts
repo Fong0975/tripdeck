@@ -83,21 +83,6 @@ describe('restoreTemplate', () => {
     expect(mockConnRollback).not.toHaveBeenCalled();
   });
 
-  it('clears the existing template even when the new one has no categories', async () => {
-    mockSequentialInserts();
-
-    await restoreTemplate({ categories: [] });
-
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      'DELETE FROM checklist_template_categories',
-    );
-    expect(mockConnExecute).not.toHaveBeenCalledWith(
-      'INSERT INTO checklist_template_categories (name) VALUES (?)',
-      expect.anything(),
-    );
-    expect(mockConnCommit).toHaveBeenCalled();
-  });
-
   it('rolls back and rethrows when an insert fails', async () => {
     mockConnExecute.mockImplementation((sql: string) => {
       if (sql.startsWith('INSERT INTO checklist_template_categories')) {

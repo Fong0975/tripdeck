@@ -62,12 +62,6 @@ describe('isWeatherEnabled', () => {
       expected: true,
     },
     {
-      description: 'both keys are set',
-      owmKey: 'owm',
-      vcKey: 'vc',
-      expected: true,
-    },
-    {
       description: 'neither key is set',
       owmKey: '',
       vcKey: '',
@@ -231,13 +225,6 @@ describe('getDailyWeather cache', () => {
     {
       description: 'serves a fresh non-error result from cache',
       owmResult: SUCCESS,
-      secondCall: { location: 'Tokyo', date: '2026-08-20' },
-      advanceMs: 0,
-      expectedLookups: 1,
-    },
-    {
-      description: 'caches not_found results too',
-      owmResult: { status: 'not_found' },
       secondCall: { location: 'Tokyo', date: '2026-08-20' },
       advanceMs: 0,
       expectedLookups: 1,

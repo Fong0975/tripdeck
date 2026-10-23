@@ -78,14 +78,7 @@ describe('ChecklistTemplateView', () => {
     expect(screen.getByText('載入中…')).toBeInTheDocument();
   });
 
-  it('renders categories with their item counts once loaded', async () => {
-    render(<ChecklistTemplateView />);
-
-    expect(await screen.findByText('Category A')).toBeInTheDocument();
-    expect(screen.getByText('1 項')).toBeInTheDocument();
-  });
-
-  it('opens the edit modal when the pencil button is clicked', async () => {
+  it('opens the edit modal when the pencil button is clicked and closes it when onClose fires', async () => {
     const user = userEvent.setup();
     render(<ChecklistTemplateView />);
     await screen.findByText('Category A');
@@ -93,13 +86,6 @@ describe('ChecklistTemplateView', () => {
     await user.click(screen.getByLabelText('編輯分類'));
 
     expect(screen.getByText('Editing Category A')).toBeInTheDocument();
-  });
-
-  it('closes the edit modal when its onClose fires', async () => {
-    const user = userEvent.setup();
-    render(<ChecklistTemplateView />);
-    await screen.findByText('Category A');
-    await user.click(screen.getByLabelText('編輯分類'));
 
     await user.click(screen.getByText('close-modal'));
 
@@ -126,8 +112,8 @@ describe('ChecklistTemplateView', () => {
 
     await user.click(screen.getByLabelText('刪除分類'));
 
-    await waitFor(() => expect(deleteTemplateCategory).toHaveBeenCalledWith(1));
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(deleteTemplateCategory).toHaveBeenCalledWith(1);
     expect(showToast).toHaveBeenCalledWith('success', '已刪除分類。');
   });
 
@@ -157,10 +143,8 @@ describe('ChecklistTemplateView', () => {
 
     await user.click(screen.getByText('新增分類'));
 
-    await waitFor(() =>
-      expect(addTemplateCategory).toHaveBeenCalledWith('新分類'),
-    );
     await waitFor(() => expect(getChecklistTemplate).toHaveBeenCalledTimes(1));
+    expect(addTemplateCategory).toHaveBeenCalledWith('新分類');
     expect(showToast).toHaveBeenCalledWith('success', '已新增分類。');
   });
 

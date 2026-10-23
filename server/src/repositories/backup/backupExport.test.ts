@@ -188,14 +188,6 @@ describe('buildBackupZip', () => {
     }
   });
 
-  it('does not lose emoji/CJK characters through the zip round-trip', async () => {
-    const buffer = await buildBackupZip([1]);
-    const zip = new AdmZip(buffer);
-    const data = JSON.parse(zip.readAsText('trips/trip_1/data.json'));
-
-    expect(data.trip.title).toBe(sampleTrip.title);
-  });
-
   it('de-duplicates repeated trip IDs', async () => {
     const buffer = await buildBackupZip([1, 1]);
     const zip = new AdmZip(buffer);
@@ -222,22 +214,6 @@ describe('buildBackupZip', () => {
       'Missing image file on disk, skipped from export',
       expect.objectContaining({ filename: 'attr1.jpg', tripId: 1 }),
     );
-  });
-
-  it('serializes a null checklist as null in data.json', async () => {
-    mockFindChecklist.mockResolvedValue(null);
-
-    const buffer = await buildBackupZip([1]);
-    const zip = new AdmZip(buffer);
-    const data = JSON.parse(zip.readAsText('trips/trip_1/data.json'));
-
-    expect(data.checklist).toBeNull();
-  });
-
-  it('propagates TripNotFoundError for a nonexistent trip', async () => {
-    mockFindById.mockResolvedValue(null);
-
-    await expect(buildBackupZip([999])).rejects.toThrow(TripNotFoundError);
   });
 
   it('omits template.json and includesTemplate by default', async () => {

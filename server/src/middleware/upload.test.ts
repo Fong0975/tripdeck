@@ -69,13 +69,13 @@ describe('saveImageToDisk', () => {
         validBuffer,
       );
     });
+  });
 
-    it('throws and does not write to disk when magic bytes do not match the declared mimetype', () => {
-      expect(() => saveImageToDisk(GARBAGE_BUFFER, mime)).toThrow(
-        'File content does not match declared image type',
-      );
-      expect(fs.writeFileSync).not.toHaveBeenCalled();
-    });
+  it('throws and does not write to disk when magic bytes do not match the declared mimetype', () => {
+    expect(() => saveImageToDisk(GARBAGE_BUFFER, 'image/jpeg')).toThrow(
+      'File content does not match declared image type',
+    );
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 
   describe('webp-specific signature checks', () => {
@@ -134,19 +134,6 @@ describe('copyImageFile', () => {
 });
 
 describe('saveImportedImageBuffer', () => {
-  it.each(mimeCases)(
-    'writes the buffer to disk under a new UUID filename for $ext when magic bytes are valid',
-    ({ ext, validBuffer }) => {
-      const filename = saveImportedImageBuffer(validBuffer, `original${ext}`);
-
-      expect(filename).toBe(`fixed-uuid${ext}`);
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        expect.stringContaining(filename),
-        validBuffer,
-      );
-    },
-  );
-
   it('is case-insensitive about the source extension', () => {
     const filename = saveImportedImageBuffer(
       mimeCases[0].validBuffer,
@@ -154,6 +141,10 @@ describe('saveImportedImageBuffer', () => {
     );
 
     expect(filename).toBe('fixed-uuid.jpg');
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining(filename),
+      mimeCases[0].validBuffer,
+    );
   });
 
   it('throws and does not write to disk for an unsupported extension', () => {

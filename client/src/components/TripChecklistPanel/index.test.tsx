@@ -98,11 +98,11 @@ describe('TripChecklistPanel', () => {
     expect(screen.getByText('載入中…')).toBeInTheDocument();
   });
 
-  it('shows the empty state when there are no categories', () => {
+  it('shows the empty state when there are no categories and opens and closes the edit modal from it', async () => {
     vi.mocked(useChecklistState).mockReturnValue(
       makeState({ checklist: makeChecklist([]) }),
     );
-
+    const user = userEvent.setup();
     render(<TripChecklistPanel tripId={1} />);
 
     expect(
@@ -110,30 +110,11 @@ describe('TripChecklistPanel', () => {
         '尚未有任何分類，請點擊「編輯清單」以開始建立行李清單。',
       ),
     ).toBeInTheDocument();
-  });
-
-  it('opens the edit modal from the empty state', async () => {
-    vi.mocked(useChecklistState).mockReturnValue(
-      makeState({ checklist: makeChecklist([]) }),
-    );
-    const user = userEvent.setup();
-    render(<TripChecklistPanel tripId={1} />);
 
     await user.click(screen.getByText('編輯清單'));
-
     expect(screen.getByText('edit-modal')).toBeInTheDocument();
-  });
-
-  it('closes the edit modal from the empty state', async () => {
-    vi.mocked(useChecklistState).mockReturnValue(
-      makeState({ checklist: makeChecklist([]) }),
-    );
-    const user = userEvent.setup();
-    render(<TripChecklistPanel tripId={1} />);
-    await user.click(screen.getByText('編輯清單'));
 
     await user.click(screen.getByText('close-edit-modal'));
-
     expect(screen.queryByText('edit-modal')).not.toBeInTheDocument();
   });
 

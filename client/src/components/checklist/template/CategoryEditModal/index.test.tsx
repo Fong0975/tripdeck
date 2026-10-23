@@ -168,27 +168,20 @@ describe('CategoryEditModal', () => {
     expect(deleteSpec).toHaveBeenCalledWith(10, 100);
   });
 
-  it('closes without saving when cancel is clicked', async () => {
-    vi.mocked(useSaveCategoryEdit).mockReturnValue({
-      saving: false,
-      handleSave: vi.fn(),
-    });
-    const onClose = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <CategoryEditModal
-        category={category}
-        onClose={onClose}
-        onSaved={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByText('取消'));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('closes when the backdrop is clicked', async () => {
+  it.each([
+    {
+      description: 'the header close button',
+      trigger: () => screen.getByLabelText('關閉'),
+    },
+    {
+      description: 'the cancel button',
+      trigger: () => screen.getByText('取消'),
+    },
+    {
+      description: 'the backdrop',
+      trigger: (container: HTMLElement) => getBackdrop(container),
+    },
+  ])('calls onClose when $description is clicked', async ({ trigger }) => {
     vi.mocked(useSaveCategoryEdit).mockReturnValue({
       saving: false,
       handleSave: vi.fn(),
@@ -203,7 +196,7 @@ describe('CategoryEditModal', () => {
       />,
     );
 
-    await user.click(getBackdrop(container));
+    await user.click(trigger(container));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

@@ -99,11 +99,9 @@ describe('ImportTab', () => {
     await user.click(screen.getByText('匯入'));
 
     await waitFor(() =>
-      expect(importTripsBackup).toHaveBeenCalledWith(file, false),
-    );
-    await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith('success', expect.anything()),
     );
+    expect(importTripsBackup).toHaveBeenCalledWith(file, false);
     renderLastToast('success');
     expect(screen.getByText('匯入成功')).toBeInTheDocument();
     expect(screen.getByText('Kyoto Trip')).toBeInTheDocument();
@@ -199,26 +197,6 @@ describe('ImportTab', () => {
     expect(screen.getByText('匯入失敗，請稍後再試')).toBeInTheDocument();
   });
 
-  it('defaults the restore-template option to off and submits it as false', async () => {
-    const user = userEvent.setup();
-    vi.mocked(importTripsBackup).mockResolvedValue({
-      imported: [],
-      failed: [],
-      templateRestored: false,
-    });
-    const { container } = render(<ImportTab onClose={vi.fn()} />);
-    const file = new File(['zip-bytes'], 'backup.zip');
-    selectFile(container, file);
-
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
-
-    await user.click(screen.getByText('匯入'));
-
-    await waitFor(() =>
-      expect(importTripsBackup).toHaveBeenCalledWith(file, false),
-    );
-  });
-
   it('submits restoreTemplate: true when the checkbox is checked, and shows the restored confirmation', async () => {
     const user = userEvent.setup();
     vi.mocked(importTripsBackup).mockResolvedValue({
@@ -234,14 +212,12 @@ describe('ImportTab', () => {
     await user.click(screen.getByText('匯入'));
 
     await waitFor(() =>
-      expect(importTripsBackup).toHaveBeenCalledWith(file, true),
-    );
-    await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith('success', '已還原打包清單範本。'),
     );
+    expect(importTripsBackup).toHaveBeenCalledWith(file, true);
   });
 
-  it('shows a neutral message when the backup has no trips and the template was not restored', async () => {
+  it('defaults the restore-template option to off and shows a neutral message when the backup has no trips', async () => {
     const user = userEvent.setup();
     vi.mocked(importTripsBackup).mockResolvedValue({
       imported: [],
@@ -249,7 +225,10 @@ describe('ImportTab', () => {
       templateRestored: false,
     });
     const { container } = render(<ImportTab onClose={vi.fn()} />);
-    selectFile(container, new File(['zip-bytes'], 'backup.zip'));
+    const file = new File(['zip-bytes'], 'backup.zip');
+    selectFile(container, file);
+
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
 
     await user.click(screen.getByText('匯入'));
 
@@ -259,6 +238,7 @@ describe('ImportTab', () => {
         '這份備份沒有任何旅程可以匯入；若備份包含打包清單範本，需勾選「同時還原打包清單範本」才會套用。',
       ),
     );
+    expect(importTripsBackup).toHaveBeenCalledWith(file, false);
   });
 
   it('calls onClose when cancel is clicked', async () => {

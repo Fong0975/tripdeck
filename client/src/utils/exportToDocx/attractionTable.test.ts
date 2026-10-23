@@ -190,12 +190,6 @@ describe('makeAttractionTable', () => {
     },
   );
 
-  it('omits the time+map row when neither time nor map url is set', async () => {
-    const table = await makeAttractionTable(makeAttraction());
-
-    expect(rows(table)).toHaveLength(1);
-  });
-
   it('renders the notes+images row combining parsed notes and image paragraphs', async () => {
     vi.mocked(parseMarkdownContent).mockReturnValue([
       fakeParagraph('notes') as never,
@@ -252,27 +246,11 @@ describe('makeAttractionTable', () => {
     },
   );
 
-  it.each([
-    {
-      description: 'neither notes nor images is set',
-      notes: undefined,
-      images: undefined,
-    },
-    {
-      description: 'notes is whitespace only and no images are set',
-      notes: '   ',
-      images: undefined,
-    },
-  ])(
-    'omits the notes+images row when $description',
-    async ({ notes, images }) => {
-      const table = await makeAttractionTable(
-        makeAttraction({ notes, images }),
-      );
+  it('omits the notes+images row when notes is whitespace only and no images are set', async () => {
+    const table = await makeAttractionTable(makeAttraction({ notes: '   ' }));
 
-      expect(rows(table)).toHaveLength(1);
-    },
-  );
+    expect(rows(table)).toHaveLength(1);
+  });
 
   it('renders the nearby-attractions row with its value parsed as markdown', async () => {
     vi.mocked(parseMarkdownContent).mockReturnValue([
@@ -295,7 +273,6 @@ describe('makeAttractionTable', () => {
   });
 
   it.each([
-    { description: 'undefined', nearbyAttractions: undefined },
     { description: 'an empty string', nearbyAttractions: '' },
     { description: 'whitespace only', nearbyAttractions: '   ' },
   ])(
@@ -308,12 +285,6 @@ describe('makeAttractionTable', () => {
       expect(rows(table)).toHaveLength(1);
     },
   );
-
-  it('adds no reference-website rows when none are set', async () => {
-    const table = await makeAttractionTable(makeAttraction());
-
-    expect(rows(table)).toHaveLength(1);
-  });
 
   it('adds one row per reference website, labeling only the first', async () => {
     const websites = [

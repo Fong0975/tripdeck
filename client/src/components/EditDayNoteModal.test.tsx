@@ -71,34 +71,12 @@ describe('EditDayNoteModal', () => {
     expect(onSave).toHaveBeenCalledWith(null);
   });
 
-  it('uploads a new image via the image section', async () => {
+  it('deletes an existing image and uploads a new one via the image section', async () => {
+    vi.mocked(deleteDayImage).mockResolvedValue(undefined);
     const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
     vi.mocked(uploadDayImage).mockResolvedValue(newImage);
     const user = userEvent.setup();
     const { container } = render(
-      <EditDayNoteModal
-        tripId={1}
-        day={day}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />,
-    );
-    const file = new File(['a'], 'b.jpg');
-    selectFile(container, file);
-    await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
-
-    await user.click(screen.getByText('確認上傳'));
-
-    await waitFor(() =>
-      expect(uploadDayImage).toHaveBeenCalledWith(1, 10, file, 'New'),
-    );
-    expect(await screen.findByAltText('New')).toBeInTheDocument();
-  });
-
-  it('deletes an image via the image section', async () => {
-    vi.mocked(deleteDayImage).mockResolvedValue(undefined);
-    const user = userEvent.setup();
-    render(
       <EditDayNoteModal
         tripId={1}
         day={{
@@ -109,13 +87,22 @@ describe('EditDayNoteModal', () => {
         onSave={vi.fn()}
       />,
     );
-
     expect(screen.getByAltText('Cover')).toBeInTheDocument();
 
     await user.click(screen.getByTitle('刪除圖片'));
 
     await waitFor(() => expect(deleteDayImage).toHaveBeenCalledWith(1, 10, 1));
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
+
+    const file = new File(['a'], 'b.jpg');
+    selectFile(container, file);
+    await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
+    await user.click(screen.getByText('確認上傳'));
+
+    await waitFor(() =>
+      expect(uploadDayImage).toHaveBeenCalledWith(1, 10, file, 'New'),
+    );
+    expect(await screen.findByAltText('New')).toBeInTheDocument();
   });
 
   it('calls onClose when cancel is clicked', async () => {

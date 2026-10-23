@@ -115,83 +115,59 @@ describe('connectionRepository', () => {
       expect(result).toBeNull();
     });
 
-    it.each([
-      {
-        name: 'fromAttractionId omitted falls back to the current value',
-        data: {},
-        expectedParam: CURRENT_ROW.trip_attraction_id_from,
-        paramIndex: 0,
-      },
-      {
-        name: 'fromAttractionId provided overrides the current value',
-        data: { fromAttractionId: 200 },
-        expectedParam: 200,
-        paramIndex: 0,
-      },
-      {
-        name: 'toAttractionId omitted falls back to the current value',
-        data: {},
-        expectedParam: CURRENT_ROW.trip_attraction_id_to,
-        paramIndex: 1,
-      },
-      {
-        name: 'transportMode omitted falls back to the current value',
-        data: {},
-        expectedParam: CURRENT_ROW.transport_mode,
-        paramIndex: 2,
-      },
-      {
-        name: 'transportMode provided overrides the current value',
-        data: { transportMode: 'car' },
-        expectedParam: 'car',
-        paramIndex: 2,
-      },
-    ])('$name', async ({ data, expectedParam, paramIndex }) => {
-      mockSelectThenUpdate();
-
-      await update(1, data);
-
+    function findUpdateParams() {
       const updateCall = mockPoolExecute.mock.calls.find(([sql]) =>
         (sql as string).trim().startsWith('UPDATE'),
       );
-      expect(updateCall?.[1][paramIndex]).toBe(expectedParam);
-    });
+      return updateCall?.[1];
+    }
 
-    it.each([
-      {
-        name: 'duration omitted falls back to the current value',
-        data: {},
-        expectedParam: CURRENT_ROW.duration,
-      },
-      {
-        name: 'duration explicitly set to null clears the value',
-        data: { duration: null },
-        expectedParam: null,
-      },
-      {
-        name: 'duration provided overrides the current value',
-        data: { duration: '30 min' },
-        expectedParam: '30 min',
-      },
-    ])('$name', async ({ data, expectedParam }) => {
+    it('falls back to the current value for every field omitted from data', async () => {
       mockSelectThenUpdate();
 
-      await update(1, data);
+      await update(1, {});
 
-      const updateCall = mockPoolExecute.mock.calls.find(([sql]) =>
-        (sql as string).trim().startsWith('UPDATE'),
-      );
-      expect(updateCall?.[1][3]).toBe(expectedParam);
+      expect(findUpdateParams()).toEqual([
+        CURRENT_ROW.trip_attraction_id_from,
+        CURRENT_ROW.trip_attraction_id_to,
+        CURRENT_ROW.transport_mode,
+        CURRENT_ROW.duration,
+        CURRENT_ROW.route,
+        CURRENT_ROW.notes,
+        1,
+      ]);
     });
 
-    it('returns the updated connection with images attached', async () => {
+    it('clears duration when it is explicitly set to null', async () => {
+      mockSelectThenUpdate();
+
+      await update(1, { duration: null });
+
+      expect(findUpdateParams()?.[3]).toBeNull();
+    });
+
+    it('overrides provided fields and returns the updated connection with images attached', async () => {
       mockSelectThenUpdate();
       mockGetConnectionImages.mockResolvedValue([
         { id: 1, filename: 'a.jpg', title: 'A' },
       ]);
 
-      const result = await update(1, { transportMode: 'car' });
+      const result = await update(1, {
+        fromAttractionId: 200,
+        toAttractionId: 201,
+        transportMode: 'car',
+        duration: '30 min',
+      });
 
+      expect(findUpdateParams()).toEqual([
+        200,
+        201,
+        'car',
+        '30 min',
+        CURRENT_ROW.route,
+        CURRENT_ROW.notes,
+        1,
+      ]);
       expect(result).toMatchObject({
         id: 1,
         images: [{ id: 1, filename: 'a.jpg', title: 'A' }],
