@@ -17,12 +17,15 @@ tripdeck/
 │   ├── src/
 │   │   ├── api/              # Backend API client (per domain: trips, attractions, images, etc.)
 │   │   ├── components/       # Reusable UI components
+│   │   ├── constants/        # Shared constants (transport modes)
 │   │   ├── context/          # React context (theme)
 │   │   ├── hooks/            # Custom React hooks
+│   │   ├── lib/              # Toast notification system
 │   │   ├── pages/            # Route-level page components
 │   │   ├── types/            # TypeScript type definitions
 │   │   └── utils/            # Docx export, weather API, and other shared helpers
 │   ├── Dockerfile            # Multi-stage build: Vite → nginx
+│   ├── eslint.config.js      # ESLint 9 flat config
 │   ├── nginx.conf.template   # nginx config template (port + proxy via envsubst)
 │   ├── package.json
 │   └── vite.config.ts
@@ -36,6 +39,7 @@ tripdeck/
 │   │   ├── repositories/     # Database query layer (MySQL2)
 │   │   ├── routes/           # Defines API endpoints and URL mapping
 │   │   ├── scheduler/        # Periodic automatic full-system backup checker
+│   │   ├── test-utils/       # Shared test helpers (Express request/response mocks)
 │   │   ├── types/            # Request/response type definitions
 │   │   └── index.ts          # Express server entry point
 │   ├── backups/              # Automatic backup files (git-ignored, timestamped filenames)
@@ -43,6 +47,7 @@ tripdeck/
 │   ├── swagger/              # Auto-generated Swagger spec (output.json)
 │   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
 │   ├── Dockerfile            # Multi-stage build: tsc → production Node.js
+│   ├── eslint.config.mjs     # ESLint 9 flat config
 │   ├── package.json
 │   ├── tsconfig.json         # Used for editor/lint (includes test files)
 │   ├── tsconfig.build.json   # Used by `npm run build` (excludes *.test.ts)
@@ -50,6 +55,7 @@ tripdeck/
 ├── docker-compose.yml        # Two-service deployment (backend + frontend, host network)
 ├── export_docker.bat         # Copies deployment files to ./docker/ and injects .env.production
 ├── .env.example              # Environment variable reference
+├── .nvmrc                    # Node.js version used by local dev (nvm) and CI
 ├── package.json              # Workspace root — orchestrates client + server
 └── .github/workflows/        # CI: lint/test check, automated version bumping
 ```
@@ -127,48 +133,6 @@ Outputs:
 ```bash
 npm run start
 ```
-
-## Docker Deployment
-
-Use Docker to deploy the frontend and backend for production. Both services build their images from source (`client/Dockerfile` / `server/Dockerfile`) rather than pulling a pre-built image, and neither Dockerfile depends on a physical `.env` file being present at build time — configuration is passed in as container environment variables and Docker build args instead, resolved from a single `.env` file next to whichever `docker-compose.yml` you use. This also means the stack can be deployed directly from a fresh clone of this repository (e.g. a Portainer stack pointed at this repo), not only via the `export_docker.bat` snapshot below.
-
-Pick one of the following:
-
-- **Directly from the repository root** — copy `.env.example` to `.env`, fill in the values, then run `docker compose build && docker compose up -d` from the repo root.
-- **Via the `export_docker.bat` snapshot** — copy `.env.example` to `.env.production` in the repo root and fill in the values, run `export_docker.bat` to copy everything the Docker host needs (including renaming `.env.production` to `.env`) into the `docker/` directory, then run `docker compose build && docker compose up -d` from inside `docker/`.
-
-| Variable | Description | Sample Value |
-|----------|--------------|---------------|
-| DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME | MySQL connection settings, injected into the backend container at runtime | see `.env.example` |
-| VITE_API_DOMAIN | Backend API domain, baked into the frontend build via a Docker build arg; leave empty to use the relative path via the nginx proxy | http://api.tripdeck.example.com |
-| VITE_API_PORT | Backend API port; used by the backend container itself, baked into the frontend build, and used by nginx's `envsubst` proxy config | 3001 |
-| VITE_API_PUBLIC_PORT | Public-facing port baked into the frontend build for calls to `VITE_API_DOMAIN`, when a reverse proxy maps it to a different external port than `VITE_API_PORT`; leave empty to reuse `VITE_API_PORT` | 80 |
-| CORS_ORIGIN | Origin(s) allowed to make cross-origin requests to the backend, comma-separated; needed when `VITE_API_DOMAIN` points the frontend directly at the API instead of through the frontend's nginx same-origin proxy; leave empty to disable | http://tripdeck.example.com |
-| VITE_OWM_API_KEY | OpenWeatherMap API key, baked into the frontend build via a Docker build arg | — |
-| VITE_VC_API_KEY | Visual Crossing API key, baked into the frontend build via a Docker build arg | — |
-| FRONTEND_PORT | Port the frontend (nginx) listens on | 3000 |
-| AUTO_BACKUP_ENABLED / AUTO_BACKUP_INTERVAL_DAYS / AUTO_BACKUP_CHECK_INTERVAL_HOURS / AUTO_BACKUP_RETENTION_COUNT | Automatic full-system backup schedule, injected into the backend container at runtime | see `.env.example` |
-| UPLOADS_HOST_DIR | Host directory bind-mounted into the backend container's uploaded trip images; defaults to `./.uploads` (relative to wherever `docker-compose.yml` runs from) — override with an absolute path when that directory isn't stable (e.g. deployed via Portainer) | /opt/tripdeck/uploads |
-| BACKUPS_HOST_DIR | Host directory bind-mounted into the backend container's backup output; same override behavior as `UPLOADS_HOST_DIR` | /opt/tripdeck/backups |
-| LOG_LEVEL / LOG_DIR / LOG_FILENAME / LOG_MAX_SIZE_MB / LOG_MAX_FILES | Application log level and file rotation settings, injected into the backend container at runtime — see [Logging](#logging) | see `.env.example` |
-| LOGS_HOST_DIR | Host directory bind-mounted into the backend container's log output; same override behavior as `UPLOADS_HOST_DIR` | /opt/tripdeck/logs |
-
-See `.env.example` for the full list of variables and their default values.
-
-## Logging
-
-The backend writes structured (JSON-lines) logs to a file only — nothing is printed to the console. Each entry has the shape `{ timestamp, level, tag, message, meta? }`, where `tag` identifies the module that logged it (e.g. `db`, `backup`, `auto-backup`, `trip`).
-
-By default, log files live at `server/logs/app.log` in local development. Once the active file exceeds `LOG_MAX_SIZE_MB`, it's rotated: `app.log` is renamed `app.1.log`, the previous `app.1.log` becomes `app.2.log`, and so on — a file is never overwritten. `LOG_MAX_FILES` caps how many rotated files are kept (`0` means unlimited).
-
-| Variable | Description | Default |
-|----------|--------------|---------|
-| LOG_LEVEL | Minimum severity written: `debug`, `info`, `warn`, or `error` | `info` |
-| LOG_DIR | Directory log files are written to; leave empty to use the built-in default (`server/logs` outside Docker, `/app/logs` inside the container) | — |
-| LOG_FILENAME | Base filename for the active log file | `app.log` |
-| LOG_MAX_SIZE_MB | Rotate once the active file reaches this size | `10` |
-| LOG_MAX_FILES | How many rotated (historical) files to keep; `0` = unlimited | `5` |
-| LOGS_HOST_DIR | Docker-only: host directory bind-mounted onto the container's `LOG_DIR`, so rotated logs survive a container rebuild — see [Docker Deployment](#docker-deployment) | `./.logs` |
 
 ## Development
 
