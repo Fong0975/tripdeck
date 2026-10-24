@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import AttractionModal from '@/components/AttractionModal';
+import DayMapModal from '@/components/DayMapModal';
 import EditDayNoteModal from '@/components/EditDayNoteModal';
 import EditTripModal from '@/components/EditTripModal';
 import Navbar from '@/components/Navbar';
@@ -195,6 +196,7 @@ export default function TripDetail() {
               onEditDayNote={di =>
                 setModal({ type: 'editDayNote', dayIndex: di })
               }
+              onOpenDayMap={di => setModal({ type: 'dayMap', dayIndex: di })}
               onAddAttraction={di =>
                 setModal({ type: 'addAttraction', dayIndex: di })
               }
@@ -276,6 +278,14 @@ export default function TripDetail() {
             void reloadContent();
           }}
           onSave={notes => void handleSaveDayNotes(modal.dayIndex, notes)}
+        />
+      )}
+
+      {modal.type === 'dayMap' && (
+        <DayMapModal
+          days={content.days}
+          initialDayIndex={modal.dayIndex}
+          onClose={closeModal}
         />
       )}
 

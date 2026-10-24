@@ -25,6 +25,69 @@ describe('DayNotesSection', () => {
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    {
+      description: 'is ready',
+      availability: { state: 'ready' } as const,
+      expectButton: true,
+    },
+    {
+      description: 'is exhausted',
+      availability: { state: 'exhausted', resetAt: null } as const,
+      expectButton: true,
+    },
+    {
+      description: 'is unavailable',
+      availability: { state: 'unavailable' } as const,
+      expectButton: false,
+    },
+  ])(
+    'shows the map button only when the map $description',
+    ({ availability, expectButton }) => {
+      render(
+        <DayNotesSection
+          day={makeDay()}
+          onEdit={vi.fn()}
+          onOpenMap={vi.fn()}
+          mapAvailability={availability}
+        />,
+      );
+
+      expect(screen.queryByLabelText('檢視當日地圖') !== null).toBe(
+        expectButton,
+      );
+    },
+  );
+
+  it('omits the map button when no onOpenMap handler is given', () => {
+    render(
+      <DayNotesSection
+        day={makeDay()}
+        onEdit={vi.fn()}
+        mapAvailability={{ state: 'ready' }}
+      />,
+    );
+
+    expect(screen.queryByLabelText('檢視當日地圖')).not.toBeInTheDocument();
+  });
+
+  it('calls onOpenMap when the map button is clicked', async () => {
+    const onOpenMap = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <DayNotesSection
+        day={makeDay()}
+        onEdit={vi.fn()}
+        onOpenMap={onOpenMap}
+        mapAvailability={{ state: 'ready' }}
+      />,
+    );
+
+    await user.click(screen.getByLabelText('檢視當日地圖'));
+
+    expect(onOpenMap).toHaveBeenCalledTimes(1);
+  });
+
   it('renders no summary row or drawer when there are no notes and no images', () => {
     render(<DayNotesSection day={makeDay()} onEdit={vi.fn()} />);
 

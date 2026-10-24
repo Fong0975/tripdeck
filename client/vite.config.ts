@@ -15,6 +15,7 @@ const NODE_TEST_FILES = [
   'src/constants/**/*.test.ts',
   'src/utils/{date,duration,connectionAdjacency}.test.ts',
   'src/utils/weatherApi/**/*.test.ts',
+  'src/utils/mapsApi/**/*.test.ts',
   'src/utils/exportToDocx/{attractionTable,constants,dayNotesSection,headerSection,index,markdownToDocx,transportTable}.test.ts',
 ];
 

@@ -5,4 +5,5 @@ export type ModalState =
   | { type: 'addAttraction'; dayIndex: number }
   | { type: 'editAttraction'; dayIndex: number; attraction: Attraction }
   | { type: 'editConnection'; dayIndex: number; connection: TravelConnection }
-  | { type: 'editDayNote'; dayIndex: number };
+  | { type: 'editDayNote'; dayIndex: number }
+  | { type: 'dayMap'; dayIndex: number };

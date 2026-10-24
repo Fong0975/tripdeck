@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale/zh-TW';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useMapsStatus } from '@/hooks/useMapsStatus';
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
 import {
   makeAttraction,
@@ -19,6 +20,7 @@ import DayColumn from './index';
 
 vi.mock('@/utils/date', () => ({ isPastDate: vi.fn() }));
 vi.mock('@/hooks/useWeatherEnabled', () => ({ useWeatherEnabled: vi.fn() }));
+vi.mock('@/hooks/useMapsStatus', () => ({ useMapsStatus: vi.fn() }));
 
 vi.mock('../AttractionCard', () => ({
   default: ({
@@ -77,6 +79,7 @@ vi.mock('./LocationChips', () => ({
 function makeCallbacks() {
   return {
     onEditDayNote: vi.fn(),
+    onOpenDayMap: vi.fn(),
     onAddAttraction: vi.fn(),
     onEditAttraction: vi.fn(),
     onDeleteAttraction: vi.fn(),
@@ -102,6 +105,7 @@ function setupColumn(day: DayPlan, dayIndex = 0, callbacks = makeCallbacks()) {
 beforeEach(() => {
   vi.mocked(isPastDate).mockReturnValue(false);
   vi.mocked(useWeatherEnabled).mockReturnValue(true);
+  vi.mocked(useMapsStatus).mockReturnValue({ state: 'unavailable' });
 });
 
 describe('DayColumn', () => {
@@ -264,5 +268,34 @@ describe('DayColumn', () => {
     await user.click(screen.getByLabelText('編輯日備註'));
 
     expect(callbacks.onEditDayNote).toHaveBeenCalledWith(3);
+  });
+
+  it('calls onOpenDayMap with the dayIndex when the map button is clicked', async () => {
+    vi.mocked(useMapsStatus).mockReturnValue({ state: 'ready' });
+    const user = userEvent.setup();
+    const callbacks = setupColumn(makeDay(), 3);
+
+    await user.click(screen.getByLabelText('檢視當日地圖'));
+
+    expect(callbacks.onOpenDayMap).toHaveBeenCalledWith(3);
+  });
+
+  it('hides the map button while the map is unavailable', () => {
+    setupColumn(makeDay());
+
+    expect(screen.queryByLabelText('檢視當日地圖')).not.toBeInTheDocument();
+  });
+
+  it('keeps the map button inert when the daily quota is exhausted', async () => {
+    vi.mocked(useMapsStatus).mockReturnValue({
+      state: 'exhausted',
+      resetAt: null,
+    });
+    const user = userEvent.setup();
+    const callbacks = setupColumn(makeDay());
+
+    await user.click(screen.getByLabelText('檢視當日地圖'));
+
+    expect(callbacks.onOpenDayMap).not.toHaveBeenCalled();
   });
 });

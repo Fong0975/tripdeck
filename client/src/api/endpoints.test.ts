@@ -41,6 +41,7 @@ import {
   uploadDayImage,
   uploadTripImage,
 } from './images';
+import { getMapsStatus } from './maps';
 import {
   addOccasion,
   addTripCategory,
@@ -529,6 +530,16 @@ describe('weather API', () => {
       name: 'getWeather GETs the weather endpoint with a non-ASCII name and negative days encoded in the query',
       call: () => getWeather('東京 駅', '2026-08-20', -1),
       url: '/api/weather?location=%E6%9D%B1%E4%BA%AC+%E9%A7%85&date=2026-08-20&days=-1',
+    },
+  ]);
+});
+
+describe('maps API', () => {
+  itCallsApi([
+    {
+      name: 'getMapsStatus GETs the maps status endpoint',
+      call: () => getMapsStatus(),
+      url: '/api/maps/status',
     },
   ]);
 });
