@@ -9,6 +9,7 @@ import {
   type MapSession,
 } from '@/utils/googleMaps/mapSession';
 import { applyMarkers } from '@/utils/googleMaps/markers';
+import { applyRoute } from '@/utils/googleMaps/route';
 
 interface Props {
   points: MapPoint[];
@@ -72,6 +73,7 @@ export default function DayMapCanvas({ points, activeDayId }: Props) {
   useEffect(() => {
     if (state.status === 'ready') {
       applyMarkers(state.session, points, activeDayId);
+      applyRoute(state.session, points, activeDayId);
     }
   }, [state, points, activeDayId]);
 

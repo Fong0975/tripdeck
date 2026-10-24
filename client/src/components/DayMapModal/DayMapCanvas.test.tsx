@@ -10,6 +10,7 @@ import {
   type MapSession,
 } from '@/utils/googleMaps/mapSession';
 import { applyMarkers } from '@/utils/googleMaps/markers';
+import { applyRoute } from '@/utils/googleMaps/route';
 
 import DayMapCanvas from './DayMapCanvas';
 
@@ -21,6 +22,7 @@ vi.mock('@/utils/googleMaps/mapSession', () => ({
   detachMapSession: vi.fn(),
 }));
 vi.mock('@/utils/googleMaps/markers', () => ({ applyMarkers: vi.fn() }));
+vi.mock('@/utils/googleMaps/route', () => ({ applyRoute: vi.fn() }));
 
 const SESSION = { id: 'session' } as unknown as MapSession;
 const POINTS: MapPoint[] = [
@@ -63,6 +65,7 @@ describe('DayMapCanvas', () => {
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(applyMarkers).toHaveBeenCalledWith(SESSION, POINTS, 1);
+    expect(applyRoute).toHaveBeenCalledWith(SESSION, POINTS, 1);
     expect(attachMapSession).toHaveBeenCalledWith(expect.any(HTMLElement));
   });
 
@@ -75,6 +78,7 @@ describe('DayMapCanvas', () => {
 
     rerender(<DayMapCanvas points={morePoints} activeDayId={2} />);
     expect(applyMarkers).toHaveBeenLastCalledWith(SESSION, morePoints, 2);
+    expect(applyRoute).toHaveBeenLastCalledWith(SESSION, morePoints, 2);
   });
 
   it.each([

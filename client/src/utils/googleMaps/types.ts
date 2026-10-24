@@ -31,8 +31,23 @@ export interface MapOptions {
   fullscreenControl: boolean;
 }
 
+export interface PolylineOptions {
+  map: MapInstance;
+  path: LatLngLiteral[];
+  strokeColor: string;
+  strokeOpacity: number;
+  strokeWeight: number;
+  zIndex: number;
+}
+
+export interface PolylineInstance {
+  setPath(path: LatLngLiteral[]): void;
+  setMap(map: MapInstance | null): void;
+}
+
 export interface MapsLibrary {
   Map: new (element: HTMLElement, options: MapOptions) => MapInstance;
+  Polyline: new (options: PolylineOptions) => PolylineInstance;
 }
 
 export interface AdvancedMarkerInstance {

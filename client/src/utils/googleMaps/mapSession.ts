@@ -3,6 +3,7 @@ import type {
   AdvancedMarkerInstance,
   MapInstance,
   MapLibraries,
+  PolylineInstance,
 } from './types';
 
 // Advanced markers need a map ID; Google's demo ID works without any setup.
@@ -22,6 +23,8 @@ export interface MapSession {
   container: HTMLElement;
   /** Markers by coordinate key, with the signature they were last drawn with. */
   markers: Map<string, { marker: AdvancedMarkerInstance; signature: string }>;
+  /** The line joining the selected day's attractions, once one is drawn. */
+  route: PolylineInstance | null;
 }
 
 let sessionPromise: Promise<MapSession> | null = null;
@@ -39,7 +42,7 @@ async function createSession(host: HTMLElement): Promise<MapSession> {
     streetViewControl: false,
     fullscreenControl: false,
   });
-  return { libs, map, container, markers: new Map() };
+  return { libs, map, container, markers: new Map(), route: null };
 }
 
 /**
