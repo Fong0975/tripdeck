@@ -1,15 +1,27 @@
-import type { MapPoint } from './mapPoints';
+import {
+  groupMapPoints,
+  type MapMarkerGroup,
+  type MapPoint,
+} from './mapPoints';
 import type { MapSession } from './mapSession';
 import { createPinElement, type PinVariant } from './markerPin';
 
 const SINGLE_POINT_ZOOM = 15;
 const FIT_PADDING_PX = 64;
 
-function signatureOf(point: MapPoint, variant: PinVariant): string {
-  return [variant, point.lat, point.lng, point.order, point.name].join('|');
+const ORDER_SEPARATOR = '·';
+const NAME_SEPARATOR = ' / ';
+
+function signatureOf(
+  group: MapMarkerGroup,
+  variant: PinVariant,
+  label: string,
+  title: string,
+): string {
+  return [variant, group.lat, group.lng, label, title].join('|');
 }
 
-function fitView(session: MapSession, points: MapPoint[]): void {
+function fitView(session: MapSession, points: MapMarkerGroup[]): void {
   if (points.length === 0) {
     return;
   }
@@ -34,9 +46,11 @@ function fitView(session: MapSession, points: MapPoint[]): void {
 /**
  * Brings the map's markers in line with `points`: the selected day's
  * attractions as normal-size coloured numbered pins, every other day's as
- * small grey dots. Only markers whose look or position changed are rebuilt,
- * stale ones are removed, and the view is fitted to the selected day (or to
- * everything when that day has nothing locatable).
+ * small grey dots. Attractions sharing a coordinate (e.g. a hotel at both ends
+ * of the day) share one marker labelled with every position, so none is
+ * hidden underneath another. Only markers whose look or position changed are
+ * rebuilt, stale ones are removed, and the view is fitted to the selected day
+ * (or to everything when that day has nothing locatable).
  *
  * @param session - The live map.
  * @param points - Every locatable attraction in the trip.
@@ -47,19 +61,21 @@ export function applyMarkers(
   points: MapPoint[],
   activeDayId: number,
 ): void {
-  const wanted = new Set(points.map(point => point.attractionId));
-  for (const [id, entry] of session.markers) {
-    if (!wanted.has(id)) {
+  const groups = groupMapPoints(points, activeDayId);
+  const wanted = new Set(groups.map(group => group.key));
+  for (const [key, entry] of session.markers) {
+    if (!wanted.has(key)) {
       entry.marker.map = null;
-      session.markers.delete(id);
+      session.markers.delete(key);
     }
   }
 
-  for (const point of points) {
-    const variant: PinVariant =
-      point.dayId === activeDayId ? 'active' : 'inactive';
-    const signature = signatureOf(point, variant);
-    const existing = session.markers.get(point.attractionId);
+  for (const group of groups) {
+    const variant: PinVariant = group.active ? 'active' : 'inactive';
+    const label = group.orders.join(ORDER_SEPARATOR);
+    const title = group.names.join(NAME_SEPARATOR);
+    const signature = signatureOf(group, variant, label, title);
+    const existing = session.markers.get(group.key);
     if (existing?.signature === signature) {
       continue;
     }
@@ -68,14 +84,14 @@ export function applyMarkers(
     }
     const marker = new session.libs.marker.AdvancedMarkerElement({
       map: session.map,
-      position: { lat: point.lat, lng: point.lng },
-      content: createPinElement(variant, String(point.order)),
-      title: point.name,
-      zIndex: variant === 'active' ? 2 : 1,
+      position: { lat: group.lat, lng: group.lng },
+      content: createPinElement(variant, label),
+      title,
+      zIndex: group.active ? 2 : 1,
     });
-    session.markers.set(point.attractionId, { marker, signature });
+    session.markers.set(group.key, { marker, signature });
   }
 
-  const activePoints = points.filter(point => point.dayId === activeDayId);
-  fitView(session, activePoints.length > 0 ? activePoints : points);
+  const activeGroups = groups.filter(group => group.active);
+  fitView(session, activeGroups.length > 0 ? activeGroups : groups);
 }

@@ -20,8 +20,8 @@ export interface MapSession {
   libs: MapLibraries;
   map: MapInstance;
   container: HTMLElement;
-  /** Markers by attraction id, with the signature they were last drawn with. */
-  markers: Map<number, { marker: AdvancedMarkerInstance; signature: string }>;
+  /** Markers by coordinate key, with the signature they were last drawn with. */
+  markers: Map<string, { marker: AdvancedMarkerInstance; signature: string }>;
 }
 
 let sessionPromise: Promise<MapSession> | null = null;

@@ -52,7 +52,13 @@ describe('applyMarkers', () => {
       session,
       [
         point({ attractionId: 1, dayId: 1, order: 2, name: 'Today' }),
-        point({ attractionId: 2, dayId: 2, order: 1, name: 'Other' }),
+        point({
+          attractionId: 2,
+          dayId: 2,
+          order: 1,
+          name: 'Other',
+          lat: 26,
+        }),
       ],
       1,
     );
@@ -130,7 +136,10 @@ describe('applyMarkers', () => {
 
   it('does not rebuild markers that did not change', () => {
     const { session, created } = makeSession();
-    const points = [point({ attractionId: 1 }), point({ attractionId: 2 })];
+    const points = [
+      point({ attractionId: 1 }),
+      point({ attractionId: 2, lat: 26 }),
+    ];
 
     applyMarkers(session, points, 1);
     applyMarkers(session, points, 1);
@@ -142,7 +151,7 @@ describe('applyMarkers', () => {
     const { session, created } = makeSession();
     const points = [
       point({ attractionId: 1, dayId: 1 }),
-      point({ attractionId: 2, dayId: 2 }),
+      point({ attractionId: 2, dayId: 2, lat: 26 }),
     ];
 
     applyMarkers(session, points, 1);
@@ -168,16 +177,58 @@ describe('applyMarkers', () => {
 
   it('removes markers for attractions that are no longer on the map', () => {
     const { session, created } = makeSession();
+    const stay = point({ attractionId: 2, lat: 26 });
 
-    applyMarkers(
-      session,
-      [point({ attractionId: 1 }), point({ attractionId: 2 })],
-      1,
-    );
-    applyMarkers(session, [point({ attractionId: 2 })], 1);
+    applyMarkers(session, [point({ attractionId: 1 }), stay], 1);
+    applyMarkers(session, [stay], 1);
 
     expect(created[0].map).toBeNull();
     expect(created[1].map).not.toBeNull();
-    expect([...session.markers.keys()]).toEqual([2]);
+    expect([...session.markers.keys()]).toEqual(['26,121']);
+  });
+
+  it('draws attractions sharing a coordinate as one marker labelled with every position', () => {
+    const { session, created } = makeSession();
+
+    applyMarkers(
+      session,
+      [
+        point({ attractionId: 1, order: 1, name: 'Hotel' }),
+        point({ attractionId: 2, order: 2, name: 'Museum', lat: 26 }),
+        point({ attractionId: 3, order: 3, name: 'Hotel' }),
+      ],
+      1,
+    );
+
+    expect(created).toHaveLength(2);
+    expect(created[0].options.content).toHaveTextContent('1·3');
+    expect(created[0].options.title).toBe('Hotel');
+  });
+
+  it('lists distinct names in the title when shared-coordinate stops differ', () => {
+    const { session, created } = makeSession();
+
+    applyMarkers(
+      session,
+      [
+        point({ attractionId: 1, order: 1, name: 'Hotel' }),
+        point({ attractionId: 2, order: 2, name: 'Lobby bar' }),
+      ],
+      1,
+    );
+
+    expect(created[0].options.title).toBe('Hotel / Lobby bar');
+  });
+
+  it('rebuilds a merged marker when a duplicate is removed', () => {
+    const { session, created } = makeSession();
+    const first = point({ attractionId: 1, order: 1 });
+
+    applyMarkers(session, [first, point({ attractionId: 2, order: 4 })], 1);
+    applyMarkers(session, [first], 1);
+
+    expect(created).toHaveLength(2);
+    expect(created[0].map).toBeNull();
+    expect(created[1].options.content).toHaveTextContent(/^1$/);
   });
 });
