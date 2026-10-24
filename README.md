@@ -1,65 +1,20 @@
-# Tripdeck
+<p align="center">
+  <img src="client/public/icons/icon-192.png" alt="Tripdeck logo" width="96" height="96" />
+</p>
 
-A travel itinerary planning app with a React frontend and a Node.js REST API backend.
+<h1 align="center">Tripdeck</h1>
 
-- **Itinerary planning** — Organize trips day by day on a drag-and-drop kanban board; add attractions with notes, Google Maps links, reference websites, and photos, then define transport connections between them.
-- **Itinerary export** — Generate a formatted Word (.docx) document from any trip, with an editable Markdown preview step before download. The export includes styled day headers, transport tables, embedded images, and clickable hyperlinks.
-- **Packing checklist** — Manage a reusable packing template; each trip gets its own copy with multiple occasion columns so you can track what to pack for each part of the journey.
-- **Trip backup / import** — Export one or more trips as a self-contained zip (full data plus every uploaded image), and import a backup zip back in as brand-new trips, with automatic title de-duplication and ID remapping so nothing collides with existing data.
-- **Automatic full-system backup** — Every 15 days the server writes a complete backup (every trip, the packing checklist template, and all images) to disk, keeping only the 6 most recent files. Browse and download them from the same import/export modal, then restore one through the regular import flow.
+<p align="center">
+  <img src="https://img.shields.io/badge/node-24-5FA04E?logo=nodedotjs&logoColor=white" alt="Node.js 24" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5.7" />
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" alt="Vite 6" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4" />
+  <img src="https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white" alt="Express 4" />
+  <img src="https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white" alt="MySQL 8.x" />
+</p>
 
-## Project Structure
-
-```
-tripdeck/
-├── client/                   # React frontend (Vite + TypeScript + Tailwind)
-│   ├── public/
-│   ├── src/
-│   │   ├── api/              # Backend API client (per domain: trips, attractions, images, etc.)
-│   │   ├── components/       # Reusable UI components
-│   │   ├── constants/        # Shared constants (transport modes)
-│   │   ├── context/          # React context (theme)
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── lib/              # Toast notification system
-│   │   ├── pages/            # Route-level page components
-│   │   ├── types/            # TypeScript type definitions
-│   │   └── utils/            # Docx export, weather lookup cache, and other shared helpers
-│   ├── Dockerfile            # Multi-stage build: Vite → nginx
-│   ├── eslint.config.js      # ESLint 9 flat config
-│   ├── nginx.conf.template   # nginx config template (port + proxy via envsubst)
-│   ├── package.json
-│   └── vite.config.ts
-├── server/                   # Node.js REST API backend (Express + TypeScript)
-│   ├── src/
-│   │   ├── config/           # Database connection and Docker secret loading
-│   │   ├── controllers/      # Handles API business logic and responses
-│   │   ├── db/               # Schema definitions and table initialization
-│   │   ├── logger/           # File-based logger (levels, rotation, config)
-│   │   ├── middleware/       # Express middleware (multer file upload, global error handler)
-│   │   ├── repositories/     # Database query layer (MySQL2)
-│   │   ├── routes/           # Defines API endpoints and URL mapping
-│   │   ├── scheduler/        # Periodic automatic full-system backup checker
-│   │   ├── test-utils/       # Shared test helpers (Express request/response mocks)
-│   │   ├── types/            # Request/response type definitions
-│   │   ├── weather/          # Weather proxy (OpenWeatherMap + Visual Crossing, cached)
-│   │   └── index.ts          # Express server entry point
-│   ├── backups/              # Automatic backup files (git-ignored, timestamped filenames)
-│   ├── logs/                 # Rotated log files (git-ignored)
-│   ├── swagger/              # Auto-generated Swagger spec (output.json)
-│   ├── uploads/              # Uploaded image files (git-ignored, UUID filenames)
-│   ├── Dockerfile            # Multi-stage build: tsc → production Node.js
-│   ├── eslint.config.mjs     # ESLint 9 flat config
-│   ├── package.json
-│   ├── tsconfig.json         # Used for editor/lint (includes test files)
-│   ├── tsconfig.build.json   # Used by `npm run build` (excludes *.test.ts)
-│   └── vitest.config.ts
-├── docker-compose.yml        # Two-service deployment (backend + frontend, host network)
-├── export_docker.bat         # Copies deployment files to ./docker/ and injects .env.production
-├── .env.example              # Environment variable reference
-├── .nvmrc                    # Node.js version used by local dev (nvm) and CI
-├── package.json              # Workspace root — orchestrates client + server
-└── .github/workflows/        # CI: lint/test check, automated version bumping
-```
+Tripdeck is a travel itinerary planning app with a React frontend and a Node.js REST API backend. Plan each trip day by day on a drag-and-drop board with attractions, Google Maps links, photos and transport connections, and see any day on a map. Keep a packing checklist per trip, export itineraries to Word, and back trips up or import them as a zip, either manually or through automatic full-system backups.
 
 ## Getting Started
 
@@ -79,23 +34,7 @@ Copy `.env.example` to `.env` at the workspace root:
 cp .env.example .env
 ```
 
-```dotenv
-# MySQL connection — required
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=tripdeck
-
-# Backend API endpoint — leave empty in local development (Vite proxy handles routing)
-# Set to the server's domain when the frontend and backend are on different origins
-# Example: http://192.168.1.100
-VITE_API_DOMAIN=
-VITE_API_PORT=3001
-
-# Frontend dev server port
-FRONTEND_PORT=3000
-```
+Then fill in the values following the comments in `.env`; every variable is documented in `.env.example`.
 
 The database and all tables are created automatically on first server start.
 
@@ -227,22 +166,6 @@ npm run test:watch -w server       # Watch mode
 npm run test:coverage -w server    # Run once with a coverage report (used in CI)
 ```
 
-### Code Quality
-
-Both client and server have full ESLint + Prettier coverage:
-
-| Tool | Client | Server |
-|------|--------|--------|
-| ESLint | TypeScript, React hooks, Tailwind CSS, import order, Prettier | TypeScript, import order, Prettier |
-| Prettier | All `.ts`, `.tsx`, `.css`, `.json` | All `.ts` |
-
-The CI workflow (`ci.yml`) runs on every push or PR to `main`, gating each check on whether the relevant workspace's files actually changed:
-1. **Client ESLint** — `npm run lint:check -w client` (zero warnings allowed)
-2. **Server ESLint** — `npm run lint:check -w server` (zero warnings allowed)
-3. **Server unit tests** — `npm run test:coverage -w server` (also enforces the server's 80% coverage threshold)
-4. **Client unit tests** — `npm run test:coverage -w client` (also enforces the client's 80% coverage threshold)
-5. **Root Prettier** — `npm run format:check` (covers CSS, JSON, and all source files)
-
 ## API Reference
 
 The full interactive API reference is available via Swagger UI while the backend is running:
@@ -250,3 +173,22 @@ The full interactive API reference is available via Swagger UI while the backend
 ```
 http://localhost:3001/api/docs
 ```
+
+## Project Structure
+
+```
+tripdeck/
+├── client/                  # React frontend (Vite + TypeScript + Tailwind)
+│   ├── public/              # Static assets (icons, manifest)
+│   └── src/                 # Application source
+├── server/                  # Node.js REST API backend (Express + TypeScript)
+│   ├── backups/             # Automatic backup files (git-ignored)
+│   ├── logs/                # Rotated log files (git-ignored)
+│   ├── src/                 # Application source
+│   ├── swagger/             # Auto-generated Swagger spec
+│   └── uploads/             # Uploaded image files (git-ignored)
+└── .github/
+    └── workflows/           # CI: lint/test check, automated version bumping
+```
+
+The backend is layered as routes → controllers → repositories; only the repositories talk to MySQL. The frontend reaches the backend through the per-domain clients in `client/src/api/`, and the backend proxies third-party services (weather, Google Maps) so API keys never reach the browser bundle.

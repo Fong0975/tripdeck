@@ -174,6 +174,10 @@ export default function AttractionModal({
                 </a>
               )}
             </div>
+            <p className='mt-1 text-xs text-muted-foreground'>
+              地圖會優先從連結取得座標，支援含座標的完整連結與 maps.app.goo.gl
+              短網址；留空或無法解析時，會改用景點名稱查詢位置。
+            </p>
           </div>
 
           <MarkdownField
