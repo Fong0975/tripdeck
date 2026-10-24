@@ -60,11 +60,12 @@ function toGeoColumns(
   if (geoSource === 'not_found') {
     return [null, null, geoSource, geoKey];
   }
-  const validLatitude =
-    typeof latitude === 'number' && Math.abs(latitude) <= 90;
-  const validLongitude =
-    typeof longitude === 'number' && Math.abs(longitude) <= 180;
-  if (!validLatitude || !validLongitude) {
+  if (
+    typeof latitude !== 'number' ||
+    !(Math.abs(latitude) <= 90) ||
+    typeof longitude !== 'number' ||
+    !(Math.abs(longitude) <= 180)
+  ) {
     return [null, null, null, null];
   }
   return [latitude, longitude, geoSource, geoKey];
