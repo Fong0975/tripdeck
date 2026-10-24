@@ -283,6 +283,7 @@ export default function TripDetail() {
 
       {modal.type === 'dayMap' && (
         <DayMapModal
+          tripId={trip.id}
           days={content.days}
           initialDayIndex={modal.dayIndex}
           onClose={closeModal}

@@ -1,8 +1,12 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { MapsStatus } from '@/api/maps';
-import { getMapsStatusOnce } from '@/utils/mapsApi';
+import {
+  __resetMapsApiForTests,
+  getMapsStatusOnce,
+  markMapsExhausted,
+} from '@/utils/mapsApi';
 
 import { useMapsStatus } from './useMapsStatus';
 
@@ -70,5 +74,46 @@ describe('useMapsStatus', () => {
     await Promise.resolve();
 
     expect(result.current).toEqual({ state: 'unavailable' });
+  });
+
+  describe('when the quota runs out while mounted', () => {
+    const EXHAUSTED: MapsStatus = {
+      ...STATUS,
+      exhausted: true,
+      resetAt: '2026-10-25T07:00:00Z',
+    };
+
+    afterEach(() => {
+      __resetMapsApiForTests();
+    });
+
+    it('switches to exhausted', async () => {
+      vi.mocked(getMapsStatusOnce)
+        .mockResolvedValueOnce(STATUS)
+        .mockResolvedValue(EXHAUSTED);
+      const { result } = renderHook(() => useMapsStatus());
+      await waitFor(() => expect(result.current).toEqual({ state: 'ready' }));
+
+      act(() => markMapsExhausted('2026-10-25T07:00:00Z'));
+
+      await waitFor(() =>
+        expect(result.current).toEqual({
+          state: 'exhausted',
+          resetAt: '2026-10-25T07:00:00Z',
+        }),
+      );
+    });
+
+    it('stops following changes after unmount', async () => {
+      vi.mocked(getMapsStatusOnce).mockResolvedValue(STATUS);
+      const { result, unmount } = renderHook(() => useMapsStatus());
+      await waitFor(() => expect(result.current).toEqual({ state: 'ready' }));
+      unmount();
+      vi.mocked(getMapsStatusOnce).mockClear();
+
+      markMapsExhausted(null);
+
+      expect(getMapsStatusOnce).not.toHaveBeenCalled();
+    });
   });
 });

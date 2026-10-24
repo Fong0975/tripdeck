@@ -1,0 +1,187 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import type { MapPoint } from './mapPoints';
+import type { MapSession } from './mapSession';
+import { applyMarkers } from './markers';
+import type { AdvancedMarkerOptions, LatLngLiteral } from './types';
+
+interface FakeMarker {
+  options: AdvancedMarkerOptions;
+  map: unknown;
+}
+
+function makeSession() {
+  const created: FakeMarker[] = [];
+  class FakeAdvancedMarker implements FakeMarker {
+    map: unknown;
+    constructor(public options: AdvancedMarkerOptions) {
+      this.map = options.map;
+      created.push(this);
+    }
+  }
+  class FakeBounds {
+    points: LatLngLiteral[] = [];
+    extend(point: LatLngLiteral) {
+      this.points.push(point);
+    }
+  }
+  const map = { fitBounds: vi.fn(), setCenter: vi.fn(), setZoom: vi.fn() };
+  const session = {
+    libs: {
+      maps: { Map: vi.fn(), LatLngBounds: FakeBounds },
+      marker: { AdvancedMarkerElement: FakeAdvancedMarker },
+    },
+    map,
+    container: document.createElement('div'),
+    markers: new Map(),
+  } as unknown as MapSession;
+  return { session, map, created };
+}
+
+function point(overrides: Partial<MapPoint> = {}): MapPoint {
+  return {
+    attractionId: 1,
+    dayId: 1,
+    order: 1,
+    name: 'Museum',
+    lat: 25,
+    lng: 121,
+    ...overrides,
+  };
+}
+
+describe('applyMarkers', () => {
+  it('draws the selected day as numbered coloured pins above grey dots for other days', () => {
+    const { session, created } = makeSession();
+
+    applyMarkers(
+      session,
+      [
+        point({ attractionId: 1, dayId: 1, order: 2, name: 'Today' }),
+        point({ attractionId: 2, dayId: 2, order: 1, name: 'Other' }),
+      ],
+      1,
+    );
+
+    const [active, inactive] = created;
+    expect(active.options).toMatchObject({
+      title: 'Today',
+      zIndex: 2,
+      position: { lat: 25, lng: 121 },
+    });
+    expect(active.options.content).toHaveTextContent('2');
+    expect(active.options.content).toHaveClass('bg-primary');
+    expect(inactive.options).toMatchObject({ title: 'Other', zIndex: 1 });
+    expect(inactive.options.content).toBeEmptyDOMElement();
+    expect(inactive.options.content).toHaveClass('bg-gray-400');
+  });
+
+  it('fits the view to the selected day only', () => {
+    const { session, map } = makeSession();
+
+    applyMarkers(
+      session,
+      [
+        point({ attractionId: 1, dayId: 1, lat: 1, lng: 2 }),
+        point({ attractionId: 2, dayId: 1, lat: 3, lng: 4 }),
+        point({ attractionId: 3, dayId: 2, lat: 50, lng: 60 }),
+      ],
+      1,
+    );
+
+    expect(map.fitBounds).toHaveBeenCalledTimes(1);
+    const [bounds, padding] = map.fitBounds.mock.calls[0];
+    expect(bounds.points).toEqual([
+      { lat: 1, lng: 2 },
+      { lat: 3, lng: 4 },
+    ]);
+    expect(padding).toBe(64);
+  });
+
+  it('centres and zooms in on a lone selected-day point instead of fitting bounds', () => {
+    const { session, map } = makeSession();
+
+    applyMarkers(session, [point({ lat: 10, lng: 20 })], 1);
+
+    expect(map.setCenter).toHaveBeenCalledWith({ lat: 10, lng: 20 });
+    expect(map.setZoom).toHaveBeenCalledWith(15);
+    expect(map.fitBounds).not.toHaveBeenCalled();
+  });
+
+  it('fits every point when the selected day has none', () => {
+    const { session, map } = makeSession();
+
+    applyMarkers(
+      session,
+      [
+        point({ attractionId: 1, dayId: 2, lat: 1, lng: 2 }),
+        point({ attractionId: 2, dayId: 3, lat: 3, lng: 4 }),
+      ],
+      1,
+    );
+
+    expect(map.fitBounds.mock.calls[0][0].points).toHaveLength(2);
+  });
+
+  it('leaves the view alone when there is nothing to show', () => {
+    const { session, map } = makeSession();
+
+    applyMarkers(session, [], 1);
+
+    expect(map.fitBounds).not.toHaveBeenCalled();
+    expect(map.setCenter).not.toHaveBeenCalled();
+  });
+
+  it('does not rebuild markers that did not change', () => {
+    const { session, created } = makeSession();
+    const points = [point({ attractionId: 1 }), point({ attractionId: 2 })];
+
+    applyMarkers(session, points, 1);
+    applyMarkers(session, points, 1);
+
+    expect(created).toHaveLength(2);
+  });
+
+  it('restyles a marker when its day gains or loses the selection', () => {
+    const { session, created } = makeSession();
+    const points = [
+      point({ attractionId: 1, dayId: 1 }),
+      point({ attractionId: 2, dayId: 2 }),
+    ];
+
+    applyMarkers(session, points, 1);
+    applyMarkers(session, points, 2);
+
+    expect(created).toHaveLength(4);
+    expect(created[0].map).toBeNull();
+    expect(created[1].map).toBeNull();
+    expect(created[2].options.content).toHaveClass('bg-gray-400');
+    expect(created[3].options.content).toHaveClass('bg-primary');
+  });
+
+  it('rebuilds a marker whose position changed', () => {
+    const { session, created } = makeSession();
+
+    applyMarkers(session, [point({ lat: 1 })], 1);
+    applyMarkers(session, [point({ lat: 2 })], 1);
+
+    expect(created).toHaveLength(2);
+    expect(created[0].map).toBeNull();
+    expect(created[1].options.position).toEqual({ lat: 2, lng: 121 });
+  });
+
+  it('removes markers for attractions that are no longer on the map', () => {
+    const { session, created } = makeSession();
+
+    applyMarkers(
+      session,
+      [point({ attractionId: 1 }), point({ attractionId: 2 })],
+      1,
+    );
+    applyMarkers(session, [point({ attractionId: 2 })], 1);
+
+    expect(created[0].map).toBeNull();
+    expect(created[1].map).not.toBeNull();
+    expect([...session.markers.keys()]).toEqual([2]);
+  });
+});

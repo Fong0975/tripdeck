@@ -1,11 +1,22 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 
+import { useTripGeo } from '@/hooks/useTripGeo';
 import type { DayPlan } from '@/types';
 import { formatDayDate } from '@/utils/dayLabel';
+import { buildMapPoints, hasCoordinates } from '@/utils/googleMaps/mapPoints';
+
+import DayMapCanvas from './DayMapCanvas';
 
 interface Props {
+  tripId: number;
   days: DayPlan[];
   initialDayIndex: number;
   onClose: () => void;
@@ -21,15 +32,71 @@ function tabId(day: DayPlan): string {
   return `day-map-tab-${day.id}`;
 }
 
+interface NoticeProps {
+  resolving: boolean;
+  failed: boolean;
+  geocodeExhausted: boolean;
+  unlocatedCount: number;
+}
+
+/** Overlay explaining what the map can't show yet, plus the pin legend. */
+function MapNotice({
+  resolving,
+  failed,
+  geocodeExhausted,
+  unlocatedCount,
+}: NoticeProps) {
+  let message: string | null = null;
+  if (resolving) {
+    message = '正在定位景點…';
+  } else if (failed) {
+    message = '無法取得景點座標，僅顯示已知的位置';
+  } else if (unlocatedCount > 0) {
+    message = `有 ${unlocatedCount} 個景點無法在地圖上定位${
+      geocodeExhausted ? '（今日地點查詢額度已用完）' : ''
+    }`;
+  }
+
+  return (
+    <div className='pointer-events-none absolute top-3 left-3 flex flex-col items-start gap-1.5 text-xs'>
+      {message && (
+        <p
+          role='status'
+          className='rounded-lg bg-card/90 px-2.5 py-1.5 text-foreground shadow'
+        >
+          {message}
+        </p>
+      )}
+      <p className='flex items-center gap-3 rounded-lg bg-card/90 px-2.5 py-1.5 text-muted-foreground shadow'>
+        <span className='flex items-center gap-1'>
+          <span className='size-2.5 rounded-full bg-primary' />
+          當天景點
+        </span>
+        <span className='flex items-center gap-1'>
+          <span className='size-2 rounded-full bg-gray-400' />
+          其他天
+        </span>
+      </p>
+    </div>
+  );
+}
+
 /**
  * Near-full-screen modal with one tab per trip day. Opens on the day whose
  * map button was clicked; the area below the tabs is the map for the selected
  * day. Closes on Escape, backdrop click and the close button; the tabs follow
  * the WAI-ARIA pattern (roving tabindex, Left/Right arrows wrap around).
  */
-export default function DayMapModal({ days, initialDayIndex, onClose }: Props) {
+export default function DayMapModal({
+  tripId,
+  days,
+  initialDayIndex,
+  onClose,
+}: Props) {
   const [activeIndex, setActiveIndex] = useState(initialDayIndex);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const geo = useTripGeo(tripId, days, days[activeIndex]?.id);
+  const points = useMemo(() => buildMapPoints(geo.days), [geo.days]);
 
   useEffect(() => {
     const handle = (e: WindowEventMap['keydown']) => {
@@ -45,6 +112,9 @@ export default function DayMapModal({ days, initialDayIndex, onClose }: Props) {
   if (!activeDay) {
     return null;
   }
+  const unlocatedCount = geo.days[activeIndex].attractions.filter(
+    attraction => !hasCoordinates(attraction),
+  ).length;
 
   const selectTab = (index: number) => {
     setActiveIndex(index);
@@ -126,11 +196,15 @@ export default function DayMapModal({ days, initialDayIndex, onClose }: Props) {
           id={PANEL_ID}
           role='tabpanel'
           aria-labelledby={tabId(activeDay)}
-          className='relative flex min-h-0 flex-1 items-center justify-center bg-muted/30'
+          className='relative min-h-0 flex-1 bg-muted/30'
         >
-          <p className='text-sm text-muted-foreground'>
-            第 {activeDay.day} 天 · {activeDay.attractions.length} 個景點
-          </p>
+          <DayMapCanvas points={points} activeDayId={activeDay.id} />
+          <MapNotice
+            resolving={geo.resolving}
+            failed={geo.failed}
+            geocodeExhausted={geo.geocodeExhausted}
+            unlocatedCount={unlocatedCount}
+          />
         </div>
       </div>
     </div>,

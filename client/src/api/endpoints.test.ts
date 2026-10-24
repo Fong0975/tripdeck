@@ -41,7 +41,7 @@ import {
   uploadDayImage,
   uploadTripImage,
 } from './images';
-import { getMapsStatus } from './maps';
+import { getMapsStatus, reportMapsError, resolveTripGeo } from './maps';
 import {
   addOccasion,
   addTripCategory,
@@ -540,6 +540,18 @@ describe('maps API', () => {
       name: 'getMapsStatus GETs the maps status endpoint',
       call: () => getMapsStatus(),
       url: '/api/maps/status',
+    },
+    {
+      name: 'resolveTripGeo POSTs the trip and day ids to the resolve endpoint',
+      call: () => resolveTripGeo(1, 2),
+      url: '/api/maps/resolve',
+      init: { method: 'POST', ...json({ tripId: 1, dayId: 2 }) },
+    },
+    {
+      name: 'reportMapsError POSTs an auth failure report',
+      call: () => reportMapsError(),
+      url: '/api/maps/report-error',
+      init: { method: 'POST', ...json({ reason: 'auth_failure' }) },
     },
   ]);
 });

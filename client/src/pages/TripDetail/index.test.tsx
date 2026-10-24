@@ -174,16 +174,19 @@ vi.mock('@/components/EditDayNoteModal', () => ({
 
 vi.mock('@/components/DayMapModal', () => ({
   default: ({
+    tripId,
     days,
     initialDayIndex,
     onClose,
   }: {
+    tripId: number;
     days: DayPlan[];
     initialDayIndex: number;
     onClose: () => void;
   }) => (
     <div>
       <span>day-map-modal</span>
+      <span>map-trip-{tripId}</span>
       <span>
         map-opened-on-day-{days[initialDayIndex].id}-of-{days.length}
       </span>
@@ -793,6 +796,7 @@ describe('TripDetail', () => {
     await user.click(screen.getByText('open-day-map-1'));
 
     expect(screen.getByText('day-map-modal')).toBeInTheDocument();
+    expect(screen.getByText('map-trip-1')).toBeInTheDocument();
     expect(screen.getByText('map-opened-on-day-2-of-2')).toBeInTheDocument();
 
     await user.click(screen.getByText('close-day-map-modal'));

@@ -5,6 +5,8 @@ import { getMapsStatus, type MapsStatus } from '@/api/maps';
 import {
   __resetMapsApiForTests,
   getMapsStatusOnce,
+  markMapsExhausted,
+  subscribeMapsStatus,
   toMapsAvailability,
 } from './index';
 
@@ -54,6 +56,45 @@ describe('getMapsStatusOnce', () => {
     await getMapsStatusOnce();
 
     expect(getMapsStatus).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('markMapsExhausted', () => {
+  it('replaces the memoized status with an exhausted one', async () => {
+    vi.mocked(getMapsStatus).mockResolvedValue(makeStatus());
+    await getMapsStatusOnce();
+
+    markMapsExhausted('2026-10-25T07:00:00.000Z');
+
+    await expect(getMapsStatusOnce()).resolves.toEqual({
+      enabled: true,
+      exhausted: true,
+      geocodeExhausted: true,
+      resetAt: '2026-10-25T07:00:00.000Z',
+    });
+    expect(getMapsStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('notifies every subscriber, and not one that unsubscribed', () => {
+    const kept = vi.fn();
+    const dropped = vi.fn();
+    subscribeMapsStatus(kept);
+    subscribeMapsStatus(dropped)();
+
+    markMapsExhausted(null);
+
+    expect(kept).toHaveBeenCalledTimes(1);
+    expect(dropped).not.toHaveBeenCalled();
+  });
+
+  it('forgets subscribers on reset', () => {
+    const listener = vi.fn();
+    subscribeMapsStatus(listener);
+
+    __resetMapsApiForTests();
+    markMapsExhausted(null);
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });
 
