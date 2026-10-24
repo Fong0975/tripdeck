@@ -73,7 +73,7 @@ describe('applyMarkers', () => {
     expect(active.options.content).toHaveClass('bg-primary');
     expect(inactive.options).toMatchObject({ title: 'Other', zIndex: 1 });
     expect(inactive.options.content).toBeEmptyDOMElement();
-    expect(inactive.options.content).toHaveClass('bg-gray-400');
+    expect(inactive.options.content).toHaveClass('bg-gray-600');
   });
 
   it('fits the view to the selected day only', () => {
@@ -160,7 +160,7 @@ describe('applyMarkers', () => {
     expect(created).toHaveLength(4);
     expect(created[0].map).toBeNull();
     expect(created[1].map).toBeNull();
-    expect(created[2].options.content).toHaveClass('bg-gray-400');
+    expect(created[2].options.content).toHaveClass('bg-gray-600');
     expect(created[3].options.content).toHaveClass('bg-primary');
   });
 

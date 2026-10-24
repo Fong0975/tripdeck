@@ -27,11 +27,16 @@ describe('createPinElement', () => {
     }
   });
 
-  it('builds a small grey unlabelled dot for other days', () => {
+  it('builds a grey unlabelled dot with a white rim for other days', () => {
     const pin = createPinElement('inactive', '3');
 
     expect(pin).toBeEmptyDOMElement();
-    expect(pin).toHaveClass('size-3', 'bg-gray-400');
+    expect(pin).toHaveClass(
+      'size-5',
+      'border-2',
+      'border-white',
+      'bg-gray-600',
+    );
     expect(pin).not.toHaveClass('bg-primary');
   });
 
