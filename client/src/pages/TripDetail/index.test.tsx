@@ -172,6 +172,29 @@ vi.mock('@/components/EditDayNoteModal', () => ({
   ),
 }));
 
+vi.mock('@/components/DayMapModal', () => ({
+  default: ({
+    tripId,
+    days,
+    initialDayIndex,
+    onClose,
+  }: {
+    tripId: number;
+    days: DayPlan[];
+    initialDayIndex: number;
+    onClose: () => void;
+  }) => (
+    <div>
+      <span>day-map-modal</span>
+      <span>map-trip-{tripId}</span>
+      <span>
+        map-opened-on-day-{days[initialDayIndex].id}-of-{days.length}
+      </span>
+      <button onClick={onClose}>close-day-map-modal</button>
+    </div>
+  ),
+}));
+
 vi.mock('@/components/EditTripModal', () => ({
   default: ({
     trip,
@@ -762,6 +785,24 @@ describe('TripDetail', () => {
 
     expect(screen.queryByText('edit-day-note-modal')).not.toBeInTheDocument();
     expect(reloadContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the day map modal on the clicked day, then closes it without reloading content', async () => {
+    const reloadContent = vi.fn();
+    vi.mocked(useTripData).mockReturnValue(makeTripData({ reloadContent }));
+    const user = userEvent.setup();
+    renderTripDetail();
+
+    await user.click(screen.getByText('open-day-map-1'));
+
+    expect(screen.getByText('day-map-modal')).toBeInTheDocument();
+    expect(screen.getByText('map-trip-1')).toBeInTheDocument();
+    expect(screen.getByText('map-opened-on-day-2-of-2')).toBeInTheDocument();
+
+    await user.click(screen.getByText('close-day-map-modal'));
+
+    expect(screen.queryByText('day-map-modal')).not.toBeInTheDocument();
+    expect(reloadContent).not.toHaveBeenCalled();
   });
 
   it('calls handleSaveDayNotes with the right day index and notes on save', async () => {

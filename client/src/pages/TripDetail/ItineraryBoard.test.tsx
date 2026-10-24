@@ -39,6 +39,7 @@ function renderBoard(
     activeAttractionId: null,
     getActiveAttraction: vi.fn(() => undefined),
     onEditDayNote: vi.fn(),
+    onOpenDayMap: vi.fn(),
     onAddAttraction: vi.fn(),
     onEditAttraction: vi.fn(),
     onDeleteAttraction: vi.fn(),
@@ -68,6 +69,7 @@ describe('ItineraryBoard', () => {
     const { props } = renderBoard();
 
     await user.click(screen.getByText('edit-day-note-1'));
+    await user.click(screen.getByText('open-day-map-1'));
     await user.click(screen.getByText('add-attraction-1'));
     await user.click(screen.getByText('edit-attraction-0'));
     await user.click(screen.getByText('delete-attraction-0'));
@@ -80,6 +82,7 @@ describe('ItineraryBoard', () => {
     await user.click(screen.getByText('delete-location-0'));
 
     expect(props.onEditDayNote).toHaveBeenCalledWith(1);
+    expect(props.onOpenDayMap).toHaveBeenCalledWith(1);
     expect(props.onAddAttraction).toHaveBeenCalledWith(1);
     expect(props.onEditAttraction).toHaveBeenCalledWith(0, {
       id: 10,

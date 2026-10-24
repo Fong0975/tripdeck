@@ -66,6 +66,10 @@ export const tripTables: TableDef[] = [
       { name: 'start_time', type: 'VARCHAR(10)' },
       { name: 'end_time', type: 'VARCHAR(10)' },
       { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+      { name: 'latitude', type: 'DOUBLE' },
+      { name: 'longitude', type: 'DOUBLE' },
+      { name: 'geo_source', type: 'VARCHAR(16)' },
+      { name: 'geo_key', type: 'CHAR(64)' },
     ],
     foreignKeys: [
       {

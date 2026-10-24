@@ -29,6 +29,9 @@ export interface Trip {
   images?: AttractionImage[];
 }
 
+/** How an attraction's coordinates were obtained; `not_found` means lookup failed. */
+export type GeoSource = 'url' | 'geocode' | 'not_found';
+
 export interface Attraction {
   id: number;
   name: string;
@@ -39,6 +42,9 @@ export interface Attraction {
   endTime?: string | null;
   referenceWebsites?: ReferenceWebsite[];
   images?: AttractionImage[];
+  latitude?: number | null;
+  longitude?: number | null;
+  geoSource?: GeoSource | null;
 }
 
 export interface TravelConnection {

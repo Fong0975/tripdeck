@@ -69,6 +69,9 @@ const sampleContent: TripContentResponse = {
           referenceWebsites: [],
           images: [{ id: 2, filename: 'attr1.jpg', title: 'a' }],
           sortOrder: 0,
+          latitude: null,
+          longitude: null,
+          geoSource: null,
         },
       ],
       connections: [

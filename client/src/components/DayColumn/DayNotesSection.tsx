@@ -4,19 +4,33 @@ import { useState } from 'react';
 import ImageLightbox from '@/components/ImageLightbox';
 import ImageStrip from '@/components/ImageStrip';
 import type { DayPlan } from '@/types';
+import type { MapsAvailability } from '@/utils/mapsApi';
+
+import DayMapButton from './DayMapButton';
 
 interface Props {
   day: DayPlan;
   onEdit: () => void;
+  /** Opens the day's map; the map button is omitted when not provided. */
+  onOpenMap?: () => void;
+  mapAvailability?: MapsAvailability;
 }
 
+const MAP_UNAVAILABLE: MapsAvailability = { state: 'unavailable' };
+
 /**
- * Shows an edit-notes icon button next to each day's date. When the day has
+ * Shows an edit-notes icon button, plus a map button when the map feature is
+ * available, next to each day's date. When the day has
  * notes and/or images, a summary row (icon counts + chevron) appears beside
  * it, and hovering over the whole row opens a drawer-style panel with the
  * full notes text and image thumbnails.
  */
-export default function DayNotesSection({ day, onEdit }: Props) {
+export default function DayNotesSection({
+  day,
+  onEdit,
+  onOpenMap,
+  mapAvailability = MAP_UNAVAILABLE,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -40,6 +54,10 @@ export default function DayNotesSection({ day, onEdit }: Props) {
         >
           <Pencil size={14} />
         </button>
+
+        {onOpenMap && (
+          <DayMapButton availability={mapAvailability} onClick={onOpenMap} />
+        )}
 
         {hasSummary && (
           <div className='flex items-center gap-1.5 border-l border-border pl-1.5 text-xs text-muted-foreground'>

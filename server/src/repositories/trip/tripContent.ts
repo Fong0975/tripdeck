@@ -114,6 +114,9 @@ export async function findContent(
       referenceWebsites: websitesByAttractionId.get(row.id) ?? [],
       images: imagesByAttractionId.get(row.id) ?? [],
       sortOrder: row.sort_order,
+      latitude: row.latitude ?? null,
+      longitude: row.longitude ?? null,
+      geoSource: row.geo_source ?? null,
     });
     attractionsByDayId.set(row.trip_day_id, list);
   }

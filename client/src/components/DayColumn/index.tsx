@@ -3,13 +3,13 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale/zh-TW';
 import { Plus } from 'lucide-react';
 
+import { useMapsStatus } from '@/hooks/useMapsStatus';
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isPastDate } from '@/utils/date';
+import { formatDayDate } from '@/utils/dayLabel';
 
 import AttractionCard from '../AttractionCard';
 import DayWeather from '../DayWeather';
@@ -22,6 +22,7 @@ interface Props {
   day: DayPlan;
   dayIndex: number;
   onEditDayNote: (dayIndex: number) => void;
+  onOpenDayMap: (dayIndex: number) => void;
   onAddAttraction: (dayIndex: number) => void;
   onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -42,6 +43,7 @@ export default function DayColumn({
   day,
   dayIndex,
   onEditDayNote,
+  onOpenDayMap,
   onAddAttraction,
   onEditAttraction,
   onDeleteAttraction,
@@ -55,14 +57,9 @@ export default function DayColumn({
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${dayIndex}` });
   const isWeatherEnabled = useWeatherEnabled();
+  const mapAvailability = useMapsStatus();
 
-  const dateLabel = (() => {
-    try {
-      return format(parseISO(day.date), 'M/d (EEE)', { locale: zhTW });
-    } catch {
-      return day.date;
-    }
-  })();
+  const dateLabel = formatDayDate(day.date, 'M/d (EEE)');
 
   const isPast = isPastDate(day.date);
 
@@ -77,7 +74,12 @@ export default function DayColumn({
       </div>
 
       <div className='mb-3 px-1 text-center'>
-        <DayNotesSection day={day} onEdit={() => onEditDayNote(dayIndex)} />
+        <DayNotesSection
+          day={day}
+          onEdit={() => onEditDayNote(dayIndex)}
+          onOpenMap={() => onOpenDayMap(dayIndex)}
+          mapAvailability={mapAvailability}
+        />
 
         <LocationChips
           locations={day.locations}

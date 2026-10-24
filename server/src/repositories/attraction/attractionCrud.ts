@@ -106,6 +106,9 @@ export async function create(
       referenceWebsites: websites,
       images: [],
       sortOrder,
+      latitude: null,
+      longitude: null,
+      geoSource: null,
     };
   } catch (err) {
     await conn.rollback();
@@ -142,16 +145,18 @@ export async function update(
   try {
     await conn.beginTransaction();
 
+    const nextName = data.name ?? cur.name;
+    const nextGoogleMapUrl =
+      'googleMapUrl' in data ? (data.googleMapUrl ?? null) : cur.google_map_url;
+
     await conn.execute(
       `UPDATE trip_attractions
        SET name = ?, google_map_url = ?, notes = ?, nearby_attractions = ?,
            start_time = ?, end_time = ?
        WHERE id = ?`,
       [
-        data.name ?? cur.name,
-        'googleMapUrl' in data
-          ? (data.googleMapUrl ?? null)
-          : cur.google_map_url,
+        nextName,
+        nextGoogleMapUrl,
         'notes' in data ? (data.notes ?? null) : cur.notes,
         'nearbyAttractions' in data
           ? (data.nearbyAttractions ?? null)
@@ -161,6 +166,15 @@ export async function update(
         attractionId,
       ],
     );
+
+    if (nextName !== cur.name || nextGoogleMapUrl !== cur.google_map_url) {
+      await conn.execute(
+        `UPDATE trip_attractions
+         SET latitude = NULL, longitude = NULL, geo_source = NULL, geo_key = NULL
+         WHERE id = ?`,
+        [attractionId],
+      );
+    }
 
     if ('referenceWebsites' in data && Array.isArray(data.referenceWebsites)) {
       await conn.execute(

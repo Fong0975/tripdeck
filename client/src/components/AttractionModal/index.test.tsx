@@ -216,6 +216,14 @@ describe('AttractionModal', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
+  it('explains how the link is used to place the attraction on the map', () => {
+    renderModal();
+
+    expect(
+      screen.getByText(/maps\.app\.goo\.gl 短網址.*改用景點名稱查詢位置/),
+    ).toBeInTheDocument();
+  });
+
   it('calls onClose when the cancel button is clicked', async () => {
     const user = setupUser();
     const onClose = vi.fn();

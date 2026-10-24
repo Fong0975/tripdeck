@@ -29,10 +29,16 @@ services:
       LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
       OWM_API_KEY_FILE: /run/secrets/owm_api_key
       VC_API_KEY_FILE: /run/secrets/vc_api_key
+      GOOGLE_MAPS_BROWSER_KEY_FILE: /run/secrets/google_maps_browser_key
+      GOOGLE_MAPS_SERVER_KEY_FILE: /run/secrets/google_maps_server_key
+      MAPS_DAILY_GEOCODE_LIMIT: ${MAPS_DAILY_GEOCODE_LIMIT:-200}
+      MAPS_DAILY_LOAD_LIMIT: ${MAPS_DAILY_LOAD_LIMIT:-200}
     secrets:
       - db_password
       - owm_api_key
       - vc_api_key
+      - google_maps_browser_key
+      - google_maps_server_key
     volumes:
       - ${UPLOADS_HOST_DIR:-./.uploads}:/app/uploads
       - ${BACKUPS_HOST_DIR:-./.backups}:/app/backups
@@ -85,3 +91,7 @@ secrets:
     environment: OWM_API_KEY
   vc_api_key:
     environment: VC_API_KEY
+  google_maps_browser_key:
+    environment: GOOGLE_MAPS_BROWSER_KEY
+  google_maps_server_key:
+    environment: GOOGLE_MAPS_SERVER_KEY

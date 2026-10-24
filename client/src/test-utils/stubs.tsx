@@ -17,6 +17,7 @@ import type { Attraction, DayPlan, TravelConnection } from '@/types';
 /** Per-day callbacks shared by `ItineraryBoard` and `DayColumn`. */
 export interface DayCallbacks {
   onEditDayNote: (dayIndex: number) => void;
+  onOpenDayMap: (dayIndex: number) => void;
   onAddAttraction: (dayIndex: number) => void;
   onEditAttraction: (dayIndex: number, attraction: Attraction) => void;
   onDeleteAttraction: (dayIndex: number, attractionId: number) => void;
@@ -41,6 +42,7 @@ export function DayColumnStub({
   day,
   dayIndex,
   onEditDayNote,
+  onOpenDayMap,
   onAddAttraction,
   onEditAttraction,
   onDeleteAttraction,
@@ -57,6 +59,9 @@ export function DayColumnStub({
       <span>day-column-{dayIndex}</span>
       <button onClick={() => onEditDayNote(dayIndex)}>
         edit-day-note-{dayIndex}
+      </button>
+      <button onClick={() => onOpenDayMap(dayIndex)}>
+        open-day-map-{dayIndex}
       </button>
       <button onClick={() => onAddAttraction(dayIndex)}>
         add-attraction-{dayIndex}
