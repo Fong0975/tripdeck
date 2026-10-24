@@ -48,8 +48,9 @@ export async function duplicate(
 
     const [result] = await conn.execute<ResultSetHeader>(
       `INSERT INTO trip_attractions
-         (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order,
+          latitude, longitude, geo_source, geo_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dayId,
         original.name,
@@ -59,6 +60,10 @@ export async function duplicate(
         original.start_time,
         original.end_time,
         sortOrder,
+        original.latitude ?? null,
+        original.longitude ?? null,
+        original.geo_source ?? null,
+        original.geo_key ?? null,
       ],
     );
     newAttractionId = result.insertId;
@@ -121,6 +126,10 @@ export async function duplicate(
       start_time: original.start_time,
       end_time: original.end_time,
       sort_order: sortOrder!,
+      latitude: original.latitude ?? null,
+      longitude: original.longitude ?? null,
+      geo_source: original.geo_source ?? null,
+      geo_key: original.geo_key ?? null,
     } as TripAttractionRow,
     websites,
     copiedImages,

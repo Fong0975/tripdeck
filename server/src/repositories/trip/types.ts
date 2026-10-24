@@ -1,5 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 
+import type { GeoSource } from '../../maps/geoKey';
+
 export interface TripRow extends RowDataPacket {
   id: number;
   title: string;
@@ -28,6 +30,10 @@ export interface TripAttractionRow extends RowDataPacket {
   start_time: string | null;
   end_time: string | null;
   sort_order: number;
+  latitude: number | null;
+  longitude: number | null;
+  geo_source: GeoSource | null;
+  geo_key: string | null;
 }
 
 export interface TripAttractionWebsiteRow extends RowDataPacket {

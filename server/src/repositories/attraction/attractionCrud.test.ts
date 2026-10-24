@@ -136,6 +136,9 @@ describe('attractionCrud', () => {
         referenceWebsites: [],
         images: [],
         sortOrder: 3,
+        latitude: null,
+        longitude: null,
+        geoSource: null,
       });
     });
 
@@ -341,7 +344,61 @@ describe('attractionCrud', () => {
         referenceWebsites: [{ url: 'https://a.com', title: 'A' }],
         images,
         sortOrder: updatedRow.sort_order,
+        latitude: null,
+        longitude: null,
+        geoSource: null,
       });
+    });
+
+    describe('geo reset', () => {
+      const resetSql = expect.stringContaining('SET latitude = NULL');
+
+      it.each([
+        {
+          description: 'name changes',
+          data: { name: 'New Name' },
+          expectReset: true,
+        },
+        {
+          description: 'googleMapUrl changes',
+          data: { googleMapUrl: 'https://new.com' },
+          expectReset: true,
+        },
+        {
+          description: 'googleMapUrl is cleared',
+          data: { googleMapUrl: null },
+          expectReset: true,
+        },
+        {
+          description: 'name and googleMapUrl are resent unchanged',
+          data: { name: 'Old Name', googleMapUrl: 'https://old.com' },
+          expectReset: false,
+        },
+        {
+          description: 'only unrelated fields change',
+          data: { notes: 'new notes', startTime: '11:00' },
+          expectReset: false,
+        },
+      ])(
+        'resets stored coordinates only when $description',
+        async ({ data, expectReset }) => {
+          mockSelectSequence(currentRow, currentRow);
+          mockConnExecute.mockResolvedValue([{ affectedRows: 1 }]);
+
+          await update(currentRow.id, data as UpdateAttractionBody);
+
+          if (expectReset) {
+            expect(mockConnExecute).toHaveBeenCalledWith(resetSql, [
+              currentRow.id,
+            ]);
+          } else {
+            expect(mockConnExecute).not.toHaveBeenCalledWith(
+              resetSql,
+              expect.anything(),
+            );
+          }
+        },
+      );
     });
   });
 });

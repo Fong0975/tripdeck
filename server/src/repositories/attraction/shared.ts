@@ -1,6 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
+import type { GeoSource } from '../../maps/geoKey';
 import type {
   AttractionResponse,
   ImageResponse,
@@ -19,6 +20,10 @@ export interface TripAttractionRow extends RowDataPacket {
   start_time: string | null;
   end_time: string | null;
   sort_order: number;
+  latitude: number | null;
+  longitude: number | null;
+  geo_source: GeoSource | null;
+  geo_key: string | null;
 }
 
 export interface TripAttractionWebsiteRow extends RowDataPacket {
@@ -66,5 +71,8 @@ export function toAttractionResponse(
     referenceWebsites,
     images,
     sortOrder: row.sort_order,
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    geoSource: row.geo_source ?? null,
   };
 }

@@ -39,6 +39,10 @@ describe('attractionDuplicate', () => {
       start_time: '09:00',
       end_time: '10:00',
       sort_order: 1,
+      latitude: 25.033,
+      longitude: 121.5654,
+      geo_source: 'geocode',
+      geo_key: 'a'.repeat(64),
     };
 
     it('throws when the source attraction does not exist', async () => {
@@ -90,8 +94,17 @@ describe('attractionDuplicate', () => {
           '09:00',
           '10:00',
           4,
+          25.033,
+          121.5654,
+          'geocode',
+          'a'.repeat(64),
         ],
       );
+      expect(result).toMatchObject({
+        latitude: 25.033,
+        longitude: 121.5654,
+        geoSource: 'geocode',
+      });
       expect(mockConnExecute).toHaveBeenCalledWith(
         'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
         [99, 'https://a.com', 'A'],

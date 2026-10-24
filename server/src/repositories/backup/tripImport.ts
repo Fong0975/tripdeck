@@ -2,12 +2,13 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
+import { computeGeoKey, isGeoSource, type GeoSource } from '../../maps/geoKey';
 import {
   deleteImageFromDisk,
   saveImportedImageBuffer,
 } from '../../middleware/upload';
 import type { ImportedTripResult, TripBackupData } from '../../types/backup';
-import type { ImageResponse } from '../../types/trip';
+import type { AttractionResponse, ImageResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
 const logger = createLogger('backup');
@@ -38,6 +39,35 @@ export async function generateUniqueTripTitle(
     resolvedTitle,
   });
   return resolvedTitle;
+}
+
+/**
+ * Maps an imported attraction's geo fields to [latitude, longitude, geo_source, geo_key].
+ * Backups created before geo support, or with malformed values, import as
+ * unresolved (all null) so the coordinates are re-derived on demand.
+ */
+function toGeoColumns(
+  attraction: Partial<AttractionResponse> & {
+    name: string;
+    googleMapUrl: string | null;
+  },
+): [number | null, number | null, GeoSource | null, string | null] {
+  const { latitude, longitude, geoSource } = attraction;
+  if (!isGeoSource(geoSource)) {
+    return [null, null, null, null];
+  }
+  const geoKey = computeGeoKey(attraction.name, attraction.googleMapUrl);
+  if (geoSource === 'not_found') {
+    return [null, null, geoSource, geoKey];
+  }
+  const validLatitude =
+    typeof latitude === 'number' && Math.abs(latitude) <= 90;
+  const validLongitude =
+    typeof longitude === 'number' && Math.abs(longitude) <= 180;
+  if (!validLatitude || !validLongitude) {
+    return [null, null, null, null];
+  }
+  return [latitude, longitude, geoSource, geoKey];
 }
 
 interface PendingImage {
@@ -140,8 +170,9 @@ export async function importSingleTrip(
       for (const attraction of day.attractions) {
         const [attractionResult] = await conn.execute<ResultSetHeader>(
           `INSERT INTO trip_attractions
-             (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order,
+              latitude, longitude, geo_source, geo_key)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             newDayId,
             attraction.name,
@@ -151,6 +182,7 @@ export async function importSingleTrip(
             attraction.startTime,
             attraction.endTime,
             attraction.sortOrder,
+            ...toGeoColumns(attraction),
           ],
         );
         const newAttractionId = attractionResult.insertId;

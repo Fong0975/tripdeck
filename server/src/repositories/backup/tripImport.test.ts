@@ -29,6 +29,7 @@ vi.mock('../../logger', async () => {
   return { createLogger: () => mockLogger };
 });
 
+import { computeGeoKey } from '../../maps/geoKey';
 import { db, routeSql } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
@@ -117,6 +118,9 @@ const sampleData: TripBackupData = {
             referenceWebsites: [{ url: 'https://inari.jp', title: 'Official' }],
             images: [{ id: 2, filename: 'attr1.jpg', title: 'a' }],
             sortOrder: 0,
+            latitude: 34.9671,
+            longitude: 135.7727,
+            geoSource: 'geocode',
           },
           {
             id: 101,
@@ -129,6 +133,9 @@ const sampleData: TripBackupData = {
             referenceWebsites: [],
             images: [],
             sortOrder: 1,
+            latitude: null,
+            longitude: null,
+            geoSource: null,
           },
         ],
         connections: [
@@ -263,11 +270,37 @@ describe('importSingleTrip', () => {
     // Both attractions under the new day id, original sortOrder preserved.
     expect(mockConnExecute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO trip_attractions'),
-      [1001, 'Fushimi Inari', null, null, null, '09:00', '11:00', 0],
+      [
+        1001,
+        'Fushimi Inari',
+        null,
+        null,
+        null,
+        '09:00',
+        '11:00',
+        0,
+        34.9671,
+        135.7727,
+        'geocode',
+        computeGeoKey('Fushimi Inari', null),
+      ],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO trip_attractions'),
-      [1001, 'Kyoto Station', null, null, null, '12:00', '13:00', 1],
+      [
+        1001,
+        'Kyoto Station',
+        null,
+        null,
+        null,
+        '12:00',
+        '13:00',
+        1,
+        null,
+        null,
+        null,
+        null,
+      ],
     );
 
     // Reference website under the new attraction id.
@@ -506,5 +539,66 @@ describe('importSingleTrip', () => {
       'DELETE FROM trips WHERE id = ?',
       [1000],
     );
+  });
+});
+
+describe('importSingleTrip geo fields', () => {
+  const key = computeGeoKey('Fushimi Inari', null);
+
+  it.each([
+    {
+      description: 'keeps valid url-derived coordinates',
+      geo: { latitude: 35, longitude: 135, geoSource: 'url' },
+      expected: [35, 135, 'url', key],
+    },
+    {
+      description: 'keeps the not_found marker without coordinates',
+      geo: { latitude: null, longitude: null, geoSource: 'not_found' },
+      expected: [null, null, 'not_found', key],
+    },
+    {
+      description: 'drops fields from an old backup that predates geo support',
+      geo: {},
+      expected: [null, null, null, null],
+    },
+    {
+      description: 'drops an unknown geo source',
+      geo: { latitude: 35, longitude: 135, geoSource: 'manual' },
+      expected: [null, null, null, null],
+    },
+    {
+      description: 'drops out-of-range latitude',
+      geo: { latitude: 91, longitude: 135, geoSource: 'geocode' },
+      expected: [null, null, null, null],
+    },
+    {
+      description: 'drops out-of-range longitude',
+      geo: { latitude: 35, longitude: -181, geoSource: 'geocode' },
+      expected: [null, null, null, null],
+    },
+    {
+      description: 'drops non-numeric coordinates',
+      geo: { latitude: '35', longitude: '135', geoSource: 'geocode' },
+      expected: [null, null, null, null],
+    },
+  ])('$description', async ({ geo, expected }) => {
+    mockNoTitleConflicts();
+    mockSequentialInserts();
+    const data = structuredClone(sampleData) as TripBackupData;
+    Object.assign(data.content.days[0].attractions[0], {
+      latitude: undefined,
+      longitude: undefined,
+      geoSource: undefined,
+      ...geo,
+    });
+
+    await importSingleTrip(data, sampleImageBuffers());
+
+    const insertCall = mockConnExecute.mock.calls.find(
+      ([sql, params]) =>
+        sql.includes('INSERT INTO trip_attractions') &&
+        params[1] === 'Fushimi Inari',
+    );
+    expect(insertCall?.[1].slice(8)).toEqual(expected);
   });
 });

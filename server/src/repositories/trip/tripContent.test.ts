@@ -122,6 +122,10 @@ describe('tripContent', () => {
           start_time: '09:00',
           end_time: '10:00',
           sort_order: 0,
+          latitude: 35.01,
+          longitude: 135.67,
+          geo_source: 'url',
+          geo_key: 'k'.repeat(64),
         },
         {
           id: 101,
@@ -202,6 +206,9 @@ describe('tripContent', () => {
                 ],
                 images: [{ id: 1, filename: 'a.jpg', title: 'Img A' }],
                 sortOrder: 0,
+                latitude: 35.01,
+                longitude: 135.67,
+                geoSource: 'url',
               },
               {
                 id: 101,
@@ -214,6 +221,9 @@ describe('tripContent', () => {
                 referenceWebsites: [],
                 images: [],
                 sortOrder: 1,
+                latitude: null,
+                longitude: null,
+                geoSource: null,
               },
             ],
             connections: [

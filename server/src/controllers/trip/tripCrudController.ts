@@ -241,7 +241,10 @@ export async function getTripContent(
                            startTime: { type: 'string', nullable: true, example: '09:00' },
                            endTime: { type: 'string', nullable: true, example: '11:00' },
                            referenceWebsites: { type: 'array', items: { type: 'string' }, example: ['https://inari.jp/'] },
-                           sortOrder: { type: 'integer', example: 0 }
+                           sortOrder: { type: 'integer', example: 0 },
+                           latitude: { type: 'number', nullable: true, example: 34.9671 },
+                           longitude: { type: 'number', nullable: true, example: 135.7727 },
+                           geoSource: { type: 'string', nullable: true, enum: ['url', 'geocode', 'not_found'], example: 'url' }
                          }
                        }
                      },

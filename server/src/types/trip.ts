@@ -1,3 +1,5 @@
+import type { GeoSource } from '../maps/geoKey';
+
 // --- Shared sub-types ---
 
 export interface ReferenceWebsite {
@@ -35,6 +37,9 @@ export interface AttractionResponse {
   referenceWebsites: ReferenceWebsite[];
   images: ImageResponse[];
   sortOrder: number;
+  latitude: number | null;
+  longitude: number | null;
+  geoSource: GeoSource | null;
 }
 
 export interface ConnectionResponse {

@@ -527,6 +527,22 @@
                                 "sortOrder": {
                                   "type": "integer",
                                   "example": 0
+                                },
+                                "latitude": {
+                                  "type": "number",
+                                  "nullable": true,
+                                  "example": 34.9671
+                                },
+                                "longitude": {
+                                  "type": "number",
+                                  "nullable": true,
+                                  "example": 135.7727
+                                },
+                                "geoSource": {
+                                  "type": "string",
+                                  "nullable": true,
+                                  "enum": ["url", "geocode", "not_found"],
+                                  "example": "url"
                                 }
                               }
                             }
