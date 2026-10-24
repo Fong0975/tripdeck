@@ -18,7 +18,7 @@ class FakeMap {
 }
 
 const libs = {
-  maps: { Map: FakeMap, LatLngBounds: vi.fn() },
+  maps: { Map: FakeMap },
   marker: { AdvancedMarkerElement: vi.fn() },
 };
 
@@ -45,6 +45,16 @@ describe('attachMapSession', () => {
       }),
     );
     expect(session.markers.size).toBe(0);
+  });
+
+  it('softens only the base map canvas so the markers stay at full strength', async () => {
+    const { container } = await attachMapSession(document.createElement('div'));
+
+    expect(container).toHaveClass(
+      '[&_canvas]:saturate-70',
+      '[&_canvas]:brightness-110',
+      '[&_canvas]:contrast-90',
+    );
   });
 
   it('moves the existing map into a new host instead of creating another', async () => {

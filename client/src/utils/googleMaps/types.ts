@@ -9,12 +9,15 @@ export interface LatLngLiteral {
   lng: number;
 }
 
-export interface LatLngBoundsInstance {
-  extend(point: LatLngLiteral): unknown;
+export interface LatLngBoundsLiteral {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
 }
 
 export interface MapInstance {
-  fitBounds(bounds: LatLngBoundsInstance, padding?: number): void;
+  fitBounds(bounds: LatLngBoundsLiteral, padding?: number): void;
   setCenter(center: LatLngLiteral): void;
   setZoom(zoom: number): void;
 }
@@ -30,7 +33,6 @@ export interface MapOptions {
 
 export interface MapsLibrary {
   Map: new (element: HTMLElement, options: MapOptions) => MapInstance;
-  LatLngBounds: new () => LatLngBoundsInstance;
 }
 
 export interface AdvancedMarkerInstance {
@@ -64,4 +66,6 @@ export interface MapLibraries {
 export interface GoogleWindow extends Window {
   google?: { maps?: GoogleMapsApi };
   gm_authFailure?: () => void;
+  /** Invoked by the Maps script once the API is fully initialised. */
+  __tripdeckMapsReady?: () => void;
 }

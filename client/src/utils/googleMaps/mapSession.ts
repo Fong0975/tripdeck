@@ -9,6 +9,12 @@ import type {
 const MAP_ID = 'DEMO_MAP_ID';
 const WORLD_VIEW = { lat: 20, lng: 0 };
 
+// A vector map draws its base layer (roads, labels, places) on a <canvas>,
+// while markers are separate DOM elements. Softening only the canvas fades the
+// background so the markers stand out, without touching the markers themselves.
+const MAP_CONTAINER_CLASSES =
+  'size-full [&_canvas]:saturate-70 [&_canvas]:brightness-110 [&_canvas]:contrast-90';
+
 /** A live map plus the markers currently drawn on it. */
 export interface MapSession {
   libs: MapLibraries;
@@ -23,7 +29,7 @@ let sessionPromise: Promise<MapSession> | null = null;
 async function createSession(host: HTMLElement): Promise<MapSession> {
   const libs = await loadGoogleMaps();
   const container = document.createElement('div');
-  container.className = 'size-full';
+  container.className = MAP_CONTAINER_CLASSES;
   host.appendChild(container);
   const map = new libs.maps.Map(container, {
     mapId: MAP_ID,

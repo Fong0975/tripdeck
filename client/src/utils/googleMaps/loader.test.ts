@@ -17,7 +17,7 @@ vi.mock('@/api/maps', async importOriginal => ({
 }));
 vi.mock('@/utils/mapsApi', () => ({ markMapsExhausted: vi.fn() }));
 
-const mapsLibrary = { Map: vi.fn(), LatLngBounds: vi.fn() };
+const mapsLibrary = { Map: vi.fn() };
 const markerLibrary = { AdvancedMarkerElement: vi.fn() };
 const importLibrary = vi.fn(async (name: string) =>
   name === 'maps' ? mapsLibrary : markerLibrary,
@@ -39,10 +39,16 @@ function exposeGoogleApi() {
   googleWindow.google = { maps: { importLibrary } as never };
 }
 
+/** What the Maps script does when it has finished initialising. */
+function finishScriptLoad() {
+  googleWindow.__tripdeckMapsReady?.();
+}
+
 beforeEach(() => {
   __resetGoogleMapsLoaderForTests();
   delete googleWindow.google;
   delete googleWindow.gm_authFailure;
+  delete googleWindow.__tripdeckMapsReady;
   vi.spyOn(document.head, 'appendChild').mockImplementation(appended as never);
   vi.mocked(getMapsConfig).mockResolvedValue({ apiKey: 'browser-key' });
   vi.mocked(reportMapsError).mockResolvedValue(undefined);
@@ -52,7 +58,7 @@ describe('loadGoogleMaps', () => {
   it('fetches the key, injects the script and resolves with the maps and marker libraries', async () => {
     const { promise, script } = await startLoad();
     exposeGoogleApi();
-    script.dispatchEvent(new Event('load'));
+    finishScriptLoad();
 
     await expect(promise).resolves.toEqual({
       maps: mapsLibrary,
@@ -65,6 +71,8 @@ describe('loadGoogleMaps', () => {
     );
     expect(src.searchParams.get('key')).toBe('browser-key');
     expect(src.searchParams.get('loading')).toBe('async');
+    expect(src.searchParams.get('callback')).toBe('__tripdeckMapsReady');
+    expect(googleWindow.__tripdeckMapsReady).toBeUndefined();
     expect(script.async).toBe(true);
     expect(googleWindow.gm_authFailure).toBeTypeOf('function');
   });
@@ -73,13 +81,39 @@ describe('loadGoogleMaps', () => {
     const first = await startLoad();
     exposeGoogleApi();
     const second = loadGoogleMaps();
-    first.script.dispatchEvent(new Event('load'));
+    finishScriptLoad();
     await first.promise;
     await loadGoogleMaps();
 
     expect(await second).toBe(await first.promise);
     expect(getMapsConfig).toHaveBeenCalledTimes(1);
     expect(appended).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not treat the script's load event as ready", async () => {
+    const { promise, script } = await startLoad();
+    const settled = vi.fn();
+    void promise.then(settled, settled);
+
+    script.dispatchEvent(new Event('load'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(settled).not.toHaveBeenCalled();
+    exposeGoogleApi();
+    finishScriptLoad();
+    await expect(promise).resolves.toBeDefined();
+  });
+
+  it('does not add the script again when the API is already on the page', async () => {
+    exposeGoogleApi();
+
+    await expect(loadGoogleMaps()).resolves.toEqual({
+      maps: mapsLibrary,
+      marker: markerLibrary,
+    });
+
+    expect(appended).not.toHaveBeenCalled();
   });
 
   it('marks the quota exhausted and never retries after a quota refusal', async () => {
@@ -99,9 +133,9 @@ describe('loadGoogleMaps', () => {
     vi.mocked(getMapsConfig).mockRejectedValueOnce(new Error('API error 500'));
 
     await expect(loadGoogleMaps()).rejects.toThrow('API error 500');
-    const { promise, script } = await startLoad();
+    const { promise } = await startLoad();
     exposeGoogleApi();
-    script.dispatchEvent(new Event('load'));
+    finishScriptLoad();
 
     await expect(promise).resolves.toBeDefined();
     expect(getMapsConfig).toHaveBeenCalledTimes(2);
@@ -111,7 +145,7 @@ describe('loadGoogleMaps', () => {
   it('rejects when the script fails to load, then allows a retry', async () => {
     const { promise, script } = await startLoad();
     script.dispatchEvent(new Event('error'));
-
+    expect(googleWindow.__tripdeckMapsReady).toBeUndefined();
     await expect(promise).rejects.toThrow(
       'Failed to load the Google Maps script',
     );
@@ -119,13 +153,13 @@ describe('loadGoogleMaps', () => {
     appended.mockClear();
     const retry = await startLoad();
     exposeGoogleApi();
-    retry.script.dispatchEvent(new Event('load'));
+    finishScriptLoad();
     await expect(retry.promise).resolves.toBeDefined();
   });
 
   it('rejects when the script loads without exposing the API', async () => {
-    const { promise, script } = await startLoad();
-    script.dispatchEvent(new Event('load'));
+    const { promise } = await startLoad();
+    finishScriptLoad();
 
     await expect(promise).rejects.toThrow('did not initialise');
   });

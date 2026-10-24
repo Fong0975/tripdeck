@@ -4,6 +4,7 @@ import { markMapsExhausted } from '@/utils/mapsApi';
 import type { GoogleWindow, MapLibraries } from './types';
 
 const SCRIPT_URL = 'https://maps.googleapis.com/maps/api/js';
+const CALLBACK_NAME = '__tripdeckMapsReady';
 
 let librariesPromise: Promise<MapLibraries> | null = null;
 const authFailureListeners = new Set<() => void>();
@@ -26,9 +27,26 @@ function handleAuthFailure(): void {
   authFailureListeners.forEach(listener => listener());
 }
 
+/**
+ * Adds the Maps script and resolves once Google calls the `callback` named in
+ * its URL. The script's `load` event is too early for `loading=async`: the
+ * library modules aren't registered yet, so `importLibrary` would fail. If the
+ * API is already on the page (e.g. an earlier attempt got that far) nothing is
+ * added, since including the script twice breaks the API.
+ */
 function injectScript(apiKey: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    (window as GoogleWindow).gm_authFailure = handleAuthFailure;
+    const win = window as GoogleWindow;
+    if (win.google?.maps) {
+      resolve();
+      return;
+    }
+
+    win.gm_authFailure = handleAuthFailure;
+    win[CALLBACK_NAME] = () => {
+      delete win[CALLBACK_NAME];
+      resolve();
+    };
 
     const script = document.createElement('script');
     script.src = `${SCRIPT_URL}?${new URLSearchParams({
@@ -36,11 +54,12 @@ function injectScript(apiKey: string): Promise<void> {
       v: 'weekly',
       loading: 'async',
       language: 'zh-TW',
+      callback: CALLBACK_NAME,
     }).toString()}`;
     script.async = true;
-    script.onload = () => resolve();
     script.onerror = () => {
       script.remove();
+      delete win[CALLBACK_NAME];
       reject(new Error('Failed to load the Google Maps script'));
     };
     document.head.appendChild(script);

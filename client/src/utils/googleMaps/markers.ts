@@ -18,9 +18,17 @@ function fitView(session: MapSession, points: MapPoint[]): void {
     session.map.setZoom(SINGLE_POINT_ZOOM);
     return;
   }
-  const bounds = new session.libs.maps.LatLngBounds();
-  points.forEach(point => bounds.extend({ lat: point.lat, lng: point.lng }));
-  session.map.fitBounds(bounds, FIT_PADDING_PX);
+  const lats = points.map(point => point.lat);
+  const lngs = points.map(point => point.lng);
+  session.map.fitBounds(
+    {
+      north: Math.max(...lats),
+      south: Math.min(...lats),
+      east: Math.max(...lngs),
+      west: Math.min(...lngs),
+    },
+    FIT_PADDING_PX,
+  );
 }
 
 /**

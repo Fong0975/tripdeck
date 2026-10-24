@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MapPoint } from './mapPoints';
 import type { MapSession } from './mapSession';
 import { applyMarkers } from './markers';
-import type { AdvancedMarkerOptions, LatLngLiteral } from './types';
+import type { AdvancedMarkerOptions } from './types';
 
 interface FakeMarker {
   options: AdvancedMarkerOptions;
@@ -19,16 +19,10 @@ function makeSession() {
       created.push(this);
     }
   }
-  class FakeBounds {
-    points: LatLngLiteral[] = [];
-    extend(point: LatLngLiteral) {
-      this.points.push(point);
-    }
-  }
   const map = { fitBounds: vi.fn(), setCenter: vi.fn(), setZoom: vi.fn() };
   const session = {
     libs: {
-      maps: { Map: vi.fn(), LatLngBounds: FakeBounds },
+      maps: { Map: vi.fn() },
       marker: { AdvancedMarkerElement: FakeAdvancedMarker },
     },
     map,
@@ -91,10 +85,7 @@ describe('applyMarkers', () => {
 
     expect(map.fitBounds).toHaveBeenCalledTimes(1);
     const [bounds, padding] = map.fitBounds.mock.calls[0];
-    expect(bounds.points).toEqual([
-      { lat: 1, lng: 2 },
-      { lat: 3, lng: 4 },
-    ]);
+    expect(bounds).toEqual({ north: 3, south: 1, east: 4, west: 2 });
     expect(padding).toBe(64);
   });
 
@@ -120,7 +111,12 @@ describe('applyMarkers', () => {
       1,
     );
 
-    expect(map.fitBounds.mock.calls[0][0].points).toHaveLength(2);
+    expect(map.fitBounds.mock.calls[0][0]).toEqual({
+      north: 3,
+      south: 1,
+      east: 4,
+      west: 2,
+    });
   });
 
   it('leaves the view alone when there is nothing to show', () => {
