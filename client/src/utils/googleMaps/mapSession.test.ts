@@ -45,6 +45,7 @@ describe('attachMapSession', () => {
       }),
     );
     expect(session.markers.size).toBe(0);
+    expect(session.route).toBeNull();
   });
 
   it('softens only the base map canvas so the markers stay at full strength', async () => {

@@ -113,6 +113,22 @@ describe('DayMapModal', () => {
     expect(screen.getByText('canvas-points-10,30')).toBeInTheDocument();
   });
 
+  it('hides other days from the map while the other-days toggle is off, and restores them', async () => {
+    const user = userEvent.setup();
+    renderModal(0);
+    const toggle = screen.getByRole('button', { name: '其他天' });
+
+    await user.click(toggle);
+    expect(screen.getByText('canvas-points-10')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(screen.getByRole('tab', { name: /第 3 天/ }));
+    expect(screen.getByText('canvas-points-30')).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(screen.getByText('canvas-points-10,30')).toBeInTheDocument();
+  });
+
   it.each([
     {
       description: 'a selected day with an unlocated attraction',

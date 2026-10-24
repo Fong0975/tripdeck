@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import MapNotice from './MapNotice';
 
@@ -8,6 +9,8 @@ const IDLE = {
   failed: false,
   geocodeExhausted: false,
   unlocatedCount: 0,
+  showOtherDays: true,
+  onToggleOtherDays: vi.fn(),
 };
 
 describe('MapNotice', () => {
@@ -15,7 +18,33 @@ describe('MapNotice', () => {
     render(<MapNotice {...IDLE} />);
 
     expect(screen.getByText('當天景點')).toBeInTheDocument();
-    expect(screen.getByText('其他天')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '其他天' })).toBeInTheDocument();
+  });
+
+  it.each([
+    { showOtherDays: true, dotVisible: true },
+    { showOtherDays: false, dotVisible: false },
+  ])(
+    'reflects showOtherDays=$showOtherDays on the toggle and its dot',
+    ({ showOtherDays, dotVisible }) => {
+      render(<MapNotice {...IDLE} showOtherDays={showOtherDays} />);
+
+      expect(screen.getByRole('button', { name: '其他天' })).toHaveAttribute(
+        'aria-pressed',
+        String(showOtherDays),
+      );
+      expect(screen.queryByTestId('other-days-dot') !== null).toBe(dotVisible);
+    },
+  );
+
+  it('calls onToggleOtherDays when the other-days button is clicked', async () => {
+    const user = userEvent.setup();
+    const onToggleOtherDays = vi.fn();
+    render(<MapNotice {...IDLE} onToggleOtherDays={onToggleOtherDays} />);
+
+    await user.click(screen.getByRole('button', { name: '其他天' }));
+
+    expect(onToggleOtherDays).toHaveBeenCalledTimes(1);
   });
 
   it('shows no status line when there is nothing to explain', () => {

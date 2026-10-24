@@ -11,11 +11,32 @@ describe('createPinElement', () => {
     expect(pin).not.toHaveClass('bg-gray-400');
   });
 
-  it('builds a small grey unlabelled dot for other days', () => {
+  it.each([
+    { label: '12', pill: false },
+    { label: '1·4', pill: true },
+    { label: '10·12', pill: true },
+  ])('uses a pill: $pill for label $label', ({ label, pill }) => {
+    const pin = createPinElement('active', label);
+
+    expect(pin).toHaveTextContent(label);
+    if (pill) {
+      expect(pin).toHaveClass('min-w-8', 'px-2');
+      expect(pin).not.toHaveClass('size-8');
+    } else {
+      expect(pin).toHaveClass('size-8');
+    }
+  });
+
+  it('builds a grey unlabelled dot with a white rim for other days', () => {
     const pin = createPinElement('inactive', '3');
 
     expect(pin).toBeEmptyDOMElement();
-    expect(pin).toHaveClass('size-3', 'bg-gray-400');
+    expect(pin).toHaveClass(
+      'size-5',
+      'border-2',
+      'border-white',
+      'bg-gray-600',
+    );
     expect(pin).not.toHaveClass('bg-primary');
   });
 

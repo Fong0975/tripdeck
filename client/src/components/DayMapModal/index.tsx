@@ -33,7 +33,16 @@ export default function DayMapModal({
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(initialDayIndex);
   const geo = useTripGeo(tripId, days, days[activeIndex]?.id);
-  const points = useMemo(() => buildMapPoints(geo.days), [geo.days]);
+  const [showOtherDays, setShowOtherDays] = useState(true);
+  const allPoints = useMemo(() => buildMapPoints(geo.days), [geo.days]);
+  const activeDayId = days[activeIndex]?.id;
+  const points = useMemo(
+    () =>
+      showOtherDays
+        ? allPoints
+        : allPoints.filter(point => point.dayId === activeDayId),
+    [allPoints, showOtherDays, activeDayId],
+  );
 
   useEffect(() => {
     const handle = (e: WindowEventMap['keydown']) => {
@@ -98,6 +107,8 @@ export default function DayMapModal({
             failed={geo.failed}
             geocodeExhausted={geo.geocodeExhausted}
             unlocatedCount={unlocatedCount}
+            showOtherDays={showOtherDays}
+            onToggleOtherDays={() => setShowOtherDays(show => !show)}
           />
         </div>
       </div>

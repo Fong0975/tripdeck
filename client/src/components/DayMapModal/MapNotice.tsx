@@ -4,17 +4,23 @@ interface Props {
   geocodeExhausted: boolean;
   /** Attractions of the selected day that have no location on the map. */
   unlocatedCount: number;
+  /** Whether other days' dots are currently drawn on the map. */
+  showOtherDays: boolean;
+  onToggleOtherDays: () => void;
 }
 
 /**
  * Overlay in the map's corner: a status line explaining what the map can't
- * show (yet), if anything, plus the legend for the two pin styles.
+ * show (yet), if anything, plus the legend for the two pin styles. The
+ * other-days entry is a toggle that shows or hides those dots.
  */
 export default function MapNotice({
   resolving,
   failed,
   geocodeExhausted,
   unlocatedCount,
+  showOtherDays,
+  onToggleOtherDays,
 }: Props) {
   let message: string | null = null;
   if (resolving) {
@@ -42,10 +48,20 @@ export default function MapNotice({
           <span className='size-2.5 rounded-full bg-primary' />
           當天景點
         </span>
-        <span className='flex items-center gap-1'>
-          <span className='size-2 rounded-full bg-gray-400' />
+        <button
+          type='button'
+          aria-pressed={showOtherDays}
+          onClick={onToggleOtherDays}
+          className='pointer-events-auto flex cursor-pointer items-center gap-1 rounded px-1 transition-colors hover:bg-accent hover:text-foreground'
+        >
+          {showOtherDays && (
+            <span
+              data-testid='other-days-dot'
+              className='size-3.5 rounded-full border-2 border-white bg-gray-600 shadow-md'
+            />
+          )}
           其他天
-        </span>
+        </button>
       </p>
     </div>
   );

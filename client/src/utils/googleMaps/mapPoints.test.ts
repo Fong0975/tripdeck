@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { makeAttraction, makeDay } from '@/test-utils/fixtures';
 
-import { buildMapPoints, hasCoordinates } from './mapPoints';
+import {
+  buildMapPoints,
+  groupMapPoints,
+  hasCoordinates,
+  type MapPoint,
+} from './mapPoints';
 
 describe('hasCoordinates', () => {
   it.each([
@@ -88,5 +93,101 @@ describe('buildMapPoints', () => {
     ];
 
     expect(buildMapPoints(days)).toHaveLength(1);
+  });
+});
+
+describe('groupMapPoints', () => {
+  const at = (
+    attractionId: number,
+    dayId: number,
+    order: number,
+    name: string,
+    lat: number,
+  ): MapPoint => ({ attractionId, dayId, order, name, lat, lng: 100 });
+
+  it.each([
+    {
+      description: 'no points',
+      points: [] as MapPoint[],
+      expected: [],
+    },
+    {
+      description: 'distinct coordinates stay separate',
+      points: [at(1, 1, 1, 'A', 1), at(2, 1, 2, 'B', 2)],
+      expected: [
+        {
+          key: '1,100',
+          lat: 1,
+          lng: 100,
+          active: true,
+          orders: [1],
+          names: ['A'],
+        },
+        {
+          key: '2,100',
+          lat: 2,
+          lng: 100,
+          active: true,
+          orders: [2],
+          names: ['B'],
+        },
+      ],
+    },
+    {
+      description: 'a hotel at both ends of the day merges its positions',
+      points: [
+        at(1, 1, 1, 'Hotel', 1),
+        at(2, 1, 2, 'Museum', 2),
+        at(3, 1, 3, 'Hotel', 1),
+      ],
+      expected: [
+        {
+          key: '1,100',
+          lat: 1,
+          lng: 100,
+          active: true,
+          orders: [1, 3],
+          names: ['Hotel'],
+        },
+        {
+          key: '2,100',
+          lat: 2,
+          lng: 100,
+          active: true,
+          orders: [2],
+          names: ['Museum'],
+        },
+      ],
+    },
+    {
+      description: 'other days at an active coordinate add no label',
+      points: [at(1, 1, 2, 'Hotel', 1), at(2, 2, 1, 'Hotel', 1)],
+      expected: [
+        {
+          key: '1,100',
+          lat: 1,
+          lng: 100,
+          active: true,
+          orders: [2],
+          names: ['Hotel'],
+        },
+      ],
+    },
+    {
+      description: 'a coordinate only used by other days is inactive',
+      points: [at(1, 2, 1, 'Hotel', 1), at(2, 3, 4, 'Hotel', 1)],
+      expected: [
+        {
+          key: '1,100',
+          lat: 1,
+          lng: 100,
+          active: false,
+          orders: [1, 4],
+          names: ['Hotel'],
+        },
+      ],
+    },
+  ])('groups: $description', ({ points, expected }) => {
+    expect(groupMapPoints(points, 1)).toEqual(expected);
   });
 });
