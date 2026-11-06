@@ -43,10 +43,7 @@ interface Variant {
   kind: 'attraction' | 'connection' | 'trip' | 'day';
   table: string;
   idColumn:
-    | 'trip_attraction_id'
-    | 'trip_connection_id'
-    | 'trip_id'
-    | 'trip_day_id';
+    'trip_attraction_id' | 'trip_connection_id' | 'trip_id' | 'trip_day_id';
   getImages: typeof getAttractionImages;
   getImagesBatch: typeof getAttractionImagesBatch;
   addImage: typeof addAttractionImage;

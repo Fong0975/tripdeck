@@ -4,13 +4,7 @@ export interface ReferenceWebsite {
 }
 
 export type TransportMode =
-  | 'walk'
-  | 'drive'
-  | 'transit'
-  | 'bike'
-  | 'taxi'
-  | 'flight'
-  | 'other';
+  'walk' | 'drive' | 'transit' | 'bike' | 'taxi' | 'flight' | 'other';
 
 export interface AttractionImage {
   id: number;
