@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # npm workspaces (root, client/, server/ share the root lockfile)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Taipei"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore"
+    pull-request-branch-name:
+      prefix: "chore"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
