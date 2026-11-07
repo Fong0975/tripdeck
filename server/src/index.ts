@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import { initDatabase } from './db/init';
 import { createLogger } from './logger';
+import { defaultJsonBody } from './middleware/defaultJsonBody';
 import { errorHandler } from './middleware/errorHandler';
 import { UPLOADS_DIR } from './middleware/upload';
 import apiRoutes from './routes';
@@ -54,6 +55,7 @@ if (CORS_ORIGINS.length > 0) {
 }
 
 app.use(express.json());
+app.use(defaultJsonBody);
 
 // Lightweight request log: one INFO line per response, after it's sent, so
 // duration reflects the full request/response cycle.
