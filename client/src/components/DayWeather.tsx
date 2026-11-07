@@ -80,6 +80,7 @@ export default function DayWeather({ locations, date }: Props) {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- show the loading state immediately when the location or date changes
     setCurrent({ status: 'loading' });
     fetchDailyWeather(locationName, date)
       .then(result => setCurrent(result))

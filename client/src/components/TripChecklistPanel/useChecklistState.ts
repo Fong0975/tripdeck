@@ -24,6 +24,7 @@ export function useChecklistState(
   }, [tripId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- flag loading before the reload starts
     setLoading(true);
     void reload().finally(() => setLoading(false));
   }, [reload]);

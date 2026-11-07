@@ -49,6 +49,7 @@ export function useTripGeo(
       return;
     }
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mark resolving before the async lookup begins
     setState(prev => ({ ...prev, resolving: true, failed: false }));
     resolveDayGeo(tripId, activeDayId, days)
       .then(result => {

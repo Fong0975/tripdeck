@@ -44,6 +44,7 @@ export default function AutoBackupsTab() {
   // Runs once when this tab is switched to (the tab body is unmounted while
   // another tab is active, so mounting itself is the "tab opened" signal).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void loadAutoBackups();
   }, [loadAutoBackups]);
 
