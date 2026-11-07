@@ -41,6 +41,7 @@ export default function ReferenceWebsitesEditor({
 
   useEffect(() => {
     const url = newWebsite.url.trim();
+    /* eslint-disable react-hooks/set-state-in-effect -- reset the lookup state synchronously when the URL changes, before the debounced fetch */
     if (!url) {
       setSuggestedTitle('');
       setTitleFetchStatus('idle');
@@ -48,6 +49,7 @@ export default function ReferenceWebsitesEditor({
     }
     setSuggestedTitle('');
     setTitleFetchStatus('loading');
+    /* eslint-enable react-hooks/set-state-in-effect */
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
