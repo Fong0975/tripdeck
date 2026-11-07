@@ -36,7 +36,10 @@ export function listAutoBackups(_req: Request, res: Response): void {
   }
 }
 
-export function downloadAutoBackup(req: Request, res: Response): void {
+export function downloadAutoBackup(
+  req: Request<{ filename: string }>,
+  res: Response,
+): void {
   /* #swagger.tags = ['Backup']
      #swagger.summary = 'Download one automatic backup file'
      #swagger.parameters['filename'] = { in: 'path', required: true, schema: { type: 'string' } }
