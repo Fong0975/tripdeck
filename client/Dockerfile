@@ -34,4 +34,7 @@ EXPOSE ${FRONTEND_PORT}
 ENV FRONTEND_PORT=${FRONTEND_PORT}
 ENV VITE_API_PORT=3001
 
+# Default to a non-root user; docker-compose overrides it with APP_UID/APP_GID.
+USER 1000:1000
+
 CMD ["/bin/sh", "-c", "envsubst '${FRONTEND_PORT} ${VITE_API_PORT}' < /tmp/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

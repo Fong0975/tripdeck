@@ -38,6 +38,8 @@ if (CORS_ORIGINS.length > 0) {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin && CORS_ORIGINS.includes(origin)) {
+      // The origin is echoed back only after matching the CORS_ORIGIN allowlist.
+      // nosemgrep: javascript.express.security.cors-misconfiguration.cors-misconfiguration
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
     }
