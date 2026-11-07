@@ -188,7 +188,7 @@ tripdeck/
 │   ├── swagger/             # Auto-generated Swagger spec
 │   └── uploads/             # Uploaded image files (git-ignored)
 └── .github/
-    └── workflows/           # CI: lint/test check, automated version bumping
+    └── workflows/           # CI and version bump workflows
 ```
 
 The backend is layered as routes → controllers → repositories; only the repositories talk to MySQL. The frontend reaches the backend through the per-domain clients in `client/src/api/`, and the backend proxies third-party services (weather, Google Maps) so API keys never reach the browser bundle.
