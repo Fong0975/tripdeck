@@ -238,28 +238,35 @@ describe('getDailyWeather cache', () => {
     {
       description: 'serves a fresh non-error result from cache',
       owmResult: SUCCESS,
-      secondCall: { location: 'Tokyo', date: '2026-08-20' },
+      secondCall: { location: 'Tokyo', date: '2026-08-20', days: 0 },
       advanceMs: 0,
       expectedLookups: 1,
     },
     {
       description: 'does not cache error results',
       owmResult: { status: 'error' },
-      secondCall: { location: 'Tokyo', date: '2026-08-20' },
+      secondCall: { location: 'Tokyo', date: '2026-08-20', days: 0 },
       advanceMs: 0,
       expectedLookups: 2,
     },
     {
       description: 'uses a separate entry for a different date',
       owmResult: SUCCESS,
-      secondCall: { location: 'Tokyo', date: '2026-08-21' },
+      secondCall: { location: 'Tokyo', date: '2026-08-21', days: 0 },
+      advanceMs: 0,
+      expectedLookups: 2,
+    },
+    {
+      description: 'uses a separate entry for a different days value',
+      owmResult: SUCCESS,
+      secondCall: { location: 'Tokyo', date: '2026-08-20', days: 1 },
       advanceMs: 0,
       expectedLookups: 2,
     },
     {
       description: 'refetches once the entry has expired',
       owmResult: SUCCESS,
-      secondCall: { location: 'Tokyo', date: '2026-08-20' },
+      secondCall: { location: 'Tokyo', date: '2026-08-20', days: 0 },
       advanceMs: 60 * 60 * 1000,
       expectedLookups: 2,
     },
@@ -273,11 +280,60 @@ describe('getDailyWeather cache', () => {
 
       await service.getDailyWeather('Tokyo', '2026-08-20', 0);
       vi.advanceTimersByTime(advanceMs);
-      await service.getDailyWeather(secondCall.location, secondCall.date, 0);
+      await service.getDailyWeather(
+        secondCall.location,
+        secondCall.date,
+        secondCall.days,
+      );
 
       expect(service.fetchOwmWeather).toHaveBeenCalledTimes(expectedLookups);
     },
   );
+
+  it('does not let an out-of-range days value poison an in-range lookup', async () => {
+    const service = useService({ owmKey: 'owm' });
+    service.geocode.mockResolvedValue(GEO);
+    service.fetchOwmWeather.mockResolvedValue(SUCCESS);
+
+    await expect(
+      service.getDailyWeather('Tokyo', '2026-08-20', 9),
+    ).resolves.toEqual({ status: 'out_of_range' });
+    await expect(
+      service.getDailyWeather('Tokyo', '2026-08-20', 0),
+    ).resolves.toEqual(SUCCESS);
+  });
+
+  it.each([
+    {
+      description: 'reuses a geocoded place across dates',
+      firstGeo: GEO,
+      advanceMs: 0,
+      expectedGeocodes: 1,
+    },
+    {
+      description: 'does not cache a failed geocode',
+      firstGeo: null,
+      advanceMs: 0,
+      expectedGeocodes: 2,
+    },
+    {
+      description: 'geocodes again once the place entry has expired',
+      firstGeo: GEO,
+      advanceMs: 24 * 60 * 60 * 1000,
+      expectedGeocodes: 2,
+    },
+  ])('$description', async ({ firstGeo, advanceMs, expectedGeocodes }) => {
+    vi.useFakeTimers();
+    const service = useService({ owmKey: 'owm' });
+    service.geocode.mockResolvedValueOnce(firstGeo).mockResolvedValue(GEO);
+    service.fetchOwmWeather.mockResolvedValue(SUCCESS);
+
+    await service.getDailyWeather('Tokyo', '2026-08-20', 0);
+    vi.advanceTimersByTime(advanceMs);
+    await service.getDailyWeather('Tokyo', '2026-08-21', 1);
+
+    expect(service.geocode).toHaveBeenCalledTimes(expectedGeocodes);
+  });
 
   it('evicts the oldest entry once the cache is full', async () => {
     const service = useService({ owmKey: 'owm' });

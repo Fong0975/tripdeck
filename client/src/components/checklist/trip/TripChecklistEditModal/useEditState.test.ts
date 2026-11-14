@@ -10,6 +10,8 @@ import {
 
 import { useEditState } from './useEditState';
 
+type Hook = ReturnType<typeof useEditState>;
+
 function makeChecklist() {
   return makeTripChecklist({
     occasions: [{ id: 1, name: 'Occasion A', checks: {} }],
@@ -86,4 +88,29 @@ describe('useEditState', () => {
     expect(result.current.expandedCats).toEqual(new Set());
     expect(result.current.scrollBodyRef.current).toBeNull();
   });
+
+  it.each([
+    { description: 'nothing is edited', steps: [], expectedDirty: false },
+    {
+      description: 'an occasion is edited',
+      steps: [(r: Hook) => r.addOccasionLocal()],
+      expectedDirty: true,
+    },
+    {
+      description: 'a category is edited',
+      steps: [(r: Hook) => r.addCategoryLocal()],
+      expectedDirty: true,
+    },
+  ])(
+    'reports isDirty=$expectedDirty when $description',
+    ({ steps, expectedDirty }) => {
+      const { result } = renderHook(() => useEditState(makeChecklist()));
+
+      for (const step of steps) {
+        act(() => step(result.current));
+      }
+
+      expect(result.current.isDirty).toBe(expectedDirty);
+    },
+  );
 });

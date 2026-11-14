@@ -4,8 +4,8 @@ import type { Logger } from '../../../logger';
 import type { CreateItemBody } from '../../../types/checklist';
 import { idParams } from '../params';
 
-import { rejectInvalidName, rejectNotFound } from './responses';
-import { pickItemFields, requireName } from './validation';
+import { rejectInvalidBody, rejectNotFound } from './responses';
+import { parseItemFields, type Validated } from './validation';
 
 /**
  * Storage operations and log settings that let the template and trip
@@ -23,8 +23,8 @@ export interface ItemStore<TUpdate extends object> {
    */
   verifyCategory?: (catId: number, parentId: number) => Promise<boolean>;
   create(catId: number, data: CreateItemBody): Promise<{ id: number } | null>;
-  /** Validates an update body, returning null when the name is invalid. */
-  parseUpdate(body: unknown): TUpdate | null;
+  /** Validates an update body, returning the fields or a client-facing error. */
+  parseUpdate(body: unknown): Validated<TUpdate>;
   verifyItem(itemId: number, parentId: number): Promise<boolean>;
   update(itemId: number, data: TUpdate): Promise<object | null>;
   remove(itemId: number): Promise<boolean>;
@@ -32,7 +32,7 @@ export interface ItemStore<TUpdate extends object> {
 
 /**
  * Creates an item in the `:catId` category, responding 201 with the item,
- * 400 for an invalid name or 404 when the category is missing.
+ * 400 for an invalid body or 404 when the category is missing.
  *
  * @param store - Template or trip item storage.
  * @param req - Incoming request.
@@ -54,12 +54,12 @@ export async function handleAddItem<TUpdate extends object>(
     rejectNotFound(res, logger, 'Category', categoryMissingMessage, meta);
     return;
   }
-  const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'add-item', meta);
+  const fields = parseItemFields(req.body);
+  if (!fields.ok) {
+    rejectInvalidBody(res, logger, 'add-item', fields.error, meta);
     return;
   }
-  const item = await store.create(catId, pickItemFields(req.body, name));
+  const item = await store.create(catId, fields.value);
   if (!item) {
     rejectNotFound(res, logger, 'Category', categoryMissingMessage, meta);
     return;
@@ -84,11 +84,12 @@ export async function handleUpdateItem<TUpdate extends object>(
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'itemId');
   const itemId = meta.itemId;
-  const data = store.parseUpdate(req.body);
-  if (data === null) {
-    rejectInvalidName(res, logger, 'update-item', meta);
+  const parsed = store.parseUpdate(req.body);
+  if (!parsed.ok) {
+    rejectInvalidBody(res, logger, 'update-item', parsed.error, meta);
     return;
   }
+  const data = parsed.value;
   if (!(await store.verifyItem(itemId, meta[store.parentParam]))) {
     const message = 'Update-item rejected: item not found';
     rejectNotFound(res, logger, 'Item', message, meta);

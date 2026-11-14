@@ -44,6 +44,12 @@ export const tripTables: TableDef[] = [
       { name: 'name', type: 'VARCHAR(255)', notNull: true },
       { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
     ],
+    indexes: [
+      {
+        name: 'idx_trip_day_locations_day_order',
+        columns: ['trip_day_id', 'sort_order'],
+      },
+    ],
     foreignKeys: [
       {
         name: 'fk_trip_day_locations_day',
@@ -70,6 +76,12 @@ export const tripTables: TableDef[] = [
       { name: 'longitude', type: 'DOUBLE' },
       { name: 'geo_source', type: 'VARCHAR(16)' },
       { name: 'geo_key', type: 'CHAR(64)' },
+    ],
+    indexes: [
+      {
+        name: 'idx_trip_attractions_day_order',
+        columns: ['trip_day_id', 'sort_order'],
+      },
     ],
     foreignKeys: [
       {
@@ -122,11 +134,13 @@ export const tripTables: TableDef[] = [
         name: 'fk_trip_connections_from',
         column: 'trip_attraction_id_from',
         references: { table: 'trip_attractions', column: 'id' },
+        onDelete: 'CASCADE',
       },
       {
         name: 'fk_trip_connections_to',
         column: 'trip_attraction_id_to',
         references: { table: 'trip_attractions', column: 'id' },
+        onDelete: 'CASCADE',
       },
     ],
   },

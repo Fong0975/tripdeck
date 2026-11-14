@@ -10,7 +10,7 @@ import {
   handleUpdateItem,
   type ItemStore,
 } from './shared/itemHandlers';
-import { pickItemFields, requireName } from './shared/validation';
+import { parseItemFields } from './shared/validation';
 
 /** Template items are scoped by their `:catId` category. */
 const templateItems: ItemStore<UpdateItemBody> = {
@@ -18,10 +18,7 @@ const templateItems: ItemStore<UpdateItemBody> = {
   label: 'Template item',
   parentParam: 'catId',
   create: templateRepo.createItem,
-  parseUpdate: body => {
-    const name = requireName(body);
-    return name === null ? null : pickItemFields(body, name);
-  },
+  parseUpdate: parseItemFields,
   verifyItem: templateRepo.verifyItemBelongsToCategory,
   update: templateRepo.updateItem,
   remove: templateRepo.deleteItem,
@@ -50,7 +47,8 @@ export async function addTemplateItem(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
   await handleAddItem(templateItems, req, res);
 }
 
@@ -87,7 +85,8 @@ export async function updateTemplateItem(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
   await handleUpdateItem(templateItems, req, res);
 }
 

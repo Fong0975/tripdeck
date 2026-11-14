@@ -14,6 +14,10 @@ const OWM_MAX_DAYS_AHEAD = 4;
 export const CACHE_TTL_MS = 60 * 60 * 1000;
 export const CACHE_MAX_ENTRIES = 500;
 
+/** Place coordinates rarely change, so they outlive the forecast cache. */
+export const GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+export const GEO_CACHE_MAX_ENTRIES = 500;
+
 // Reads `Date.now` at call time (rather than capturing the function) so fake
 // timers in tests also drive cache expiry.
 const currentTime = (): number => Date.now();
@@ -26,13 +30,43 @@ const cache = new TtlCache<WeatherResult>(
   currentTime,
 );
 
-function cacheKey(locationName: string, date: string): string {
-  return `${locationName}::${date}`;
+// Lets every date of a trip reuse one geocoding call per place. Only hits are
+// stored: `geocode` returns null for both "no match" and transient failures.
+const geoCache = new TtlCache<GeoResult>(
+  GEO_CACHE_TTL_MS,
+  GEO_CACHE_MAX_ENTRIES,
+  currentTime,
+);
+
+// `daysFromToday` decides which provider is consulted, so it is part of the
+// key; otherwise one request could pin another's result for the whole TTL.
+function cacheKey(
+  locationName: string,
+  date: string,
+  daysFromToday: number,
+): string {
+  return `${locationName}::${date}::${daysFromToday}`;
 }
 
-/** Test-only: clears the in-memory response cache. */
+/** Test-only: clears the in-memory response and geocoding caches. */
 export function __resetCacheForTests(): void {
   cache.clear();
+  geoCache.clear();
+}
+
+async function geocodeCached(
+  locationName: string,
+  owmKey: string,
+): Promise<GeoResult | null> {
+  const hit = geoCache.get(locationName);
+  if (hit) {
+    return hit;
+  }
+  const geo = await geocode(locationName, owmKey).catch(() => null);
+  if (geo) {
+    geoCache.set(locationName, geo);
+  }
+  return geo;
 }
 
 /** True when at least one weather provider has an API key configured. */
@@ -62,7 +96,7 @@ async function lookupWeather(
   // APIs and avoids passing non-English names to Visual Crossing.
   let geo: GeoResult | null = null;
   if (owmKey) {
-    geo = await geocode(locationName, owmKey).catch(() => null);
+    geo = await geocodeCached(locationName, owmKey);
     if (!geo) {
       logger.debug(`${tag}: no data — geocoding failed`);
       return { status: 'not_found' };
@@ -118,7 +152,7 @@ export async function getDailyWeather(
   dateStr: string,
   daysFromToday: number,
 ): Promise<WeatherResult> {
-  const key = cacheKey(locationName, dateStr);
+  const key = cacheKey(locationName, dateStr, daysFromToday);
   const hit = cache.get(key);
   if (hit) {
     return hit;

@@ -11,6 +11,13 @@ import type {
 import { parseId } from '../../utils/parseId';
 import { idParam } from '../params';
 
+import {
+  findAttractionBodyError,
+  isIntegerAtLeast,
+  ORDERED_IDS_MISMATCH_ERROR,
+  resolveOrderedIds,
+} from './attractionValidation';
+
 const logger = createLogger('attraction');
 
 export async function addAttraction(
@@ -39,17 +46,28 @@ export async function addAttraction(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing name, malformed referenceWebsites, or a field exceeding its maximum length' } */
   const tripId = idParam(req, 'tripId');
   const dayId = idParam(req, 'dayId');
 
-  const body = req.body as CreateAttractionBody;
+  const body = (req.body ?? {}) as CreateAttractionBody;
   if (!body.name) {
     logger.warn('Rejected add-attraction request with no name', {
       tripId,
       dayId,
     });
     res.status(400).json({ error: 'name is required' });
+    return;
+  }
+  const bodyError = findAttractionBodyError({ ...body });
+  if (bodyError) {
+    logger.warn('Rejected add-attraction request: invalid body', {
+      tripId,
+      dayId,
+      error: bodyError,
+    });
+    res.status(400).json({ error: bodyError });
     return;
   }
 
@@ -98,9 +116,22 @@ export async function updateAttraction(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Malformed referenceWebsites, or a field exceeding its maximum length' } */
   const tripId = idParam(req, 'tripId');
   const attractionId = idParam(req, 'attractionId');
+
+  const body = (req.body ?? {}) as UpdateAttractionBody;
+  const bodyError = findAttractionBodyError({ ...body });
+  if (bodyError) {
+    logger.warn('Rejected update-attraction request: invalid body', {
+      tripId,
+      attractionId,
+      error: bodyError,
+    });
+    res.status(400).json({ error: bodyError });
+    return;
+  }
 
   const belongs = await attractionRepo.verifyBelongsToTrip(
     attractionId,
@@ -115,10 +146,7 @@ export async function updateAttraction(
     return;
   }
 
-  const updated = await attractionRepo.update(
-    attractionId,
-    req.body as UpdateAttractionBody,
-  );
+  const updated = await attractionRepo.update(attractionId, body);
   if (!updated) {
     logger.warn('Update-attraction rejected: attraction not found on update', {
       tripId,
@@ -195,19 +223,26 @@ export async function reorderAttractions(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Attractions']
-     #swagger.summary = 'Reorder attractions within a day' */
+     #swagger.summary = 'Reorder attractions within a day'
+     #swagger.description = 'orderedIds must list every attraction of the day exactly once.'
+     #swagger.responses[204] = { description: 'Attractions reordered' }
+     #swagger.responses[400] = { description: 'orderedIds is not an array of positive integers, or does not list every attraction of the day exactly once' }
+     #swagger.responses[404] = { description: 'Day not found' } */
   const tripId = idParam(req, 'tripId');
   const dayId = idParam(req, 'dayId');
 
-  const body = req.body as ReorderAttractionsBody;
-  if (!Array.isArray(body.orderedIds)) {
-    logger.warn('Rejected reorder-attractions request: not an array', {
+  const body = (req.body ?? {}) as Partial<ReorderAttractionsBody>;
+  const resolution = resolveOrderedIds(body.orderedIds);
+  if (!resolution.ok) {
+    logger.warn('Rejected reorder-attractions request: invalid orderedIds', {
       tripId,
       dayId,
+      error: resolution.error,
     });
-    res.status(400).json({ error: 'orderedIds array is required' });
+    res.status(400).json({ error: resolution.error });
     return;
   }
+  const { orderedIds } = resolution;
 
   const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
   if (!day) {
@@ -219,11 +254,20 @@ export async function reorderAttractions(
     return;
   }
 
-  await attractionRepo.updateOrder(dayId, body.orderedIds);
+  const result = await attractionRepo.updateOrder(dayId, orderedIds);
+  if (result === 'invalid_order') {
+    logger.warn('Reorder-attractions rejected: ids do not match the day', {
+      tripId,
+      dayId,
+      count: orderedIds.length,
+    });
+    res.status(400).json({ error: ORDERED_IDS_MISMATCH_ERROR });
+    return;
+  }
   logger.info('Attractions reordered', {
     tripId,
     dayId,
-    count: body.orderedIds.length,
+    count: orderedIds.length,
   });
   res.status(204).send();
 }
@@ -232,11 +276,6 @@ export async function reorderAttractions(
 interface MoveAttractionBody {
   dayId?: unknown;
   index?: unknown;
-}
-
-/** Returns whether value is a non-negative safe integer. */
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 export async function moveAttraction(
@@ -268,7 +307,7 @@ export async function moveAttraction(
   const attractionId = idParam(req, 'attractionId');
   const body = req.body as MoveAttractionBody;
   const dayId = parseId(body.dayId);
-  if (dayId === null || !isNonNegativeInteger(body.index)) {
+  if (dayId === null || !isIntegerAtLeast(body.index, 0)) {
     logger.warn('Rejected move-attraction request: invalid input', {
       tripId,
       attractionId,

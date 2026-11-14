@@ -4,7 +4,7 @@ import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/checklist/trip';
 
 import { idParam, idParams } from './params';
-import { rejectInvalidName, rejectNotFound } from './shared/responses';
+import { rejectInvalidBody, rejectNotFound } from './shared/responses';
 import { ensureTripExists } from './shared/tripGuards';
 import { requireName } from './shared/validation';
 
@@ -27,17 +27,18 @@ export async function addOccasion(req: Request, res: Response): Promise<void> {
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const tripId = idParam(req, 'tripId');
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'add-occasion', { tripId });
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'add-occasion', name.error, { tripId });
     return;
   }
   if (!(await ensureTripExists(tripId, res, logger, 'Add-occasion'))) {
     return;
   }
-  const occasion = await tripRepo.createOccasion(tripId, name);
+  const occasion = await tripRepo.createOccasion(tripId, name.value);
   logger.info('Trip checklist occasion created', {
     tripId,
     occId: occasion.id,
@@ -69,12 +70,13 @@ export async function updateOccasion(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const meta = idParams(req, 'tripId', 'occId');
   const { tripId, occId } = meta;
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'update-occasion', meta);
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'update-occasion', name.error, meta);
     return;
   }
   if (!(await tripRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
@@ -82,7 +84,7 @@ export async function updateOccasion(
     rejectNotFound(res, logger, 'Occasion', message, meta);
     return;
   }
-  const occasion = await tripRepo.updateOccasion(occId, name);
+  const occasion = await tripRepo.updateOccasion(occId, name.value);
   if (!occasion) {
     const message = 'Update-occasion rejected: occasion not found on update';
     rejectNotFound(res, logger, 'Occasion', message, meta);

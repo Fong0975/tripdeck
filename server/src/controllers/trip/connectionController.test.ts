@@ -122,6 +122,12 @@ describe('Connections', () => {
         body: { ...validConnectionBody, transportMode: 'teleport' },
         error: INVALID_TRANSPORT_MODE_ERROR,
       },
+      {
+        name: 'duration is longer than 100 characters',
+        params: { tripId: '1', dayId: '10' },
+        body: { ...validConnectionBody, duration: 'x'.repeat(101) },
+        error: 'duration must be at most 100 characters',
+      },
     ])(
       'returns 400 before touching the database when $name',
       async ({ params, body, error }) => {
@@ -207,6 +213,12 @@ describe('Connections', () => {
         params: { tripId: '1', connectionId: '200' },
         body: { transportMode: 'car' },
         error: INVALID_TRANSPORT_MODE_ERROR,
+      },
+      {
+        name: 'duration is longer than 100 characters',
+        params: { tripId: '1', connectionId: '200' },
+        body: { duration: 'x'.repeat(101) },
+        error: 'duration must be at most 100 characters',
       },
     ])(
       'returns 400 before touching the database when $name',

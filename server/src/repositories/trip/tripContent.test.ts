@@ -14,9 +14,8 @@ const mockPoolExecute = db.pool.execute;
 const mockGetAttractionImagesBatch = vi.fn().mockResolvedValue(new Map());
 const mockGetConnectionImagesBatch = vi.fn().mockResolvedValue(new Map());
 const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
-// findContent() calls tripCrud's findById() first (to confirm the trip
-// exists), which itself fetches the trip's own images — unrelated to the
-// day/attraction/connection images findContent aggregates itself.
+// The trip's own images are irrelevant to findContent; it must only check
+// that the trip exists, so this mock lets tests assert they are never loaded.
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 vi.mock('../imageRepository', () => ({
   getAttractionImagesBatch: (...args: unknown[]) =>
@@ -74,7 +73,9 @@ describe('tripContent', () => {
       const result = await findContent(999);
 
       expect(result).toBeNull();
-      expect(mockPoolExecute).toHaveBeenCalledTimes(1);
+      // trips existence check and trip_days run concurrently; nothing else.
+      expect(mockPoolExecute).toHaveBeenCalledTimes(2);
+      expect(mockGetDayImagesBatch).not.toHaveBeenCalled();
     });
 
     it('returns an empty days array without further queries when the trip has zero days', async () => {
@@ -259,6 +260,11 @@ describe('tripContent', () => {
         expect.stringContaining('trip_attraction_websites'),
         [100, 101],
       );
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'SELECT id FROM trips WHERE id = ?',
+        [5],
+      );
+      expect(mockGetTripImages).not.toHaveBeenCalled();
     });
 
     it('skips the websites query entirely when there are zero attractions', async () => {

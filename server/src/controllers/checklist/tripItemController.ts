@@ -12,12 +12,13 @@ import {
   type ItemStore,
 } from './shared/itemHandlers';
 import { rejectNotFound } from './shared/responses';
+import { parseTripItemPatch } from './shared/validation';
 
 const logger = createLogger('checklist-trip');
 
 /**
- * Trip items are scoped by their `:tripId` trip. Updates are partial, so the
- * body is passed through without a required-name check.
+ * Trip items are scoped by their `:tripId` trip. Updates are partial: only
+ * the fields present in the body are validated and written.
  */
 const tripItems: ItemStore<UpdateTripItemBody> = {
   logger,
@@ -25,7 +26,7 @@ const tripItems: ItemStore<UpdateTripItemBody> = {
   parentParam: 'tripId',
   verifyCategory: tripRepo.verifyCategoryBelongsToTrip,
   create: tripRepo.createTripItem,
-  parseUpdate: body => body as UpdateTripItemBody,
+  parseUpdate: parseTripItemPatch,
   verifyItem: tripRepo.verifyItemBelongsToTrip,
   update: tripRepo.updateTripItem,
   remove: tripRepo.deleteTripItem,
@@ -51,7 +52,8 @@ export async function addTripItem(req: Request, res: Response): Promise<void> {
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
   await handleAddItem(tripItems, req, res);
 }
 
@@ -97,7 +99,8 @@ export async function updateTripItem(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Blank or too long name, too long storage_location, or quantity not a non-negative integer' } */
   await handleUpdateItem(tripItems, req, res);
 }
 

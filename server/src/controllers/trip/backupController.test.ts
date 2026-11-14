@@ -1,3 +1,4 @@
+import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/backup', async () => {
@@ -13,6 +14,7 @@ vi.mock('../../repositories/backup', async () => {
 });
 
 import * as backupRepo from '../../repositories/backup';
+import { runExclusive } from '../../repositories/backup/backupLock';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 
 import { exportTrips, importTrips } from './backupController';
@@ -218,4 +220,62 @@ describe('importTrips', () => {
     await expect(importTrips(req, res)).rejects.toBe(error);
     expect(res.status).not.toHaveBeenCalled();
   });
+});
+
+describe('backup lock', () => {
+  const zipFile = {
+    buffer: Buffer.from('fake-zip-bytes'),
+    mimetype: 'application/zip',
+  } as Express.Multer.File;
+
+  it.each([
+    {
+      name: 'exportTrips',
+      run: (req: Request, res: Response) => exportTrips(req, res),
+      reqOverrides: { body: { tripIds: [1] } },
+      repoFn: () => backupRepo.buildBackupZip,
+      arrange: () =>
+        vi
+          .mocked(backupRepo.buildBackupZip)
+          .mockResolvedValue(Buffer.from('zip-bytes')),
+    },
+    {
+      name: 'importTrips',
+      run: (req: Request, res: Response) => importTrips(req, res),
+      reqOverrides: { file: zipFile },
+      repoFn: () => backupRepo.importBackupZip,
+      arrange: () =>
+        vi.mocked(backupRepo.importBackupZip).mockResolvedValue({
+          imported: [],
+          failed: [],
+          templateRestored: false,
+        }),
+    },
+  ])(
+    '$name waits for a running backup operation before starting',
+    async ({ run, reqOverrides, repoFn, arrange }) => {
+      arrange();
+      let releaseLock: () => void = () => undefined;
+      const holder = runExclusive(
+        () =>
+          new Promise<void>(resolve => {
+            releaseLock = resolve;
+          }),
+      );
+      const { req, res } = createMockReqRes(reqOverrides);
+
+      const pending = run(req, res);
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
+      expect(repoFn()).not.toHaveBeenCalled();
+
+      releaseLock();
+      await holder;
+      await pending;
+
+      expect(repoFn()).toHaveBeenCalledTimes(1);
+      expect(res.status).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,12 +1,13 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../logger';
-import { saveImageToDisk } from '../middleware/upload';
+import { deleteImageFromDisk, saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
 import * as tripRepo from '../repositories/trip';
 import type { ImageResponse } from '../types/trip';
+import { FIELD_LIMITS, findTooLongField } from '../validation/fieldLimits';
 
 import { idParam } from './params';
 
@@ -27,10 +28,59 @@ interface ImageHandlerConfig {
   deleteImage: (imageId: number, parentId: number) => Promise<boolean>;
 }
 
+type TitleResult = { ok: true; title: string } | { ok: false; error: string };
+
+/**
+ * Validates the multipart `title` field of an image upload.
+ *
+ * @param raw - Raw `title` from the request body.
+ * @returns The trimmed title, or the client-facing error when it is missing,
+ *   blank, not a string, or longer than its VARCHAR column.
+ */
+function parseImageTitle(raw: unknown): TitleResult {
+  if (raw === undefined) {
+    return { ok: false, error: 'title is required' };
+  }
+  if (typeof raw !== 'string') {
+    return { ok: false, error: 'title must be a string' };
+  }
+  const title = raw.trim();
+  if (!title) {
+    return { ok: false, error: 'title is required' };
+  }
+  const tooLong = findTooLongField([['title', title, FIELD_LIMITS.name]]);
+  return tooLong ? { ok: false, error: tooLong } : { ok: true, title };
+}
+
+/**
+ * Inserts the DB row for a file that has just been written to disk. If the
+ * insert fails the file is deleted again so no orphan is left in uploads,
+ * and the error is re-thrown for the Express error handler.
+ *
+ * @param config - Entity-specific image operations.
+ * @param parentId - Owning attraction/connection/trip/day id.
+ * @param filename - Name of the file already saved to disk.
+ * @param title - Validated image title.
+ * @returns The created image.
+ */
+async function addImageOrDiscardFile(
+  config: ImageHandlerConfig,
+  parentId: number,
+  filename: string,
+  title: string,
+): Promise<ImageResponse> {
+  try {
+    return await config.addImage(parentId, filename, title);
+  } catch (err) {
+    deleteImageFromDisk(filename);
+    throw err;
+  }
+}
+
 /**
  * Shared upload logic for attraction/connection/trip images: verifies the
  * parent, validates the file and title, saves the file to disk, then
- * inserts the DB row. Each entity's exported handler stays a distinct
+ * inserts the DB row (removing the file again if the insert fails). Each entity's exported handler stays a distinct
  * named function (see below) purely so its Swagger doc comment stays
  * traceable — swagger-autogen resolves handlers by following the route's
  * import binding to a specific function, not through shared indirection.
@@ -64,16 +114,20 @@ async function handleUpload(
     return;
   }
 
-  const title = (req.body.title as string | undefined)?.trim();
-  if (!title) {
-    logger.warn('Image upload rejected: no title provided', {
+  const parsedTitle = parseImageTitle(
+    (req.body as { title?: unknown } | undefined)?.title,
+  );
+  if (!parsedTitle.ok) {
+    logger.warn('Image upload rejected: invalid title', {
       entityType: config.entityType,
       tripId,
       parentId,
+      reason: parsedTitle.error,
     });
-    res.status(400).json({ error: 'title is required' });
+    res.status(400).json({ error: parsedTitle.error });
     return;
   }
+  const { title } = parsedTitle;
 
   let filename: string;
   try {
@@ -91,7 +145,7 @@ async function handleUpload(
     return;
   }
 
-  const image = await config.addImage(parentId, filename, title);
+  const image = await addImageOrDiscardFile(config, parentId, filename, title);
   logger.info('Image uploaded', {
     entityType: config.entityType,
     tripId,
@@ -192,7 +246,8 @@ export async function uploadAttractionImage(
 ): Promise<void> {
   /* #swagger.tags = ['Images']
      #swagger.summary = 'Upload an image for an attraction'
-     #swagger.consumes = ['multipart/form-data'] */
+     #swagger.consumes = ['multipart/form-data']
+     #swagger.responses[400] = { description: 'Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title' } */
   await handleUpload(req, res, attractionConfig);
 }
 
@@ -213,7 +268,8 @@ export async function uploadConnectionImage(
 ): Promise<void> {
   /* #swagger.tags = ['Images']
      #swagger.summary = 'Upload an image for a connection'
-     #swagger.consumes = ['multipart/form-data'] */
+     #swagger.consumes = ['multipart/form-data']
+     #swagger.responses[400] = { description: 'Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title' } */
   await handleUpload(req, res, connectionConfig);
 }
 
@@ -234,7 +290,8 @@ export async function uploadTripImage(
 ): Promise<void> {
   /* #swagger.tags = ['Images']
      #swagger.summary = 'Upload an image for a trip'
-     #swagger.consumes = ['multipart/form-data'] */
+     #swagger.consumes = ['multipart/form-data']
+     #swagger.responses[400] = { description: 'Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title' } */
   await handleUpload(req, res, tripConfig);
 }
 
@@ -255,7 +312,8 @@ export async function uploadDayImage(
 ): Promise<void> {
   /* #swagger.tags = ['Images']
      #swagger.summary = 'Upload an image for a day'
-     #swagger.consumes = ['multipart/form-data'] */
+     #swagger.consumes = ['multipart/form-data']
+     #swagger.responses[400] = { description: 'Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title' } */
   await handleUpload(req, res, dayConfig);
 }
 

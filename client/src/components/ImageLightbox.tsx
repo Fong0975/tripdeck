@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { imageUrl } from '@/api/images';
+import { useEscapeToClose } from '@/hooks/useEscapeToClose';
 import type { AttractionImage } from '@/types';
 
 interface Props {
@@ -24,11 +25,10 @@ export default function ImageLightbox({
   const prev = () => setIndex(i => i - 1);
   const next = () => setIndex(i => i + 1);
 
+  useEscapeToClose(onClose);
+
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
       if (e.key === 'ArrowLeft' && hasPrev) {
         prev();
       }
@@ -38,7 +38,7 @@ export default function ImageLightbox({
     };
     window.addEventListener('keydown', handle);
     return () => window.removeEventListener('keydown', handle);
-  }, [hasPrev, hasNext, onClose]);
+  }, [hasPrev, hasNext]);
 
   const current = images[index];
 

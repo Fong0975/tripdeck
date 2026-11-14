@@ -8,11 +8,13 @@ import { useOccasionEditState } from './useOccasionEditState';
  * shape TripChecklistEditModal and useSaveChecklist expect. Occasions and
  * categories→items→specs are independent state slices with no nesting
  * relationship between them, so each is managed by its own hook.
+ * `isDirty` is true when either slice differs from the loaded checklist.
  */
 export function useEditState(checklist: TripChecklist) {
   const {
     occasions,
     visibleOccasions,
+    isDirty: occasionsDirty,
     addOccasionLocal,
     updateOccasionName,
     removeOccasion,
@@ -20,6 +22,7 @@ export function useEditState(checklist: TripChecklist) {
 
   const {
     categories,
+    isDirty: categoriesDirty,
     expandedCats,
     scrollBodyRef,
     visibleCategories,
@@ -37,6 +40,7 @@ export function useEditState(checklist: TripChecklist) {
 
   return {
     edit: { occasions, categories },
+    isDirty: occasionsDirty || categoriesDirty,
     expandedCats,
     scrollBodyRef,
     visibleOccasions,

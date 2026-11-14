@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as backupRepo from '../../repositories/backup';
+import { runExclusive } from '../../repositories/backup/backupLock';
 
 const logger = createLogger('backup');
 
@@ -16,6 +17,15 @@ function buildBackupFilename(now: Date): string {
   return `tripdeck-backup-${now.toISOString().replace(/[:.]/g, '-')}.zip`;
 }
 
+/**
+ * Builds and sends a backup zip of the requested trips (and optionally the
+ * checklist template). The build waits for any other backup operation
+ * (automatic backup, import, export) to finish first.
+ *
+ * @param req - Request whose body carries `tripIds` and `includeTemplate`.
+ * @param res - Response receiving the zip, or a 400/404 error.
+ * @throws Re-throws unexpected errors for the error handler.
+ */
 export async function exportTrips(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Backup']
      #swagger.summary = 'Export one or more trips (and optionally the checklist template) as a backup zip'
@@ -69,9 +79,10 @@ export async function exportTrips(req: Request, res: Response): Promise<void> {
       tripIds: body.tripIds,
       includeTemplate,
     });
-    const zipBuffer = await backupRepo.buildBackupZip(body.tripIds, {
-      includeTemplate,
-    });
+    const tripIds = body.tripIds;
+    const zipBuffer = await runExclusive(() =>
+      backupRepo.buildBackupZip(tripIds, { includeTemplate }),
+    );
     const filename = buildBackupFilename(new Date());
     logger.info('Trip export completed', {
       filename,
@@ -93,6 +104,15 @@ export async function exportTrips(req: Request, res: Response): Promise<void> {
   }
 }
 
+/**
+ * Imports every trip of an uploaded backup zip as new trips (optionally
+ * restoring the checklist template). The import waits for any other backup
+ * operation (automatic backup, import, export) to finish first.
+ *
+ * @param req - Request carrying the uploaded `file` and `restoreTemplate`.
+ * @param res - Response receiving the per-trip results, or a 400 error.
+ * @throws Re-throws unexpected errors for the error handler.
+ */
 export async function importTrips(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Backup']
      #swagger.summary = 'Import every trip in a backup zip as new trips'
@@ -160,9 +180,10 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
       fileSizeBytes: req.file.size,
       restoreTemplate,
     });
-    const result = await backupRepo.importBackupZip(req.file.buffer, {
-      restoreTemplate,
-    });
+    const fileBuffer = req.file.buffer;
+    const result = await runExclusive(() =>
+      backupRepo.importBackupZip(fileBuffer, { restoreTemplate }),
+    );
 
     if (result.failed.length > 0) {
       logger.warn('Backup import completed with failures', {

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -222,6 +228,65 @@ describe('DayWeather', () => {
     fireEvent.pointerUp(swipeArea, { clientX: endX, pointerId: 1 });
 
     expect(screen.getByText(expectedLocation)).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      description: 'the location',
+      next: { locations: [osaka], date: DATE },
+      expectedName: 'Osaka',
+    },
+    {
+      description: 'the date',
+      next: { locations: [tokyo], date: '2026-08-21' },
+      expectedName: 'Tokyo',
+    },
+  ])(
+    'ignores a stale response after $description changes',
+    async ({ next, expectedName }) => {
+      let resolveStale!: (r: WeatherResult) => void;
+      mockedFetch
+        .mockReturnValueOnce(
+          new Promise<WeatherResult>(resolve => {
+            resolveStale = resolve;
+          }),
+        )
+        .mockResolvedValueOnce(makeWeatherSuccess({ description: 'Fresh' }));
+      const { rerender } = render(
+        <DayWeather locations={[tokyo]} date={DATE} />,
+      );
+
+      rerender(<DayWeather locations={next.locations} date={next.date} />);
+      expect(await screen.findByText('Fresh')).toBeInTheDocument();
+      expect(mockedFetch).toHaveBeenLastCalledWith(expectedName, next.date);
+
+      await act(async () => {
+        resolveStale(makeWeatherSuccess({ description: 'Stale' }));
+      });
+
+      expect(screen.queryByText('Stale')).not.toBeInTheDocument();
+      expect(screen.getByText('Fresh')).toBeInTheDocument();
+    },
+  );
+
+  it('clamps the selected location when the locations list shrinks', async () => {
+    mockedFetch.mockResolvedValue({ status: 'error' });
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <DayWeather locations={[tokyo, osaka]} date={DATE} />,
+    );
+    await user.click(screen.getByLabelText('下一個地區'));
+    expect(screen.getByText('Osaka')).toBeInTheDocument();
+
+    rerender(<DayWeather locations={[tokyo]} date={DATE} />);
+    await waitFor(() =>
+      expect(mockedFetch).toHaveBeenLastCalledWith('Tokyo', DATE),
+    );
+
+    rerender(<DayWeather locations={[tokyo, osaka]} date={DATE} />);
+
+    expect(screen.getByText('Tokyo')).toBeInTheDocument();
+    expect(screen.getByLabelText('上一個地區')).toBeDisabled();
   });
 
   it('a rightward drag (swipe-right) past the threshold goes back to the previous location', async () => {

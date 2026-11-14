@@ -9,6 +9,8 @@ import {
 
 import { useEditState } from './useEditState';
 
+type Hook = ReturnType<typeof useEditState>;
+
 function makeCategory() {
   return makeChecklistCategory({
     name: 'Category A',
@@ -120,4 +122,37 @@ describe('useEditState', () => {
 
     expect(result.current.visibleItems[0].specs).toEqual([]);
   });
+
+  it.each([
+    { description: 'nothing is edited', steps: [], expectedDirty: false },
+    {
+      description: 'the category is renamed',
+      steps: [(r: Hook) => r.updateCategoryName('Renamed')],
+      expectedDirty: true,
+    },
+    {
+      description: 'the category is renamed and then reverted',
+      steps: [
+        (r: Hook) => r.updateCategoryName('X'),
+        (r: Hook) => r.updateCategoryName('Category A'),
+      ],
+      expectedDirty: false,
+    },
+    {
+      description: 'an item is deleted',
+      steps: [(r: Hook) => r.handleDeleteItem(10)],
+      expectedDirty: true,
+    },
+  ])(
+    'reports isDirty=$expectedDirty when $description',
+    ({ steps, expectedDirty }) => {
+      const { result } = renderHook(() => useEditState(makeCategory()));
+
+      for (const step of steps) {
+        act(() => step(result.current));
+      }
+
+      expect(result.current.isDirty).toBe(expectedDirty);
+    },
+  );
 });

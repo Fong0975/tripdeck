@@ -3,9 +3,24 @@ import type { Request, Response } from 'express';
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
 import type { CreateLocationBody, UpdateLocationBody } from '../../types/trip';
+import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
 import { idParam } from '../params';
 
 const logger = createLogger('day-location');
+
+/**
+ * Validates a location name from a create or update body. The length limit
+ * is applied to the trimmed name, since that is what gets stored.
+ *
+ * @param name - Raw `name` from the request body.
+ * @returns A client-facing error message, or null when the name is valid.
+ */
+function findLocationNameError(name: unknown): string | null {
+  if (typeof name !== 'string' || !name.trim()) {
+    return 'name is required';
+  }
+  return findTooLongField([['name', name.trim(), FIELD_LIMITS.name]]);
+}
 
 /** Trip and location ids of a `/:tripId/locations/:locationId` route. */
 interface LocationIds {
@@ -59,14 +74,16 @@ export async function addDayLocation(
 ): Promise<void> {
   const tripId = idParam(req, 'tripId');
   const dayId = idParam(req, 'dayId');
-  const body = req.body as CreateLocationBody;
+  const body = (req.body ?? {}) as CreateLocationBody;
 
-  if (!body.name?.trim()) {
-    logger.warn('Rejected add-location request with no name', {
+  const nameError = findLocationNameError(body.name);
+  if (nameError) {
+    logger.warn('Rejected add-location request: invalid name', {
       tripId,
       dayId,
+      error: nameError,
     });
-    res.status(400).json({ error: 'name is required' });
+    res.status(400).json({ error: nameError });
     return;
   }
 
@@ -92,14 +109,16 @@ export async function updateDayLocation(
 ): Promise<void> {
   const ids = locationParams(req);
   const { tripId, locationId } = ids;
-  const body = req.body as UpdateLocationBody;
+  const body = (req.body ?? {}) as UpdateLocationBody;
 
-  if (!body.name?.trim()) {
-    logger.warn('Rejected update-location request with no name', {
+  const nameError = findLocationNameError(body.name);
+  if (nameError) {
+    logger.warn('Rejected update-location request: invalid name', {
       tripId,
       locationId,
+      error: nameError,
     });
-    res.status(400).json({ error: 'name is required' });
+    res.status(400).json({ error: nameError });
     return;
   }
 

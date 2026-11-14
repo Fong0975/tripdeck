@@ -1,4 +1,17 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns';
+
+/**
+ * Shifts a calendar date string (`yyyy-MM-dd`) by `days` and returns it in the
+ * same format. Works purely in local calendar days, so the result never drifts
+ * by one around DST changes or in timezones behind UTC.
+ *
+ * @param dateStr - The starting date, e.g. "2026-08-20".
+ * @param days - Number of days to add (negative to subtract).
+ * @returns The shifted date, e.g. "2026-08-23" for `days = 3`.
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  return format(addDays(parseISO(dateStr), days), 'yyyy-MM-dd');
+}
 
 /**
  * Returns the number of calendar days between today (local midnight) and the

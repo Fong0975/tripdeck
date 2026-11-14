@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import ConfirmDialog from './ConfirmDialog';
+import Modal from './Modal';
 
 describe('ConfirmDialog', () => {
   it('renders the title and message', () => {
@@ -17,6 +18,21 @@ describe('ConfirmDialog', () => {
 
     expect(screen.getByText('Delete trip?')).toBeInTheDocument();
     expect(screen.getByText('This cannot be undone.')).toBeInTheDocument();
+  });
+
+  it('exposes an alertdialog named by its title', () => {
+    render(
+      <ConfirmDialog
+        title='Delete trip?'
+        message='This cannot be undone.'
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('alertdialog', { name: 'Delete trip?' }),
+    ).toBeInTheDocument();
   });
 
   it.each([
@@ -100,5 +116,54 @@ describe('ConfirmDialog', () => {
       expect(onConfirm).toHaveBeenCalledTimes(1);
       expect(onCancel).not.toHaveBeenCalled();
     }
+  });
+
+  it.each([
+    { key: 'Escape', expectedCancels: 1 },
+    { key: 'Enter', expectedCancels: 0 },
+  ])(
+    'calls onCancel $expectedCancels time(s) when $key is pressed',
+    ({ key, expectedCancels }) => {
+      const onCancel = vi.fn();
+      const onConfirm = vi.fn();
+      render(
+        <ConfirmDialog
+          title='T'
+          message='M'
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+        />,
+      );
+
+      fireEvent.keyDown(window, { key });
+
+      expect(onCancel).toHaveBeenCalledTimes(expectedCancels);
+      expect(onConfirm).not.toHaveBeenCalled();
+    },
+  );
+
+  it('cancels only itself, not the modal underneath, on Escape', () => {
+    const onModalClose = vi.fn();
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <Modal title='Title' onClose={onModalClose}>
+        <p>content</p>
+      </Modal>,
+    );
+    rerender(
+      <Modal title='Title' onClose={onModalClose}>
+        <ConfirmDialog
+          title='T'
+          message='M'
+          onCancel={onCancel}
+          onConfirm={vi.fn()}
+        />
+      </Modal>,
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onModalClose).not.toHaveBeenCalled();
   });
 });

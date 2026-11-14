@@ -15,6 +15,7 @@ vi.mock('../../../config/database', async () => {
 
 const mockPoolExecute = db.pool.execute;
 const mockConnExecute = db.conn.execute;
+const mockConnQuery = db.conn.query;
 const mockConnCommit = db.conn.commit;
 const mockConnRollback = db.conn.rollback;
 const mockGetConnection = db.pool.getConnection;
@@ -255,9 +256,9 @@ describe('tripChecklistCore', () => {
         'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
         [500, '外套', 1, null, null],
       );
-      expect(mockConnExecute).toHaveBeenCalledWith(
-        'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-        [600, '防水', null],
+      expect(mockConnQuery).toHaveBeenCalledWith(
+        'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES ?',
+        [[[600, '防水', null]]],
       );
       expect(mockConnExecute).toHaveBeenCalledWith(
         "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')",

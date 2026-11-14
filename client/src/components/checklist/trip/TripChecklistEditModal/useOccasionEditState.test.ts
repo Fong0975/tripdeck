@@ -5,6 +5,8 @@ import type { ChecklistOccasion } from '@/types';
 
 import { useOccasionEditState } from './useOccasionEditState';
 
+type Hook = ReturnType<typeof useOccasionEditState>;
+
 function makeOccasions(): ChecklistOccasion[] {
   return [{ id: 1, name: 'Occasion A', checks: {} }];
 }
@@ -106,4 +108,44 @@ describe('useOccasionEditState', () => {
       { id: 2, name: 'Occasion B' },
     ]);
   });
+
+  it.each([
+    { description: 'untouched', steps: [], expectedDirty: false },
+    {
+      description: 'a name is changed',
+      steps: [(r: Hook) => r.updateOccasionName(1, 'Renamed')],
+      expectedDirty: true,
+    },
+    {
+      description: 'a name is changed and then reverted',
+      steps: [
+        (r: Hook) => r.updateOccasionName(1, 'Renamed'),
+        (r: Hook) => r.updateOccasionName(1, 'Occasion A'),
+      ],
+      expectedDirty: false,
+    },
+    {
+      description: 'an occasion is added',
+      steps: [(r: Hook) => r.addOccasionLocal()],
+      expectedDirty: true,
+    },
+    {
+      description: 'a persisted occasion is removed',
+      steps: [(r: Hook) => r.removeOccasion(1)],
+      expectedDirty: true,
+    },
+  ])(
+    'reports isDirty=$expectedDirty when $description',
+    ({ steps, expectedDirty }) => {
+      const { result } = renderHook(() =>
+        useOccasionEditState(makeOccasions()),
+      );
+
+      for (const step of steps) {
+        act(() => step(result.current));
+      }
+
+      expect(result.current.isDirty).toBe(expectedDirty);
+    },
+  );
 });

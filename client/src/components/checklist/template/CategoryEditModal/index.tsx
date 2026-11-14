@@ -1,5 +1,8 @@
 import { Pencil, Plus, X } from 'lucide-react';
 
+import DiscardChangesDialog from '@/components/ui/DiscardChangesDialog';
+import ModalOverlay from '@/components/ui/ModalOverlay';
+import { useConfirmLeave } from '@/hooks/useConfirmLeave';
 import type { ChecklistCategory } from '@/types';
 
 import EditableItemRow from '../../shared/EditableItemRow';
@@ -13,6 +16,11 @@ interface Props {
   onSaved: () => void;
 }
 
+/**
+ * Dialog for editing a checklist template category's name and items→specs
+ * as a local draft that is saved in one go. Closing with unsaved edits
+ * (backdrop, Escape, close or cancel button) asks for confirmation first.
+ */
 export default function CategoryEditModal({
   category,
   onClose,
@@ -20,6 +28,7 @@ export default function CategoryEditModal({
 }: Props) {
   const {
     edit,
+    isDirty,
     scrollBodyRef,
     visibleItems,
     updateCategoryName,
@@ -37,14 +46,11 @@ export default function CategoryEditModal({
     onSaved,
     onClose,
   );
+  const { showLeaveConfirm, guardedLeave, confirmLeave, cancelLeave } =
+    useConfirmLeave(isDirty, onClose);
 
   return (
-    <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4'
-      /* v8 ignore next -- pure scroll-isolation UX, no business logic */
-      onWheel={e => e.stopPropagation()}
-    >
-      <div className='absolute inset-0 bg-black/50' onClick={onClose} />
+    <ModalOverlay onClose={guardedLeave} isolateWheel>
       <div className='relative flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl'>
         {/* Header */}
         <div className='flex items-center gap-3 border-b border-border px-5 py-4'>
@@ -62,7 +68,7 @@ export default function CategoryEditModal({
             />
           </div>
           <button
-            onClick={onClose}
+            onClick={guardedLeave}
             className='shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground'
             aria-label='關閉'
           >
@@ -100,7 +106,7 @@ export default function CategoryEditModal({
         {/* Footer */}
         <div className='flex items-center justify-end gap-3 border-t border-border px-5 py-4'>
           <button
-            onClick={onClose}
+            onClick={guardedLeave}
             className='px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground'
           >
             取消
@@ -114,6 +120,9 @@ export default function CategoryEditModal({
           </button>
         </div>
       </div>
-    </div>
+      {showLeaveConfirm && (
+        <DiscardChangesDialog onCancel={cancelLeave} onConfirm={confirmLeave} />
+      )}
+    </ModalOverlay>
   );
 }

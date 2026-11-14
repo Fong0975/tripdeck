@@ -8,8 +8,8 @@ import type {
 } from '../../../types/checklist';
 import { idParams } from '../params';
 
-import { rejectInvalidName, rejectNotFound } from './responses';
-import { pickSpecFields, requireName } from './validation';
+import { rejectInvalidBody, rejectNotFound } from './responses';
+import { parseSpecFields } from './validation';
 
 /**
  * Storage operations and log settings that let the template and trip
@@ -66,7 +66,7 @@ async function ensureSpecInItem(
 
 /**
  * Creates a spec on the `:itemId` item, responding 201 with the spec, 400 for
- * an invalid name or 404 when the item is missing.
+ * an invalid body or 404 when the item is missing.
  *
  * @param store - Template or trip spec storage.
  * @param req - Incoming request.
@@ -80,9 +80,9 @@ export async function handleAddSpec(
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'itemId');
   const itemId = meta.itemId;
-  const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'add-spec', meta);
+  const fields = parseSpecFields(req.body);
+  if (!fields.ok) {
+    rejectInvalidBody(res, logger, 'add-spec', fields.error, meta);
     return;
   }
   if (!(await store.verifyItem(itemId, meta[store.parentParam]))) {
@@ -90,7 +90,7 @@ export async function handleAddSpec(
     rejectNotFound(res, logger, 'Item', message, meta);
     return;
   }
-  const spec = await store.create(itemId, pickSpecFields(req.body, name));
+  const spec = await store.create(itemId, fields.value);
   if (!spec) {
     const message = 'Add-spec rejected: item not found on create';
     rejectNotFound(res, logger, 'Item', message, meta);
@@ -102,7 +102,7 @@ export async function handleAddSpec(
 
 /**
  * Updates the `:specId` spec, responding 200 with the spec, 400 for an
- * invalid name or 404 when the item or spec is missing.
+ * invalid body or 404 when the item or spec is missing.
  *
  * @param store - Template or trip spec storage.
  * @param req - Incoming request.
@@ -115,15 +115,15 @@ export async function handleUpdateSpec(
 ): Promise<void> {
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'itemId', 'specId');
-  const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'update-spec', meta);
+  const fields = parseSpecFields(req.body);
+  if (!fields.ok) {
+    rejectInvalidBody(res, logger, 'update-spec', fields.error, meta);
     return;
   }
   if (!(await ensureSpecInItem(store, res, 'Update-spec', meta))) {
     return;
   }
-  const spec = await store.update(meta.specId, pickSpecFields(req.body, name));
+  const spec = await store.update(meta.specId, fields.value);
   if (!spec) {
     const message = 'Update-spec rejected: spec not found on update';
     rejectNotFound(res, logger, 'Spec', message, meta);

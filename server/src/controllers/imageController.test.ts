@@ -1,7 +1,10 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../middleware/upload', () => ({ saveImageToDisk: vi.fn() }));
+vi.mock('../middleware/upload', () => ({
+  deleteImageFromDisk: vi.fn(),
+  saveImageToDisk: vi.fn(),
+}));
 vi.mock('../repositories/attraction', () => ({
   verifyBelongsToTrip: vi.fn(),
 }));
@@ -23,7 +26,7 @@ vi.mock('../repositories/trip', () => ({
   findDayByIdAndTripId: vi.fn(),
 }));
 
-import { saveImageToDisk } from '../middleware/upload';
+import { deleteImageFromDisk, saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
 import * as connectionRepo from '../repositories/connectionRepository';
 import * as imageRepo from '../repositories/imageRepository';
@@ -197,7 +200,24 @@ describe.each(variants)(
           'generated.jpg',
           'Title',
         );
+        expect(deleteImageFromDisk).not.toHaveBeenCalled();
         expectJsonStatus(res, 201, image);
+      });
+
+      it('deletes the saved file and rethrows when the DB insert fails', async () => {
+        const error = new Error('insert failed');
+        mockParentFound(true);
+        vi.mocked(saveImageToDisk).mockReturnValue('generated.jpg');
+        vi.mocked(addImage).mockRejectedValue(error);
+        const { req, res } = createMockReqRes({
+          params: uploadParams,
+          body: { title: 'Title' },
+          file: mockFile,
+        });
+
+        await expect(uploadHandler(req, res)).rejects.toBe(error);
+        expect(deleteImageFromDisk).toHaveBeenCalledWith('generated.jpg');
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
 
@@ -245,10 +265,20 @@ describe.each(variants.slice(0, 1))(
         expect(addImage).not.toHaveBeenCalled();
       });
 
-      it.each([
-        { name: 'missing', body: {} },
-        { name: 'blank', body: { title: '   ' } },
-      ])('returns 400 when title is $name', async ({ body }) => {
+      it.each<{ name: string; body: Record<string, unknown>; error: string }>([
+        { name: 'missing', body: {}, error: 'title is required' },
+        { name: 'blank', body: { title: '   ' }, error: 'title is required' },
+        {
+          name: 'not a string',
+          body: { title: ['a', 'b'] },
+          error: 'title must be a string',
+        },
+        {
+          name: 'longer than 255 characters',
+          body: { title: 'x'.repeat(256) },
+          error: 'title must be at most 255 characters',
+        },
+      ])('returns 400 when title is $name', async ({ body, error }) => {
         mockParentFound(true);
         const { req, res } = createMockReqRes({
           params: uploadParams,
@@ -258,7 +288,7 @@ describe.each(variants.slice(0, 1))(
 
         await uploadHandler(req, res);
 
-        expectJsonStatus(res, 400, { error: 'title is required' });
+        expectJsonStatus(res, 400, { error });
         expect(saveImageToDisk).not.toHaveBeenCalled();
         expect(addImage).not.toHaveBeenCalled();
       });

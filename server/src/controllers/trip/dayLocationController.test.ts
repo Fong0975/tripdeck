@@ -31,6 +31,26 @@ const sampleLocation: DayLocation = {
   name: 'Kyoto Station',
 };
 
+/** Bodies rejected by both add and update before touching the repository. */
+const invalidNameCases: {
+  name: string;
+  body: Record<string, unknown>;
+  error: string;
+}[] = [
+  { name: 'name is missing', body: {}, error: 'name is required' },
+  { name: 'name is blank', body: { name: '   ' }, error: 'name is required' },
+  {
+    name: 'name is not a string',
+    body: { name: 42 },
+    error: 'name is required',
+  },
+  {
+    name: 'name exceeds 255 characters',
+    body: { name: 'n'.repeat(256) },
+    error: 'name must be at most 255 characters',
+  },
+];
+
 function expectNoContent(
   res: ReturnType<typeof createMockReqRes>['res'],
 ): void {
@@ -40,19 +60,34 @@ function expectNoContent(
 
 describe('Day locations', () => {
   describe('addDayLocation', () => {
-    it.each([
-      { name: 'name is missing', body: {} },
-      { name: 'name is blank', body: { name: '   ' } },
-    ])('returns 400 when $name', async ({ body }) => {
+    it.each(invalidNameCases)(
+      'returns 400 when $name',
+      async ({ body, error }) => {
+        const { req, res } = createMockReqRes({
+          params: { tripId: '1', dayId: '10' },
+          body,
+        });
+
+        await addDayLocation(req, res);
+
+        expectJsonStatus(res, 400, { error });
+        expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
+      },
+    );
+
+    it('accepts a name at the maximum length once trimmed', async () => {
+      vi.mocked(tripRepo.findDayByIdAndTripId).mockResolvedValue(sampleDay);
+      vi.mocked(tripRepo.addLocation).mockResolvedValue(sampleLocation);
+      const name = `  ${'n'.repeat(255)}  `;
       const { req, res } = createMockReqRes({
         params: { tripId: '1', dayId: '10' },
-        body,
+        body: { name },
       });
 
       await addDayLocation(req, res);
 
-      expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
+      expect(tripRepo.addLocation).toHaveBeenCalledWith(10, { name });
+      expectJsonStatus(res, 201, sampleLocation);
     });
 
     it('returns 404 when the day is not found', async () => {
@@ -85,20 +120,20 @@ describe('Day locations', () => {
   });
 
   describe('updateDayLocation', () => {
-    it.each([
-      { name: 'name is missing', body: {} },
-      { name: 'name is blank', body: { name: '   ' } },
-    ])('returns 400 when $name', async ({ body }) => {
-      const { req, res } = createMockReqRes({
-        params: { tripId: '1', locationId: '300' },
-        body,
-      });
+    it.each(invalidNameCases)(
+      'returns 400 when $name',
+      async ({ body, error }) => {
+        const { req, res } = createMockReqRes({
+          params: { tripId: '1', locationId: '300' },
+          body,
+        });
 
-      await updateDayLocation(req, res);
+        await updateDayLocation(req, res);
 
-      expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
-    });
+        expectJsonStatus(res, 400, { error });
+        expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
+      },
+    );
 
     it('returns 404 when the location does not belong to the trip', async () => {
       vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(false);

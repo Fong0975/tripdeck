@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
 
-import { create, findAll, findById, update } from './tripCrud';
+import { create, findAll, findById, tripExists, update } from './tripCrud';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
@@ -78,6 +78,26 @@ describe('tripCrud', () => {
       },
     },
   ];
+
+  describe('tripExists', () => {
+    it.each([
+      { rows: [{ id: 5 }], expected: true },
+      { rows: [], expected: false },
+    ])(
+      'returns $expected without loading images when $rows.length rows match',
+      async ({ rows, expected }) => {
+        mockPoolExecute.mockResolvedValueOnce([rows]);
+
+        await expect(tripExists(5)).resolves.toBe(expected);
+
+        expect(mockPoolExecute).toHaveBeenCalledWith(
+          'SELECT id FROM trips WHERE id = ?',
+          [5],
+        );
+        expect(mockGetTripImages).not.toHaveBeenCalled();
+      },
+    );
+  });
 
   describe('findAll', () => {
     it.each(dateFieldCases)(

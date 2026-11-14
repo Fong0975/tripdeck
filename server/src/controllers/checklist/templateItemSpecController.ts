@@ -27,7 +27,8 @@ export async function addTemplateItemSpec(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
-     #swagger.summary = 'Add a spec to a template item' */
+     #swagger.summary = 'Add a spec to a template item'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
   await handleAddSpec(templateSpecs, req, res);
 }
 
@@ -36,7 +37,8 @@ export async function updateTemplateItemSpec(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
-     #swagger.summary = 'Update a template item spec' */
+     #swagger.summary = 'Update a template item spec'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
   await handleUpdateSpec(templateSpecs, req, res);
 }
 

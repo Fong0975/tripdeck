@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 
 import type { ChecklistCategory } from '@/types';
 
@@ -14,16 +14,18 @@ import {
   toEditCategory,
   updateById,
 } from '../../shared/editStateUpdaters';
-import type { EditCategory, EditItem, EditSpec } from '../../shared/types';
+import type { EditItem, EditSpec } from '../../shared/types';
+import { useTrackedEditState } from '../../shared/useTrackedEditState';
 
 /**
  * Manages the local edit-state tree for a single checklist template
  * category (name and items→specs), including CRUD handlers that operate
  * purely on local state. Saving is handled separately by
- * useSaveCategoryEdit.
+ * useSaveCategoryEdit. `isDirty` reports whether the draft differs from
+ * the given category.
  */
 export function useEditState(category: ChecklistCategory) {
-  const [edit, setEdit] = useState<EditCategory>(() =>
+  const [edit, setEdit, isDirty] = useTrackedEditState(() =>
     toEditCategory(category),
   );
   const scrollBodyRef = useRef<HTMLDivElement>(null);
@@ -71,6 +73,7 @@ export function useEditState(category: ChecklistCategory) {
 
   return {
     edit,
+    isDirty,
     scrollBodyRef,
     visibleItems,
     updateCategoryName,

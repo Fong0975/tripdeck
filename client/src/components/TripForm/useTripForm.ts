@@ -1,22 +1,28 @@
 import { useState } from 'react';
 
+import { addDaysToDateString } from '@/utils/date';
+
 import { validateTripForm, type TripFormValues } from './validateTripForm';
 
 /** Default trip length (in days after the start date) suggested for a new trip. */
 const DEFAULT_TRIP_EXTRA_DAYS = 3;
 
 interface Options {
-  /** When true, picking a start date also sets the end date a few days later. */
+  /**
+   * When true, picking a start date suggests an end date a few days later,
+   * but only if the end date is empty or would otherwise fall before the new
+   * start date; an end date the user already chose is kept.
+   */
   autoFillEndDate?: boolean;
 }
 
 /**
- * Returns `startDate` (`yyyy-MM-dd`) shifted by `days`, in the same format.
+ * Whether a newly picked start date should replace the current end date with
+ * the default suggestion: only when the end date is unset or now invalid.
+ * Both values are `yyyy-MM-dd`, so string comparison orders them correctly.
  */
-function addDays(startDate: string, days: number): string {
-  const end = new Date(startDate);
-  end.setDate(end.getDate() + days);
-  return end.toISOString().slice(0, 10);
+function shouldSuggestEndDate(startDate: string, endDate: string): boolean {
+  return !endDate || endDate < startDate;
 }
 
 /**
@@ -42,8 +48,13 @@ export function useTripForm(
     const { name, value } = e.target;
     setValues(prev => {
       const updated = { ...prev, [name]: value };
-      if (autoFillEndDate && name === 'startDate' && value) {
-        updated.endDate = addDays(value, DEFAULT_TRIP_EXTRA_DAYS);
+      if (
+        autoFillEndDate &&
+        name === 'startDate' &&
+        value &&
+        shouldSuggestEndDate(value, prev.endDate)
+      ) {
+        updated.endDate = addDaysToDateString(value, DEFAULT_TRIP_EXTRA_DAYS);
       }
       return updated;
     });

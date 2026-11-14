@@ -63,25 +63,6 @@ export async function getWebsites(
 }
 
 /**
- * Counts the attractions currently in a day, which is also the sort_order a
- * newly appended attraction should get.
- *
- * @param conn - Connection (usually inside a transaction) to query with.
- * @param dayId - Day to count.
- * @returns Number of attractions in the day.
- */
-export async function countAttractionsInDay(
-  conn: PoolConnection,
-  dayId: number,
-): Promise<number> {
-  const [countRows] = await conn.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM trip_attractions WHERE trip_day_id = ?',
-    [dayId],
-  );
-  return (countRows[0] as { count: number }).count;
-}
-
-/**
  * Inserts one trip_attraction_websites row per website, in order.
  *
  * @param conn - Connection (usually inside a transaction) to insert with.

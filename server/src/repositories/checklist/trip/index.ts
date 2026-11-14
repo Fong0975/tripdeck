@@ -3,4 +3,4 @@ export * from './tripChecklistCore';
 export * from './tripItemRepository';
 export * from './tripItemSpecRepository';
 export * from './tripOccasionRepository';
-export { tripExists } from './shared';
+export { tripExists } from '../../trip/tripCrud';

@@ -4,7 +4,7 @@ import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
 
 import { idParam } from './params';
-import { rejectInvalidName, rejectNotFound } from './shared/responses';
+import { rejectInvalidBody, rejectNotFound } from './shared/responses';
 import { requireName } from './shared/validation';
 
 const logger = createLogger('checklist-template');
@@ -81,14 +81,18 @@ export async function addTemplateCategory(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'add-category');
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'add-category', name.error);
     return;
   }
-  const category = await templateRepo.createCategory(name);
-  logger.info('Template category created', { catId: category.id, name });
+  const category = await templateRepo.createCategory(name.value);
+  logger.info('Template category created', {
+    catId: category.id,
+    name: name.value,
+  });
   res.status(201).json(category);
 }
 
@@ -125,14 +129,15 @@ export async function updateTemplateCategory(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const catId = idParam(req, 'catId');
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'update-category', { catId });
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'update-category', name.error, { catId });
     return;
   }
-  const category = await templateRepo.updateCategory(catId, name);
+  const category = await templateRepo.updateCategory(catId, name.value);
   if (!category) {
     const message = 'Update-category rejected: category not found';
     rejectNotFound(res, logger, 'Category', message, { catId });

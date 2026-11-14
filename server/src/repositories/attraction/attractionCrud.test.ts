@@ -69,10 +69,10 @@ describe('attractionCrud', () => {
   });
 
   describe('create', () => {
-    it('computes sortOrder from the existing count and defaults optional fields to null', async () => {
+    it('computes sortOrder as one past the day highest sort_order and defaults optional fields to null', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 3 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 3 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 1 }]);
@@ -106,8 +106,8 @@ describe('attractionCrud', () => {
 
     it('inserts a row for each provided reference website', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 0 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 0 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 1 }]);

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type EndpointIds,
   type EndpointResolution,
+  findTooLongConnectionField,
   INVALID_ENDPOINT_IDS_ERROR,
   isMissing,
   resolveEndpoints,
@@ -103,6 +104,31 @@ describe('resolveEndpoints', () => {
       expect(resolveEndpoints(rawFrom, rawTo, cur)).toEqual(expected);
     },
   );
+});
+
+describe('findTooLongConnectionField', () => {
+  const tests: {
+    name: string;
+    body: { duration?: unknown };
+    expected: string | null;
+  }[] = [
+    { name: 'duration is omitted', body: {}, expected: null },
+    { name: 'duration is null', body: { duration: null }, expected: null },
+    {
+      name: 'duration is exactly 100 characters',
+      body: { duration: 'x'.repeat(100) },
+      expected: null,
+    },
+    {
+      name: 'duration is longer than 100 characters',
+      body: { duration: 'x'.repeat(101) },
+      expected: 'duration must be at most 100 characters',
+    },
+  ];
+
+  it.each(tests)('returns $expected when $name', ({ body, expected }) => {
+    expect(findTooLongConnectionField(body)).toBe(expected);
+  });
 });
 
 describe('isMissing', () => {

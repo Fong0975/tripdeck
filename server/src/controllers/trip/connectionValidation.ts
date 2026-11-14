@@ -1,5 +1,6 @@
 import { TRANSPORT_MODES } from '../../constants/transportModes';
 import { parseId } from '../../utils/parseId';
+import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
 
 export const INVALID_ENDPOINT_IDS_ERROR =
   'fromAttractionId and toAttractionId must be positive integers';
@@ -23,6 +24,19 @@ export interface EndpointIds {
  */
 export function isMissing(value: unknown): value is null | undefined {
   return value === undefined || value === null;
+}
+
+/**
+ * Checks the free-text connection fields that are stored in VARCHAR columns.
+ *
+ * @param body - Raw request body; only `duration` is length-limited
+ *   (`route` and `notes` are TEXT, `transportMode` is an enum).
+ * @returns A client-facing error, or null when every field fits.
+ */
+export function findTooLongConnectionField(body: {
+  duration?: unknown;
+}): string | null {
+  return findTooLongField([['duration', body.duration, FIELD_LIMITS.duration]]);
 }
 
 export type EndpointResolution =

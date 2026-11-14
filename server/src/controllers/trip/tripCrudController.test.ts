@@ -114,6 +114,25 @@ describe('Trips', () => {
         error: 'title cannot be empty',
       },
       {
+        name: 'title is longer than 255 characters',
+        body: {
+          title: 'x'.repeat(256),
+          startDate: '2024-05-10',
+          endDate: '2024-05-12',
+        },
+        error: 'title must be at most 255 characters',
+      },
+      {
+        name: 'destination is longer than 255 characters',
+        body: {
+          title: 'Kyoto',
+          destination: 'x'.repeat(256),
+          startDate: '2024-05-10',
+          endDate: '2024-05-12',
+        },
+        error: 'destination must be at most 255 characters',
+      },
+      {
         name: 'startDate is not YYYY-MM-DD',
         body: {
           title: 'Kyoto',
@@ -237,6 +256,16 @@ describe('Trips', () => {
     });
 
     it.each([
+      {
+        name: 'the new title is longer than 255 characters',
+        body: { title: 'x'.repeat(256) },
+        error: 'title must be at most 255 characters',
+      },
+      {
+        name: 'the new destination is longer than 255 characters',
+        body: { destination: 'x'.repeat(256) },
+        error: 'destination must be at most 255 characters',
+      },
       {
         name: 'the new startDate is not YYYY-MM-DD',
         body: { startDate: '10-05-2024' },

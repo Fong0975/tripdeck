@@ -1,7 +1,6 @@
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
-import pool from '../../../config/database';
 import type { ItemSpecResponse } from '../../../types/checklist';
 import { createSpecRepository } from '../shared/specRepository';
 
@@ -34,20 +33,6 @@ export interface CheckRow extends RowDataPacket {
 }
 
 // --- Helpers ---
-
-/**
- * Checks whether a trip row exists.
- *
- * @param tripId - Trip id to look up.
- * @returns True when the trip exists.
- */
-export async function tripExists(tripId: number): Promise<boolean> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    'SELECT id FROM trips WHERE id = ?',
-    [tripId],
-  );
-  return rows.length > 0;
-}
 
 /**
  * Takes an exclusive row lock on the parent trip for the rest of the

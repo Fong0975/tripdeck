@@ -1,15 +1,17 @@
-import fs from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 
 import AdmZip from 'adm-zip';
 
 import { createLogger } from '../../logger';
+import { mapWithConcurrency } from '../../maps/mapWithConcurrency';
 import { UPLOADS_DIR } from '../../middleware/upload';
 import {
   BACKUP_FORMAT_VERSION,
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
+import type { ImageResponse } from '../../types/trip';
 import * as templateRepo from '../checklist/template';
 import * as checklistRepo from '../checklist/trip';
 import * as tripRepo from '../trip';
@@ -18,6 +20,9 @@ import { collectTripImages, tripDataPath, tripImagePath } from './backupLayout';
 import { TripNotFoundError } from './errors';
 
 const logger = createLogger('backup');
+
+/** Maximum image files read from disk at once while building a zip. */
+const IMAGE_READ_CONCURRENCY = 8;
 
 /**
  * Assembles the full backup payload for one trip: its own fields/images,
@@ -54,11 +59,59 @@ export async function buildTripBackupData(
 }
 
 /**
+ * Reads a trip's image files from disk (asynchronously, at most
+ * {@link IMAGE_READ_CONCURRENCY} at a time) and adds them to the trip's
+ * `images/` folder in `zip`, in the order given. A file that cannot be read
+ * is logged and skipped rather than failing the export.
+ *
+ * @param zip - The zip being built.
+ * @param images - The trip's images, in export order.
+ * @param tripId - The trip's ID, for logging.
+ * @param folder - The trip's folder name inside the zip.
+ * @returns The number of images skipped because their file was unreadable.
+ */
+async function addTripImagesToZip(
+  zip: AdmZip,
+  images: ImageResponse[],
+  tripId: number,
+  folder: string,
+): Promise<number> {
+  const buffers: Array<Buffer | undefined> = new Array(images.length);
+  await mapWithConcurrency(
+    images.map((image, index) => ({ image, index })),
+    IMAGE_READ_CONCURRENCY,
+    async ({ image, index }) => {
+      try {
+        buffers[index] = await readFile(path.join(UPLOADS_DIR, image.filename));
+      } catch (err) {
+        logger.warn('Missing image file on disk, skipped from export', {
+          filename: image.filename,
+          tripId,
+          folder,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+  );
+
+  let skippedImages = 0;
+  images.forEach((image, index) => {
+    const buffer = buffers[index];
+    if (buffer === undefined) {
+      skippedImages++;
+      return;
+    }
+    zip.addFile(tripImagePath(folder, image.filename), buffer);
+  });
+  return skippedImages;
+}
+
+/**
  * Adds one `trips/trip_<id>/` folder (data.json + images/) per trip ID to
  * `zip`, de-duplicating IDs first. Returns the manifest entries describing
  * what was written, so callers (a per-trip export or a system-wide backup)
  * can build their own `manifest.json` around them. A missing image file on
- * disk is skipped (with a console warning) rather than failing the whole
+ * disk is skipped (with a logged warning) rather than failing the whole
  * export, since a DB image row should never outlive its file under normal
  * operation.
  */
@@ -79,21 +132,7 @@ export async function addTripsToZip(
       Buffer.from(JSON.stringify(data, null, 2), 'utf-8'),
     );
 
-    let skippedImages = 0;
-    for (const image of images) {
-      try {
-        const buffer = fs.readFileSync(path.join(UPLOADS_DIR, image.filename));
-        zip.addFile(tripImagePath(folder, image.filename), buffer);
-      } catch (err) {
-        skippedImages++;
-        logger.warn('Missing image file on disk, skipped from export', {
-          filename: image.filename,
-          tripId,
-          folder,
-          reason: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+    const skippedImages = await addTripImagesToZip(zip, images, tripId, folder);
 
     logger.debug('Added trip to export zip', {
       tripId,
@@ -117,7 +156,7 @@ export async function addTripsToZip(
  * `trips/trip_<id>/` folder containing `data.json` and an `images/` folder
  * with the actual image files, alongside a top-level `manifest.json`.
  * Duplicate IDs are de-duplicated; a missing image file on disk is skipped
- * (with a console warning) rather than failing the whole export, since a
+ * (with a logged warning) rather than failing the whole export, since a
  * DB image row should never outlive its file under normal operation.
  *
  * When `options.includeTemplate` is set, a `template.json` snapshot of the

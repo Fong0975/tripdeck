@@ -155,6 +155,62 @@ describe('updateTripItem', () => {
     expectJsonStatus(res, 404, { error: 'Item not found' });
   });
 
+  it.each([
+    {
+      label: 'name is blank',
+      body: { name: '  ' },
+      error: 'name is required',
+    },
+    {
+      label: 'name is too long',
+      body: { name: 'x'.repeat(256) },
+      error: 'name must be at most 255 characters',
+    },
+    {
+      label: 'quantity is negative',
+      body: { quantity: -1 },
+      error: 'quantity must be a non-negative integer',
+    },
+    {
+      label: 'storage_location is too long',
+      body: { storage_location: 'x'.repeat(256) },
+      error: 'storage_location must be at most 255 characters',
+    },
+  ])('returns 400 when $label', async ({ body, error }) => {
+    const { req, res } = createMockReqRes({
+      params: { tripId: '1', itemId: '2' },
+      body,
+    });
+
+    await updateTripItem(req, res);
+
+    expectJsonStatus(res, 400, { error });
+    expect(tripRepo.verifyItemBelongsToTrip).not.toHaveBeenCalled();
+    expect(tripRepo.updateTripItem).not.toHaveBeenCalled();
+  });
+
+  it('passes only the present fields to the repository', async () => {
+    const item = {
+      id: 2,
+      name: 'Charger',
+      quantity: 3,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    };
+    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(tripRepo.updateTripItem).mockResolvedValue(item);
+    const { req, res } = createMockReqRes({
+      params: { tripId: '1', itemId: '2' },
+      body: { quantity: 3, unknown: 'dropped' },
+    });
+
+    await updateTripItem(req, res);
+
+    expect(tripRepo.updateTripItem).toHaveBeenCalledWith(2, { quantity: 3 });
+    expect(res.json).toHaveBeenCalledWith(item);
+  });
+
   it('does not perform a name-required 400 check and updates with an empty body', async () => {
     const item = {
       id: 2,

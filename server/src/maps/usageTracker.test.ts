@@ -82,30 +82,73 @@ describe('usageTracker', () => {
   });
 
   describe('tryConsume', () => {
-    it('counts one use and returns true while capacity remains', async () => {
-      mockUsageRow({ count: 2, exhausted: 0 });
+    function mockConditionalUpdate(affectedRows: number) {
+      routeSql(
+        mockExecute,
+        [['UPDATE maps_usage SET', [{ affectedRows }]]],
+        [{ affectedRows: 1 }],
+      );
+    }
 
-      await expect(tryConsume('geocode', NOW)).resolves.toBe(true);
+    it.each([
+      {
+        description: 'returns true when the guarded update counts a use',
+        kind: 'geocode' as const,
+        affectedRows: 1,
+        expectedLimit: 5,
+        expected: true,
+      },
+      {
+        description:
+          'returns false when the quota is used up or flagged exhausted',
+        kind: 'geocode' as const,
+        affectedRows: 0,
+        expectedLimit: 5,
+        expected: false,
+      },
+      {
+        description: 'guards the update with the load limit for load',
+        kind: 'load' as const,
+        affectedRows: 1,
+        expectedLimit: 3,
+        expected: true,
+      },
+    ])(
+      '$description',
+      async ({ kind, affectedRows, expectedLimit, expected }) => {
+        mockConditionalUpdate(affectedRows);
 
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.stringContaining('ON DUPLICATE KEY UPDATE count = count + 1'),
-        ['2026-10-24', 'geocode'],
+        await expect(tryConsume(kind, NOW)).resolves.toBe(expected);
+
+        expect(mockExecute).toHaveBeenCalledTimes(2);
+        expect(mockExecute).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining('INSERT INTO maps_usage'),
+          ['2026-10-24', kind],
+        );
+        expect(mockExecute).toHaveBeenNthCalledWith(
+          2,
+          expect.stringMatching(
+            /SET count = count \+ 1 .*exhausted = 0 AND count < \?/,
+          ),
+          ['2026-10-24', kind, expectedLimit],
+        );
+      },
+    );
+
+    it('never reads usage before counting', async () => {
+      mockConditionalUpdate(1);
+
+      await tryConsume('geocode', NOW);
+
+      expect(mockExecute).not.toHaveBeenCalledWith(
+        expect.stringContaining('SELECT'),
+        expect.anything(),
       );
     });
 
-    it.each([
-      { description: 'at the limit', row: { count: 5, exhausted: 0 } },
-      { description: 'flagged exhausted', row: { count: 0, exhausted: 1 } },
-    ])('returns false without counting when $description', async ({ row }) => {
-      mockUsageRow(row);
-
-      await expect(tryConsume('geocode', NOW)).resolves.toBe(false);
-
-      expect(mockExecute).toHaveBeenCalledTimes(1);
-    });
-
     it('defaults to the current time', async () => {
-      mockUsageRow();
+      mockConditionalUpdate(1);
 
       await expect(tryConsume('load')).resolves.toBe(true);
     });

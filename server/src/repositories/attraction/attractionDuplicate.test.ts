@@ -52,7 +52,7 @@ describe('attractionDuplicate', () => {
       expect(mockGetConnection).not.toHaveBeenCalled();
     });
 
-    it('duplicates the attraction with sortOrder from the count query, copied fields, and re-inserted reference websites', async () => {
+    it('duplicates the attraction with sortOrder one past the day highest sort_order, copied fields, and re-inserted reference websites', async () => {
       const websiteRows = [
         {
           id: 1,
@@ -71,8 +71,8 @@ describe('attractionDuplicate', () => {
         return Promise.resolve([[]]);
       });
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 4 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 4 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 99 }]);
@@ -148,8 +148,8 @@ describe('attractionDuplicate', () => {
         return Promise.resolve([[]]);
       });
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 0 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 0 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 99 }]);

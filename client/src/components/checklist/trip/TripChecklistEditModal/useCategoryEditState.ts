@@ -16,14 +16,16 @@ import {
   updateIn,
 } from '../../shared/editStateUpdaters';
 import type { EditCategory, EditItem, EditSpec } from '../../shared/types';
+import { useTrackedEditState } from '../../shared/useTrackedEditState';
 
 /**
  * Manages the local edit-state tree for checklist categories→items→specs,
  * including CRUD handlers that operate purely on local state. Saving is
- * handled separately by useSaveChecklist.
+ * handled separately by useSaveChecklist. `isDirty` reports whether the
+ * tree differs from the initial categories (expansion state is ignored).
  */
 export function useCategoryEditState(initial: ChecklistCategory[]) {
-  const [categories, setCategories] = useState<EditCategory[]>(() =>
+  const [categories, setCategories, isDirty] = useTrackedEditState(() =>
     initial.map(toEditCategory),
   );
   const [expandedCats, setExpandedCats] = useState<Set<number>>(new Set());
@@ -115,6 +117,7 @@ export function useCategoryEditState(initial: ChecklistCategory[]) {
 
   return {
     categories,
+    isDirty,
     expandedCats,
     scrollBodyRef,
     visibleCategories,

@@ -15,7 +15,6 @@ const mockConnExecute = db.conn.execute;
 const mockConnQuery = db.conn.query;
 const mockConnCommit = db.conn.commit;
 const mockConnRollback = db.conn.rollback;
-const mockGetConnection = db.pool.getConnection;
 
 const mockDeleteImageFromDisk = vi.fn();
 vi.mock('../../middleware/upload', () => ({
@@ -32,21 +31,89 @@ describe('attractionOrder', () => {
   });
 
   describe('updateOrder', () => {
-    it('deletes trip_connections that are no longer adjacent under the new order, and keeps ones that still are', async () => {
-      // new order: 200 -> pos0, 100 -> pos1, 101 -> pos2
-      const orderedIds = [200, 100, 101];
-      const connectionRows = [
-        { id: 1, trip_attraction_id_from: 100, trip_attraction_id_to: 101 }, // still adjacent (1 -> 2)
-        { id: 2, trip_attraction_id_from: 200, trip_attraction_id_to: 101 }, // no longer adjacent (0 -> 2)
-        { id: 3, trip_attraction_id_from: 999, trip_attraction_id_to: 100 }, // endpoint not in this day
-      ];
-
+    /** Answers the day-order lock and the connection lookup for one day. */
+    function arrangeReorderDb(
+      dayIds: number[],
+      connectionRows: Record<string, unknown>[] = [],
+    ): void {
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
+        if (sql.startsWith('SELECT id FROM trip_attractions')) {
+          return Promise.resolve([dayIds.map(id => ({ id }))]);
+        }
+        if (sql.startsWith('SELECT') && sql.includes('trip_connections')) {
           return Promise.resolve([connectionRows]);
         }
         return Promise.resolve([{ affectedRows: 1 }]);
       });
+    }
+
+    function sortOrderWrites(): unknown[][] {
+      return mockConnExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('SET sort_order'),
+      );
+    }
+
+    it('writes every new position in a single CASE update', async () => {
+      arrangeReorderDb([100, 101, 200]);
+
+      const result = await updateOrder(10, [200, 100, 101]);
+
+      expect(result).toBe('reordered');
+      expect(sortOrderWrites()).toEqual([
+        [
+          'UPDATE trip_attractions SET sort_order = CASE id WHEN ? THEN ? WHEN ? THEN ? WHEN ? THEN ? END WHERE trip_day_id = ? AND id IN (?, ?, ?)',
+          [200, 0, 100, 1, 101, 2, 10, 200, 100, 101],
+        ],
+      ]);
+      expect(mockConnCommit).toHaveBeenCalled();
+    });
+
+    it.each<{ name: string; orderedIds: unknown[] }>([
+      { name: 'an attraction is omitted', orderedIds: [100, 101] },
+      { name: 'an id is duplicated', orderedIds: [100, 100, 101] },
+      { name: 'an id is not in the day', orderedIds: [100, 101, 999] },
+      { name: 'there are extra ids', orderedIds: [100, 101, 200, 999] },
+      { name: 'an id is not an integer', orderedIds: [100, 101, 200.5] },
+      { name: 'an id is a numeric string', orderedIds: [100, 101, '200'] },
+      { name: 'an id is not positive', orderedIds: [100, 101, -200] },
+      { name: 'the list is empty for a non-empty day', orderedIds: [] },
+    ])(
+      'returns invalid_order and writes nothing when $name',
+      async ({ orderedIds }) => {
+        arrangeReorderDb(
+          [100, 101, 200],
+          [{ id: 1, trip_attraction_id_from: 100, trip_attraction_id_to: 101 }],
+        );
+
+        const result = await updateOrder(10, orderedIds);
+
+        expect(result).toBe('invalid_order');
+        expect(sortOrderWrites()).toEqual([]);
+        expect(mockConnQuery).not.toHaveBeenCalled();
+        expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
+      },
+    );
+
+    it('accepts an empty list for an empty day without writing any order', async () => {
+      arrangeReorderDb([]);
+
+      const result = await updateOrder(10, []);
+
+      expect(result).toBe('reordered');
+      expect(sortOrderWrites()).toEqual([]);
+      expect(mockConnCommit).toHaveBeenCalled();
+    });
+
+    it('deletes trip_connections that are no longer adjacent under the new order, and keeps ones that still are', async () => {
+      // new order: 200 -> pos0, 100 -> pos1, 101 -> pos2
+      arrangeReorderDb(
+        [100, 101, 200],
+        [
+          { id: 1, trip_attraction_id_from: 100, trip_attraction_id_to: 101 }, // still adjacent (1 -> 2)
+          { id: 2, trip_attraction_id_from: 200, trip_attraction_id_to: 101 }, // no longer adjacent (0 -> 2)
+          { id: 3, trip_attraction_id_from: 999, trip_attraction_id_to: 100 }, // endpoint not in this day
+        ],
+      );
       vi.mocked(imageRepo.getConnectionImagesBatch).mockResolvedValue(
         new Map([
           [2, [{ id: 20, filename: 'stale-2.jpg', title: 'A' }]],
@@ -54,7 +121,7 @@ describe('attractionOrder', () => {
         ]),
       );
 
-      await updateOrder(10, orderedIds);
+      await updateOrder(10, [200, 100, 101]);
 
       expect(imageRepo.getConnectionImagesBatch).toHaveBeenCalledWith([2, 3]);
       expect(mockConnQuery).toHaveBeenCalledWith(
@@ -68,19 +135,12 @@ describe('attractionOrder', () => {
     });
 
     it('does not issue a DELETE when every connection is still adjacent', async () => {
-      const orderedIds = [100, 101];
-      const connectionRows = [
-        { id: 1, trip_attraction_id_from: 100, trip_attraction_id_to: 101 },
-      ];
+      arrangeReorderDb(
+        [100, 101],
+        [{ id: 1, trip_attraction_id_from: 100, trip_attraction_id_to: 101 }],
+      );
 
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([connectionRows]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
-
-      await updateOrder(10, orderedIds);
+      await updateOrder(10, [100, 101]);
 
       expect(mockConnExecute).toHaveBeenCalledWith(
         expect.stringContaining('trip_connections'),
@@ -92,22 +152,11 @@ describe('attractionOrder', () => {
       expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
     });
 
-    it('does nothing when orderedIds is empty', async () => {
-      await updateOrder(10, []);
-
-      expect(mockGetConnection).not.toHaveBeenCalled();
-    });
-
     it('does not delete any image file when the transaction is rolled back', async () => {
-      const connectionRows = [
-        { id: 2, trip_attraction_id_from: 200, trip_attraction_id_to: 101 },
-      ];
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.trim().startsWith('SELECT')) {
-          return Promise.resolve([connectionRows]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      arrangeReorderDb(
+        [100, 101],
+        [{ id: 2, trip_attraction_id_from: 200, trip_attraction_id_to: 101 }],
+      );
       vi.mocked(imageRepo.getConnectionImagesBatch).mockResolvedValue(
         new Map([[2, [{ id: 20, filename: 'stale-2.jpg', title: 'A' }]]]),
       );
@@ -173,15 +222,16 @@ describe('attractionOrder', () => {
       });
     }
 
-    /** Attraction ids written via sort_order updates for one day, in order. */
+    /**
+     * Attraction ids written via the CASE sort_order update for one day, in
+     * order. Params are `[id0, 0, id1, 1, ..., dayId, id0, id1, ...]`.
+     */
     function writtenOrder(dayId: number): number[] {
       return mockConnExecute.mock.calls
-        .filter(
-          ([sql, params]) =>
-            (sql as string).includes('SET sort_order') &&
-            (params as number[])[2] === dayId,
-        )
-        .map(([, params]) => (params as number[])[1]);
+        .filter(([sql]) => (sql as string).includes('SET sort_order'))
+        .map(([, params]) => params as number[])
+        .filter(params => params[((params.length - 1) / 3) * 2] === dayId)
+        .flatMap(params => params.slice(((params.length - 1) / 3) * 2 + 1));
     }
 
     function dayMoveCalls(): unknown[][] {

@@ -1,4 +1,4 @@
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
@@ -29,6 +29,20 @@ async function selectTripRow(id: number): Promise<TripRow | undefined> {
     [id],
   );
   return rows[0];
+}
+
+/**
+ * Checks whether a trip exists without loading its row or images.
+ *
+ * @param id - Trip id.
+ * @returns True when the trip exists.
+ */
+export async function tripExists(id: number): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM trips WHERE id = ?',
+    [id],
+  );
+  return rows.length > 0;
 }
 
 /**

@@ -32,7 +32,15 @@ export default function DayWeather({ locations, date }: Props) {
   const [idx, setIdx] = useState(0);
   const [current, setCurrent] = useState<WeatherResult | null>(null);
 
-  const location = locations[Math.min(idx, locations.length - 1)];
+  const lastIdx = Math.max(locations.length - 1, 0);
+  // Clamp during render (not in an effect) so a shrunken locations list never
+  // leaves the stored index pointing past the end, e.g. after it grows again.
+  if (idx > lastIdx) {
+    setIdx(lastIdx);
+  }
+  const currentIdx = Math.min(idx, lastIdx);
+
+  const location = locations[currentIdx];
   const locationId = location?.id;
   const locationName = location?.name;
 
@@ -41,26 +49,42 @@ export default function DayWeather({ locations, date }: Props) {
       return;
     }
 
+    // A slower response for a previous location/date must not overwrite the
+    // current one, so results are dropped once this effect is cleaned up.
+    let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- show the loading state immediately when the location or date changes
     setCurrent({ status: 'loading' });
     fetchDailyWeather(locationName, date)
-      .then(result => setCurrent(result))
-      .catch(() => setCurrent({ status: 'error' }));
+      .then(result => {
+        if (active) {
+          setCurrent(result);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCurrent({ status: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [locationId, locationName, date]);
 
-  const canPrev = idx > 0;
-  const canNext = idx < locations.length - 1;
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx < lastIdx;
+  const goPrev = () => setIdx(Math.max(currentIdx - 1, 0));
+  const goNext = () => setIdx(Math.min(currentIdx + 1, lastIdx));
 
   const swipeHandlers = usePointerSwipe({
     enabled: locations.length > 1,
     onSwipeLeft: () => {
       if (canNext) {
-        setIdx(i => i + 1);
+        goNext();
       }
     },
     onSwipeRight: () => {
       if (canPrev) {
-        setIdx(i => i - 1);
+        goPrev();
       }
     },
   });
@@ -81,7 +105,7 @@ export default function DayWeather({ locations, date }: Props) {
       {locations.length > 1 && (
         <div className='mb-1.5 flex items-center justify-center gap-1'>
           <button
-            onClick={() => setIdx(i => i - 1)}
+            onClick={goPrev}
             disabled={!canPrev}
             className='text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30'
             aria-label='上一個地區'
@@ -92,7 +116,7 @@ export default function DayWeather({ locations, date }: Props) {
             {location.name}
           </span>
           <button
-            onClick={() => setIdx(i => i + 1)}
+            onClick={goNext}
             disabled={!canNext}
             className='text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30'
             aria-label='下一個地區'

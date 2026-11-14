@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+
+import ModalOverlay from './ModalOverlay';
 
 interface Props {
   title: ReactNode;
@@ -13,7 +15,8 @@ interface Props {
 
 /**
  * Shared modal shell: full-screen overlay + centered panel with a title bar
- * and close button. Closes on overlay click and on Escape.
+ * and close button. Closes on overlay click and on Escape (only while it is
+ * the top-most open dialog).
  */
 export default function Modal({
   title,
@@ -22,23 +25,8 @@ export default function Modal({
   maxWidth = 'max-w-md',
   scrollable = false,
 }: Props) {
-  useEffect(() => {
-    const handle = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handle);
-    return () => window.removeEventListener('keydown', handle);
-  }, [onClose]);
-
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
-      <div
-        className='absolute inset-0 bg-black/50 backdrop-blur-xs'
-        onClick={onClose}
-      />
-
+    <ModalOverlay onClose={onClose} backdropClassName='backdrop-blur-xs'>
       <div
         className={`relative w-full animate-slide-up border-border bg-card ${maxWidth} rounded-2xl border p-6 shadow-2xl ${
           scrollable ? 'max-h-[90vh] overflow-y-auto' : ''
@@ -56,6 +44,6 @@ export default function Modal({
 
         {children}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

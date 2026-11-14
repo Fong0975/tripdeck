@@ -10,6 +10,8 @@ import type { ChecklistCategory } from '@/types';
 
 import { useCategoryEditState } from './useCategoryEditState';
 
+type Hook = ReturnType<typeof useCategoryEditState>;
+
 function makeCategories(): ChecklistCategory[] {
   return [
     makeChecklistCategory({
@@ -336,4 +338,41 @@ describe('useCategoryEditState', () => {
       ]);
     });
   });
+
+  it.each([
+    { description: 'untouched', steps: [], expectedDirty: false },
+    {
+      description: 'only a category is expanded',
+      steps: [(r: Hook) => r.toggleCatExpanded(1)],
+      expectedDirty: false,
+    },
+    {
+      description: 'a category is renamed',
+      steps: [(r: Hook) => r.updateCategoryName(1, 'Renamed')],
+      expectedDirty: true,
+    },
+    {
+      description: 'an item field is changed',
+      steps: [(r: Hook) => r.updateItem(1, 10, { quantity: 5 })],
+      expectedDirty: true,
+    },
+    {
+      description: 'a spec is removed',
+      steps: [(r: Hook) => r.removeSpec(1, 10, 100)],
+      expectedDirty: true,
+    },
+  ])(
+    'reports isDirty=$expectedDirty when $description',
+    ({ steps, expectedDirty }) => {
+      const { result } = renderHook(() =>
+        useCategoryEditState(makeCategories()),
+      );
+
+      for (const step of steps) {
+        act(() => step(result.current));
+      }
+
+      expect(result.current.isDirty).toBe(expectedDirty);
+    },
+  );
 });

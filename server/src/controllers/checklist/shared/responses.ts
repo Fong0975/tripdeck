@@ -7,21 +7,23 @@ export type ChecklistEntity =
   'Trip' | 'Category' | 'Item' | 'Spec' | 'Occasion';
 
 /**
- * Logs and sends `400 { error: 'name is required' }`.
+ * Logs and sends `400 { error }` for a request body that failed validation.
  *
  * @param res - Response to send on.
  * @param logger - Logger of the calling controller.
  * @param action - Kebab-case request name for the log (e.g. `'add-item'`).
+ * @param error - Client-facing validation error (e.g. `'name is required'`).
  * @param meta - Ids identifying the request.
  */
-export function rejectInvalidName(
+export function rejectInvalidBody(
   res: Response,
   logger: Logger,
   action: string,
+  error: string,
   meta?: LogMeta,
 ): void {
-  logger.warn(`Rejected ${action} request with an invalid name`, meta);
-  res.status(400).json({ error: 'name is required' });
+  logger.warn(`Rejected ${action} request: ${error}`, meta);
+  res.status(400).json({ error });
 }
 
 /**

@@ -10,10 +10,10 @@ import type {
 } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
 import * as connectionRepo from '../connectionRepository';
+import { nextSortOrderInDay } from '../daySortOrder';
 import * as imageRepo from '../imageRepository';
 
 import {
-  countAttractionsInDay,
   getWebsites,
   insertWebsites,
   toAttractionResponse,
@@ -25,7 +25,8 @@ const logger = createLogger('attraction');
 
 /**
  * Appends an attraction to the given day.
- * sort_order is set to the current count of attractions in that day so the new item appears last.
+ * sort_order is one past the day's highest (computed under a lock on the
+ * day row) so the new item appears last without colliding with an existing one.
  *
  * @param dayId - Day to append to.
  * @param data - New attraction fields.
@@ -38,7 +39,11 @@ export async function create(
   const websites = data.referenceWebsites ?? [];
   try {
     return await withTransaction(async conn => {
-      const sortOrder = await countAttractionsInDay(conn, dayId);
+      const sortOrder = await nextSortOrderInDay(
+        conn,
+        'trip_attractions',
+        dayId,
+      );
 
       const [result] = await conn.execute<ResultSetHeader>(
         `INSERT INTO trip_attractions

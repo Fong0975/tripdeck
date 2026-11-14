@@ -8,7 +8,9 @@ import { pruneLocalChecks, type LocalChecks } from './localChecks';
 
 /**
  * Loads a trip's checklist and manages local (unsaved) check-state edits,
- * including dirty tracking, a beforeunload guard, and save/discard actions.
+ * including dirty tracking and save/discard actions. Leaving the page while
+ * dirty is guarded by the parent through `onDirtyChange` (see
+ * useUnsavedChangesGuard, which also owns the beforeunload warning).
  *
  * A failed initial load sets `loadError` (with `retryLoad` to try again)
  * instead of leaving the caller on a permanent loading state.
@@ -71,17 +73,6 @@ export function useChecklistState(
   useEffect(() => {
     return () => onDirtyChange?.(false);
   }, [onDirtyChange]);
-
-  useEffect(() => {
-    if (!isDirty) {
-      return;
-    }
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
 
   const getCheck = useCallback(
     (occId: number, itemId: number): boolean => {

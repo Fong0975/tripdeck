@@ -1,5 +1,6 @@
 import { createLogger } from '../logger';
 import * as backupRepo from '../repositories/backup';
+import { runExclusive } from '../repositories/backup/backupLock';
 
 const logger = createLogger('auto-backup');
 
@@ -121,6 +122,30 @@ export async function runAutoBackupIfDue(
 }
 
 /**
+ * Builds the timer callback for `startAutoBackupScheduler`. A tick that
+ * fires while the previous tick's backup is still running is skipped (and
+ * logged) instead of starting an overlapping backup. Each run goes through
+ * the shared backup lock, so it also waits for any manual import/export in
+ * progress (and vice versa).
+ *
+ * @param config - The scheduler configuration passed to each run.
+ * @returns The callback to invoke on every timer tick.
+ */
+function createAutoBackupTick(config: AutoBackupSchedulerConfig): () => void {
+  let running = false;
+  return () => {
+    if (running) {
+      logger.warn('Previous automatic backup still running, skipping check');
+      return;
+    }
+    running = true;
+    void runExclusive(() => runAutoBackupIfDue(config)).finally(() => {
+      running = false;
+    });
+  };
+}
+
+/**
  * Starts the periodic automatic-backup checker and returns its timer (or
  * null when `AUTO_BACKUP_ENABLED=false`). Deliberately does *not* run a
  * check immediately: `setInterval` only fires after the first full
@@ -146,9 +171,7 @@ export function startAutoBackupScheduler(): NodeJS.Timeout | null {
     retentionCount: config.retentionCount,
   });
 
-  const timer = setInterval(() => {
-    void runAutoBackupIfDue(config);
-  }, checkIntervalMs);
+  const timer = setInterval(createAutoBackupTick(config), checkIntervalMs);
   timer.unref();
 
   return timer;

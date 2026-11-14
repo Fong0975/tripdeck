@@ -27,7 +27,8 @@ export async function addTripItemSpec(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Add a spec to a trip checklist item' */
+     #swagger.summary = 'Add a spec to a trip checklist item'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
   await handleAddSpec(tripSpecs, req, res);
 }
 
@@ -36,7 +37,8 @@ export async function updateTripItemSpec(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Update a trip checklist item spec' */
+     #swagger.summary = 'Update a trip checklist item spec'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
   await handleUpdateSpec(tripSpecs, req, res);
 }
 

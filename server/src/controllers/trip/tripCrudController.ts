@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
 import type { CreateTripBody, UpdateTripBody } from '../../types/trip';
+import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
 import {
   normalizeTripTitle,
   validateTripDates,
@@ -10,6 +11,23 @@ import {
 import { idParam } from '../params';
 
 const logger = createLogger('trip');
+
+/**
+ * Finds the first trip text field that does not fit its VARCHAR column.
+ *
+ * @param title - Normalised title being written, or undefined when unchanged.
+ * @param destination - Raw destination from the request body.
+ * @returns A client-facing error, or null when every field fits.
+ */
+function findTooLongTripField(
+  title: string | undefined,
+  destination: unknown,
+): string | null {
+  return findTooLongField([
+    ['title', title, FIELD_LIMITS.name],
+    ['destination', destination, FIELD_LIMITS.name],
+  ]);
+}
 
 export async function getTrips(_req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trips']
@@ -94,7 +112,7 @@ export async function createTrip(req: Request, res: Response): Promise<void> {
          }
        }
      }
-     #swagger.responses[400] = { description: 'Missing or empty title, invalid date format, endDate before startDate, or trip longer than 365 days' } */
+     #swagger.responses[400] = { description: 'Missing or empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days' } */
   const body = req.body as CreateTripBody;
   if (!body.title || !body.startDate || !body.endDate) {
     logger.warn('Rejected create-trip request with missing fields', {
@@ -112,6 +130,15 @@ export async function createTrip(req: Request, res: Response): Promise<void> {
   if (!title) {
     logger.warn('Rejected create-trip request with an empty title');
     res.status(400).json({ error: 'title cannot be empty' });
+    return;
+  }
+
+  const tooLong = findTooLongTripField(title, body.destination);
+  if (tooLong) {
+    logger.warn('Rejected create-trip request with a too long field', {
+      reason: tooLong,
+    });
+    res.status(400).json({ error: tooLong });
     return;
   }
 
@@ -153,7 +180,7 @@ export async function updateTrip(req: Request, res: Response): Promise<void> {
          }
        }
      }
-     #swagger.responses[400] = { description: 'Invalid tripId, empty title, invalid date format, endDate before startDate, or trip longer than 365 days' } */
+     #swagger.responses[400] = { description: 'Invalid tripId, empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days' } */
   const tripId = idParam(req, 'tripId');
   const existing = await tripRepo.findById(tripId);
   if (!existing) {
@@ -163,11 +190,22 @@ export async function updateTrip(req: Request, res: Response): Promise<void> {
   }
 
   const body = req.body as UpdateTripBody;
-  if ('title' in body && !normalizeTripTitle(body.title)) {
+  const title = 'title' in body ? normalizeTripTitle(body.title) : undefined;
+  if (title === '') {
     logger.warn('Rejected update-trip request with an empty title', {
       tripId,
     });
     res.status(400).json({ error: 'title cannot be empty' });
+    return;
+  }
+
+  const tooLong = findTooLongTripField(title, body.destination);
+  if (tooLong) {
+    logger.warn('Rejected update-trip request with a too long field', {
+      tripId,
+      reason: tooLong,
+    });
+    res.status(400).json({ error: tooLong });
     return;
   }
 

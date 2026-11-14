@@ -2,6 +2,7 @@ import type { ResultSetHeader } from 'mysql2';
 
 import { createLogger } from '../../logger';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
+import { bulkInsert } from '../../utils/bulkInsert';
 import { withTransaction } from '../../utils/withTransaction';
 
 const logger = createLogger('backup');
@@ -10,9 +11,11 @@ const logger = createLogger('backup');
  * Replaces the entire global packing checklist template with `template`'s
  * contents, in one transaction: every existing category is deleted first
  * (cascading to its items and specs), then the backup's categories, items,
- * and specs are re-inserted. Unlike trip import, this is a replace rather
- * than an "always new" operation, since the template is a single global
- * record rather than a collection the user adds to.
+ * and specs are re-inserted (categories and items one row at a time, since
+ * their new IDs are needed; the leaf spec rows as one multi-row insert at
+ * the end). Unlike trip import, this is a replace rather than an "always
+ * new" operation, since the template is a single global record rather than
+ * a collection the user adds to.
  */
 export async function restoreTemplate(
   template: ChecklistTemplateResponse,
@@ -24,6 +27,7 @@ export async function restoreTemplate(
   try {
     await withTransaction(async conn => {
       await conn.execute('DELETE FROM checklist_template_categories');
+      const specRows: unknown[][] = [];
 
       for (const category of template.categories) {
         const [categoryResult] = await conn.execute<ResultSetHeader>(
@@ -46,13 +50,16 @@ export async function restoreTemplate(
           const newItemId = itemResult.insertId;
 
           for (const spec of item.specs) {
-            await conn.execute(
-              'INSERT INTO checklist_template_item_specs (checklist_template_item_id, name, storage_location) VALUES (?, ?, ?)',
-              [newItemId, spec.name, spec.storage_location],
-            );
+            specRows.push([newItemId, spec.name, spec.storage_location]);
           }
         }
       }
+      await bulkInsert(
+        conn,
+        'checklist_template_item_specs',
+        ['checklist_template_item_id', 'name', 'storage_location'],
+        specRows,
+      );
     });
   } catch (err) {
     logger.error(

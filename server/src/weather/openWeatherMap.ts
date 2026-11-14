@@ -1,6 +1,7 @@
 import { createLogger } from '../logger';
 
 import { fetchJson } from './http';
+import { selectLocalDay } from './localForecastDay';
 import {
   WEATHER_FETCH_TIMEOUT_MS,
   type WeatherIconCode,
@@ -88,8 +89,12 @@ export async function geocode(
 /**
  * Summarizes the OWM 5-day / 3-hour forecast entries for a single date.
  *
+ * Entries are grouped by the destination's local calendar day (using the
+ * response's `city.timezone`), so the summary covers local midnight to
+ * midnight and its icon/description come from the entry nearest local noon.
+ *
  * @param geo - Coordinates and display name of the place.
- * @param dateStr - Target date as `YYYY-MM-DD`.
+ * @param dateStr - Target date as `YYYY-MM-DD` in the destination's local time.
  * @param apiKey - OpenWeatherMap API key.
  * @returns `out_of_range` when the forecast doesn't cover the date.
  */
@@ -99,12 +104,16 @@ export async function fetchOwmWeather(
   apiKey: string,
 ): Promise<WeatherResult> {
   interface ForecastEntry {
-    dt_txt: string;
+    dt: number;
     main: { temp: number; humidity: number };
     weather: [{ icon: string; description: string }];
     pop?: number;
   }
-  const res = await fetchJson<{ list: ForecastEntry[] }>(
+  interface ForecastResponse {
+    list: ForecastEntry[];
+    city?: { timezone?: number };
+  }
+  const res = await fetchJson<ForecastResponse>(
     `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${apiKey}&units=metric&lang=zh_tw&cnt=40`,
     { timeoutMs: WEATHER_FETCH_TIMEOUT_MS },
   );
@@ -113,15 +122,16 @@ export async function fetchOwmWeather(
     return { status: 'error' };
   }
 
-  const entries = res.data.list.filter(e => e.dt_txt.startsWith(dateStr));
-
-  if (!entries.length) {
+  const selection = selectLocalDay(
+    res.data.list,
+    dateStr,
+    res.data.city?.timezone ?? 0,
+  );
+  if (!selection) {
     return { status: 'out_of_range' };
   }
 
-  const midday =
-    entries.find(e => e.dt_txt.includes('12:00')) ??
-    entries[Math.floor(entries.length / 2)];
+  const { dayEntries: entries, midday } = selection;
   const temps = entries.map(e => e.main.temp);
   const maxPop = Math.max(...entries.map(e => e.pop ?? 0));
 

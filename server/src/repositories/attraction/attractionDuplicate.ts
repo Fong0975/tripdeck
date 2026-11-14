@@ -5,10 +5,10 @@ import { createLogger } from '../../logger';
 import { copyImageFile } from '../../middleware/upload';
 import type { AttractionResponse } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
+import { nextSortOrderInDay } from '../daySortOrder';
 import * as imageRepo from '../imageRepository';
 
 import {
-  countAttractionsInDay,
   getWebsites,
   insertWebsites,
   toAttractionResponse,
@@ -44,7 +44,11 @@ export async function duplicate(
   let inserted: { newAttractionId: number; sortOrder: number };
   try {
     inserted = await withTransaction(async conn => {
-      const nextSortOrder = await countAttractionsInDay(conn, dayId);
+      const nextSortOrder = await nextSortOrderInDay(
+        conn,
+        'trip_attractions',
+        dayId,
+      );
 
       const [result] = await conn.execute<ResultSetHeader>(
         `INSERT INTO trip_attractions

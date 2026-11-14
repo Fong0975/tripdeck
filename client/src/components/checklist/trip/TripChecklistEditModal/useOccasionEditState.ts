@@ -1,9 +1,8 @@
-import { useState } from 'react';
-
 import type { ChecklistOccasion } from '@/types';
 
 import { nextTempId } from '../../shared/checklistUtils';
 import type { EditOccasion } from '../../shared/types';
+import { useTrackedEditState } from '../../shared/useTrackedEditState';
 
 function initOccasions(occasions: ChecklistOccasion[]): EditOccasion[] {
   return occasions.map(o => ({ id: o.id, name: o.name }));
@@ -12,10 +11,11 @@ function initOccasions(occasions: ChecklistOccasion[]): EditOccasion[] {
 /**
  * Manages the local edit-state list for checklist occasions, independent
  * of categories/items/specs. Saving is handled separately by
- * useSaveChecklist.
+ * useSaveChecklist. `isDirty` reports whether the list differs from the
+ * initial occasions.
  */
 export function useOccasionEditState(occasions: ChecklistOccasion[]) {
-  const [items, setItems] = useState<EditOccasion[]>(() =>
+  const [items, setItems, isDirty] = useTrackedEditState(() =>
     initOccasions(occasions),
   );
 
@@ -42,6 +42,7 @@ export function useOccasionEditState(occasions: ChecklistOccasion[]) {
   return {
     occasions: items,
     visibleOccasions,
+    isDirty,
     addOccasionLocal,
     updateOccasionName,
     removeOccasion,

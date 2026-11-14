@@ -4,7 +4,7 @@ import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/checklist/trip';
 
 import { idParam, idParams } from './params';
-import { rejectInvalidName, rejectNotFound } from './shared/responses';
+import { rejectInvalidBody, rejectNotFound } from './shared/responses';
 import { ensureTripExists } from './shared/tripGuards';
 import { requireName } from './shared/validation';
 
@@ -15,17 +15,18 @@ export async function addTripCategory(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Add a category to a trip checklist' */
+     #swagger.summary = 'Add a category to a trip checklist'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const tripId = idParam(req, 'tripId');
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'add-category', { tripId });
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'add-category', name.error, { tripId });
     return;
   }
   if (!(await ensureTripExists(tripId, res, logger, 'Add-category'))) {
     return;
   }
-  const category = await tripRepo.createTripCategory(tripId, name);
+  const category = await tripRepo.createTripCategory(tripId, name.value);
   logger.info('Trip checklist category created', {
     tripId,
     catId: category.id,
@@ -38,12 +39,13 @@ export async function updateTripCategory(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Update a trip checklist category name' */
+     #swagger.summary = 'Update a trip checklist category name'
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
   const meta = idParams(req, 'tripId', 'catId');
   const { tripId, catId } = meta;
   const name = requireName(req.body);
-  if (name === null) {
-    rejectInvalidName(res, logger, 'update-category', meta);
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'update-category', name.error, meta);
     return;
   }
   if (!(await tripRepo.verifyCategoryBelongsToTrip(catId, tripId))) {
@@ -51,7 +53,7 @@ export async function updateTripCategory(
     rejectNotFound(res, logger, 'Category', message, meta);
     return;
   }
-  if (!(await tripRepo.updateTripCategory(catId, name))) {
+  if (!(await tripRepo.updateTripCategory(catId, name.value))) {
     const message = 'Update-category rejected: category not found on update';
     rejectNotFound(res, logger, 'Category', message, meta);
     return;

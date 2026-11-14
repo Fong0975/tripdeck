@@ -88,20 +88,6 @@ describe('useChecklistState', () => {
     await waitFor(() => expect(onDirtyChange).toHaveBeenCalledWith(true));
   });
 
-  it('prevents unload only while dirty', async () => {
-    const { result } = await renderLoaded();
-
-    const cleanEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(cleanEvent);
-    expect(cleanEvent.defaultPrevented).toBe(false);
-
-    act(() => result.current.handleToggleCheck(1, 10));
-
-    const dirtyEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(dirtyEvent);
-    expect(dirtyEvent.defaultPrevented).toBe(true);
-  });
-
   it('handleSaveChecks only sends entries whose local value differs from saved, then reloads', async () => {
     const { result } = await renderLoaded();
     act(() => result.current.handleToggleCheck(1, 10));

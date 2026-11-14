@@ -3,6 +3,7 @@ import type { PoolConnection } from 'mysql2/promise';
 
 import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../middleware/upload';
+import { placeholders } from '../../utils/sql';
 import { withTransaction } from '../../utils/withTransaction';
 import * as imageRepo from '../imageRepository';
 
@@ -22,32 +23,83 @@ interface IdRow extends RowDataPacket {
 export type MoveToDayResult =
   'moved' | 'attraction_not_found' | 'day_not_found';
 
+/**
+ * Outcome of {@link updateOrder}: `invalid_order` when orderedIds is not
+ * exactly a permutation of the day's attraction ids.
+ */
+export type UpdateOrderResult = 'reordered' | 'invalid_order';
+
 /** Stale connections removed inside a transaction, plus their image files. */
 interface StaleConnectionCleanup {
   connectionsRemoved: number;
   imageFilenames: string[];
 }
 
-interface MoveOutcome {
-  result: MoveToDayResult;
+/** A transaction's result plus the image files to unlink after it commits. */
+interface OrderOutcome<R> {
+  result: R;
   cleanup: StaleConnectionCleanup;
 }
 
+type MoveOutcome = OrderOutcome<MoveToDayResult>;
+type ReorderOutcome = OrderOutcome<UpdateOrderResult>;
+
+/** Returns a fresh cleanup record describing that nothing was removed. */
+function emptyCleanup(): StaleConnectionCleanup {
+  return { connectionsRemoved: 0, imageFilenames: [] };
+}
+
 /**
- * Writes sort_order 0..n-1 for the given attraction ids within one day.
- * IDs not belonging to dayId are silently ignored by the WHERE clause.
+ * Writes sort_order 0..n-1 for the given attraction ids within one day in a
+ * single `UPDATE ... CASE` statement. IDs not belonging to dayId are ignored
+ * by the WHERE clause.
  */
 async function writeSortOrder(
   conn: PoolConnection,
   dayId: number,
-  orderedIds: number[],
+  orderedIds: readonly number[],
 ): Promise<void> {
-  for (let i = 0; i < orderedIds.length; i++) {
-    await conn.execute(
-      'UPDATE trip_attractions SET sort_order = ? WHERE id = ? AND trip_day_id = ?',
-      [i, orderedIds[i], dayId],
-    );
+  if (orderedIds.length === 0) {
+    return;
   }
+  const cases = orderedIds.map(() => 'WHEN ? THEN ?').join(' ');
+  const caseParams = orderedIds.flatMap((id, i) => [id, i]);
+  await conn.execute(
+    `UPDATE trip_attractions SET sort_order = CASE id ${cases} END WHERE trip_day_id = ? AND id IN (${placeholders(orderedIds.length)})`,
+    [...caseParams, dayId, ...orderedIds],
+  );
+}
+
+/**
+ * Checks that `orderedIds` is exactly a permutation of `currentIds`: same
+ * size, no duplicates, every entry a positive safe integer present in the day.
+ *
+ * @param orderedIds - Order requested by the client.
+ * @param currentIds - The day's attraction ids as stored.
+ * @returns True when the requested order covers every attraction exactly once.
+ */
+function isPermutationOf(
+  orderedIds: readonly unknown[],
+  currentIds: readonly number[],
+): orderedIds is readonly number[] {
+  if (orderedIds.length !== currentIds.length) {
+    return false;
+  }
+  const current = new Set(currentIds);
+  const seen = new Set<number>();
+  for (const id of orderedIds) {
+    if (
+      typeof id !== 'number' ||
+      !Number.isSafeInteger(id) ||
+      id <= 0 ||
+      !current.has(id) ||
+      seen.has(id)
+    ) {
+      return false;
+    }
+    seen.add(id);
+  }
+  return true;
 }
 
 /**
@@ -68,7 +120,7 @@ async function writeSortOrder(
 async function removeStaleConnections(
   conn: PoolConnection,
   dayId: number,
-  orderedIds: number[],
+  orderedIds: readonly number[],
 ): Promise<StaleConnectionCleanup> {
   const position = new Map(orderedIds.map((id, i) => [id, i]));
   const [connectionRows] = await conn.execute<TripConnectionAdjacencyRow[]>(
@@ -135,26 +187,39 @@ async function lockDayOrder(
 }
 
 /**
- * Updates sort_order for each attraction in the given day according to the
- * position in orderedIds. IDs not belonging to dayId are silently ignored.
+ * Updates sort_order for every attraction in the given day according to its
+ * position in orderedIds.
+ *
+ * orderedIds must list each of the day's attractions exactly once (checked
+ * inside the transaction against the locked rows); otherwise nothing changes
+ * and `invalid_order` is returned, so a partial or stale list can never
+ * leave attractions with outdated orders or drop their connections.
  *
  * Any trip_connections in this day whose from/to attractions are no longer
  * adjacent under the new order are deleted, together with their images (DB
  * rows cascade; physical files are deleted once the transaction commits).
+ *
+ * @param dayId - Day whose attractions are reordered.
+ * @param orderedIds - Every attraction id of the day, in the desired order.
+ * @returns `reordered` on success, `invalid_order` when orderedIds is not a
+ *   permutation of the day's attraction ids.
  */
 export async function updateOrder(
   dayId: number,
-  orderedIds: number[],
-): Promise<void> {
-  if (orderedIds.length === 0) {
-    return;
-  }
-
-  let cleanup: StaleConnectionCleanup;
+  orderedIds: readonly unknown[],
+): Promise<UpdateOrderResult> {
+  let outcome: ReorderOutcome;
   try {
-    cleanup = await withTransaction(async conn => {
+    outcome = await withTransaction<ReorderOutcome>(async conn => {
+      const currentIds = await lockDayOrder(conn, dayId);
+      if (!isPermutationOf(orderedIds, currentIds)) {
+        return { result: 'invalid_order', cleanup: emptyCleanup() };
+      }
       await writeSortOrder(conn, dayId, orderedIds);
-      return removeStaleConnections(conn, dayId, orderedIds);
+      return {
+        result: 'reordered',
+        cleanup: await removeStaleConnections(conn, dayId, orderedIds),
+      };
     });
   } catch (err) {
     logger.error(
@@ -165,13 +230,17 @@ export async function updateOrder(
     throw err;
   }
 
+  const { result, cleanup } = outcome;
   deleteImagesFromDisk(cleanup.imageFilenames);
-  logger.debug('Attractions reordered', {
-    dayId,
-    reordered: orderedIds.length,
-    connectionsRemoved: cleanup.connectionsRemoved,
-    imagesRemoved: cleanup.imageFilenames.length,
-  });
+  if (result === 'reordered') {
+    logger.debug('Attractions reordered', {
+      dayId,
+      reordered: orderedIds.length,
+      connectionsRemoved: cleanup.connectionsRemoved,
+      imagesRemoved: cleanup.imageFilenames.length,
+    });
+  }
+  return result;
 }
 
 /**
@@ -202,11 +271,6 @@ export async function moveToDay(
   let outcome: MoveOutcome;
   try {
     outcome = await withTransaction<MoveOutcome>(async conn => {
-      const noCleanup: StaleConnectionCleanup = {
-        connectionsRemoved: 0,
-        imageFilenames: [],
-      };
-
       const [attractionRows] = await conn.execute<AttractionDayRow[]>(
         `SELECT ta.trip_day_id FROM trip_attractions ta
          JOIN trip_days td ON td.id = ta.trip_day_id
@@ -214,7 +278,7 @@ export async function moveToDay(
         [attractionId, tripId],
       );
       if (attractionRows.length === 0) {
-        return { result: 'attraction_not_found', cleanup: noCleanup };
+        return { result: 'attraction_not_found', cleanup: emptyCleanup() };
       }
       const sourceDayId = attractionRows[0].trip_day_id;
 
@@ -223,7 +287,7 @@ export async function moveToDay(
         [targetDayId, tripId],
       );
       if (dayRows.length === 0) {
-        return { result: 'day_not_found', cleanup: noCleanup };
+        return { result: 'day_not_found', cleanup: emptyCleanup() };
       }
 
       const sameDay = sourceDayId === targetDayId;
@@ -251,10 +315,7 @@ export async function moveToDay(
         affectedDays.unshift([sourceDayId, sourceIds]);
       }
 
-      const cleanup: StaleConnectionCleanup = {
-        connectionsRemoved: 0,
-        imageFilenames: [],
-      };
+      const cleanup = emptyCleanup();
       for (const [dayId, orderedIds] of affectedDays) {
         await writeSortOrder(conn, dayId, orderedIds);
         const removed = await removeStaleConnections(conn, dayId, orderedIds);

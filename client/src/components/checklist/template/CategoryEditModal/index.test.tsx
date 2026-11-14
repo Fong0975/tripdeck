@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,6 +51,7 @@ function mockEditState(
 ) {
   vi.mocked(useEditState).mockReturnValue({
     edit: { id: 1, name: 'Category A', items: editItems },
+    isDirty: false,
     scrollBodyRef: { current: null },
     visibleItems: editItems,
     updateCategoryName: vi.fn(),
@@ -236,5 +237,103 @@ describe('CategoryEditModal', () => {
     );
 
     expect(screen.getByText('儲存中…')).toBeDisabled();
+  });
+
+  it.each([
+    {
+      description: 'the header close button',
+      trigger: () => fireEvent.click(screen.getByLabelText('關閉')),
+    },
+    {
+      description: 'the cancel button',
+      trigger: () => fireEvent.click(screen.getByText('取消')),
+    },
+    {
+      description: 'the backdrop',
+      trigger: (container: HTMLElement) =>
+        fireEvent.click(getBackdrop(container)),
+    },
+    {
+      description: 'Escape',
+      trigger: () => fireEvent.keyDown(window, { key: 'Escape' }),
+    },
+  ])(
+    'asks before discarding edits via $description when dirty',
+    ({ trigger }) => {
+      vi.mocked(useSaveCategoryEdit).mockReturnValue({
+        saving: false,
+        handleSave: vi.fn(),
+      });
+      mockEditState({ isDirty: true });
+      const onClose = vi.fn();
+      const { container } = render(
+        <CategoryEditModal
+          category={category}
+          onClose={onClose}
+          onSaved={vi.fn()}
+        />,
+      );
+
+      trigger(container);
+
+      expect(onClose).not.toHaveBeenCalled();
+      const dialog = screen.getByRole('alertdialog');
+      expect(dialog).toHaveAccessibleName('確定要關閉嗎？');
+      expect(
+        within(dialog).getByText('尚未儲存的變更將會遺失。'),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    { button: '確定', expectedCloses: 1 },
+    { button: '取消', expectedCloses: 0 },
+  ])(
+    'clicking $button in the discard confirmation closes $expectedCloses time(s) and dismisses it',
+    ({ button, expectedCloses }) => {
+      vi.mocked(useSaveCategoryEdit).mockReturnValue({
+        saving: false,
+        handleSave: vi.fn(),
+      });
+      mockEditState({ isDirty: true });
+      const onClose = vi.fn();
+      render(
+        <CategoryEditModal
+          category={category}
+          onClose={onClose}
+          onSaved={vi.fn()}
+        />,
+      );
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      const dialog = screen.getByRole('alertdialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: button }));
+
+      expect(onClose).toHaveBeenCalledTimes(expectedCloses);
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    },
+  );
+
+  it('cancels only the discard confirmation when Escape is pressed again', () => {
+    vi.mocked(useSaveCategoryEdit).mockReturnValue({
+      saving: false,
+      handleSave: vi.fn(),
+    });
+    mockEditState({ isDirty: true });
+    const onClose = vi.fn();
+    render(
+      <CategoryEditModal
+        category={category}
+        onClose={onClose}
+        onSaved={vi.fn()}
+      />,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByText('儲存')).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ import { idParam } from '../params';
 
 import {
   ENDPOINTS_NOT_IN_DAY_ERROR,
+  findTooLongConnectionField,
   INVALID_TRANSPORT_MODE_ERROR,
   isMissing,
   resolveEndpoints,
@@ -62,7 +63,7 @@ export async function addConnection(
          }
        }
      }
-     #swagger.responses[400] = { description: 'Invalid ids, missing fields, unknown transportMode, or attractions not in this day' }
+     #swagger.responses[400] = { description: 'Invalid ids, missing fields, unknown transportMode, duration longer than 100 characters, or attractions not in this day' }
      #swagger.responses[404] = { description: 'Day not found' } */
   const tripId = idParam(req, 'tripId');
   const dayId = idParam(req, 'dayId');
@@ -96,6 +97,11 @@ export async function addConnection(
       dayId,
       transportMode: body.transportMode,
     });
+    return;
+  }
+  const tooLong = findTooLongConnectionField(body);
+  if (tooLong) {
+    rejectBadRequest(res, 'Add-connection', tooLong, { tripId, dayId });
     return;
   }
 
@@ -162,7 +168,7 @@ export async function updateConnection(
          }
        }
      }
-     #swagger.responses[400] = { description: 'Invalid ids, unknown transportMode, or attractions not in the connection\'s day' }
+     #swagger.responses[400] = { description: 'Invalid ids, unknown transportMode, duration longer than 100 characters, or attractions not in the connection\'s day' }
      #swagger.responses[404] = { description: 'Connection not found' } */
   const tripId = idParam(req, 'tripId');
   const connectionId = idParam(req, 'connectionId');
@@ -173,6 +179,14 @@ export async function updateConnection(
       tripId,
       connectionId,
       transportMode: body.transportMode,
+    });
+    return;
+  }
+  const tooLong = findTooLongConnectionField(body);
+  if (tooLong) {
+    rejectBadRequest(res, 'Update-connection', tooLong, {
+      tripId,
+      connectionId,
     });
     return;
   }

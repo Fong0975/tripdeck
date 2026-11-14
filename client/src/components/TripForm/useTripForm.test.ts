@@ -4,10 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { useTripForm } from './useTripForm';
 import type { TripFormValues } from './validateTripForm';
 
-// Pin the timezone so the startDate -> endDate auto-calculation (which round
-// trips through Date/toISOString) produces a deterministic result.
-process.env.TZ = 'UTC';
-
 const initial: TripFormValues = {
   title: '',
   destination: '',
@@ -24,8 +20,41 @@ function changeEvent(name: string, value: string) {
 describe('useTripForm', () => {
   it.each([
     {
-      name: 'auto-fills the end date when enabled',
+      name: 'auto-fills an empty end date when enabled',
       autoFillEndDate: true,
+      endDate: '',
+      field: 'startDate',
+      value: '2026-01-01',
+      expected: { startDate: '2026-01-01', endDate: '2026-01-04' },
+    },
+    {
+      name: 'auto-fills across a DST change without drifting a day',
+      autoFillEndDate: true,
+      endDate: '',
+      field: 'startDate',
+      value: '2026-03-07',
+      expected: { startDate: '2026-03-07', endDate: '2026-03-10' },
+    },
+    {
+      name: 'keeps an end date the user already picked',
+      autoFillEndDate: true,
+      endDate: '2026-01-10',
+      field: 'startDate',
+      value: '2026-01-01',
+      expected: { startDate: '2026-01-01', endDate: '2026-01-10' },
+    },
+    {
+      name: 'keeps an end date equal to the new start date',
+      autoFillEndDate: true,
+      endDate: '2026-01-01',
+      field: 'startDate',
+      value: '2026-01-01',
+      expected: { startDate: '2026-01-01', endDate: '2026-01-01' },
+    },
+    {
+      name: 'replaces an end date earlier than the new start date',
+      autoFillEndDate: true,
+      endDate: '2025-12-31',
       field: 'startDate',
       value: '2026-01-01',
       expected: { startDate: '2026-01-01', endDate: '2026-01-04' },
@@ -33,6 +62,7 @@ describe('useTripForm', () => {
     {
       name: 'leaves the end date alone when disabled',
       autoFillEndDate: false,
+      endDate: '',
       field: 'startDate',
       value: '2026-01-01',
       expected: { startDate: '2026-01-01', endDate: '' },
@@ -40,6 +70,7 @@ describe('useTripForm', () => {
     {
       name: 'does not auto-fill when the start date is cleared',
       autoFillEndDate: true,
+      endDate: '',
       field: 'startDate',
       value: '',
       expected: { startDate: '', endDate: '' },
@@ -47,13 +78,14 @@ describe('useTripForm', () => {
     {
       name: 'updates any other named field',
       autoFillEndDate: true,
+      endDate: '',
       field: 'title',
       value: 'My Trip',
       expected: { title: 'My Trip', endDate: '' },
     },
-  ])('$name', ({ autoFillEndDate, field, value, expected }) => {
+  ])('$name', ({ autoFillEndDate, endDate, field, value, expected }) => {
     const { result } = renderHook(() =>
-      useTripForm(initial, { autoFillEndDate }),
+      useTripForm({ ...initial, endDate }, { autoFillEndDate }),
     );
 
     act(() => result.current.handleChange(changeEvent(field, value)));

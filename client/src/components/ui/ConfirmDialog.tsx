@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+
+import { useEscapeToClose } from '@/hooks/useEscapeToClose';
 
 interface Props {
   title: string;
@@ -19,6 +21,9 @@ interface Props {
  * becoming its containing block. Click events still bubble through the React
  * tree as usual, so callers nesting this inside a clickable ancestor should
  * still stop propagation on it.
+ *
+ * Pressing Escape cancels the dialog. It joins the shared dialog stack, so
+ * Escape only reaches this dialog and not a modal open underneath it.
  */
 export default function ConfirmDialog({
   title,
@@ -28,11 +33,21 @@ export default function ConfirmDialog({
   onCancel,
   onConfirm,
 }: Props) {
+  useEscapeToClose(onCancel);
+  const titleId = useId();
+
   return createPortal(
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
       <div className='absolute inset-0 bg-black/50' />
-      <div className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl'>
-        <p className='font-semibold text-foreground'>{title}</p>
+      <div
+        role='alertdialog'
+        aria-modal='true'
+        aria-labelledby={titleId}
+        className='relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl'
+      >
+        <p id={titleId} className='font-semibold text-foreground'>
+          {title}
+        </p>
         <p className='mt-1 text-sm text-muted-foreground'>{message}</p>
         <div className='mt-5 flex items-center justify-end gap-3'>
           <button

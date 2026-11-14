@@ -1,4 +1,4 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import pool from '../../../config/database';
@@ -11,11 +11,6 @@ import type {
 } from '../../../types/checklist';
 import { placeholders } from '../../../utils/sql';
 import { withTransaction } from '../../../utils/withTransaction';
-import type {
-  TemplateCategoryRow,
-  TemplateItemRow,
-  TemplateItemSpecRow,
-} from '../template/shared';
 
 import {
   CheckRow,
@@ -25,6 +20,7 @@ import {
   TripChecklistCategoryRow,
   TripChecklistItemRow,
 } from './shared';
+import { copyTemplateIntoTrip } from './templateCopy';
 
 const logger = createLogger('checklist-trip');
 
@@ -104,64 +100,6 @@ export async function findChecklist(
   }));
 
   return { tripId, categories, occasions };
-}
-
-/**
- * Copies every template category, item and spec into the trip's checklist.
- *
- * @param conn - Connection with an open transaction; all inserts run on it.
- * @param tripId - Trip receiving the copied categories.
- * @returns The number of categories copied.
- */
-async function copyTemplateIntoTrip(
-  conn: PoolConnection,
-  tripId: number,
-): Promise<number> {
-  const [catRows] = await conn.execute<TemplateCategoryRow[]>(
-    'SELECT * FROM checklist_template_categories ORDER BY id',
-  );
-  logger.debug('Copying template into new trip checklist', {
-    tripId,
-    categoryCount: catRows.length,
-  });
-
-  for (const cat of catRows) {
-    const [catResult] = await conn.execute<ResultSetHeader>(
-      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-      [tripId, cat.name],
-    );
-    const tripCatId = catResult.insertId;
-
-    const [itemRows] = await conn.execute<TemplateItemRow[]>(
-      'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
-      [cat.id],
-    );
-    for (const item of itemRows) {
-      const [itemResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
-        [
-          tripCatId,
-          item.name,
-          item.quantity,
-          item.notes,
-          item.storage_location,
-        ],
-      );
-      const tripItemId = itemResult.insertId;
-
-      const [specRows] = await conn.execute<TemplateItemSpecRow[]>(
-        'SELECT * FROM checklist_template_item_specs WHERE checklist_template_item_id = ? ORDER BY id',
-        [item.id],
-      );
-      for (const spec of specRows) {
-        await conn.execute(
-          'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-          [tripItemId, spec.name, spec.storage_location],
-        );
-      }
-    }
-  }
-  return catRows.length;
 }
 
 /**

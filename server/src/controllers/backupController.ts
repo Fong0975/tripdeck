@@ -1,6 +1,4 @@
-import fs from 'fs';
-
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { createLogger } from '../logger';
 import * as backupRepo from '../repositories/backup';
@@ -31,9 +29,20 @@ export function listAutoBackups(_req: Request, res: Response): void {
   res.json(backupRepo.listAutoBackupFiles());
 }
 
+/**
+ * Streams one automatic backup file to the client as a zip download, without
+ * buffering it in memory. A failure before any bytes were sent is passed to
+ * the error handler; a failure mid-stream (e.g. the client disconnected) is
+ * only logged, since the response can no longer be changed.
+ *
+ * @param req - Request carrying the backup `filename` route parameter.
+ * @param res - Response the file is streamed to.
+ * @param next - Receives a read error that occurred before headers were sent.
+ */
 export function downloadAutoBackup(
   req: Request<{ filename: string }>,
   res: Response,
+  next: NextFunction,
 ): void {
   /* #swagger.tags = ['Backup']
      #swagger.summary = 'Download one automatic backup file'
@@ -52,9 +61,17 @@ export function downloadAutoBackup(
   }
 
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="${req.params.filename}"`,
-  );
-  res.send(fs.readFileSync(filePath));
+  res.download(filePath, req.params.filename, err => {
+    if (!err) {
+      return;
+    }
+    if (res.headersSent) {
+      logger.warn('Automatic backup download aborted mid-stream', {
+        filename: req.params.filename,
+        reason: err.message,
+      });
+      return;
+    }
+    next(err);
+  });
 }

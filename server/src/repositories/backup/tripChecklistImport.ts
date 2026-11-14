@@ -7,6 +7,7 @@ import type {
   TripChecklistCategoryResponse,
   TripChecklistResponse,
 } from '../../types/checklist';
+import { bulkInsert } from '../../utils/bulkInsert';
 
 import { consistencyError } from './tripImportHelpers';
 
@@ -14,6 +15,8 @@ const logger = createLogger('backup');
 
 /**
  * Inserts the checklist categories, items and specs under `newTripId`.
+ * Categories and items go in one row at a time (their new IDs are needed);
+ * the leaf spec rows are sent as one multi-row insert at the end.
  *
  * @returns Old (backup) item ID -> newly-inserted item ID.
  */
@@ -23,6 +26,7 @@ async function insertCategories(
   categories: TripChecklistCategoryResponse[],
 ): Promise<Map<number, number>> {
   const itemIdMap = new Map<number, number>();
+  const specRows: unknown[][] = [];
   for (const category of categories) {
     const [categoryResult] = await conn.execute<ResultSetHeader>(
       'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
@@ -45,19 +49,24 @@ async function insertCategories(
       itemIdMap.set(item.id, newItemId);
 
       for (const spec of item.specs) {
-        await conn.execute(
-          'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-          [newItemId, spec.name, spec.storage_location],
-        );
+        specRows.push([newItemId, spec.name, spec.storage_location]);
       }
     }
   }
+  await bulkInsert(
+    conn,
+    'checklist_trip_item_specs',
+    ['checklist_trip_item_id', 'name', 'storage_location'],
+    specRows,
+  );
   return itemIdMap;
 }
 
 /**
  * Inserts the checklist occasions and their checked items, remapping item
- * IDs through `itemIdMap`. Unchecked entries are skipped.
+ * IDs through `itemIdMap`. Unchecked entries are skipped. Occasions go in
+ * one row at a time (their new IDs are needed); the leaf check rows are sent
+ * as one multi-row insert at the end.
  *
  * @throws {TripImportDataError} When a check references an item that was
  *   not imported.
@@ -69,6 +78,7 @@ async function insertOccasions(
   occasions: OccasionResponse[],
   itemIdMap: Map<number, number>,
 ): Promise<void> {
+  const checkRows: unknown[][] = [];
   for (const occasion of occasions) {
     const [occasionResult] = await conn.execute<ResultSetHeader>(
       'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
@@ -87,12 +97,15 @@ async function insertOccasions(
           `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`,
         );
       }
-      await conn.execute(
-        'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked) VALUES (?, ?, 1)',
-        [newOccasionId, newItemId],
-      );
+      checkRows.push([newOccasionId, newItemId, 1]);
     }
   }
+  await bulkInsert(
+    conn,
+    'checklist_checks',
+    ['checklist_occasion_id', 'checklist_trip_item_id', 'checked'],
+    checkRows,
+  );
 }
 
 /**

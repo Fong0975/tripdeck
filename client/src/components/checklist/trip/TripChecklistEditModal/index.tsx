@@ -1,5 +1,8 @@
 import { Pencil, X } from 'lucide-react';
 
+import DiscardChangesDialog from '@/components/ui/DiscardChangesDialog';
+import ModalOverlay from '@/components/ui/ModalOverlay';
+import { useConfirmLeave } from '@/hooks/useConfirmLeave';
 import type { TripChecklist } from '@/types';
 
 import CategoryEditList from './CategoryEditList';
@@ -14,6 +17,11 @@ interface Props {
   onSaved: () => void;
 }
 
+/**
+ * Dialog for editing a trip checklist's occasions and categories→items→specs
+ * as a local draft that is saved in one go. Closing with unsaved edits
+ * (backdrop, Escape, close or cancel button) asks for confirmation first.
+ */
 export default function TripChecklistEditModal({
   tripId,
   checklist,
@@ -22,6 +30,7 @@ export default function TripChecklistEditModal({
 }: Props) {
   const {
     edit,
+    isDirty,
     expandedCats,
     scrollBodyRef,
     visibleOccasions,
@@ -48,14 +57,11 @@ export default function TripChecklistEditModal({
     onSaved,
     onClose,
   );
+  const { showLeaveConfirm, guardedLeave, confirmLeave, cancelLeave } =
+    useConfirmLeave(isDirty, onClose);
 
   return (
-    <div
-      className='fixed inset-0 z-50 flex items-center justify-center p-4'
-      /* v8 ignore next -- pure scroll-isolation UX, no business logic */
-      onWheel={e => e.stopPropagation()}
-    >
-      <div className='absolute inset-0 bg-black/50' onClick={onClose} />
+    <ModalOverlay onClose={guardedLeave} isolateWheel>
       <div className='relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl'>
         {/* Header */}
         <div className='flex items-center gap-3 border-b border-border px-6 py-4'>
@@ -64,7 +70,7 @@ export default function TripChecklistEditModal({
             編輯行李清單
           </h2>
           <button
-            onClick={onClose}
+            onClick={guardedLeave}
             className='shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground'
             aria-label='關閉'
           >
@@ -102,7 +108,7 @@ export default function TripChecklistEditModal({
         {/* Footer */}
         <div className='flex items-center justify-end gap-3 border-t border-border px-6 py-4'>
           <button
-            onClick={onClose}
+            onClick={guardedLeave}
             className='px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground'
           >
             取消
@@ -116,6 +122,9 @@ export default function TripChecklistEditModal({
           </button>
         </div>
       </div>
-    </div>
+      {showLeaveConfirm && (
+        <DiscardChangesDialog onCancel={cancelLeave} onConfirm={confirmLeave} />
+      )}
+    </ModalOverlay>
   );
 }

@@ -8,36 +8,39 @@ import { createLoggerMock } from '../../../test-utils/loggerMock';
 
 import {
   type ChecklistEntity,
-  rejectInvalidName,
+  rejectInvalidBody,
   rejectNotFound,
 } from './responses';
 
-describe('rejectInvalidName', () => {
+describe('rejectInvalidBody', () => {
   const tests = [
     {
       label: 'with ids',
       action: 'add-item',
+      error: 'name is required',
       meta: { catId: 1 },
-      expectedMessage: 'Rejected add-item request with an invalid name',
+      expectedMessage: 'Rejected add-item request: name is required',
     },
     {
       label: 'without ids',
       action: 'add-category',
+      error: 'name must be at most 255 characters',
       meta: undefined,
-      expectedMessage: 'Rejected add-category request with an invalid name',
+      expectedMessage:
+        'Rejected add-category request: name must be at most 255 characters',
     },
   ];
 
   it.each(tests)(
     'logs and responds 400 $label',
-    ({ action, meta, expectedMessage }) => {
+    ({ action, error, meta, expectedMessage }) => {
       const logger = createLoggerMock();
       const { res } = createMockReqRes();
 
-      rejectInvalidName(res, logger, action, meta);
+      rejectInvalidBody(res, logger, action, error, meta);
 
       expect(logger.warn).toHaveBeenCalledWith(expectedMessage, meta);
-      expectJsonStatus(res, 400, { error: 'name is required' });
+      expectJsonStatus(res, 400, { error });
     },
   );
 });

@@ -4,6 +4,7 @@ import type { PoolConnection } from 'mysql2/promise';
 import { createLogger } from '../../logger';
 import type { TripBackupData } from '../../types/backup';
 import type { AttractionResponse, DayResponse } from '../../types/trip';
+import { bulkInsert } from '../../utils/bulkInsert';
 import * as imageRepo from '../imageRepository';
 
 import { type PendingImage, toPendingImages } from './pendingImages';
@@ -43,7 +44,8 @@ export async function insertTrip(
 }
 
 /**
- * Inserts one attraction with its reference websites.
+ * Inserts one attraction row (its reference websites are batched by the
+ * caller).
  *
  * @returns The new attraction's ID.
  */
@@ -69,20 +71,16 @@ async function insertAttraction(
       ...toGeoColumns(attraction),
     ],
   );
-  const newAttractionId = attractionResult.insertId;
-
-  for (const site of attraction.referenceWebsites) {
-    await conn.execute(
-      'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
-      [newAttractionId, site.url, site.title],
-    );
-  }
-  return newAttractionId;
+  return attractionResult.insertId;
 }
 
 /**
  * Inserts one day with its locations and attractions (connections are left
  * for the second pass), recording new attraction IDs in `attractionIdMap`.
+ *
+ * Days and attractions are inserted one row at a time because their new IDs
+ * are needed for child rows; the leaf rows (locations, reference websites)
+ * are each sent as a single multi-row insert per day.
  *
  * @returns The new day's ID and the pending images of the day and its
  *   attractions.
@@ -104,16 +102,20 @@ async function insertDay(
     imageRepo.addDayImage,
   );
 
-  for (let i = 0; i < day.locations.length; i++) {
-    await conn.execute(
-      'INSERT INTO trip_day_locations (trip_day_id, name, sort_order) VALUES (?, ?, ?)',
-      [newDayId, day.locations[i].name, i],
-    );
-  }
+  await bulkInsert(
+    conn,
+    'trip_day_locations',
+    ['trip_day_id', 'name', 'sort_order'],
+    day.locations.map((location, i) => [newDayId, location.name, i]),
+  );
 
+  const websiteRows: unknown[][] = [];
   for (const attraction of day.attractions) {
     const newAttractionId = await insertAttraction(conn, newDayId, attraction);
     attractionIdMap.set(attraction.id, newAttractionId);
+    for (const site of attraction.referenceWebsites) {
+      websiteRows.push([newAttractionId, site.url, site.title]);
+    }
     pendingImages.push(
       ...toPendingImages(
         attraction.images,
@@ -122,6 +124,12 @@ async function insertDay(
       ),
     );
   }
+  await bulkInsert(
+    conn,
+    'trip_attraction_websites',
+    ['trip_attraction_id', 'url', 'title'],
+    websiteRows,
+  );
   return { newDayId, pendingImages };
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../../test-utils/dbMocks';
 
-import { lockTrip, tripExists } from './shared';
+import { lockTrip } from './shared';
 
 vi.mock('../../../config/database', async () => {
   const { db } = await import('../../../test-utils/dbMocks');
@@ -18,23 +18,6 @@ describe('checklist trip shared helpers', () => {
     { rows: [{ id: 5 }], expected: true },
     { rows: [], expected: false },
   ];
-
-  describe('tripExists', () => {
-    it.each(existenceCases)(
-      'returns $expected when rows.length is $rows.length',
-      async ({ rows, expected }) => {
-        mockPoolExecute.mockResolvedValue([rows]);
-
-        const result = await tripExists(5);
-
-        expect(result).toBe(expected);
-        expect(mockPoolExecute).toHaveBeenCalledWith(
-          'SELECT id FROM trips WHERE id = ?',
-          [5],
-        );
-      },
-    );
-  });
 
   describe('lockTrip', () => {
     it.each(existenceCases)(
