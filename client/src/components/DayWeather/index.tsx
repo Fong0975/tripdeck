@@ -1,26 +1,15 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  Cloud,
-  CloudDrizzle,
-  CloudFog,
-  CloudLightning,
-  CloudRain,
-  CloudSnow,
-  CloudSun,
-  Droplets,
-  Sun,
-  Umbrella,
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Droplets, Umbrella } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
+import { usePointerSwipe } from '@/hooks/usePointerSwipe';
 import type { DayLocation } from '@/types';
 import {
   fetchDailyWeather,
-  type WeatherIconCode,
   type WeatherResult,
   type WeatherSource,
 } from '@/utils/weatherApi';
+
+import WeatherIcon from './WeatherIcon';
 
 interface Props {
   locations: DayLocation[];
@@ -32,44 +21,16 @@ const SOURCE_LABELS: Record<WeatherSource, string> = {
   visualcrossing: 'Visual Crossing',
 };
 
-function WeatherIcon({
-  code,
-  size = 36,
-}: {
-  code: WeatherIconCode;
-  size?: number;
-}) {
-  if (code === 'clear') {
-    return <Sun size={size} className='text-yellow-400' />;
-  }
-  if (code === 'partly-cloudy') {
-    return <CloudSun size={size} className='text-yellow-400' />;
-  }
-  if (code === 'cloudy') {
-    return <Cloud size={size} className='text-slate-400' />;
-  }
-  if (code === 'fog') {
-    return <CloudFog size={size} className='text-slate-400' />;
-  }
-  if (code === 'drizzle') {
-    return <CloudDrizzle size={size} className='text-blue-400' />;
-  }
-  if (code === 'rain') {
-    return <CloudRain size={size} className='text-blue-500' />;
-  }
-  if (code === 'snow') {
-    return <CloudSnow size={size} className='text-sky-300' />;
-  }
-  if (code === 'thunder') {
-    return <CloudLightning size={size} className='text-violet-400' />;
-  }
-  return <Cloud size={size} className='text-slate-400' />;
-}
-
+/**
+ * Weather forecast card for one trip day. With several day locations it shows
+ * prev/next controls and supports swiping between them.
+ *
+ * @param props.locations - The day's locations; renders nothing when empty.
+ * @param props.date - Day date (YYYY-MM-DD) to fetch the forecast for.
+ */
 export default function DayWeather({ locations, date }: Props) {
   const [idx, setIdx] = useState(0);
   const [current, setCurrent] = useState<WeatherResult | null>(null);
-  const pointerStartX = useRef<number | null>(null);
 
   const location = locations[Math.min(idx, locations.length - 1)];
   const locationId = location?.id;
@@ -90,26 +51,19 @@ export default function DayWeather({ locations, date }: Props) {
   const canPrev = idx > 0;
   const canNext = idx < locations.length - 1;
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (locations.length <= 1) {
-      return;
-    }
-    pointerStartX.current = e.clientX;
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerStartX.current === null) {
-      return;
-    }
-    const delta = e.clientX - pointerStartX.current;
-    pointerStartX.current = null;
-    if (delta < -50 && canNext) {
-      setIdx(i => i + 1);
-    } else if (delta > 50 && canPrev) {
-      setIdx(i => i - 1);
-    }
-  };
+  const swipeHandlers = usePointerSwipe({
+    enabled: locations.length > 1,
+    onSwipeLeft: () => {
+      if (canNext) {
+        setIdx(i => i + 1);
+      }
+    },
+    onSwipeRight: () => {
+      if (canPrev) {
+        setIdx(i => i - 1);
+      }
+    },
+  });
 
   if (!location) {
     return null;
@@ -122,11 +76,7 @@ export default function DayWeather({ locations, date }: Props) {
         locations.length > 1 ? 'cursor-grab active:cursor-grabbing' : '',
       ].join(' ')}
       style={{ touchAction: locations.length > 1 ? 'pan-y' : undefined }}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={() => {
-        pointerStartX.current = null;
-      }}
+      {...swipeHandlers}
     >
       {locations.length > 1 && (
         <div className='mb-1.5 flex items-center justify-center gap-1'>

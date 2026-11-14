@@ -71,7 +71,7 @@ describe('showSavedToast', () => {
     },
     {
       failedCount: 2,
-      variant: 'info' as const,
+      variant: 'warning' as const,
       message: PARTIAL_IMAGE_UPLOAD_MESSAGE,
     },
   ])(

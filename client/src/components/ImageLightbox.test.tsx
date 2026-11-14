@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { imageUrl } from '@/api/images';
 import { makeImage } from '@/test-utils/fixtures';
 import type { AttractionImage } from '@/types';
 
@@ -42,7 +43,10 @@ describe('ImageLightbox', () => {
   it('renders the image at the initial index', () => {
     renderLightbox(makeImages(3), 1);
 
-    expect(screen.getByAltText('Image 2')).toBeInTheDocument();
+    expect(screen.getByAltText('Image 2')).toHaveAttribute(
+      'src',
+      imageUrl('img-2.jpg'),
+    );
   });
 
   it.each([

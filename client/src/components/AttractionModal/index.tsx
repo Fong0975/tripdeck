@@ -53,6 +53,7 @@ export default function AttractionModal({
     attraction ? { ...attraction } : { ...empty },
   );
   const attractionId = attraction?.id;
+  const isEditing = Boolean(attractionId);
   const {
     images,
     handleUpload: handleUploadImage,
@@ -106,8 +107,6 @@ export default function AttractionModal({
     }
     onClose();
   };
-
-  const isEditing = Boolean(attraction?.id);
 
   return (
     <>

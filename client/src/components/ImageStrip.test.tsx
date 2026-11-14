@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { imageUrl } from '@/api/images';
 import type { AttractionImage } from '@/types';
 
 import ImageStrip from './ImageStrip';
@@ -16,7 +17,10 @@ describe('ImageStrip', () => {
 
     render(<ImageStrip images={images} onOpenLightbox={vi.fn()} />);
 
-    expect(screen.getByAltText('Img 1')).toBeInTheDocument();
+    expect(screen.getByAltText('Img 1')).toHaveAttribute(
+      'src',
+      imageUrl('img-1.jpg'),
+    );
     expect(screen.getByAltText('Img 3')).toBeInTheDocument();
     expect(screen.queryByAltText('Img 4')).not.toBeInTheDocument();
     expect(screen.getByText('+2')).toBeInTheDocument();

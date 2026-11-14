@@ -16,7 +16,8 @@ const logger = createLogger('connection');
 
 // --- Row type ---
 
-interface TripConnectionRow extends RowDataPacket {
+/** A raw `trip_connections` row. */
+export interface TripConnectionRow extends RowDataPacket {
   id: number;
   trip_day_id: number;
   trip_attraction_id_from: number;
@@ -29,7 +30,14 @@ interface TripConnectionRow extends RowDataPacket {
 
 // --- Helper ---
 
-function toConnectionResponse(
+/**
+ * Maps a `trip_connections` row to its API response shape.
+ *
+ * @param row - Raw connection row.
+ * @param images - Images attached to the connection.
+ * @returns The connection response.
+ */
+export function toConnectionResponse(
   row: TripConnectionRow,
   images: ImageResponse[] = [],
 ): ConnectionResponse {
@@ -198,7 +206,7 @@ export async function deleteById(connectionId: number): Promise<boolean> {
     for (const img of images) {
       deleteImageFromDisk(img.filename);
     }
-    logger.info('Connection deleted', {
+    logger.debug('Connection deleted', {
       connectionId,
       imagesDeleted: images.length,
     });

@@ -35,7 +35,7 @@ vi.mock('../repositories/trip', () => ({
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
+  type Returns500Case,
 } from '../test-utils/httpMocks';
 
 import {
@@ -46,6 +46,8 @@ import {
 } from './mapsController';
 
 const RESET_AT = '2026-10-25T07:00:00.000Z';
+
+type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 describe('mapsController', () => {
   beforeEach(() => {
@@ -99,15 +101,6 @@ describe('mapsController', () => {
         });
       },
     );
-
-    itReturns500([
-      {
-        name: 'getMapsStatus',
-        handler: getMapsStatus,
-        arrange: error => mocks.getUsage.mockRejectedValue(error),
-        expectedError: 'Failed to read maps status',
-      },
-    ]);
   });
 
   describe('getMapsConfigForBrowser', () => {
@@ -141,15 +134,6 @@ describe('mapsController', () => {
       expect(mocks.tryConsume).toHaveBeenCalledWith('load');
       expect(res.json).toHaveBeenCalledWith({ apiKey: 'browser-key' });
     });
-
-    itReturns500([
-      {
-        name: 'getMapsConfigForBrowser',
-        handler: getMapsConfigForBrowser,
-        arrange: error => mocks.tryConsume.mockRejectedValue(error),
-        expectedError: 'Failed to load maps config',
-      },
-    ]);
   });
 
   describe('resolveGeo', () => {
@@ -199,16 +183,6 @@ describe('mapsController', () => {
       expect(mocks.resolveTripGeo).toHaveBeenCalledWith(1, 2);
       expect(res.json).toHaveBeenCalledWith(result);
     });
-
-    itReturns500([
-      {
-        name: 'resolveGeo',
-        handler: resolveGeo,
-        req: { body: { tripId: 1, dayId: 2 } },
-        arrange: error => mocks.resolveTripGeo.mockRejectedValue(error),
-        expectedError: 'Failed to resolve attraction locations',
-      },
-    ]);
   });
 
   describe('reportMapsError', () => {
@@ -236,15 +210,44 @@ describe('mapsController', () => {
       expect(res.status).toHaveBeenCalledWith(204);
       expect(res.send).toHaveBeenCalled();
     });
+  });
 
-    itReturns500([
+  describe('unexpected errors', () => {
+    const cases: RejectCase[] = [
+      {
+        name: 'getMapsStatus',
+        handler: getMapsStatus,
+        arrange: error => mocks.getUsage.mockRejectedValue(error),
+      },
+      {
+        name: 'getMapsConfigForBrowser',
+        handler: getMapsConfigForBrowser,
+        arrange: error => mocks.tryConsume.mockRejectedValue(error),
+      },
+      {
+        name: 'resolveGeo',
+        handler: resolveGeo,
+        req: { body: { tripId: 1, dayId: 2 } },
+        arrange: error => mocks.resolveTripGeo.mockRejectedValue(error),
+      },
       {
         name: 'reportMapsError',
         handler: reportMapsError,
         req: { body: { reason: 'auth_failure' } },
         arrange: error => mocks.markExhausted.mockRejectedValue(error),
-        expectedError: 'Failed to record maps error',
       },
-    ]);
+    ];
+
+    it.each(cases)(
+      '$name rejects with the underlying error for the error handler',
+      async ({ handler, req, arrange }) => {
+        const error = new Error('unexpected failure');
+        arrange(error);
+        const { req: mockReq, res } = createMockReqRes(req);
+
+        await expect(handler(mockReq, res)).rejects.toBe(error);
+        expect(res.status).not.toHaveBeenCalled();
+      },
+    );
   });
 });

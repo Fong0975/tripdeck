@@ -1,8 +1,8 @@
 import type { ResultSetHeader } from 'mysql2';
 
-import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import type { ChecklistTemplateResponse } from '../../types/checklist';
+import { withTransaction } from '../../utils/withTransaction';
 
 const logger = createLogger('backup');
 
@@ -21,54 +21,49 @@ export async function restoreTemplate(
     incomingCategoryCount: template.categories.length,
   });
 
-  const conn = await pool.getConnection();
   try {
-    await conn.beginTransaction();
+    await withTransaction(async conn => {
+      await conn.execute('DELETE FROM checklist_template_categories');
 
-    await conn.execute('DELETE FROM checklist_template_categories');
-
-    for (const category of template.categories) {
-      const [categoryResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_template_categories (name) VALUES (?)',
-        [category.name],
-      );
-      const newCategoryId = categoryResult.insertId;
-
-      for (const item of category.items) {
-        const [itemResult] = await conn.execute<ResultSetHeader>(
-          'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
-          [
-            newCategoryId,
-            item.name,
-            item.quantity,
-            item.notes,
-            item.storage_location,
-          ],
+      for (const category of template.categories) {
+        const [categoryResult] = await conn.execute<ResultSetHeader>(
+          'INSERT INTO checklist_template_categories (name) VALUES (?)',
+          [category.name],
         );
-        const newItemId = itemResult.insertId;
+        const newCategoryId = categoryResult.insertId;
 
-        for (const spec of item.specs) {
-          await conn.execute(
-            'INSERT INTO checklist_template_item_specs (checklist_template_item_id, name, storage_location) VALUES (?, ?, ?)',
-            [newItemId, spec.name, spec.storage_location],
+        for (const item of category.items) {
+          const [itemResult] = await conn.execute<ResultSetHeader>(
+            'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+            [
+              newCategoryId,
+              item.name,
+              item.quantity,
+              item.notes,
+              item.storage_location,
+            ],
           );
+          const newItemId = itemResult.insertId;
+
+          for (const spec of item.specs) {
+            await conn.execute(
+              'INSERT INTO checklist_template_item_specs (checklist_template_item_id, name, storage_location) VALUES (?, ?, ?)',
+              [newItemId, spec.name, spec.storage_location],
+            );
+          }
         }
       }
-    }
-
-    await conn.commit();
-    logger.info('Checklist template replaced', {
-      categoryCount: template.categories.length,
     });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to restore checklist template, rolled back',
       { incomingCategoryCount: template.categories.length },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
+
+  logger.info('Checklist template replaced', {
+    categoryCount: template.categories.length,
+  });
 }

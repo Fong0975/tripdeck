@@ -1,7 +1,8 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import type { TravelConnection, TransportMode } from '@/types';
+import { TRANSPORT_MODE_META } from '@/constants/transportModes';
+import type { TravelConnection } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
 import ClampedTextSection from './ClampedTextSection';
@@ -15,26 +16,6 @@ interface Props {
   onDelete: (connectionId: number) => void;
 }
 
-const TRANSPORT_ICONS: Record<TransportMode, string> = {
-  walk: '🚶',
-  transit: '🚇',
-  drive: '🚗',
-  bike: '🚲',
-  taxi: '🚕',
-  flight: '✈️',
-  other: '🗺️',
-};
-
-const TRANSPORT_LABELS: Record<TransportMode, string> = {
-  walk: '步行',
-  transit: '大眾運輸',
-  drive: '開車',
-  bike: '騎車',
-  taxi: '計程車／Uber',
-  flight: '飛機',
-  other: '其他',
-};
-
 export default function TravelConnectionItem({
   connection,
   onEdit,
@@ -46,6 +27,7 @@ export default function TravelConnectionItem({
   const hasRoute = !!connection.route?.trim();
   const hasNotes = !!connection.notes?.trim();
   const hasImages = (connection.images ?? []).length > 0;
+  const mode = TRANSPORT_MODE_META[connection.transportMode];
 
   return (
     <div className='group my-1 flex items-center gap-2 px-3'>
@@ -64,10 +46,8 @@ export default function TravelConnectionItem({
         <div className='flex items-center justify-between gap-2'>
           <div className='flex flex-col'>
             <span className='flex items-center gap-1'>
-              <span>{TRANSPORT_ICONS[connection.transportMode]}</span>
-              <span className='text-muted-foreground'>
-                {TRANSPORT_LABELS[connection.transportMode]}
-              </span>
+              <span>{mode.icon}</span>
+              <span className='text-muted-foreground'>{mode.label}</span>
             </span>
             {durationDisplay && (
               <span className='text-xs text-muted-foreground'>

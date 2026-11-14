@@ -39,15 +39,15 @@ describe('listAutoBackups', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when listing fails', () => {
+  it('throws the underlying error for the error handler when listing fails', () => {
+    const error = new Error('disk error');
     mockListAutoBackupFiles.mockImplementation(() => {
-      throw new Error('disk error');
+      throw error;
     });
     const { req, res } = createMockReqRes();
 
-    listAutoBackups(req, res);
-
-    expectJsonStatus(res, 500, { error: 'Failed to list automatic backups' });
+    expect(() => listAutoBackups(req, res)).toThrow(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 
@@ -85,17 +85,15 @@ describe('downloadAutoBackup', () => {
     expect(mockReadFileSync).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when reading the file fails unexpectedly', () => {
+  it('throws the underlying error for the error handler when reading fails', () => {
+    const error = new Error('read error');
     mockResolveAutoBackupPath.mockReturnValue(`/backups/${filename}`);
     mockReadFileSync.mockImplementation(() => {
-      throw new Error('read error');
+      throw error;
     });
     const { req, res } = createMockReqRes({ params: { filename } });
 
-    downloadAutoBackup(req, res);
-
-    expectJsonStatus(res, 500, {
-      error: 'Failed to download automatic backup',
-    });
+    expect(() => downloadAutoBackup(req, res)).toThrow(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

@@ -5,8 +5,7 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  type MockReqOverrides,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -26,6 +25,11 @@ vi.mock('../../repositories/checklist/trip', () => ({
   verifyOccasionBelongsToTrip: vi.fn(),
 }));
 
+const blankNameCases = [
+  ...invalidNameCases,
+  { label: 'name is whitespace only', body: { name: '   ' } },
+];
+
 describe('addTripItem', () => {
   it('returns 404 when the category does not belong to the trip, checked before name validation', async () => {
     vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(false);
@@ -40,7 +44,7 @@ describe('addTripItem', () => {
     expect(tripRepo.createTripItem).not.toHaveBeenCalled();
   });
 
-  it.each(invalidNameCases)(
+  it.each(blankNameCases)(
     'returns 400 when $label once the category belongs to the trip',
     async ({ body }) => {
       vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
@@ -74,6 +78,7 @@ describe('addTripItem', () => {
 
     await addTripItem(req, res);
 
+    expect(tripRepo.verifyCategoryBelongsToTrip).toHaveBeenCalledWith(2, 1);
     expect(tripRepo.createTripItem).toHaveBeenCalledWith(2, {
       name: 'Neck pillow',
       quantity: undefined,
@@ -230,8 +235,13 @@ describe('setCheck', () => {
   });
 });
 
-describe('500 responses', () => {
-  const failureCases: Returns500Case[] = [
+describe('unexpected repository errors', () => {
+  const tests: Array<{
+    name: string;
+    handler: typeof addTripItem;
+    req: MockReqOverrides;
+    arrange: (error: Error) => void;
+  }> = [
     {
       name: 'addTripItem',
       handler: addTripItem,
@@ -240,7 +250,6 @@ describe('500 responses', () => {
         vi
           .mocked(tripRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
-      expectedError: 'Failed to add item',
     },
     {
       name: 'deleteTripItem',
@@ -248,7 +257,6 @@ describe('500 responses', () => {
       req: { params: { tripId: '1', itemId: '2' } },
       arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to delete item',
     },
     {
       name: 'updateTripItem',
@@ -256,7 +264,6 @@ describe('500 responses', () => {
       req: { params: { tripId: '1', itemId: '2' }, body: {} },
       arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to update item',
     },
     {
       name: 'setCheck',
@@ -269,9 +276,19 @@ describe('500 responses', () => {
         vi
           .mocked(tripRepo.verifyOccasionBelongsToTrip)
           .mockRejectedValue(error),
-      expectedError: 'Failed to set check',
     },
   ];
 
-  itReturns500(failureCases);
+  it.each(tests)(
+    '$name rejects with the repository error and sends nothing',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+    },
+  );
 });

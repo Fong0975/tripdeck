@@ -1,7 +1,7 @@
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
-import { placeholders } from './helpers';
+import { placeholders } from '../../utils/sql';
 
 interface ImageFilenameRow extends RowDataPacket {
   filename: string;

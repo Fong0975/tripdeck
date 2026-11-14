@@ -57,7 +57,3 @@ export function getDatesInRange(startDate: string, endDate: string): string[] {
   }
   return dates;
 }
-
-export function placeholders(count: number): string {
-  return Array.from({ length: count }, () => '?').join(', ');
-}

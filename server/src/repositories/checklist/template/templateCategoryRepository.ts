@@ -6,10 +6,10 @@ import type {
   TemplateCategoryResponse,
   TemplateItemResponse,
 } from '../../../types/checklist';
+import { placeholders } from '../../../utils/sql';
 
 import {
   fetchSpecsByItemIds,
-  placeholders,
   TemplateCategoryRow,
   TemplateItemRow,
   toCategoryResponse,

@@ -7,6 +7,20 @@ import type {
 
 import { api, json } from './client';
 
+/** Request body for creating or updating a template item. */
+export interface TemplateItemBody {
+  name: string;
+  quantity?: number | null;
+  notes?: string | null;
+  storage_location?: string | null;
+}
+
+/** Request body for creating or updating a template item spec. */
+export interface TemplateSpecBody {
+  name: string;
+  storage_location?: string | null;
+}
+
 export async function getChecklistTemplate(): Promise<ChecklistTemplate> {
   return api<ChecklistTemplate>('/api/checklist-template/');
 }
@@ -38,12 +52,7 @@ export async function deleteTemplateCategory(catId: number): Promise<void> {
 
 export async function addTemplateItem(
   catId: number,
-  data: {
-    name: string;
-    quantity?: number | null;
-    notes?: string | null;
-    storage_location?: string | null;
-  },
+  data: TemplateItemBody,
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/checklist-template/categories/${catId}/items`,
@@ -54,12 +63,7 @@ export async function addTemplateItem(
 export async function updateTemplateItem(
   catId: number,
   itemId: number,
-  data: {
-    name: string;
-    quantity?: number | null;
-    notes?: string | null;
-    storage_location?: string | null;
-  },
+  data: TemplateItemBody,
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}`,
@@ -80,7 +84,7 @@ export async function deleteTemplateItem(
 export async function addTemplateItemSpec(
   catId: number,
   itemId: number,
-  data: { name: string; storage_location?: string | null },
+  data: TemplateSpecBody,
 ): Promise<ItemSpec> {
   return api<ItemSpec>(
     `/api/checklist-template/categories/${catId}/items/${itemId}/specs`,
@@ -92,7 +96,7 @@ export async function updateTemplateItemSpec(
   catId: number,
   itemId: number,
   specId: number,
-  data: { name: string; storage_location?: string | null },
+  data: TemplateSpecBody,
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}/specs/${specId}`,

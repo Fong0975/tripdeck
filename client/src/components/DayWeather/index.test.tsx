@@ -10,7 +10,7 @@ import {
   type WeatherSource,
 } from '@/utils/weatherApi';
 
-import DayWeather from './DayWeather';
+import DayWeather from './index';
 
 vi.mock('@/utils/weatherApi', () => ({
   fetchDailyWeather: vi.fn(),

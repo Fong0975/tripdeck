@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -9,6 +9,10 @@ const VARIANTS = {
   error: {
     Icon: AlertCircle,
     className: 'text-destructive border-l-destructive',
+  },
+  warning: {
+    Icon: TriangleAlert,
+    className: 'text-warning border-l-warning',
   },
   info: {
     Icon: Info,

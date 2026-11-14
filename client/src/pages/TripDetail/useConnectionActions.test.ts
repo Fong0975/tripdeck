@@ -174,7 +174,7 @@ describe('useConnectionActions', () => {
       {
         description: 'a staged image upload fails',
         uploadFails: true,
-        variant: 'info' as const,
+        variant: 'warning' as const,
         message: '已儲存，但部分圖片上傳失敗',
       },
     ])(
@@ -236,7 +236,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(deleteConnection).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -252,7 +252,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(deleteConnection).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -270,7 +270,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(

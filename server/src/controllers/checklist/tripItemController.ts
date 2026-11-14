@@ -2,12 +2,34 @@ import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/checklist/trip';
-import type {
-  CreateTripItemBody,
-  UpdateTripItemBody,
-} from '../../types/checklist';
+import type { UpdateTripItemBody } from '../../types/checklist';
+
+import { idParams } from './params';
+import {
+  handleAddItem,
+  handleDeleteItem,
+  handleUpdateItem,
+  type ItemStore,
+} from './shared/itemHandlers';
+import { rejectNotFound } from './shared/responses';
 
 const logger = createLogger('checklist-trip');
+
+/**
+ * Trip items are scoped by their `:tripId` trip. Updates are partial, so the
+ * body is passed through without a required-name check.
+ */
+const tripItems: ItemStore<UpdateTripItemBody> = {
+  logger,
+  label: 'Trip checklist item',
+  parentParam: 'tripId',
+  verifyCategory: tripRepo.verifyCategoryBelongsToTrip,
+  create: tripRepo.createTripItem,
+  parseUpdate: body => body as UpdateTripItemBody,
+  verifyItem: tripRepo.verifyItemBelongsToTrip,
+  update: tripRepo.updateTripItem,
+  remove: tripRepo.deleteTripItem,
+};
 
 export async function addTripItem(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
@@ -30,51 +52,7 @@ export async function addTripItem(req: Request, res: Response): Promise<void> {
          }
        }
      } */
-  try {
-    const tripId = Number(req.params.tripId);
-    const catId = Number(req.params.catId);
-
-    const belongs = await tripRepo.verifyCategoryBelongsToTrip(catId, tripId);
-    if (!belongs) {
-      logger.warn('Add-item rejected: category not found', {
-        tripId,
-        catId,
-      });
-      res.status(404).json({ error: 'Category not found' });
-      return;
-    }
-
-    const { name, quantity, notes, storage_location } =
-      req.body as CreateTripItemBody;
-    if (!name || typeof name !== 'string') {
-      logger.warn('Rejected add-item request with an invalid name', {
-        tripId,
-        catId,
-      });
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-
-    const item = await tripRepo.createTripItem(catId, {
-      name,
-      quantity,
-      notes,
-      storage_location,
-    });
-    logger.info('Trip checklist item created', {
-      tripId,
-      catId,
-      itemId: item.id,
-    });
-    res.status(201).json(item);
-  } catch (err) {
-    logger.error(
-      'Failed to add item',
-      { tripId: req.params.tripId, catId: req.params.catId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to add item' });
-  }
+  await handleAddItem(tripItems, req, res);
 }
 
 export async function deleteTripItem(
@@ -83,36 +61,7 @@ export async function deleteTripItem(
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Delete an item from a trip checklist' */
-  try {
-    const tripId = Number(req.params.tripId);
-    const itemId = Number(req.params.itemId);
-
-    const belongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
-    if (!belongs) {
-      logger.warn('Delete-item rejected: item not found', { tripId, itemId });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-
-    const deleted = await tripRepo.deleteTripItem(itemId);
-    if (!deleted) {
-      logger.warn('Delete-item rejected: item not found on delete', {
-        tripId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    logger.info('Trip checklist item deleted', { tripId, itemId });
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to delete item',
-      { tripId: req.params.tripId, itemId: req.params.itemId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to delete item' });
-  }
+  await handleDeleteItem(tripItems, req, res);
 }
 
 export async function updateTripItem(
@@ -149,101 +98,31 @@ export async function updateTripItem(
          }
        }
      } */
-  try {
-    const tripId = Number(req.params.tripId);
-    const itemId = Number(req.params.itemId);
-
-    const belongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
-    if (!belongs) {
-      logger.warn('Update-item rejected: item not found', { tripId, itemId });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-
-    const data = req.body as UpdateTripItemBody;
-    const item = await tripRepo.updateTripItem(itemId, data);
-    if (!item) {
-      logger.warn('Update-item rejected: item not found on update', {
-        tripId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    logger.info('Trip checklist item updated', {
-      tripId,
-      itemId,
-      fields: Object.keys(data),
-    });
-    res.json(item);
-  } catch (err) {
-    logger.error(
-      'Failed to update item',
-      { tripId: req.params.tripId, itemId: req.params.itemId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to update item' });
-  }
+  await handleUpdateItem(tripItems, req, res);
 }
 
 export async function setCheck(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Set the checked state of an item within an occasion' */
-  try {
-    const tripId = Number(req.params.tripId);
-    const occId = Number(req.params.occId);
-    const itemId = Number(req.params.itemId);
-    const { checked } = req.body;
-    if (typeof checked !== 'boolean') {
-      logger.warn('Rejected set-check request with a non-boolean value', {
-        tripId,
-        occId,
-        itemId,
-      });
-      res.status(400).json({ error: 'checked must be a boolean' });
-      return;
-    }
-    const occBelongs = await tripRepo.verifyOccasionBelongsToTrip(
-      occId,
-      tripId,
-    );
-    if (!occBelongs) {
-      logger.warn('Set-check rejected: occasion not found', {
-        tripId,
-        occId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Occasion not found' });
-      return;
-    }
-    const itemBelongs = await tripRepo.verifyItemBelongsToTrip(itemId, tripId);
-    if (!itemBelongs) {
-      logger.warn('Set-check rejected: item not found', {
-        tripId,
-        occId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    await tripRepo.setCheck(occId, itemId, checked);
-    logger.debug('Trip checklist item check toggled', {
-      tripId,
-      occId,
-      itemId,
-      checked,
-    });
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to set check',
-      {
-        tripId: req.params.tripId,
-        occId: req.params.occId,
-        itemId: req.params.itemId,
-      },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to set check' });
+  const meta = idParams(req, 'tripId', 'occId', 'itemId');
+  const { tripId, occId, itemId } = meta;
+  const { checked } = req.body as { checked?: unknown };
+  if (typeof checked !== 'boolean') {
+    logger.warn('Rejected set-check request with a non-boolean value', meta);
+    res.status(400).json({ error: 'checked must be a boolean' });
+    return;
   }
+  if (!(await tripRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
+    const message = 'Set-check rejected: occasion not found';
+    rejectNotFound(res, logger, 'Occasion', message, meta);
+    return;
+  }
+  if (!(await tripRepo.verifyItemBelongsToTrip(itemId, tripId))) {
+    const message = 'Set-check rejected: item not found';
+    rejectNotFound(res, logger, 'Item', message, meta);
+    return;
+  }
+  await tripRepo.setCheck(occId, itemId, checked);
+  logger.debug('Trip checklist item check toggled', { ...meta, checked });
+  res.status(204).send();
 }

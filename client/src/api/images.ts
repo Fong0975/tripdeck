@@ -1,6 +1,37 @@
 import type { AttractionImage } from '@/types';
 
-import { api } from './client';
+import { api, apiUrl } from './client';
+
+/**
+ * Builds the URL an uploaded image is served from, honouring the configured
+ * API origin (`VITE_API_DOMAIN`) so images load when the backend lives on a
+ * different host than the client.
+ *
+ * @param filename - The stored image's filename, as returned by the server.
+ * @returns The absolute or root-relative URL of the image file.
+ */
+export function imageUrl(filename: string): string {
+  return apiUrl(`/uploads/${filename}`);
+}
+
+/**
+ * POSTs one image file and its title as a multipart form to `path`.
+ *
+ * @param path - The owning entity's image collection endpoint.
+ * @param file - The image file to upload.
+ * @param title - The image's display title.
+ * @returns The created image record.
+ */
+function uploadImage(
+  path: string,
+  file: File,
+  title: string,
+): Promise<AttractionImage> {
+  const form = new FormData();
+  form.append('image', file);
+  form.append('title', title);
+  return api<AttractionImage>(path, { method: 'POST', body: form });
+}
 
 export async function uploadAttractionImage(
   tripId: number,
@@ -8,12 +39,10 @@ export async function uploadAttractionImage(
   file: File,
   title: string,
 ): Promise<AttractionImage> {
-  const form = new FormData();
-  form.append('image', file);
-  form.append('title', title);
-  return api<AttractionImage>(
+  return uploadImage(
     `/api/trips/${tripId}/attractions/${attractionId}/images`,
-    { method: 'POST', body: form },
+    file,
+    title,
   );
 }
 
@@ -34,12 +63,10 @@ export async function uploadConnectionImage(
   file: File,
   title: string,
 ): Promise<AttractionImage> {
-  const form = new FormData();
-  form.append('image', file);
-  form.append('title', title);
-  return api<AttractionImage>(
+  return uploadImage(
     `/api/trips/${tripId}/connections/${connectionId}/images`,
-    { method: 'POST', body: form },
+    file,
+    title,
   );
 }
 
@@ -59,13 +86,7 @@ export async function uploadTripImage(
   file: File,
   title: string,
 ): Promise<AttractionImage> {
-  const form = new FormData();
-  form.append('image', file);
-  form.append('title', title);
-  return api<AttractionImage>(`/api/trips/${tripId}/images`, {
-    method: 'POST',
-    body: form,
-  });
+  return uploadImage(`/api/trips/${tripId}/images`, file, title);
 }
 
 export async function deleteTripImage(
@@ -83,13 +104,7 @@ export async function uploadDayImage(
   file: File,
   title: string,
 ): Promise<AttractionImage> {
-  const form = new FormData();
-  form.append('image', file);
-  form.append('title', title);
-  return api<AttractionImage>(`/api/trips/${tripId}/days/${dayId}/images`, {
-    method: 'POST',
-    body: form,
-  });
+  return uploadImage(`/api/trips/${tripId}/days/${dayId}/images`, file, title);
 }
 
 export async function deleteDayImage(

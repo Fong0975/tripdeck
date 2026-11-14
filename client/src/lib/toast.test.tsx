@@ -12,6 +12,7 @@ describe('showToast', () => {
   it.each([
     { variant: 'success', duration: 4000 },
     { variant: 'error', duration: 6000 },
+    { variant: 'warning', duration: 6000 },
     { variant: 'info', duration: 4000 },
   ] as const)(
     'defaults the $variant toast to a $duration ms duration',
@@ -42,6 +43,11 @@ describe('showToast', () => {
       variant: 'error',
       iconClassName: 'text-destructive',
       accentClassName: 'border-l-destructive',
+    },
+    {
+      variant: 'warning',
+      iconClassName: 'text-warning',
+      accentClassName: 'border-l-warning',
     },
     {
       variant: 'info',

@@ -1,5 +1,6 @@
 import { Images } from 'lucide-react';
 
+import { imageUrl } from '@/api/images';
 import type { AttractionImage } from '@/types';
 
 interface ImageStripProps {
@@ -25,7 +26,7 @@ export default function ImageStrip({
         {images.slice(0, 3).map(img => (
           <img
             key={img.id}
-            src={`/uploads/${img.filename}`}
+            src={imageUrl(img.filename)}
             alt={img.title}
             title={img.title}
             className='size-7 rounded-md border-2 border-card object-cover'

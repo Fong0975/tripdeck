@@ -4,6 +4,7 @@ import pool from '../config/database';
 import { createLogger } from '../logger';
 import { deleteImageFromDisk } from '../middleware/upload';
 import type { ImageResponse } from '../types/trip';
+import { placeholders } from '../utils/sql';
 
 const logger = createLogger('image');
 
@@ -49,7 +50,7 @@ function createImageRepo(table: string, idColumn: string) {
       return result;
     }
 
-    const ph = parentIds.map(() => '?').join(', ');
+    const ph = placeholders(parentIds.length);
     const [rows] = await pool.execute<ImageRow[]>(
       `SELECT * FROM ${table}
        WHERE ${idColumn} IN (${ph})

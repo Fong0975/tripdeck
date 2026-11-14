@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import { ToastCard } from './ToastCard';
 
-export type ToastVariant = 'success' | 'error' | 'info';
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
 interface ShowToastOptions {
   duration?: number;
@@ -12,6 +12,7 @@ interface ShowToastOptions {
 const DEFAULT_DURATIONS: Record<ToastVariant, number> = {
   success: 4000,
   info: 4000,
+  warning: 6000,
   error: 6000,
 };
 

@@ -50,7 +50,7 @@ export const PARTIAL_IMAGE_UPLOAD_MESSAGE = '已儲存，但部分圖片上傳�
  */
 export function showSavedToast(successMessage: string, failedCount: number) {
   if (failedCount > 0) {
-    showToast('info', PARTIAL_IMAGE_UPLOAD_MESSAGE);
+    showToast('warning', PARTIAL_IMAGE_UPLOAD_MESSAGE);
   } else {
     showToast('success', successMessage);
   }

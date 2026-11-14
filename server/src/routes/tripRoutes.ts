@@ -12,10 +12,22 @@ import * as dayLocationController from '../controllers/trip/dayLocationControlle
 import * as dayNoteController from '../controllers/trip/dayNoteController';
 import * as tripCrudController from '../controllers/trip/tripCrudController';
 import { backupUpload, upload } from '../middleware/upload';
+import { validateIdParams } from '../middleware/validateIdParam';
 
 import checklistTripRoutes from './checklistTripRoutes';
 
 const router = Router();
+
+// Rejects non-positive-integer ids with 400 before any handler runs; this also
+// covers the checklist routes mounted under `/:tripId/checklist`.
+validateIdParams(router, [
+  'tripId',
+  'dayId',
+  'attractionId',
+  'connectionId',
+  'locationId',
+  'imageId',
+]);
 
 // Trip CRUD
 router.get('/', tripCrudController.getTrips);

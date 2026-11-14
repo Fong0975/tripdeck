@@ -1,30 +1,33 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import AttractionModal from '@/components/AttractionModal';
-import DayMapModal from '@/components/DayMapModal';
-import EditDayNoteModal from '@/components/EditDayNoteModal';
-import EditTripModal from '@/components/EditTripModal';
 import Navbar from '@/components/Navbar';
-import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import RetryableError from '@/components/ui/RetryableError';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
-import { showToast } from '@/lib/toast';
+import type { TravelConnection } from '@/types';
 
 import ItineraryBoard from './ItineraryBoard';
 import TripHeader from './TripHeader';
+import TripModals from './TripModals';
+import TripTabs from './TripTabs';
 import type { ModalState } from './types';
 import { useAttractionActions } from './useAttractionActions';
+import { useBoardHandlers } from './useBoardHandlers';
 import { useConnectionActions } from './useConnectionActions';
 import { useDayLocationActions } from './useDayLocationActions';
 import { useDayNoteActions } from './useDayNoteActions';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useTripData } from './useTripData';
+import { useTripExport } from './useTripExport';
 import { useTripTabs } from './useTripTabs';
 
+/**
+ * Trip detail page: composes the trip data, mutation hooks, tab bar,
+ * itinerary board / checklist panel, modals and confirmation dialogs.
+ */
 export default function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -38,10 +41,15 @@ export default function TripDetail() {
     loadError,
     retryLoad,
   } = useTripData(id);
-  const handleImagesChanged = () => void reloadContent();
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
-  const [exporting, setExporting] = useState(false);
+  const closeModal = useCallback(() => setModal({ type: 'none' }), []);
+  const openConnectionModal = useCallback(
+    (dayIndex: number, connection: TravelConnection) =>
+      setModal({ type: 'editConnection', dayIndex, connection }),
+    [],
+  );
+
   const [checklistDirty, setChecklistDirty] = useState(false);
   const {
     activeTab,
@@ -50,31 +58,26 @@ export default function TripDetail() {
     confirmTabSwitch,
     cancelTabSwitch,
   } = useTripTabs(checklistDirty);
-  const [showEditTrip, setShowEditTrip] = useState(false);
+  const { showLeaveConfirm, guardedLeave, confirmLeave, cancelLeave } =
+    useUnsavedChangesGuard(checklistDirty, () => navigate('/'));
 
+  const { exporting, handleExport } = useTripExport(trip, content);
   const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
 
-  const closeModal = () => setModal({ type: 'none' });
-
-  const {
-    handleSaveAttraction,
-    handleDeleteAttraction,
-    handleDuplicateAttraction,
-  } = useAttractionActions(trip, content, reloadContent, closeModal);
-
-  const { handleAddConnection, handleSaveConnection, handleDeleteConnection } =
-    useConnectionActions(
-      trip,
-      content,
-      reloadContent,
-      closeModal,
-      (dayIndex, connection) =>
-        setModal({ type: 'editConnection', dayIndex, connection }),
-    );
-
-  const { handleAddLocation, handleUpdateLocation, handleDeleteLocation } =
-    useDayLocationActions(trip, content, reloadContent);
-
+  const attractionActions = useAttractionActions(
+    trip,
+    content,
+    reloadContent,
+    closeModal,
+  );
+  const connectionActions = useConnectionActions(
+    trip,
+    content,
+    reloadContent,
+    closeModal,
+    openConnectionModal,
+  );
+  const locationActions = useDayLocationActions(trip, content, reloadContent);
   const { handleSaveDayNotes } = useDayNoteActions(
     trip,
     content,
@@ -82,48 +85,15 @@ export default function TripDetail() {
     closeModal,
   );
 
-  const {
-    showLeaveConfirm,
-    guardedLeave: handleBack,
-    confirmLeave: handleConfirmLeave,
-    cancelLeave,
-  } = useUnsavedChangesGuard(checklistDirty, () => navigate('/'));
-
-  // --- Export ---
-
-  const handleExport = async () => {
-    if (!trip || !content || exporting) {
-      return;
-    }
-    setExporting(true);
-    try {
-      const { exportToDocx } = await import('@/utils/exportToDocx');
-      await exportToDocx(trip, content);
-      showToast('success', '已匯出 Word 文件。');
-    } catch {
-      showToast('error', '匯出 Word 文件失敗，請稍後再試');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // --- Derived modal data ---
-
-  const editConnectionData =
-    modal.type === 'editConnection' && content
-      ? {
-          connection: modal.connection,
-          dayIndex: modal.dayIndex,
-          fromName:
-            content.days[modal.dayIndex].attractions.find(
-              a => a.id === modal.connection.fromAttractionId,
-            )?.name ?? '',
-          toName:
-            content.days[modal.dayIndex].attractions.find(
-              a => a.id === modal.connection.toAttractionId,
-            )?.name ?? '',
-        }
-      : null;
+  const boardHandlers = useBoardHandlers(setModal, {
+    deleteAttraction: attractionActions.handleDeleteAttraction,
+    duplicateAttraction: attractionActions.handleDuplicateAttraction,
+    addConnection: connectionActions.handleAddConnection,
+    deleteConnection: connectionActions.handleDeleteConnection,
+    addLocation: locationActions.handleAddLocation,
+    updateLocation: locationActions.handleUpdateLocation,
+    deleteLocation: locationActions.handleDeleteLocation,
+  });
 
   if (loadError) {
     return (
@@ -149,38 +119,13 @@ export default function TripDetail() {
 
       <TripHeader
         trip={trip}
-        onBack={handleBack}
+        onBack={guardedLeave}
         onExport={() => void handleExport()}
-        onEdit={() => {
-          closeModal();
-          setShowEditTrip(true);
-        }}
+        onEdit={() => setModal({ type: 'editTrip' })}
         exporting={exporting}
       />
 
-      {/* Tab bar */}
-      <div className='border-b border-border bg-background'>
-        <div className='mx-auto flex max-w-7xl px-4'>
-          {(
-            [
-              { key: 'itinerary', label: '行程規劃' },
-              { key: 'checklist', label: '行李清單' },
-            ] as const
-          ).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => requestTab(tab.key)}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TripTabs activeTab={activeTab} onSelect={requestTab} />
 
       {activeTab === 'checklist' ? (
         <div className='flex min-h-0 flex-1 flex-col px-0 sm:px-8 xl:px-16'>
@@ -190,7 +135,6 @@ export default function TripDetail() {
           />
         </div>
       ) : (
-        /* Board */
         <div className='min-h-0 flex-1 overflow-auto'>
           <div className='px-4 py-6 sm:px-8 xl:px-16'>
             <ItineraryBoard
@@ -200,119 +144,24 @@ export default function TripDetail() {
               onDragEnd={dnd.handleDragEnd}
               activeAttractionId={dnd.activeAttractionId}
               getActiveAttraction={dnd.getActiveAttraction}
-              onEditDayNote={di =>
-                setModal({ type: 'editDayNote', dayIndex: di })
-              }
-              onOpenDayMap={di => setModal({ type: 'dayMap', dayIndex: di })}
-              onAddAttraction={di =>
-                setModal({ type: 'addAttraction', dayIndex: di })
-              }
-              onEditAttraction={(di, a) =>
-                setModal({
-                  type: 'editAttraction',
-                  dayIndex: di,
-                  attraction: a,
-                })
-              }
-              onDeleteAttraction={(di, aId) =>
-                void handleDeleteAttraction(di, aId)
-              }
-              onDuplicateAttraction={(di, a) =>
-                void handleDuplicateAttraction(di, a)
-              }
-              onEditConnection={(di, c) =>
-                setModal({
-                  type: 'editConnection',
-                  dayIndex: di,
-                  connection: c,
-                })
-              }
-              onDeleteConnection={(di, cId) =>
-                void handleDeleteConnection(di, cId)
-              }
-              onAddConnection={handleAddConnection}
-              onAddLocation={(di, name) => void handleAddLocation(di, name)}
-              onUpdateLocation={(di, locId, name) =>
-                void handleUpdateLocation(di, locId, name)
-              }
-              onDeleteLocation={(di, locId) =>
-                void handleDeleteLocation(di, locId)
-              }
+              {...boardHandlers}
             />
           </div>
         </div>
       )}
 
-      {/* Modals */}
-      {modal.type === 'addAttraction' && (
-        <AttractionModal
-          tripId={trip.id}
-          onClose={closeModal}
-          onSave={(a, staged) =>
-            handleSaveAttraction(modal.dayIndex, a, staged)
-          }
-          onImagesChanged={handleImagesChanged}
-        />
-      )}
-
-      {modal.type === 'editAttraction' && (
-        <AttractionModal
-          tripId={trip.id}
-          attraction={modal.attraction}
-          onClose={closeModal}
-          onSave={a => handleSaveAttraction(modal.dayIndex, a)}
-          onImagesChanged={handleImagesChanged}
-        />
-      )}
-
-      {editConnectionData && (
-        <TravelConnectionModal
-          tripId={trip.id}
-          connection={editConnectionData.connection}
-          fromName={editConnectionData.fromName}
-          toName={editConnectionData.toName}
-          onClose={closeModal}
-          onSave={(c, staged) =>
-            handleSaveConnection(editConnectionData.dayIndex, c, staged)
-          }
-          onImagesChanged={handleImagesChanged}
-        />
-      )}
-
-      {modal.type === 'editDayNote' && (
-        <EditDayNoteModal
-          tripId={trip.id}
-          day={content.days[modal.dayIndex]}
-          onClose={() => {
-            closeModal();
-            void reloadContent();
-          }}
-          onSave={notes => handleSaveDayNotes(modal.dayIndex, notes)}
-        />
-      )}
-
-      {modal.type === 'dayMap' && (
-        <DayMapModal
-          tripId={trip.id}
-          days={content.days}
-          initialDayIndex={modal.dayIndex}
-          onClose={closeModal}
-        />
-      )}
-
-      {showEditTrip && (
-        <EditTripModal
-          trip={trip}
-          initialContent={content}
-          onClose={() => setShowEditTrip(false)}
-          onUpdated={updated => {
-            setTrip(updated);
-            setShowEditTrip(false);
-          }}
-          onContentChanged={() => void reloadContent()}
-          onImagesChanged={() => void reloadTrip()}
-        />
-      )}
+      <TripModals
+        trip={trip}
+        content={content}
+        modal={modal}
+        onClose={closeModal}
+        onSaveAttraction={attractionActions.handleSaveAttraction}
+        onSaveConnection={connectionActions.handleSaveConnection}
+        onSaveDayNotes={handleSaveDayNotes}
+        onTripUpdated={setTrip}
+        reloadContent={reloadContent}
+        reloadTrip={reloadTrip}
+      />
 
       {/* Leave confirmation when checklist has unsaved changes */}
       {showLeaveConfirm && (
@@ -322,7 +171,7 @@ export default function TripDetail() {
           cancelLabel='留下'
           confirmLabel='確定離開'
           onCancel={cancelLeave}
-          onConfirm={handleConfirmLeave}
+          onConfirm={confirmLeave}
         />
       )}
 

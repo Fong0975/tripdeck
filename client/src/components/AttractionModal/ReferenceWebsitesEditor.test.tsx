@@ -180,6 +180,15 @@ describe('ReferenceWebsitesEditor', () => {
         vi.mocked(fetch).mockResolvedValue(makeJsonResponse({ title: null })),
     },
     {
+      description: 'the backend rejects the URL with a 400',
+      mockFetch: () =>
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: 'Invalid URL' }),
+        } as Response),
+    },
+    {
       description: 'fetch rejects',
       mockFetch: () =>
         vi.mocked(fetch).mockRejectedValue(new Error('network error')),

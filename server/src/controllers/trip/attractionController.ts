@@ -9,6 +9,7 @@ import type {
   UpdateAttractionBody,
 } from '../../types/trip';
 import { parseId } from '../../utils/parseId';
+import { idParam } from '../params';
 
 const logger = createLogger('attraction');
 
@@ -39,45 +40,36 @@ export async function addAttraction(
          }
        }
      } */
-  try {
-    const tripId = Number(req.params.tripId);
-    const dayId = Number(req.params.dayId);
+  const tripId = idParam(req, 'tripId');
+  const dayId = idParam(req, 'dayId');
 
-    const body = req.body as CreateAttractionBody;
-    if (!body.name) {
-      logger.warn('Rejected add-attraction request with no name', {
-        tripId,
-        dayId,
-      });
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-
-    const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
-    if (!day) {
-      logger.warn('Add-attraction rejected: day not found', {
-        tripId,
-        dayId,
-      });
-      res.status(404).json({ error: 'Day not found' });
-      return;
-    }
-
-    const attraction = await attractionRepo.create(dayId, body);
-    logger.info('Attraction created', {
+  const body = req.body as CreateAttractionBody;
+  if (!body.name) {
+    logger.warn('Rejected add-attraction request with no name', {
       tripId,
       dayId,
-      attractionId: attraction.id,
     });
-    res.status(201).json(attraction);
-  } catch (err) {
-    logger.error(
-      'Failed to add attraction',
-      { tripId: req.params.tripId, dayId: req.params.dayId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to add attraction' });
+    res.status(400).json({ error: 'name is required' });
+    return;
   }
+
+  const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
+  if (!day) {
+    logger.warn('Add-attraction rejected: day not found', {
+      tripId,
+      dayId,
+    });
+    res.status(404).json({ error: 'Day not found' });
+    return;
+  }
+
+  const attraction = await attractionRepo.create(dayId, body);
+  logger.info('Attraction created', {
+    tripId,
+    dayId,
+    attractionId: attraction.id,
+  });
+  res.status(201).json(attraction);
 }
 
 export async function updateAttraction(
@@ -107,44 +99,35 @@ export async function updateAttraction(
          }
        }
      } */
-  try {
-    const tripId = Number(req.params.tripId);
-    const attractionId = Number(req.params.attractionId);
+  const tripId = idParam(req, 'tripId');
+  const attractionId = idParam(req, 'attractionId');
 
-    const belongs = await attractionRepo.verifyBelongsToTrip(
-      attractionId,
+  const belongs = await attractionRepo.verifyBelongsToTrip(
+    attractionId,
+    tripId,
+  );
+  if (!belongs) {
+    logger.warn('Update-attraction rejected: attraction not found', {
       tripId,
-    );
-    if (!belongs) {
-      logger.warn('Update-attraction rejected: attraction not found', {
-        tripId,
-        attractionId,
-      });
-      res.status(404).json({ error: 'Attraction not found' });
-      return;
-    }
-
-    const updated = await attractionRepo.update(
       attractionId,
-      req.body as UpdateAttractionBody,
-    );
-    if (!updated) {
-      logger.warn(
-        'Update-attraction rejected: attraction not found on update',
-        { tripId, attractionId },
-      );
-      res.status(404).json({ error: 'Attraction not found' });
-      return;
-    }
-    res.json(updated);
-  } catch (err) {
-    logger.error(
-      'Failed to update attraction',
-      { tripId: req.params.tripId, attractionId: req.params.attractionId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to update attraction' });
+    });
+    res.status(404).json({ error: 'Attraction not found' });
+    return;
   }
+
+  const updated = await attractionRepo.update(
+    attractionId,
+    req.body as UpdateAttractionBody,
+  );
+  if (!updated) {
+    logger.warn('Update-attraction rejected: attraction not found on update', {
+      tripId,
+      attractionId,
+    });
+    res.status(404).json({ error: 'Attraction not found' });
+    return;
+  }
+  res.json(updated);
 }
 
 export async function deleteAttraction(
@@ -153,34 +136,25 @@ export async function deleteAttraction(
 ): Promise<void> {
   /* #swagger.tags = ['Attractions']
      #swagger.summary = 'Delete an attraction' */
-  try {
-    const tripId = Number(req.params.tripId);
-    const attractionId = Number(req.params.attractionId);
+  const tripId = idParam(req, 'tripId');
+  const attractionId = idParam(req, 'attractionId');
 
-    const belongs = await attractionRepo.verifyBelongsToTrip(
-      attractionId,
+  const belongs = await attractionRepo.verifyBelongsToTrip(
+    attractionId,
+    tripId,
+  );
+  if (!belongs) {
+    logger.warn('Delete-attraction rejected: attraction not found', {
       tripId,
-    );
-    if (!belongs) {
-      logger.warn('Delete-attraction rejected: attraction not found', {
-        tripId,
-        attractionId,
-      });
-      res.status(404).json({ error: 'Attraction not found' });
-      return;
-    }
-
-    await attractionRepo.deleteById(attractionId);
-    logger.info('Attraction deleted', { tripId, attractionId });
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to delete attraction',
-      { tripId: req.params.tripId, attractionId: req.params.attractionId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to delete attraction' });
+      attractionId,
+    });
+    res.status(404).json({ error: 'Attraction not found' });
+    return;
   }
+
+  await attractionRepo.deleteById(attractionId);
+  logger.info('Attraction deleted', { tripId, attractionId });
+  res.status(204).send();
 }
 
 export async function duplicateAttraction(
@@ -189,40 +163,31 @@ export async function duplicateAttraction(
 ): Promise<void> {
   /* #swagger.tags = ['Attractions']
      #swagger.summary = 'Duplicate an attraction to the end of its day' */
-  try {
-    const tripId = Number(req.params.tripId);
-    const attractionId = Number(req.params.attractionId);
+  const tripId = idParam(req, 'tripId');
+  const attractionId = idParam(req, 'attractionId');
 
-    const belongs = await attractionRepo.verifyBelongsToTrip(
+  const belongs = await attractionRepo.verifyBelongsToTrip(
+    attractionId,
+    tripId,
+  );
+  if (!belongs) {
+    logger.warn('Duplicate-attraction rejected: attraction not found', {
+      tripId,
       attractionId,
-      tripId,
-    );
-    if (!belongs) {
-      logger.warn('Duplicate-attraction rejected: attraction not found', {
-        tripId,
-        attractionId,
-      });
-      res.status(404).json({ error: 'Attraction not found' });
-      return;
-    }
-
-    const dayId = await attractionRepo.getDayIdForAttraction(attractionId);
-    const copy = await attractionRepo.duplicate(attractionId, dayId);
-    logger.info('Attraction duplicated', {
-      tripId,
-      dayId,
-      sourceAttractionId: attractionId,
-      newAttractionId: copy.id,
     });
-    res.status(201).json(copy);
-  } catch (err) {
-    logger.error(
-      'Failed to duplicate attraction',
-      { tripId: req.params.tripId, attractionId: req.params.attractionId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to duplicate attraction' });
+    res.status(404).json({ error: 'Attraction not found' });
+    return;
   }
+
+  const dayId = await attractionRepo.getDayIdForAttraction(attractionId);
+  const copy = await attractionRepo.duplicate(attractionId, dayId);
+  logger.info('Attraction duplicated', {
+    tripId,
+    dayId,
+    sourceAttractionId: attractionId,
+    newAttractionId: copy.id,
+  });
+  res.status(201).json(copy);
 }
 
 export async function reorderAttractions(
@@ -231,45 +196,36 @@ export async function reorderAttractions(
 ): Promise<void> {
   /* #swagger.tags = ['Attractions']
      #swagger.summary = 'Reorder attractions within a day' */
-  try {
-    const tripId = Number(req.params.tripId);
-    const dayId = Number(req.params.dayId);
+  const tripId = idParam(req, 'tripId');
+  const dayId = idParam(req, 'dayId');
 
-    const body = req.body as ReorderAttractionsBody;
-    if (!Array.isArray(body.orderedIds)) {
-      logger.warn('Rejected reorder-attractions request: not an array', {
-        tripId,
-        dayId,
-      });
-      res.status(400).json({ error: 'orderedIds array is required' });
-      return;
-    }
-
-    const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
-    if (!day) {
-      logger.warn('Reorder-attractions rejected: day not found', {
-        tripId,
-        dayId,
-      });
-      res.status(404).json({ error: 'Day not found' });
-      return;
-    }
-
-    await attractionRepo.updateOrder(dayId, body.orderedIds);
-    logger.info('Attractions reordered', {
+  const body = req.body as ReorderAttractionsBody;
+  if (!Array.isArray(body.orderedIds)) {
+    logger.warn('Rejected reorder-attractions request: not an array', {
       tripId,
       dayId,
-      count: body.orderedIds.length,
     });
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to reorder attractions',
-      { tripId: req.params.tripId, dayId: req.params.dayId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to reorder attractions' });
+    res.status(400).json({ error: 'orderedIds array is required' });
+    return;
   }
+
+  const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
+  if (!day) {
+    logger.warn('Reorder-attractions rejected: day not found', {
+      tripId,
+      dayId,
+    });
+    res.status(404).json({ error: 'Day not found' });
+    return;
+  }
+
+  await attractionRepo.updateOrder(dayId, body.orderedIds);
+  logger.info('Attractions reordered', {
+    tripId,
+    dayId,
+    count: body.orderedIds.length,
+  });
+  res.status(204).send();
 }
 
 /** Request body of {@link moveAttraction}. */
@@ -308,60 +264,46 @@ export async function moveAttraction(
      #swagger.responses[204] = { description: 'Attraction moved' }
      #swagger.responses[400] = { description: 'Invalid tripId, attractionId, dayId or index' }
      #swagger.responses[404] = { description: 'Attraction or day not found' } */
-  try {
-    const tripId = parseId(req.params.tripId);
-    const attractionId = parseId(req.params.attractionId);
-    const body = (req.body ?? {}) as MoveAttractionBody;
-    const dayId = parseId(body.dayId);
-    if (
-      tripId === null ||
-      attractionId === null ||
-      dayId === null ||
-      !isNonNegativeInteger(body.index)
-    ) {
-      logger.warn('Rejected move-attraction request: invalid input', {
-        tripId: req.params.tripId,
-        attractionId: req.params.attractionId,
-        dayId: body.dayId,
-        index: body.index,
-      });
-      res.status(400).json({
-        error:
-          'tripId, attractionId and dayId must be positive integers and index a non-negative integer',
-      });
-      return;
-    }
-
-    const result = await attractionRepo.moveToDay(
+  const tripId = idParam(req, 'tripId');
+  const attractionId = idParam(req, 'attractionId');
+  const body = req.body as MoveAttractionBody;
+  const dayId = parseId(body.dayId);
+  if (dayId === null || !isNonNegativeInteger(body.index)) {
+    logger.warn('Rejected move-attraction request: invalid input', {
       tripId,
       attractionId,
-      dayId,
-      body.index,
-    );
-    if (result === 'attraction_not_found') {
-      logger.warn('Move-attraction rejected: attraction not found', {
-        tripId,
-        attractionId,
-      });
-      res.status(404).json({ error: 'Attraction not found' });
-      return;
-    }
-    if (result === 'day_not_found') {
-      logger.warn('Move-attraction rejected: day not found', {
-        tripId,
-        dayId,
-      });
-      res.status(404).json({ error: 'Day not found' });
-      return;
-    }
-
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to move attraction',
-      { tripId: req.params.tripId, attractionId: req.params.attractionId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to move attraction' });
+      dayId: body.dayId,
+      index: body.index,
+    });
+    res.status(400).json({
+      error:
+        'dayId must be a positive integer and index a non-negative integer',
+    });
+    return;
   }
+
+  const result = await attractionRepo.moveToDay(
+    tripId,
+    attractionId,
+    dayId,
+    body.index,
+  );
+  if (result === 'attraction_not_found') {
+    logger.warn('Move-attraction rejected: attraction not found', {
+      tripId,
+      attractionId,
+    });
+    res.status(404).json({ error: 'Attraction not found' });
+    return;
+  }
+  if (result === 'day_not_found') {
+    logger.warn('Move-attraction rejected: day not found', {
+      tripId,
+      dayId,
+    });
+    res.status(404).json({ error: 'Day not found' });
+    return;
+  }
+
+  res.status(204).send();
 }

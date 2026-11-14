@@ -5,8 +5,7 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  type MockReqOverrides,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -23,8 +22,13 @@ vi.mock('../../repositories/checklist/trip', () => ({
   verifyTripSpecBelongsToItem: vi.fn(),
 }));
 
+const blankNameCases = [
+  ...invalidNameCases,
+  { label: 'name is whitespace only', body: { name: '   ' } },
+];
+
 describe('addTripItemSpec', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
       body,
@@ -82,7 +86,7 @@ describe('addTripItemSpec', () => {
 });
 
 describe('updateTripItemSpec', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2', specId: '3' },
       body,
@@ -147,6 +151,12 @@ describe('updateTripItemSpec', () => {
 
     await updateTripItemSpec(req, res);
 
+    expect(tripRepo.verifyItemBelongsToTrip).toHaveBeenCalledWith(2, 1);
+    expect(tripRepo.verifyTripSpecBelongsToItem).toHaveBeenCalledWith(3, 2);
+    expect(tripRepo.updateTripItemSpec).toHaveBeenCalledWith(3, {
+      name: 'Type-C charger',
+      storage_location: undefined,
+    });
     expect(res.json).toHaveBeenCalledWith(spec);
   });
 });
@@ -205,8 +215,13 @@ describe('deleteTripItemSpec', () => {
   });
 });
 
-describe('500 responses', () => {
-  const failureCases: Returns500Case[] = [
+describe('unexpected repository errors', () => {
+  const tests: Array<{
+    name: string;
+    handler: typeof addTripItemSpec;
+    req: MockReqOverrides;
+    arrange: (error: Error) => void;
+  }> = [
     {
       name: 'addTripItemSpec',
       handler: addTripItemSpec,
@@ -216,7 +231,6 @@ describe('500 responses', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to add spec',
     },
     {
       name: 'updateTripItemSpec',
@@ -227,7 +241,6 @@ describe('500 responses', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to update spec',
     },
     {
       name: 'deleteTripItemSpec',
@@ -235,9 +248,19 @@ describe('500 responses', () => {
       req: { params: { tripId: '1', itemId: '2', specId: '3' } },
       arrange: error =>
         vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to delete spec',
     },
   ];
 
-  itReturns500(failureCases);
+  it.each(tests)(
+    '$name rejects with the repository error and sends nothing',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -14,7 +14,6 @@ import { makeTrip } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
   type Returns500Case,
 } from '../../test-utils/httpMocks';
 import type { TripContentResponse } from '../../types/trip';
@@ -28,6 +27,8 @@ import {
   getTrips,
   updateTrip,
 } from './tripCrudController';
+
+type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleTrip = makeTrip();
 
@@ -321,54 +322,19 @@ describe('Trip content', () => {
   });
 });
 
-describe('invalid tripId param', () => {
-  const handlers = [
-    { name: 'getTrip', handler: getTrip },
-    { name: 'updateTrip', handler: updateTrip },
-    { name: 'deleteTrip', handler: deleteTrip },
-    { name: 'getTripContent', handler: getTripContent },
-  ];
-  const invalidIds = ['abc', '0', '-1', '1.5', ''];
-  const cases = handlers.flatMap(({ name, handler }) =>
-    invalidIds.map(tripId => ({ name, handler, tripId })),
-  );
-
-  it.each(cases)(
-    '$name returns 400 for tripId "$tripId"',
-    async ({ handler, tripId }) => {
-      const { req, res } = createMockReqRes({
-        params: { tripId },
-        body: { title: 'New Title' },
-      });
-
-      await handler(req, res);
-
-      expectJsonStatus(res, 400, {
-        error: 'tripId must be a positive integer',
-      });
-      expect(tripRepo.findById).not.toHaveBeenCalled();
-      expect(tripRepo.update).not.toHaveBeenCalled();
-      expect(tripRepo.deleteById).not.toHaveBeenCalled();
-      expect(tripRepo.findContent).not.toHaveBeenCalled();
-    },
-  );
-});
-
-describe('500 error handling', () => {
-  const cases: Returns500Case[] = [
+describe('unexpected errors', () => {
+  const cases: RejectCase[] = [
     {
       name: 'getTrips',
       handler: getTrips,
       req: {},
       arrange: error => vi.mocked(tripRepo.findAll).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trips',
     },
     {
       name: 'getTrip',
       handler: getTrip,
       req: { params: { tripId: '1' } },
       arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trip',
     },
     {
       name: 'createTrip',
@@ -381,7 +347,6 @@ describe('500 error handling', () => {
         },
       },
       arrange: error => vi.mocked(tripRepo.create).mockRejectedValue(error),
-      expectedError: 'Failed to create trip',
     },
     {
       name: 'updateTrip',
@@ -391,14 +356,12 @@ describe('500 error handling', () => {
         vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
         vi.mocked(tripRepo.update).mockRejectedValue(error);
       },
-      expectedError: 'Failed to update trip',
     },
     {
       name: 'deleteTrip',
       handler: deleteTrip,
       req: { params: { tripId: '1' } },
       arrange: error => vi.mocked(tripRepo.deleteById).mockRejectedValue(error),
-      expectedError: 'Failed to delete trip',
     },
     {
       name: 'getTripContent',
@@ -406,9 +369,18 @@ describe('500 error handling', () => {
       req: { params: { tripId: '1' } },
       arrange: error =>
         vi.mocked(tripRepo.findContent).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trip content',
     },
   ];
 
-  itReturns500(cases);
+  it.each(cases)(
+    '$name rejects with the underlying error for the error handler',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+    },
+  );
 });

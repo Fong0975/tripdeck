@@ -4,18 +4,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
+import { useMemo } from 'react';
 
 import AttractionCard from '@/components/AttractionCard';
 import DayColumn from '@/components/DayColumn';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 
-interface Props {
-  days: DayPlan[];
-  sensors: Parameters<typeof DndContext>[0]['sensors'];
-  onDragStart: (event: DragStartEvent) => void;
-  onDragEnd: (event: DragEndEvent) => void;
-  activeAttractionId: number | null;
-  getActiveAttraction: () => Attraction | undefined;
+/** Per-day board callbacks forwarded to every `DayColumn`. */
+export interface BoardCallbacks {
   onEditDayNote: (dayIndex: number) => void;
   onOpenDayMap: (dayIndex: number) => void;
   onAddAttraction: (dayIndex: number) => void;
@@ -32,6 +28,15 @@ interface Props {
     name: string,
   ) => void;
   onDeleteLocation: (dayIndex: number, locationId: number) => void;
+}
+
+interface Props extends BoardCallbacks {
+  days: DayPlan[];
+  sensors: Parameters<typeof DndContext>[0]['sensors'];
+  onDragStart: (event: DragStartEvent) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  activeAttractionId: number | null;
+  getActiveAttraction: () => Attraction | undefined;
 }
 
 /**
@@ -59,6 +64,11 @@ export default function ItineraryBoard({
   onUpdateLocation,
   onDeleteLocation,
 }: Props) {
+  const activeAttraction = useMemo(
+    () => (activeAttractionId ? getActiveAttraction() : undefined),
+    [activeAttractionId, getActiveAttraction],
+  );
+
   return (
     <DndContext
       sensors={sensors}
@@ -88,10 +98,10 @@ export default function ItineraryBoard({
       </div>
 
       <DragOverlay>
-        {activeAttractionId && getActiveAttraction() && (
+        {activeAttraction && (
           <div className='rotate-2 opacity-90 shadow-xl'>
             <AttractionCard
-              attraction={getActiveAttraction()!}
+              attraction={activeAttraction}
               onEdit={() => {}}
               onDelete={() => {}}
             />

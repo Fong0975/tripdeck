@@ -3,6 +3,7 @@ import type { PoolConnection } from 'mysql2/promise';
 
 import pool from '../../../config/database';
 import type { ItemSpecResponse } from '../../../types/checklist';
+import { createSpecRepository } from '../shared/specRepository';
 
 // --- Row types ---
 
@@ -21,34 +22,6 @@ export interface TripChecklistItemRow extends RowDataPacket {
   storage_location: string | null;
 }
 
-export interface TripItemSpecRow extends RowDataPacket {
-  id: number;
-  checklist_trip_item_id: number;
-  name: string;
-  storage_location: string | null;
-}
-
-export interface TemplateCategoryRow extends RowDataPacket {
-  id: number;
-  name: string;
-}
-
-export interface TemplateItemRow extends RowDataPacket {
-  id: number;
-  checklist_template_category_id: number;
-  name: string;
-  quantity: number | null;
-  notes: string | null;
-  storage_location: string | null;
-}
-
-export interface TemplateItemSpecRow extends RowDataPacket {
-  id: number;
-  checklist_template_item_id: number;
-  name: string;
-  storage_location: string | null;
-}
-
 export interface OccasionRow extends RowDataPacket {
   id: number;
   trip_id: number;
@@ -61,10 +34,6 @@ export interface CheckRow extends RowDataPacket {
 }
 
 // --- Helpers ---
-
-export function placeholders(count: number): string {
-  return Array.from({ length: count }, () => '?').join(', ');
-}
 
 /**
  * Checks whether a trip row exists.
@@ -100,31 +69,21 @@ export async function lockTrip(
   return rows.length > 0;
 }
 
-export function toSpecResponse(row: TripItemSpecRow): ItemSpecResponse {
-  return {
-    id: row.id,
-    name: row.name,
-    storage_location: row.storage_location,
-  };
-}
+/** Spec operations bound to the trip checklist spec table. */
+export const tripSpecRepository = createSpecRepository({
+  specTable: 'checklist_trip_item_specs',
+  itemTable: 'checklist_trip_items',
+  parentColumn: 'checklist_trip_item_id',
+});
 
-export async function fetchSpecsByItemIds(
+/**
+ * Loads the specs of the given trip checklist items, grouped by item id.
+ *
+ * @param itemIds - Trip checklist item ids.
+ * @returns Map of item id to its specs, ordered by spec id.
+ */
+export function fetchSpecsByItemIds(
   itemIds: number[],
 ): Promise<Map<number, ItemSpecResponse[]>> {
-  const map = new Map<number, ItemSpecResponse[]>();
-  if (itemIds.length === 0) {
-    return map;
-  }
-  const [rows] = await pool.execute<TripItemSpecRow[]>(
-    `SELECT * FROM checklist_trip_item_specs
-     WHERE checklist_trip_item_id IN (${placeholders(itemIds.length)})
-     ORDER BY checklist_trip_item_id, id`,
-    itemIds,
-  );
-  for (const row of rows) {
-    const list = map.get(row.checklist_trip_item_id) ?? [];
-    list.push(toSpecResponse(row));
-    map.set(row.checklist_trip_item_id, list);
-  }
-  return map;
+  return tripSpecRepository.fetchByItemIds(itemIds);
 }

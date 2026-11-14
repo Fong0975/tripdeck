@@ -76,7 +76,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleUpdateLocation(0, 5, 'Renamed');
+      await handleUpdateLocation(5, 'Renamed');
 
       expect(updateDayLocation).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleUpdateLocation(0, 5, 'Renamed');
+      await handleUpdateLocation(5, 'Renamed');
 
       expect(updateDayLocation).toHaveBeenCalledWith(1, 5, 'Renamed');
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -108,7 +108,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleUpdateLocation(0, 5, 'Renamed');
+      await handleUpdateLocation(5, 'Renamed');
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleDeleteLocation(0, 5);
+      await handleDeleteLocation(5);
 
       expect(deleteDayLocation).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleDeleteLocation(0, 5);
+      await handleDeleteLocation(5);
 
       expect(deleteDayLocation).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -159,7 +159,7 @@ describe('useDayLocationActions', () => {
         reloadContent,
       );
 
-      await handleDeleteLocation(0, 5);
+      await handleDeleteLocation(5);
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(

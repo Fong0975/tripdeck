@@ -45,21 +45,16 @@ export const getMapsStatus = async (
     return;
   }
 
-  try {
-    const [load, geocode] = await Promise.all([
-      getUsage('load'),
-      getUsage('geocode'),
-    ]);
-    res.json({
-      enabled: true,
-      exhausted: load.exhausted,
-      geocodeExhausted: geocode.exhausted,
-      resetAt: getNextPacificReset().toISOString(),
-    });
-  } catch (err) {
-    logger.error('Failed to read maps status', undefined, err);
-    res.status(500).json({ error: 'Failed to read maps status' });
-  }
+  const [load, geocode] = await Promise.all([
+    getUsage('load'),
+    getUsage('geocode'),
+  ]);
+  res.json({
+    enabled: true,
+    exhausted: load.exhausted,
+    geocodeExhausted: geocode.exhausted,
+    resetAt: getNextPacificReset().toISOString(),
+  });
 };
 
 export const getMapsConfigForBrowser = async (
@@ -83,19 +78,14 @@ export const getMapsConfigForBrowser = async (
     return;
   }
 
-  try {
-    if (!(await tryConsume('load'))) {
-      res.status(429).json({
-        error: 'Daily map quota reached',
-        resetAt: getNextPacificReset().toISOString(),
-      });
-      return;
-    }
-    res.json({ apiKey: getMapsConfig().browserKey });
-  } catch (err) {
-    logger.error('Failed to issue the maps config', undefined, err);
-    res.status(500).json({ error: 'Failed to load maps config' });
+  if (!(await tryConsume('load'))) {
+    res.status(429).json({
+      error: 'Daily map quota reached',
+      resetAt: getNextPacificReset().toISOString(),
+    });
+    return;
   }
+  res.json({ apiKey: getMapsConfig().browserKey });
 };
 
 export const resolveGeo = async (
@@ -143,10 +133,7 @@ export const resolveGeo = async (
      }
      #swagger.responses[400] = { description: 'Invalid tripId or dayId' }
      #swagger.responses[404] = { description: 'Map feature not configured, or day not found' } */
-  const { tripId, dayId } = (req.body ?? {}) as {
-    tripId?: unknown;
-    dayId?: unknown;
-  };
+  const { tripId, dayId } = req.body as { tripId?: unknown; dayId?: unknown };
   if (!isPositiveInteger(tripId) || !isPositiveInteger(dayId)) {
     logger.warn('Rejected geo resolve request with invalid ids', {
       tripId,
@@ -162,22 +149,13 @@ export const resolveGeo = async (
     return;
   }
 
-  try {
-    const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
-    if (!day) {
-      logger.warn('Geo resolve rejected: day not found', { tripId, dayId });
-      res.status(404).json({ error: 'Day not found' });
-      return;
-    }
-    res.json(await resolveTripGeo(tripId, dayId));
-  } catch (err) {
-    logger.error(
-      'Failed to resolve attraction locations',
-      { tripId, dayId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to resolve attraction locations' });
+  const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
+  if (!day) {
+    logger.warn('Geo resolve rejected: day not found', { tripId, dayId });
+    res.status(404).json({ error: 'Day not found' });
+    return;
   }
+  res.json(await resolveTripGeo(tripId, dayId));
 };
 
 export const reportMapsError = async (
@@ -200,7 +178,7 @@ export const reportMapsError = async (
      }
      #swagger.responses[204] = { description: 'Recorded' }
      #swagger.responses[400] = { description: 'Unknown reason' } */
-  const { reason } = (req.body ?? {}) as { reason?: unknown };
+  const { reason } = req.body as { reason?: unknown };
   if (reason !== 'auth_failure') {
     logger.warn('Rejected maps error report with an unknown reason', {
       reason,
@@ -209,14 +187,9 @@ export const reportMapsError = async (
     return;
   }
 
-  try {
-    await markExhausted('load');
-    logger.warn(
-      'Browser reported a Google Maps authentication or quota failure; map loads are disabled until the daily reset',
-    );
-    res.status(204).send();
-  } catch (err) {
-    logger.error('Failed to record the maps error report', undefined, err);
-    res.status(500).json({ error: 'Failed to record maps error' });
-  }
+  await markExhausted('load');
+  logger.warn(
+    'Browser reported a Google Maps authentication or quota failure; map loads are disabled until the daily reset',
+  );
+  res.status(204).send();
 };

@@ -4,13 +4,7 @@ import { db } from '../../test-utils/dbMocks';
 import type { UpdateAttractionBody } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
-import {
-  create,
-  deleteById,
-  getDayIdForAttraction,
-  update,
-  verifyBelongsToTrip,
-} from './attractionCrud';
+import { create, deleteById, update } from './attractionCrud';
 
 vi.mock('../../config/database', async () => {
   const { db } = await import('../../test-utils/dbMocks');
@@ -71,38 +65,6 @@ describe('attractionCrud', () => {
 
       expect(mockConnectionDeleteById).not.toHaveBeenCalled();
       expect(result).toBe(false);
-    });
-  });
-
-  describe('getDayIdForAttraction', () => {
-    it.each([
-      {
-        description: 'rows found',
-        rows: [{ trip_day_id: 42 }],
-        expectThrow: false,
-      },
-      { description: 'rows empty', rows: [], expectThrow: true },
-    ])('$description', async ({ rows, expectThrow }) => {
-      mockPoolExecute.mockResolvedValue([rows]);
-
-      if (expectThrow) {
-        await expect(getDayIdForAttraction(1)).rejects.toThrow(
-          'Attraction not found',
-        );
-      } else {
-        await expect(getDayIdForAttraction(1)).resolves.toBe(42);
-      }
-    });
-  });
-
-  describe('verifyBelongsToTrip', () => {
-    it.each([
-      { description: 'rows.length > 0', rows: [{ id: 1 }], expected: true },
-      { description: 'rows.length === 0', rows: [], expected: false },
-    ])('$description', async ({ rows, expected }) => {
-      mockPoolExecute.mockResolvedValue([rows]);
-
-      await expect(verifyBelongsToTrip(1, 2)).resolves.toBe(expected);
     });
   });
 

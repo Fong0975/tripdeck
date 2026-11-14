@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { imageUrl } from '@/api/images';
 import { showToast } from '@/lib/toast';
 import { makeImage } from '@/test-utils/fixtures';
 import { getFileInput, selectFile } from '@/test-utils/queries';
@@ -41,7 +42,10 @@ describe('ImageUploadSection', () => {
       />,
     );
 
-    expect(screen.getByAltText('Photo A')).toBeInTheDocument();
+    expect(screen.getByAltText('Photo A')).toHaveAttribute(
+      'src',
+      imageUrl('a.jpg'),
+    );
     expect(screen.getByAltText('Photo B')).toBeInTheDocument();
   });
 

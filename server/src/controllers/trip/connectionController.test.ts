@@ -17,7 +17,6 @@ import * as tripRepo from '../../repositories/trip';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
   type Returns500Case,
 } from '../../test-utils/httpMocks';
 import type { ConnectionResponse } from '../../types/trip';
@@ -33,6 +32,8 @@ import {
   INVALID_TRANSPORT_MODE_ERROR,
   SAME_ENDPOINT_ERROR,
 } from './connectionValidation';
+
+type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -97,18 +98,6 @@ describe('Connections', () => {
     });
 
     it.each([
-      {
-        name: 'tripId is not a positive integer',
-        params: { tripId: 'abc', dayId: '10' },
-        body: validConnectionBody,
-        error: 'Invalid tripId or dayId',
-      },
-      {
-        name: 'dayId is not a positive integer',
-        params: { tripId: '1', dayId: '0' },
-        body: validConnectionBody,
-        error: 'Invalid tripId or dayId',
-      },
       {
         name: 'fromAttractionId is not a positive integer',
         params: { tripId: '1', dayId: '10' },
@@ -213,18 +202,6 @@ describe('Connections', () => {
 
   describe('updateConnection', () => {
     it.each([
-      {
-        name: 'tripId is not a positive integer',
-        params: { tripId: '-1', connectionId: '200' },
-        body: { transportMode: 'walk' },
-        error: 'Invalid tripId or connectionId',
-      },
-      {
-        name: 'connectionId is not a positive integer',
-        params: { tripId: '1', connectionId: 'x' },
-        body: { transportMode: 'walk' },
-        error: 'Invalid tripId or connectionId',
-      },
       {
         name: 'transportMode is unknown',
         params: { tripId: '1', connectionId: '200' },
@@ -361,24 +338,6 @@ describe('Connections', () => {
   });
 
   describe('deleteConnection', () => {
-    it.each([
-      {
-        name: 'tripId is invalid',
-        params: { tripId: '0', connectionId: '200' },
-      },
-      {
-        name: 'connectionId is invalid',
-        params: { tripId: '1', connectionId: '2.5' },
-      },
-    ])('returns 400 when $name', async ({ params }) => {
-      const { req, res } = createMockReqRes({ params });
-
-      await deleteConnection(req, res);
-
-      expectJsonStatus(res, 400, { error: 'Invalid tripId or connectionId' });
-      expect(connectionRepo.verifyBelongsToTrip).not.toHaveBeenCalled();
-    });
-
     it('returns 404 when the connection does not belong to the trip', async () => {
       vi.mocked(connectionRepo.verifyBelongsToTrip).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
@@ -404,8 +363,8 @@ describe('Connections', () => {
   });
 });
 
-describe('500 error handling', () => {
-  const cases: Returns500Case[] = [
+describe('unexpected errors', () => {
+  const cases: RejectCase[] = [
     {
       name: 'addConnection',
       handler: addConnection,
@@ -419,7 +378,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
-      expectedError: 'Failed to add connection',
     },
     {
       name: 'updateConnection',
@@ -430,7 +388,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(connectionRepo.findEndpointsInTrip).mockRejectedValue(error),
-      expectedError: 'Failed to update connection',
     },
     {
       name: 'deleteConnection',
@@ -438,9 +395,18 @@ describe('500 error handling', () => {
       req: { params: { tripId: '1', connectionId: '200' } },
       arrange: error =>
         vi.mocked(connectionRepo.verifyBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to delete connection',
     },
   ];
 
-  itReturns500(cases);
+  it.each(cases)(
+    '$name rejects with the underlying error for the error handler',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+    },
+  );
 });

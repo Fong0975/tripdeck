@@ -12,7 +12,6 @@ import * as tripRepo from '../../repositories/trip';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
   type Returns500Case,
 } from '../../test-utils/httpMocks';
 import type { DayLocation } from '../../types/trip';
@@ -22,6 +21,8 @@ import {
   deleteDayLocation,
   updateDayLocation,
 } from './dayLocationController';
+
+type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -51,21 +52,6 @@ describe('Day locations', () => {
       await addDayLocation(req, res);
 
       expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      { name: 'tripId is invalid', params: { tripId: 'abc', dayId: '10' } },
-      { name: 'dayId is invalid', params: { tripId: '1', dayId: '-10' } },
-    ])('returns 400 when $name', async ({ params }) => {
-      const { req, res } = createMockReqRes({
-        params,
-        body: { name: 'Kyoto Station' },
-      });
-
-      await addDayLocation(req, res);
-
-      expectJsonStatus(res, 400, { error: 'Invalid tripId or dayId' });
       expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
     });
 
@@ -111,27 +97,6 @@ describe('Day locations', () => {
       await updateDayLocation(req, res);
 
       expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      {
-        name: 'tripId is invalid',
-        params: { tripId: 'abc', locationId: '300' },
-      },
-      {
-        name: 'locationId is invalid',
-        params: { tripId: '1', locationId: '0' },
-      },
-    ])('returns 400 when $name', async ({ params }) => {
-      const { req, res } = createMockReqRes({
-        params,
-        body: { name: 'Updated Location' },
-      });
-
-      await updateDayLocation(req, res);
-
-      expectJsonStatus(res, 400, { error: 'Invalid tripId or locationId' });
       expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
     });
 
@@ -181,24 +146,6 @@ describe('Day locations', () => {
   });
 
   describe('deleteDayLocation', () => {
-    it.each([
-      {
-        name: 'tripId is invalid',
-        params: { tripId: '1.5', locationId: '300' },
-      },
-      {
-        name: 'locationId is invalid',
-        params: { tripId: '1', locationId: 'x' },
-      },
-    ])('returns 400 when $name', async ({ params }) => {
-      const { req, res } = createMockReqRes({ params });
-
-      await deleteDayLocation(req, res);
-
-      expectJsonStatus(res, 400, { error: 'Invalid tripId or locationId' });
-      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
-    });
-
     it('returns 404 when the location does not belong to the trip', async () => {
       vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
@@ -238,8 +185,8 @@ describe('Day locations', () => {
   });
 });
 
-describe('500 error handling', () => {
-  const cases: Returns500Case[] = [
+describe('unexpected errors', () => {
+  const cases: RejectCase[] = [
     {
       name: 'addDayLocation',
       handler: addDayLocation,
@@ -249,7 +196,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
-      expectedError: 'Failed to add location',
     },
     {
       name: 'updateDayLocation',
@@ -262,7 +208,6 @@ describe('500 error handling', () => {
         vi
           .mocked(tripRepo.verifyLocationBelongsToTrip)
           .mockRejectedValue(error),
-      expectedError: 'Failed to update location',
     },
     {
       name: 'deleteDayLocation',
@@ -272,9 +217,18 @@ describe('500 error handling', () => {
         vi
           .mocked(tripRepo.verifyLocationBelongsToTrip)
           .mockRejectedValue(error),
-      expectedError: 'Failed to delete location',
     },
   ];
 
-  itReturns500(cases);
+  it.each(cases)(
+    '$name rejects with the underlying error for the error handler',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+    },
+  );
 });

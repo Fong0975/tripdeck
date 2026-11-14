@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { imageUrl } from '@/api/images';
 import type { AttractionImage } from '@/types';
 
 interface Props {
@@ -77,7 +78,7 @@ export default function ImageLightbox({
       >
         <img
           key={current.id}
-          src={`/uploads/${current.filename}`}
+          src={imageUrl(current.filename)}
           alt={current.title}
           className='max-h-[78vh] max-w-[90vw] rounded-xl object-contain shadow-2xl'
         />

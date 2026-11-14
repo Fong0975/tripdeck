@@ -1,12 +1,19 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { copyImageFile } from '../../middleware/upload';
 import type { AttractionResponse } from '../../types/trip';
+import { withTransaction } from '../../utils/withTransaction';
 import * as imageRepo from '../imageRepository';
 
-import { getWebsites, toAttractionResponse, TripAttractionRow } from './shared';
+import {
+  countAttractionsInDay,
+  getWebsites,
+  insertWebsites,
+  toAttractionResponse,
+  TripAttractionRow,
+} from './shared';
 
 const logger = createLogger('attraction');
 
@@ -34,59 +41,44 @@ export async function duplicate(
     imageRepo.getAttractionImages(attractionId),
   ]);
 
-  const conn = await pool.getConnection();
-  let newAttractionId: number;
-  let sortOrder: number;
+  let inserted: { newAttractionId: number; sortOrder: number };
   try {
-    await conn.beginTransaction();
+    inserted = await withTransaction(async conn => {
+      const nextSortOrder = await countAttractionsInDay(conn, dayId);
 
-    const [countRows] = await conn.execute<RowDataPacket[]>(
-      'SELECT COUNT(*) AS count FROM trip_attractions WHERE trip_day_id = ?',
-      [dayId],
-    );
-    sortOrder = (countRows[0] as { count: number }).count;
-
-    const [result] = await conn.execute<ResultSetHeader>(
-      `INSERT INTO trip_attractions
-         (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order,
-          latitude, longitude, geo_source, geo_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        dayId,
-        original.name,
-        original.google_map_url,
-        original.notes,
-        original.nearby_attractions,
-        original.start_time,
-        original.end_time,
-        sortOrder,
-        original.latitude ?? null,
-        original.longitude ?? null,
-        original.geo_source ?? null,
-        original.geo_key ?? null,
-      ],
-    );
-    newAttractionId = result.insertId;
-
-    for (const site of websites) {
-      await conn.execute(
-        'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
-        [newAttractionId, site.url, site.title],
+      const [result] = await conn.execute<ResultSetHeader>(
+        `INSERT INTO trip_attractions
+           (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order,
+            latitude, longitude, geo_source, geo_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          dayId,
+          original.name,
+          original.google_map_url,
+          original.notes,
+          original.nearby_attractions,
+          original.start_time,
+          original.end_time,
+          nextSortOrder,
+          original.latitude ?? null,
+          original.longitude ?? null,
+          original.geo_source ?? null,
+          original.geo_key ?? null,
+        ],
       );
-    }
+      await insertWebsites(conn, result.insertId, websites);
 
-    await conn.commit();
+      return { newAttractionId: result.insertId, sortOrder: nextSortOrder };
+    });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to duplicate attraction, rolled back',
       { attractionId, dayId },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
+  const { newAttractionId, sortOrder } = inserted;
 
   const copiedImages: typeof images = [];
   for (const img of images) {
@@ -107,7 +99,7 @@ export async function duplicate(
     }
   }
 
-  logger.info('Attraction duplicated', {
+  logger.debug('Attraction duplicated', {
     attractionId,
     newAttractionId,
     dayId,
@@ -125,7 +117,7 @@ export async function duplicate(
       nearby_attractions: original.nearby_attractions,
       start_time: original.start_time,
       end_time: original.end_time,
-      sort_order: sortOrder!,
+      sort_order: sortOrder,
       latitude: original.latitude ?? null,
       longitude: original.longitude ?? null,
       geo_source: original.geo_source ?? null,

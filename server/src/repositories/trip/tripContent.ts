@@ -8,17 +8,21 @@ import type {
   ReferenceWebsite,
   TripContentResponse,
 } from '../../types/trip';
-import * as imageRepo from '../imageRepository';
-
-import { placeholders, toDateString } from './helpers';
-import { findById } from './tripCrud';
+import { placeholders } from '../../utils/sql';
 import {
+  toAttractionResponse,
   TripAttractionRow,
   TripAttractionWebsiteRow,
+} from '../attraction/shared';
+import {
+  toConnectionResponse,
   TripConnectionRow,
-  TripDayLocationRow,
-  TripDayRow,
-} from './types';
+} from '../connectionRepository';
+import * as imageRepo from '../imageRepository';
+
+import { toDateString } from './helpers';
+import { findById } from './tripCrud';
+import { TripDayLocationRow, TripDayRow } from './types';
 
 const logger = createLogger('trip');
 
@@ -103,37 +107,22 @@ export async function findContent(
   const attractionsByDayId = new Map<number, AttractionResponse[]>();
   for (const row of attractionRows) {
     const list = attractionsByDayId.get(row.trip_day_id) ?? [];
-    list.push({
-      id: row.id,
-      name: row.name,
-      googleMapUrl: row.google_map_url,
-      notes: row.notes,
-      nearbyAttractions: row.nearby_attractions,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      referenceWebsites: websitesByAttractionId.get(row.id) ?? [],
-      images: imagesByAttractionId.get(row.id) ?? [],
-      sortOrder: row.sort_order,
-      latitude: row.latitude ?? null,
-      longitude: row.longitude ?? null,
-      geoSource: row.geo_source ?? null,
-    });
+    list.push(
+      toAttractionResponse(
+        row,
+        websitesByAttractionId.get(row.id) ?? [],
+        imagesByAttractionId.get(row.id) ?? [],
+      ),
+    );
     attractionsByDayId.set(row.trip_day_id, list);
   }
 
   const connectionsByDayId = new Map<number, ConnectionResponse[]>();
   for (const row of connectionRows) {
     const list = connectionsByDayId.get(row.trip_day_id) ?? [];
-    list.push({
-      id: row.id,
-      fromAttractionId: row.trip_attraction_id_from,
-      toAttractionId: row.trip_attraction_id_to,
-      transportMode: row.transport_mode,
-      duration: row.duration,
-      route: row.route,
-      notes: row.notes,
-      images: imagesByConnectionId.get(row.id) ?? [],
-    });
+    list.push(
+      toConnectionResponse(row, imagesByConnectionId.get(row.id) ?? []),
+    );
     connectionsByDayId.set(row.trip_day_id, list);
   }
 

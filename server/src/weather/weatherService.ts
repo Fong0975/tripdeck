@@ -1,4 +1,5 @@
 import { createLogger } from '../logger';
+import { TtlCache } from '../maps/ttlCache';
 
 import { getWeatherKeys } from './config';
 import { fetchOwmWeather, geocode, type GeoResult } from './openWeatherMap';
@@ -13,43 +14,20 @@ const OWM_MAX_DAYS_AHEAD = 4;
 export const CACHE_TTL_MS = 60 * 60 * 1000;
 export const CACHE_MAX_ENTRIES = 500;
 
-interface CacheEntry {
-  result: WeatherResult;
-  expiresAt: number;
-}
+// Reads `Date.now` at call time (rather than capturing the function) so fake
+// timers in tests also drive cache expiry.
+const currentTime = (): number => Date.now();
 
 // The endpoint is public, so caching keeps repeated lookups from draining the
-// providers' API quotas. Insertion order doubles as age order for eviction.
-const cache = new Map<string, CacheEntry>();
+// providers' API quotas.
+const cache = new TtlCache<WeatherResult>(
+  CACHE_TTL_MS,
+  CACHE_MAX_ENTRIES,
+  currentTime,
+);
 
 function cacheKey(locationName: string, date: string): string {
   return `${locationName}::${date}`;
-}
-
-function readCache(key: string): WeatherResult | null {
-  const entry = cache.get(key);
-  if (!entry) {
-    return null;
-  }
-  if (entry.expiresAt <= Date.now()) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.result;
-}
-
-/** Transient failures aren't cached so the next lookup can retry. */
-function writeCache(key: string, result: WeatherResult): void {
-  if (result.status === 'error') {
-    return;
-  }
-  if (cache.size >= CACHE_MAX_ENTRIES) {
-    const oldestKey = cache.keys().next().value;
-    if (oldestKey !== undefined) {
-      cache.delete(oldestKey);
-    }
-  }
-  cache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
 /** Test-only: clears the in-memory response cache. */
@@ -141,12 +119,15 @@ export async function getDailyWeather(
   daysFromToday: number,
 ): Promise<WeatherResult> {
   const key = cacheKey(locationName, dateStr);
-  const hit = readCache(key);
+  const hit = cache.get(key);
   if (hit) {
     return hit;
   }
 
   const result = await lookupWeather(locationName, dateStr, daysFromToday);
-  writeCache(key, result);
+  // Transient failures aren't cached so the next lookup can retry.
+  if (result.status !== 'error') {
+    cache.set(key, result);
+  }
   return result;
 }

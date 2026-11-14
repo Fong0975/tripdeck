@@ -9,17 +9,19 @@ import type {
   TripChecklistItemResponse,
   TripChecklistResponse,
 } from '../../../types/checklist';
+import { placeholders } from '../../../utils/sql';
 import { withTransaction } from '../../../utils/withTransaction';
+import type {
+  TemplateCategoryRow,
+  TemplateItemRow,
+  TemplateItemSpecRow,
+} from '../template/shared';
 
 import {
   CheckRow,
   fetchSpecsByItemIds,
   lockTrip,
   OccasionRow,
-  placeholders,
-  TemplateCategoryRow,
-  TemplateItemRow,
-  TemplateItemSpecRow,
   TripChecklistCategoryRow,
   TripChecklistItemRow,
 } from './shared';

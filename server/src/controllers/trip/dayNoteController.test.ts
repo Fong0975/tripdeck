@@ -57,17 +57,15 @@ describe('updateDayNotes', () => {
     expect(res.json).toHaveBeenCalledWith({ id: 10, notes: null });
   });
 
-  it('returns 500 when an unexpected error occurs', async () => {
-    vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(
-      new Error('db error'),
-    );
+  it('rejects with the underlying error for the error handler', async () => {
+    const error = new Error('db error');
+    vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', dayId: '10' },
       body: { notes: 'New notes' },
     });
 
-    await updateDayNotes(req, res);
-
-    expectJsonStatus(res, 500, { error: 'Failed to update day notes' });
+    await expect(updateDayNotes(req, res)).rejects.toBe(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

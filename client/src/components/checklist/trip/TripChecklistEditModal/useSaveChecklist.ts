@@ -1,12 +1,6 @@
-import { useRef } from 'react';
-
-import { useSubmitting } from '@/hooks/useSubmitting';
-import { showToast } from '@/lib/toast';
 import type {
   ChecklistCategory,
-  ChecklistItem,
   ChecklistOccasion,
-  ItemSpec,
   TripChecklist,
 } from '@/types';
 import {
@@ -26,34 +20,42 @@ import {
 
 import {
   createSyncTracker,
-  itemFieldsChanged,
-  itemPayload,
-  specFieldsChanged,
-  specPayload,
   syncEditableList,
 } from '../../shared/checklistDiffSync';
+import {
+  createItemSpecTrackers,
+  type ItemSpecApi,
+  makeItemSpecSync,
+} from '../../shared/itemSpecSync';
 import type { EditCategory, EditOccasion } from '../../shared/types';
+import { useRetryableSave } from '../../shared/useRetryableSave';
 
 function createTrackers() {
   return {
     occasions: createSyncTracker<ChecklistOccasion>(),
     categories: createSyncTracker<ChecklistCategory>(),
-    items: createSyncTracker<ChecklistItem>(),
-    specs: createSyncTracker<ItemSpec>(),
+    ...createItemSpecTrackers(),
+  };
+}
+
+/** Binds the trip item/spec endpoints to one trip category. */
+function tripItemSpecApi(tripId: number, catId: number): ItemSpecApi {
+  return {
+    addItem: data => addTripItem(tripId, catId, data),
+    updateItem: (itemId, data) => updateTripItem(tripId, itemId, data),
+    removeItem: itemId => deleteTripItem(tripId, itemId),
+    addSpec: (itemId, data) => addTripItemSpec(tripId, itemId, data),
+    updateSpec: (itemId, specId, data) =>
+      updateTripItemSpec(tripId, itemId, specId, data),
+    removeSpec: (itemId, specId) => deleteTripItemSpec(tripId, itemId, specId),
   };
 }
 
 /**
  * Diffs the local edit state against the originally-loaded checklist and
  * saves all changes (occasions, and categories→items→specs) via the
- * checklist diff-sync engine.
- *
- * Saving is many sequential API calls, so a failure can leave some of them
- * applied. Rather than reloading the checklist (which would discard the
- * user's unsaved edits), per-entity-kind sync trackers persist across save
- * attempts for this modal session, making a retry skip the creates/deletes
- * that already succeeded instead of duplicating them or hitting 404s.
- * Concurrent saves are ignored while one is in flight.
+ * checklist diff-sync engine. Retries after a partial failure are
+ * idempotent; see {@link useRetryableSave}.
  *
  * @param tripId - The trip whose checklist is being edited.
  * @param checklist - The checklist as loaded when editing started.
@@ -69,19 +71,19 @@ export function useSaveChecklist(
   onSaved: () => void,
   onClose: () => void,
 ) {
-  const { submitting: saving, run } = useSubmitting();
-  const trackers = useRef(createTrackers());
+  return useRetryableSave({
+    createTrackers,
+    sync: async trackers => {
+      const syncItems = (catId: number) =>
+        makeItemSpecSync(tripItemSpecApi(tripId, catId), trackers);
 
-  const save = async () => {
-    const { occasions, categories, items, specs } = trackers.current;
-    try {
       await syncEditableList(checklist.occasions, edit.occasions, {
         isChanged: (editOcc, origOcc) => editOcc.name.trim() !== origOcc.name,
         update: (id, editOcc, origOcc) =>
           updateOccasion(tripId, id, editOcc.name.trim() || origOcc.name),
         add: editOcc => addOccasion(tripId, editOcc.name.trim() || '新時機'),
         remove: id => deleteOccasion(tripId, id),
-        tracker: occasions,
+        tracker: trackers.occasions,
       });
 
       await syncEditableList(checklist.categories, edit.categories, {
@@ -95,48 +97,14 @@ export function useSaveChecklist(
         add: editCat =>
           addTripCategory(tripId, editCat.name.trim() || '新分類'),
         remove: catId => deleteTripCategory(tripId, catId),
-        tracker: categories,
+        tracker: trackers.categories,
         syncChildren: (editCat, catId, origCat) =>
-          syncEditableList(origCat?.items ?? [], editCat.items, {
-            isChanged: itemFieldsChanged,
-            update: (itemId, editItem, origItem) =>
-              updateTripItem(
-                tripId,
-                itemId,
-                itemPayload(editItem, origItem.name),
-              ),
-            add: editItem =>
-              addTripItem(tripId, catId, itemPayload(editItem, '新項目')),
-            remove: itemId => deleteTripItem(tripId, itemId),
-            tracker: items,
-            syncChildren: (editItem, itemId, origItem) =>
-              syncEditableList(origItem?.specs ?? [], editItem.specs, {
-                isChanged: specFieldsChanged,
-                update: (specId, editSpec, origSpec) =>
-                  updateTripItemSpec(
-                    tripId,
-                    itemId,
-                    specId,
-                    specPayload(editSpec, origSpec.name),
-                  ),
-                add: editSpec =>
-                  addTripItemSpec(tripId, itemId, specPayload(editSpec)),
-                remove: specId => deleteTripItemSpec(tripId, itemId, specId),
-                tracker: specs,
-              }),
-          }),
+          syncItems(catId)(origCat?.items ?? [], editCat.items),
       });
-
-      trackers.current = createTrackers();
-      onSaved();
-      onClose();
-      showToast('success', '已儲存行李清單。');
-    } catch {
-      showToast('error', '儲存行李清單失敗，請稍後再試');
-    }
-  };
-
-  const handleSave = () => run(save);
-
-  return { saving, handleSave };
+    },
+    onSaved,
+    onClose,
+    successMessage: '已儲存行李清單。',
+    errorMessage: '儲存行李清單失敗，請稍後再試',
+  });
 }

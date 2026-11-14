@@ -19,7 +19,6 @@ import * as tripRepo from '../../repositories/trip';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
   type Returns500Case,
 } from '../../test-utils/httpMocks';
 import type { AttractionResponse } from '../../types/trip';
@@ -32,6 +31,8 @@ import {
   reorderAttractions,
   updateAttraction,
 } from './attractionController';
+
+type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -238,16 +239,6 @@ describe('Attractions', () => {
 
     it.each([
       {
-        name: 'tripId is not a positive integer',
-        params: { ...validParams, tripId: 'abc' },
-        body: { dayId: 20, index: 0 },
-      },
-      {
-        name: 'attractionId is not a positive integer',
-        params: { ...validParams, attractionId: '0' },
-        body: { dayId: 20, index: 0 },
-      },
-      {
         name: 'dayId is missing',
         params: validParams,
         body: { index: 0 },
@@ -287,7 +278,10 @@ describe('Attractions', () => {
 
       await moveAttraction(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
+      expectJsonStatus(res, 400, {
+        error:
+          'dayId must be a positive integer and index a non-negative integer',
+      });
       expect(attractionRepo.moveToDay).not.toHaveBeenCalled();
     });
 
@@ -328,8 +322,8 @@ describe('Attractions', () => {
   });
 });
 
-describe('500 error handling', () => {
-  const cases: Returns500Case[] = [
+describe('unexpected errors', () => {
+  const cases: RejectCase[] = [
     {
       name: 'addAttraction',
       handler: addAttraction,
@@ -339,7 +333,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
-      expectedError: 'Failed to add attraction',
     },
     {
       name: 'updateAttraction',
@@ -350,7 +343,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to update attraction',
     },
     {
       name: 'deleteAttraction',
@@ -358,7 +350,6 @@ describe('500 error handling', () => {
       req: { params: { tripId: '1', attractionId: '100' } },
       arrange: error =>
         vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to delete attraction',
     },
     {
       name: 'duplicateAttraction',
@@ -366,7 +357,6 @@ describe('500 error handling', () => {
       req: { params: { tripId: '1', attractionId: '100' } },
       arrange: error =>
         vi.mocked(attractionRepo.verifyBelongsToTrip).mockRejectedValue(error),
-      expectedError: 'Failed to duplicate attraction',
     },
     {
       name: 'reorderAttractions',
@@ -377,7 +367,6 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
-      expectedError: 'Failed to reorder attractions',
     },
     {
       name: 'moveAttraction',
@@ -388,9 +377,18 @@ describe('500 error handling', () => {
       },
       arrange: error =>
         vi.mocked(attractionRepo.moveToDay).mockRejectedValue(error),
-      expectedError: 'Failed to move attraction',
     },
   ];
 
-  itReturns500(cases);
+  it.each(cases)(
+    '$name rejects with the underlying error for the error handler',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
+      const { req: mockReq, res } = createMockReqRes(req);
+
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+    },
+  );
 });

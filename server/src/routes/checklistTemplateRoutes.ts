@@ -5,31 +5,34 @@ import { Router } from 'express';
 // through an `export * from` re-export, so it would silently drop that
 // endpoint's #swagger.* documentation.
 import {
-  addCategory,
-  deleteCategory,
+  addTemplateCategory,
+  deleteTemplateCategory,
   getTemplate,
-  updateCategory,
+  updateTemplateCategory,
 } from '../controllers/checklist/templateCategoryController';
 import {
-  addItem,
-  deleteItem,
-  updateItem,
+  addTemplateItem,
+  deleteTemplateItem,
+  updateTemplateItem,
 } from '../controllers/checklist/templateItemController';
 import {
   addTemplateItemSpec,
   deleteTemplateItemSpec,
   updateTemplateItemSpec,
 } from '../controllers/checklist/templateItemSpecController';
+import { validateIdParams } from '../middleware/validateIdParam';
 
 const router = Router();
 
+validateIdParams(router, ['catId', 'itemId', 'specId']);
+
 router.get('/', getTemplate);
-router.post('/categories', addCategory);
-router.put('/categories/:catId', updateCategory);
-router.delete('/categories/:catId', deleteCategory);
-router.post('/categories/:catId/items', addItem);
-router.put('/categories/:catId/items/:itemId', updateItem);
-router.delete('/categories/:catId/items/:itemId', deleteItem);
+router.post('/categories', addTemplateCategory);
+router.put('/categories/:catId', updateTemplateCategory);
+router.delete('/categories/:catId', deleteTemplateCategory);
+router.post('/categories/:catId/items', addTemplateItem);
+router.put('/categories/:catId/items/:itemId', updateTemplateItem);
+router.delete('/categories/:catId/items/:itemId', deleteTemplateItem);
 router.post('/categories/:catId/items/:itemId/specs', addTemplateItemSpec);
 router.put(
   '/categories/:catId/items/:itemId/specs/:specId',

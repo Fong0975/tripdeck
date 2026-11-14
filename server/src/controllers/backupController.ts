@@ -28,12 +28,7 @@ export function listAutoBackups(_req: Request, res: Response): void {
          }
        }
      } */
-  try {
-    res.json(backupRepo.listAutoBackupFiles());
-  } catch (err) {
-    logger.error('Failed to list automatic backups', undefined, err);
-    res.status(500).json({ error: 'Failed to list automatic backups' });
-  }
+  res.json(backupRepo.listAutoBackupFiles());
 }
 
 export function downloadAutoBackup(
@@ -47,28 +42,19 @@ export function downloadAutoBackup(
        description: 'Backup zip file',
        content: { 'application/zip': {} }
      } */
-  try {
-    const filePath = backupRepo.resolveAutoBackupPath(req.params.filename);
-    if (!filePath) {
-      logger.warn('Requested automatic backup file not found', {
-        filename: req.params.filename,
-      });
-      res.status(404).json({ error: 'Backup file not found' });
-      return;
-    }
-
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${req.params.filename}"`,
-    );
-    res.send(fs.readFileSync(filePath));
-  } catch (err) {
-    logger.error(
-      'Failed to download automatic backup',
-      { filename: req.params.filename },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to download automatic backup' });
+  const filePath = backupRepo.resolveAutoBackupPath(req.params.filename);
+  if (!filePath) {
+    logger.warn('Requested automatic backup file not found', {
+      filename: req.params.filename,
+    });
+    res.status(404).json({ error: 'Backup file not found' });
+    return;
   }
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${req.params.filename}"`,
+  );
+  res.send(fs.readFileSync(filePath));
 }

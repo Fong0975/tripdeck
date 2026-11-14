@@ -1,7 +1,8 @@
 import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { fetchPageTitle } from '@/api/pageTitle';
+import { INPUT_CLS, LABEL_CLS } from '@/components/formStyles';
 import type { ReferenceWebsite } from '@/types';
 
 interface Props {
@@ -52,13 +53,9 @@ export default function ReferenceWebsitesEditor({
     /* eslint-enable react-hooks/set-state-in-effect */
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/fetch-title?url=${encodeURIComponent(url)}`,
-          { signal: AbortSignal.timeout(10000) },
-        );
-        const data = (await res.json()) as { title: string | null };
-        if (data.title) {
-          setSuggestedTitle(decodeHtmlEntities(data.title));
+        const title = await fetchPageTitle(url, AbortSignal.timeout(10000));
+        if (title) {
+          setSuggestedTitle(decodeHtmlEntities(title));
           setTitleFetchStatus('found');
         } else {
           setTitleFetchStatus('not-found');
@@ -87,9 +84,7 @@ export default function ReferenceWebsitesEditor({
 
   return (
     <div>
-      <label className='mb-1.5 block text-sm font-medium text-foreground'>
-        參考網站
-      </label>
+      <label className={LABEL_CLS}>參考網站</label>
       <div className='space-y-2'>
         {websites.map((site, idx) => (
           <div key={idx} className='flex items-center gap-2'>

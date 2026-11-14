@@ -89,8 +89,7 @@ export async function exportTrips(req: Request, res: Response): Promise<void> {
       res.status(404).json({ error: err.message });
       return;
     }
-    logger.error('Failed to export trips', undefined, err);
-    res.status(500).json({ error: 'Failed to export trips' });
+    throw err;
   }
 }
 
@@ -187,11 +186,6 @@ export async function importTrips(req: Request, res: Response): Promise<void> {
       res.status(400).json({ error: err.message, details: err.details });
       return;
     }
-    logger.error(
-      'Failed to import backup',
-      { fileSizeBytes: req.file?.size },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to import backup' });
+    throw err;
   }
 }

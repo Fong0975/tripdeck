@@ -1,5 +1,6 @@
 import { createLogger } from '../logger';
 
+import { fetchJson } from './http';
 import {
   WEATHER_FETCH_TIMEOUT_MS,
   type WeatherIconCode,
@@ -56,9 +57,15 @@ export async function geocode(
   name: string,
   apiKey: string,
 ): Promise<GeoResult | null> {
-  const res = await fetch(
+  interface GeoRow {
+    lat: number;
+    lon: number;
+    name: string;
+    local_names?: Record<string, string>;
+  }
+  const res = await fetchJson<GeoRow[]>(
     `${OWM_BASE}/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${apiKey}`,
-    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
+    { timeoutMs: WEATHER_FETCH_TIMEOUT_MS },
   );
   if (!res.ok) {
     // The request URL carries the API key, so only the status is logged.
@@ -66,13 +73,7 @@ export async function geocode(
     return null;
   }
 
-  interface GeoRow {
-    lat: number;
-    lon: number;
-    name: string;
-    local_names?: Record<string, string>;
-  }
-  const data = (await res.json()) as GeoRow[];
+  const data = res.data;
   if (!data.length) {
     return null;
   }
@@ -97,23 +98,22 @@ export async function fetchOwmWeather(
   dateStr: string,
   apiKey: string,
 ): Promise<WeatherResult> {
-  const res = await fetch(
-    `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${apiKey}&units=metric&lang=zh_tw&cnt=40`,
-    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
-  );
-  if (!res.ok) {
-    logger.warn('OWM forecast request failed', { status: res.status });
-    return { status: 'error' };
-  }
-
   interface ForecastEntry {
     dt_txt: string;
     main: { temp: number; humidity: number };
     weather: [{ icon: string; description: string }];
     pop?: number;
   }
-  const json = (await res.json()) as { list: ForecastEntry[] };
-  const entries = json.list.filter(e => e.dt_txt.startsWith(dateStr));
+  const res = await fetchJson<{ list: ForecastEntry[] }>(
+    `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${apiKey}&units=metric&lang=zh_tw&cnt=40`,
+    { timeoutMs: WEATHER_FETCH_TIMEOUT_MS },
+  );
+  if (!res.ok) {
+    logger.warn('OWM forecast request failed', { status: res.status });
+    return { status: 'error' };
+  }
+
+  const entries = res.data.list.filter(e => e.dt_txt.startsWith(dateStr));
 
   if (!entries.length) {
     return { status: 'out_of_range' };

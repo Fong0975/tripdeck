@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { LABEL_CLS, TEXTAREA_CLS } from '@/components/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';
 import type { DayPlan } from '@/types';
@@ -48,22 +49,18 @@ export default function EditDayNoteModal({
     <Modal title={`第 ${day.day} 天備註`} onClose={onClose} scrollable>
       <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
-          <label className='mb-1.5 block text-sm font-medium text-foreground'>
-            備註
-          </label>
+          <label className={LABEL_CLS}>備註</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder='這天的備註...'
             rows={4}
-            className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
+            className={TEXTAREA_CLS}
           />
         </div>
 
         <div>
-          <label className='mb-1.5 block text-sm font-medium text-foreground'>
-            圖片
-          </label>
+          <label className={LABEL_CLS}>圖片</label>
           <ImageUploadSection
             images={images}
             onUpload={handleUploadImage}

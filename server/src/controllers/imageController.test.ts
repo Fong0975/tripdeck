@@ -280,17 +280,17 @@ describe.each(variants.slice(0, 1))(
         expect(addImage).not.toHaveBeenCalled();
       });
 
-      it('returns 500 when an unexpected error occurs', async () => {
-        mockParentRejects(new Error('db error'));
+      it('rejects with the underlying error for the error handler', async () => {
+        const error = new Error('db error');
+        mockParentRejects(error);
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body: { title: 'Title' },
           file: mockFile,
         });
 
-        await uploadHandler(req, res);
-
-        expectJsonStatus(res, 500, { error: 'Failed to upload image' });
+        await expect(uploadHandler(req, res)).rejects.toBe(error);
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
 
@@ -315,13 +315,13 @@ describe.each(variants.slice(0, 1))(
         expectJsonStatus(res, 404, { error: 'Image not found' });
       });
 
-      it('returns 500 when an unexpected error occurs', async () => {
-        mockParentRejects(new Error('db error'));
+      it('rejects with the underlying error for the error handler', async () => {
+        const error = new Error('db error');
+        mockParentRejects(error);
         const { req, res } = createMockReqRes({ params: deleteParams });
 
-        await deleteHandler(req, res);
-
-        expectJsonStatus(res, 500, { error: 'Failed to delete image' });
+        await expect(deleteHandler(req, res)).rejects.toBe(error);
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
   },

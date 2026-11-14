@@ -63,7 +63,7 @@ const TRANSPORT_LABELS = [
   { value: 'transit', label: '大眾運輸' },
   { value: 'drive', label: '開車' },
   { value: 'bike', label: '騎車' },
-  { value: 'taxi', label: '計程車' },
+  { value: 'taxi', label: '計程車／Uber' },
   { value: 'flight', label: '飛機' },
   { value: 'other', label: '其他' },
 ] as const;

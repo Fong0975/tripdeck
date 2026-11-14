@@ -166,7 +166,7 @@ export async function updateOrder(
   }
 
   deleteImagesFromDisk(cleanup.imageFilenames);
-  logger.info('Attractions reordered', {
+  logger.debug('Attractions reordered', {
     dayId,
     reordered: orderedIds.length,
     connectionsRemoved: cleanup.connectionsRemoved,

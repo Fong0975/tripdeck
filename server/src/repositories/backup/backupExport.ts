@@ -10,11 +10,11 @@ import {
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
-import type { ImageResponse } from '../../types/trip';
 import * as templateRepo from '../checklist/template';
 import * as checklistRepo from '../checklist/trip';
 import * as tripRepo from '../trip';
 
+import { collectTripImages, tripDataPath, tripImagePath } from './backupLayout';
 import { TripNotFoundError } from './errors';
 
 const logger = createLogger('backup');
@@ -54,24 +54,6 @@ export async function buildTripBackupData(
 }
 
 /**
- * Collects every image referenced anywhere in a trip's backup data
- * (trip-level, day-level, attraction-level, connection-level).
- */
-function collectImages(data: TripBackupData): ImageResponse[] {
-  const images: ImageResponse[] = [...data.trip.images];
-  for (const day of data.content.days) {
-    images.push(...day.images);
-    for (const attraction of day.attractions) {
-      images.push(...attraction.images);
-    }
-    for (const connection of day.connections) {
-      images.push(...connection.images);
-    }
-  }
-  return images;
-}
-
-/**
  * Adds one `trips/trip_<id>/` folder (data.json + images/) per trip ID to
  * `zip`, de-duplicating IDs first. Returns the manifest entries describing
  * what was written, so callers (a per-trip export or a system-wide backup)
@@ -90,10 +72,10 @@ export async function addTripsToZip(
   for (const tripId of uniqueTripIds) {
     const data = await buildTripBackupData(tripId);
     const folder = `trip_${tripId}`;
-    const images = collectImages(data);
+    const images = collectTripImages(data);
 
     zip.addFile(
-      `trips/${folder}/data.json`,
+      tripDataPath(folder),
       Buffer.from(JSON.stringify(data, null, 2), 'utf-8'),
     );
 
@@ -101,7 +83,7 @@ export async function addTripsToZip(
     for (const image of images) {
       try {
         const buffer = fs.readFileSync(path.join(UPLOADS_DIR, image.filename));
-        zip.addFile(`trips/${folder}/images/${image.filename}`, buffer);
+        zip.addFile(tripImagePath(folder, image.filename), buffer);
       } catch (err) {
         skippedImages++;
         logger.warn('Missing image file on disk, skipped from export', {

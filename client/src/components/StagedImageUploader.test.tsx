@@ -116,6 +116,29 @@ describe('StagedImageUploader', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 
+  it.each([
+    { name: 'a pending preview', stage: false },
+    { name: 'a staged thumbnail', stage: true },
+  ])('revokes $name URL on unmount', async ({ stage }) => {
+    const user = setupUser();
+    const { container, unmount } = render(
+      <StagedImageUploader onImagesChange={vi.fn()} />,
+    );
+    selectFile(container, new File(['a'], 'a.jpg'));
+    if (stage) {
+      await user.type(
+        screen.getByPlaceholderText('圖片標題（必填）'),
+        'My Photo',
+      );
+      await user.click(screen.getByText('加入圖片'));
+    }
+    vi.mocked(URL.revokeObjectURL).mockClear();
+
+    unmount();
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+  });
+
   it('does not stage anything when the file input change has no file', () => {
     const onImagesChange = vi.fn();
     const { container } = render(

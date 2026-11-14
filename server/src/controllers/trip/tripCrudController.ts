@@ -3,38 +3,13 @@ import type { Request, Response } from 'express';
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
 import type { CreateTripBody, UpdateTripBody } from '../../types/trip';
-import { parseId } from '../../utils/parseId';
 import {
   normalizeTripTitle,
   validateTripDates,
 } from '../../validation/tripValidation';
+import { idParam } from '../params';
 
 const logger = createLogger('trip');
-
-const INVALID_TRIP_ID_ERROR = 'tripId must be a positive integer';
-
-/**
- * Parses `req.params.tripId`, answering 400 when it is not a valid id.
- *
- * @param req - Incoming request carrying the `:tripId` route param.
- * @param res - Response used to send the 400 on failure.
- * @param action - Short handler name used in the warning log.
- * @returns The parsed id, or null when a 400 response has already been sent.
- */
-function parseTripIdParam(
-  req: Request,
-  res: Response,
-  action: string,
-): number | null {
-  const tripId = parseId(req.params.tripId);
-  if (tripId === null) {
-    logger.warn(`${action} rejected: invalid tripId`, {
-      tripId: req.params.tripId,
-    });
-    res.status(400).json({ error: INVALID_TRIP_ID_ERROR });
-  }
-  return tripId;
-}
 
 export async function getTrips(_req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trips']
@@ -61,12 +36,7 @@ export async function getTrips(_req: Request, res: Response): Promise<void> {
          }
        }
      } */
-  try {
-    res.json(await tripRepo.findAll());
-  } catch (err) {
-    logger.error('Failed to fetch trips', undefined, err);
-    res.status(500).json({ error: 'Failed to fetch trips' });
-  }
+  res.json(await tripRepo.findAll());
 }
 
 export async function getTrip(req: Request, res: Response): Promise<void> {
@@ -92,22 +62,14 @@ export async function getTrip(req: Request, res: Response): Promise<void> {
        }
      }
      #swagger.responses[400] = { description: 'Invalid tripId' } */
-  const tripId = parseTripIdParam(req, res, 'Get-trip');
-  if (tripId === null) {
+  const tripId = idParam(req, 'tripId');
+  const trip = await tripRepo.findById(tripId);
+  if (!trip) {
+    logger.warn('Get-trip rejected: trip not found', { tripId });
+    res.status(404).json({ error: 'Trip not found' });
     return;
   }
-  try {
-    const trip = await tripRepo.findById(tripId);
-    if (!trip) {
-      logger.warn('Get-trip rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
-    res.json(trip);
-  } catch (err) {
-    logger.error('Failed to fetch trip', { tripId: req.params.tripId }, err);
-    res.status(500).json({ error: 'Failed to fetch trip' });
-  }
+  res.json(trip);
 }
 
 export async function createTrip(req: Request, res: Response): Promise<void> {
@@ -133,45 +95,40 @@ export async function createTrip(req: Request, res: Response): Promise<void> {
        }
      }
      #swagger.responses[400] = { description: 'Missing or empty title, invalid date format, endDate before startDate, or trip longer than 365 days' } */
-  try {
-    const body = req.body as CreateTripBody;
-    if (!body.title || !body.startDate || !body.endDate) {
-      logger.warn('Rejected create-trip request with missing fields', {
-        hasTitle: !!body.title,
-        hasStart: !!body.startDate,
-        hasEnd: !!body.endDate,
-      });
-      res
-        .status(400)
-        .json({ error: 'title, startDate, and endDate are required' });
-      return;
-    }
-
-    const title = normalizeTripTitle(body.title);
-    if (!title) {
-      logger.warn('Rejected create-trip request with an empty title');
-      res.status(400).json({ error: 'title cannot be empty' });
-      return;
-    }
-
-    const dateError = validateTripDates(body.startDate, body.endDate);
-    if (dateError) {
-      logger.warn('Rejected create-trip request with invalid dates', {
-        startDate: body.startDate,
-        endDate: body.endDate,
-        reason: dateError,
-      });
-      res.status(400).json({ error: dateError });
-      return;
-    }
-
-    const trip = await tripRepo.create({ ...body, title });
-    logger.info('Trip created', { tripId: trip.id, title: trip.title });
-    res.status(201).json(trip);
-  } catch (err) {
-    logger.error('Failed to create trip', { title: req.body?.title }, err);
-    res.status(500).json({ error: 'Failed to create trip' });
+  const body = req.body as CreateTripBody;
+  if (!body.title || !body.startDate || !body.endDate) {
+    logger.warn('Rejected create-trip request with missing fields', {
+      hasTitle: !!body.title,
+      hasStart: !!body.startDate,
+      hasEnd: !!body.endDate,
+    });
+    res
+      .status(400)
+      .json({ error: 'title, startDate, and endDate are required' });
+    return;
   }
+
+  const title = normalizeTripTitle(body.title);
+  if (!title) {
+    logger.warn('Rejected create-trip request with an empty title');
+    res.status(400).json({ error: 'title cannot be empty' });
+    return;
+  }
+
+  const dateError = validateTripDates(body.startDate, body.endDate);
+  if (dateError) {
+    logger.warn('Rejected create-trip request with invalid dates', {
+      startDate: body.startDate,
+      endDate: body.endDate,
+      reason: dateError,
+    });
+    res.status(400).json({ error: dateError });
+    return;
+  }
+
+  const trip = await tripRepo.create({ ...body, title });
+  logger.info('Trip created', { tripId: trip.id, title: trip.title });
+  res.status(201).json(trip);
 }
 
 export async function updateTrip(req: Request, res: Response): Promise<void> {
@@ -197,79 +154,63 @@ export async function updateTrip(req: Request, res: Response): Promise<void> {
        }
      }
      #swagger.responses[400] = { description: 'Invalid tripId, empty title, invalid date format, endDate before startDate, or trip longer than 365 days' } */
-  const tripId = parseTripIdParam(req, res, 'Update-trip');
-  if (tripId === null) {
+  const tripId = idParam(req, 'tripId');
+  const existing = await tripRepo.findById(tripId);
+  if (!existing) {
+    logger.warn('Update-trip rejected: trip not found', { tripId });
+    res.status(404).json({ error: 'Trip not found' });
     return;
   }
-  try {
-    const existing = await tripRepo.findById(tripId);
-    if (!existing) {
-      logger.warn('Update-trip rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
 
-    const body = req.body as UpdateTripBody;
-    if ('title' in body && !normalizeTripTitle(body.title)) {
-      logger.warn('Rejected update-trip request with an empty title', {
-        tripId,
-      });
-      res.status(400).json({ error: 'title cannot be empty' });
-      return;
-    }
-
-    if (body.startDate !== undefined || body.endDate !== undefined) {
-      const effectiveStart = body.startDate ?? existing.startDate;
-      const effectiveEnd = body.endDate ?? existing.endDate;
-      const dateError = validateTripDates(effectiveStart, effectiveEnd);
-      if (dateError) {
-        logger.warn('Update-trip rejected: invalid dates', {
-          tripId,
-          startDate: effectiveStart,
-          endDate: effectiveEnd,
-          reason: dateError,
-        });
-        res.status(400).json({ error: dateError });
-        return;
-      }
-    }
-
-    const updated = await tripRepo.update(tripId, body);
-    if (!updated) {
-      logger.warn('Update-trip rejected: trip not found on update', {
-        tripId,
-      });
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
-    res.json(updated);
-  } catch (err) {
-    logger.error('Failed to update trip', { tripId: req.params.tripId }, err);
-    res.status(500).json({ error: 'Failed to update trip' });
+  const body = req.body as UpdateTripBody;
+  if ('title' in body && !normalizeTripTitle(body.title)) {
+    logger.warn('Rejected update-trip request with an empty title', {
+      tripId,
+    });
+    res.status(400).json({ error: 'title cannot be empty' });
+    return;
   }
+
+  if (body.startDate !== undefined || body.endDate !== undefined) {
+    const effectiveStart = body.startDate ?? existing.startDate;
+    const effectiveEnd = body.endDate ?? existing.endDate;
+    const dateError = validateTripDates(effectiveStart, effectiveEnd);
+    if (dateError) {
+      logger.warn('Update-trip rejected: invalid dates', {
+        tripId,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        reason: dateError,
+      });
+      res.status(400).json({ error: dateError });
+      return;
+    }
+  }
+
+  const updated = await tripRepo.update(tripId, body);
+  if (!updated) {
+    logger.warn('Update-trip rejected: trip not found on update', {
+      tripId,
+    });
+    res.status(404).json({ error: 'Trip not found' });
+    return;
+  }
+  res.json(updated);
 }
 
 export async function deleteTrip(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trips']
      #swagger.summary = 'Delete a trip'
      #swagger.responses[400] = { description: 'Invalid tripId' } */
-  const tripId = parseTripIdParam(req, res, 'Delete-trip');
-  if (tripId === null) {
+  const tripId = idParam(req, 'tripId');
+  const deleted = await tripRepo.deleteById(tripId);
+  if (!deleted) {
+    logger.warn('Delete-trip rejected: trip not found', { tripId });
+    res.status(404).json({ error: 'Trip not found' });
     return;
   }
-  try {
-    const deleted = await tripRepo.deleteById(tripId);
-    if (!deleted) {
-      logger.warn('Delete-trip rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
-    logger.info('Trip deleted', { tripId });
-    res.status(204).send();
-  } catch (err) {
-    logger.error('Failed to delete trip', { tripId: req.params.tripId }, err);
-    res.status(500).json({ error: 'Failed to delete trip' });
-  }
+  logger.info('Trip deleted', { tripId });
+  res.status(204).send();
 }
 
 export async function getTripContent(
@@ -338,24 +279,12 @@ export async function getTripContent(
        }
      }
      #swagger.responses[400] = { description: 'Invalid tripId' } */
-  const tripId = parseTripIdParam(req, res, 'Get-trip-content');
-  if (tripId === null) {
+  const tripId = idParam(req, 'tripId');
+  const content = await tripRepo.findContent(tripId);
+  if (!content) {
+    logger.warn('Get-trip-content rejected: trip not found', { tripId });
+    res.status(404).json({ error: 'Trip not found' });
     return;
   }
-  try {
-    const content = await tripRepo.findContent(tripId);
-    if (!content) {
-      logger.warn('Get-trip-content rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
-    res.json(content);
-  } catch (err) {
-    logger.error(
-      'Failed to fetch trip content',
-      { tripId: req.params.tripId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to fetch trip content' });
-  }
+  res.json(content);
 }

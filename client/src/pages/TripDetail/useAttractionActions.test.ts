@@ -156,7 +156,7 @@ describe('useAttractionActions', () => {
       {
         description: 'a staged image upload fails',
         uploadFails: true,
-        variant: 'info' as const,
+        variant: 'warning' as const,
         message: '已儲存，但部分圖片上傳失敗',
       },
     ])(
@@ -215,7 +215,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(deleteAttraction).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(deleteAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -247,7 +247,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(
@@ -267,7 +267,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(duplicateAttraction).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -282,7 +282,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(duplicateAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -301,7 +301,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(

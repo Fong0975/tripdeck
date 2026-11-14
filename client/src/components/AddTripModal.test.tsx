@@ -161,7 +161,7 @@ describe('AddTripModal', () => {
     );
     expect(createTrip).toHaveBeenCalledTimes(1);
     expect(showToast).toHaveBeenCalledWith(
-      'info',
+      'warning',
       '已儲存，但部分圖片上傳失敗',
     );
   });

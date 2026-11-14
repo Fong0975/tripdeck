@@ -1,5 +1,6 @@
 import { createLogger } from '../logger';
 
+import { fetchJson } from './http';
 import {
   WEATHER_FETCH_TIMEOUT_MS,
   type WeatherIconCode,
@@ -57,18 +58,6 @@ export async function fetchVcWeather(
 ): Promise<WeatherResult> {
   const url = `${VC_BASE}/${encodeURIComponent(location)}/${dateStr}?key=${apiKey}&unitGroup=metric&lang=zh&include=days&elements=datetime,tempmin,tempmax,humidity,precipprob,icon,description,resolvedAddress`;
 
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS),
-  });
-  if (res.status === 400 || res.status === 404) {
-    return { status: 'not_found' };
-  }
-  if (!res.ok) {
-    // The request URL carries the API key, so only the status is logged.
-    logger.warn('Visual Crossing request failed', { status: res.status });
-    return { status: 'error' };
-  }
-
   interface VcDay {
     tempmin: number;
     tempmax: number;
@@ -82,7 +71,19 @@ export async function fetchVcWeather(
     days: VcDay[];
   }
 
-  const json = (await res.json()) as VcResponse;
+  const res = await fetchJson<VcResponse>(url, {
+    timeoutMs: WEATHER_FETCH_TIMEOUT_MS,
+  });
+  if (!res.ok) {
+    if (res.status === 400 || res.status === 404) {
+      return { status: 'not_found' };
+    }
+    // The request URL carries the API key, so only the status is logged.
+    logger.warn('Visual Crossing request failed', { status: res.status });
+    return { status: 'error' };
+  }
+
+  const json = res.data;
   const day = json.days?.[0];
   if (!day) {
     return { status: 'not_found' };

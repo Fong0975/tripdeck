@@ -4,7 +4,6 @@ import {
   Table,
   TableCell,
   TableRow,
-  TextRun,
   WidthType,
 } from 'docx';
 
@@ -12,12 +11,8 @@ import { TRANSPORT_MODE_META } from '@/constants/transportModes';
 import type { TravelConnection } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
-import {
-  CONTENT_WIDTH_DXA,
-  FONT,
-  NO_BORDER,
-  TRANSPORT_BORDER,
-} from './constants';
+import { CONTENT_WIDTH_DXA, NO_BORDER, TRANSPORT_BORDER } from './constants';
+import { textRun } from './docxPrimitives';
 import { makeImageParagraphs } from './imageHelpers';
 import { parseMarkdownContent } from './markdownToDocx';
 
@@ -54,13 +49,7 @@ export function makeDayHeaderTable(text: string, isFirstDay: boolean): Table {
                 pageBreakBefore: !isFirstDay,
                 spacing: { before: 0, after: 0 },
                 children: [
-                  new TextRun({
-                    text,
-                    bold: true,
-                    color: 'FFFFFF',
-                    size: 28,
-                    font: FONT,
-                  }),
+                  textRun(text, { bold: true, color: 'FFFFFF', size: 28 }),
                 ],
               }),
             ],
@@ -90,7 +79,7 @@ export async function makeTransportTable(
 
   cellChildren.push(
     new Paragraph({
-      children: [new TextRun({ text: header, bold: true, font: FONT })],
+      children: [textRun(header, { bold: true })],
       spacing: { before: 40, after: 40 },
     }),
   );
@@ -100,9 +89,7 @@ export async function makeTransportTable(
     // a list, which cannot share a paragraph with an inline prefix.
     cellChildren.push(
       new Paragraph({
-        children: [
-          new TextRun({ text: '路線', bold: true, size: 20, font: FONT }),
-        ],
+        children: [textRun('路線', { bold: true, size: 20 })],
         spacing: { before: 40, after: 20 },
       }),
     );
@@ -113,9 +100,7 @@ export async function makeTransportTable(
     for (const line of conn.notes.split('\n')) {
       cellChildren.push(
         new Paragraph({
-          children: line.trim()
-            ? [new TextRun({ text: line, font: FONT })]
-            : [],
+          children: line.trim() ? [textRun(line)] : [],
           spacing: { before: 20, after: 20 },
         }),
       );

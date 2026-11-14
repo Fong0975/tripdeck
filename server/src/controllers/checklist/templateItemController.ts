@@ -2,10 +2,35 @@ import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
+import type { UpdateItemBody } from '../../types/checklist';
 
-const logger = createLogger('checklist-template');
+import {
+  handleAddItem,
+  handleDeleteItem,
+  handleUpdateItem,
+  type ItemStore,
+} from './shared/itemHandlers';
+import { pickItemFields, requireName } from './shared/validation';
 
-export async function addItem(req: Request, res: Response): Promise<void> {
+/** Template items are scoped by their `:catId` category. */
+const templateItems: ItemStore<UpdateItemBody> = {
+  logger: createLogger('checklist-template'),
+  label: 'Template item',
+  parentParam: 'catId',
+  create: templateRepo.createItem,
+  parseUpdate: body => {
+    const name = requireName(body);
+    return name === null ? null : pickItemFields(body, name);
+  },
+  verifyItem: templateRepo.verifyItemBelongsToCategory,
+  update: templateRepo.updateItem,
+  remove: templateRepo.deleteItem,
+};
+
+export async function addTemplateItem(
+  req: Request,
+  res: Response,
+): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Add an item to a template category'
      #swagger.responses[201] = {
@@ -26,41 +51,13 @@ export async function addItem(req: Request, res: Response): Promise<void> {
          }
        }
      } */
-  try {
-    const catId = Number(req.params.catId);
-    const { name, quantity, notes, storage_location } = req.body as {
-      name: string;
-      quantity?: number | null;
-      notes?: string | null;
-      storage_location?: string | null;
-    };
-    if (!name || typeof name !== 'string') {
-      logger.warn('Rejected add-item request with an invalid name', {
-        catId,
-      });
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-    const item = await templateRepo.createItem(catId, {
-      name,
-      quantity,
-      notes,
-      storage_location,
-    });
-    if (!item) {
-      logger.warn('Add-item rejected: category not found', { catId });
-      res.status(404).json({ error: 'Category not found' });
-      return;
-    }
-    logger.info('Template item created', { catId, itemId: item.id });
-    res.status(201).json(item);
-  } catch (err) {
-    logger.error('Failed to add item', { catId: req.params.catId }, err);
-    res.status(500).json({ error: 'Failed to add item' });
-  }
+  await handleAddItem(templateItems, req, res);
 }
 
-export async function updateItem(req: Request, res: Response): Promise<void> {
+export async function updateTemplateItem(
+  req: Request,
+  res: Response,
+): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Update a template item'
      #swagger.responses[200] = {
@@ -91,89 +88,14 @@ export async function updateItem(req: Request, res: Response): Promise<void> {
          }
        }
      } */
-  try {
-    const catId = Number(req.params.catId);
-    const itemId = Number(req.params.itemId);
-    const { name, quantity, notes, storage_location } = req.body as {
-      name: string;
-      quantity?: number | null;
-      notes?: string | null;
-      storage_location?: string | null;
-    };
-    if (!name || typeof name !== 'string') {
-      logger.warn('Rejected update-item request with an invalid name', {
-        catId,
-        itemId,
-      });
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-    const belongs = await templateRepo.verifyItemBelongsToCategory(
-      itemId,
-      catId,
-    );
-    if (!belongs) {
-      logger.warn('Update-item rejected: item not found', { catId, itemId });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    const item = await templateRepo.updateItem(itemId, {
-      name,
-      quantity,
-      notes,
-      storage_location,
-    });
-    if (!item) {
-      logger.warn('Update-item rejected: item not found after update', {
-        catId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    res.json(item);
-  } catch (err) {
-    logger.error(
-      'Failed to update item',
-      { catId: req.params.catId, itemId: req.params.itemId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to update item' });
-  }
+  await handleUpdateItem(templateItems, req, res);
 }
 
-export async function deleteItem(req: Request, res: Response): Promise<void> {
+export async function deleteTemplateItem(
+  req: Request,
+  res: Response,
+): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Delete a template item' */
-  try {
-    const catId = Number(req.params.catId);
-    const itemId = Number(req.params.itemId);
-    const belongs = await templateRepo.verifyItemBelongsToCategory(
-      itemId,
-      catId,
-    );
-    if (!belongs) {
-      logger.warn('Delete-item rejected: item not found', { catId, itemId });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    const deleted = await templateRepo.deleteItem(itemId);
-    if (!deleted) {
-      logger.warn('Delete-item rejected: item not found after check', {
-        catId,
-        itemId,
-      });
-      res.status(404).json({ error: 'Item not found' });
-      return;
-    }
-    logger.info('Template item deleted', { catId, itemId });
-    res.status(204).send();
-  } catch (err) {
-    logger.error(
-      'Failed to delete item',
-      { catId: req.params.catId, itemId: req.params.itemId },
-      err,
-    );
-    res.status(500).json({ error: 'Failed to delete item' });
-  }
+  await handleDeleteItem(templateItems, req, res);
 }

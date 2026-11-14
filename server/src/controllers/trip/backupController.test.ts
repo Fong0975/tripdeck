@@ -123,15 +123,13 @@ describe('exportTrips', () => {
     expectJsonStatus(res, 404, { error: 'Trip 5 not found' });
   });
 
-  it('returns 500 on an unexpected error', async () => {
-    vi.mocked(backupRepo.buildBackupZip).mockRejectedValue(
-      new Error('unexpected'),
-    );
+  it('rethrows an unexpected error for the error handler', async () => {
+    const error = new Error('unexpected');
+    vi.mocked(backupRepo.buildBackupZip).mockRejectedValue(error);
     const { req, res } = createMockReqRes({ body: { tripIds: [1] } });
 
-    await exportTrips(req, res);
-
-    expectJsonStatus(res, 500, { error: 'Failed to export trips' });
+    await expect(exportTrips(req, res)).rejects.toBe(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 
@@ -212,14 +210,12 @@ describe('importTrips', () => {
     });
   });
 
-  it('returns 500 on an unexpected error', async () => {
-    vi.mocked(backupRepo.importBackupZip).mockRejectedValue(
-      new Error('unexpected'),
-    );
+  it('rethrows an unexpected error for the error handler', async () => {
+    const error = new Error('unexpected');
+    vi.mocked(backupRepo.importBackupZip).mockRejectedValue(error);
     const { req, res } = createMockReqRes({ file: mockZipFile });
 
-    await importTrips(req, res);
-
-    expectJsonStatus(res, 500, { error: 'Failed to import backup' });
+    await expect(importTrips(req, res)).rejects.toBe(error);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

@@ -110,29 +110,39 @@ describe('ItineraryBoard', () => {
     expect(props.onDeleteLocation).toHaveBeenCalledWith(0, 50);
   });
 
-  it('does not render the drag overlay attraction card when no drag is active', () => {
-    renderBoard();
-
-    expect(screen.queryByText('attraction-card')).not.toBeInTheDocument();
-  });
-
-  it('renders the drag overlay attraction card when a drag is active', () => {
-    renderBoard({
+  it.each([
+    {
+      description: 'no drag is active',
+      activeAttractionId: null,
+      found: false,
+      expectLookups: 0,
+      expectCard: false,
+    },
+    {
+      description: 'the active attraction is found',
       activeAttractionId: 10,
-      getActiveAttraction: vi.fn(() =>
-        makeAttraction({ id: 10, name: 'Attraction A' }),
-      ),
-    });
-
-    expect(screen.getByText('attraction-card')).toBeInTheDocument();
-  });
-
-  it('does not render the drag overlay when the active attraction cannot be found', () => {
-    renderBoard({
+      found: true,
+      expectLookups: 1,
+      expectCard: true,
+    },
+    {
+      description: 'the active attraction cannot be found',
       activeAttractionId: 999,
-      getActiveAttraction: vi.fn(() => undefined),
-    });
+      found: false,
+      expectLookups: 1,
+      expectCard: false,
+    },
+  ])(
+    'renders the drag overlay card only when $description yields an attraction',
+    ({ activeAttractionId, found, expectLookups, expectCard }) => {
+      const getActiveAttraction = vi.fn(() =>
+        found ? makeAttraction({ id: 10, name: 'Attraction A' }) : undefined,
+      );
 
-    expect(screen.queryByText('attraction-card')).not.toBeInTheDocument();
-  });
+      renderBoard({ activeAttractionId, getActiveAttraction });
+
+      expect(getActiveAttraction).toHaveBeenCalledTimes(expectLookups);
+      expect(screen.queryByText('attraction-card') !== null).toBe(expectCard);
+    },
+  );
 });

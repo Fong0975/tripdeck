@@ -35,7 +35,7 @@ import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
 
 import { TripImportDataError } from './errors';
-import { generateUniqueTripTitle, importSingleTrip } from './tripImport';
+import { importSingleTrip } from './tripImport';
 
 const mockPoolExecute = db.pool.execute;
 const {
@@ -190,42 +190,6 @@ beforeEach(() => {
   mockSaveImportedImageBuffer.mockImplementation(
     (_buffer: Buffer, originalFilename: string) => `new-${originalFilename}`,
   );
-});
-
-describe('generateUniqueTripTitle', () => {
-  it('returns the title unchanged when no trip uses it', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: 'Other Trip' }]]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip',
-    );
-  });
-
-  it('appends " (2)" when the title is already used', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: 'Kyoto Trip' }]]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip (2)',
-    );
-  });
-
-  it('finds the next available suffix when earlier ones are taken', async () => {
-    mockPoolExecute.mockResolvedValue([
-      [{ title: 'Kyoto Trip' }, { title: 'Kyoto Trip (2)' }],
-    ]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip (3)',
-    );
-  });
-
-  it('de-duplicates titles containing emoji/CJK characters correctly', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: '東京 🗼 五日遊' }]]);
-
-    await expect(generateUniqueTripTitle('東京 🗼 五日遊')).resolves.toBe(
-      '東京 🗼 五日遊 (2)',
-    );
-  });
 });
 
 describe('importSingleTrip', () => {
@@ -593,65 +557,4 @@ describe('importSingleTrip', () => {
       expect(cleanupLogs).toEqual(expectedCleanupLogs);
     },
   );
-});
-
-describe('importSingleTrip geo fields', () => {
-  const key = computeGeoKey('Fushimi Inari', null);
-
-  it.each([
-    {
-      description: 'keeps valid url-derived coordinates',
-      geo: { latitude: 35, longitude: 135, geoSource: 'url' },
-      expected: [35, 135, 'url', key],
-    },
-    {
-      description: 'keeps the not_found marker without coordinates',
-      geo: { latitude: null, longitude: null, geoSource: 'not_found' },
-      expected: [null, null, 'not_found', key],
-    },
-    {
-      description: 'drops fields from an old backup that predates geo support',
-      geo: {},
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops an unknown geo source',
-      geo: { latitude: 35, longitude: 135, geoSource: 'manual' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops out-of-range latitude',
-      geo: { latitude: 91, longitude: 135, geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops out-of-range longitude',
-      geo: { latitude: 35, longitude: -181, geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops non-numeric coordinates',
-      geo: { latitude: '35', longitude: '135', geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-  ])('$description', async ({ geo, expected }) => {
-    mockNoTitleConflicts();
-    mockSequentialInserts();
-    const data = structuredClone(sampleData) as TripBackupData;
-    Object.assign(data.content.days[0].attractions[0], {
-      latitude: undefined,
-      longitude: undefined,
-      geoSource: undefined,
-      ...geo,
-    });
-
-    await importSingleTrip(data, sampleImageBuffers());
-
-    const insertCall = mockConnExecute.mock.calls.find(
-      ([sql, params]) =>
-        sql.includes('INSERT INTO trip_attractions') &&
-        params[1] === 'Fushimi Inari',
-    );
-    expect(insertCall?.[1].slice(8)).toEqual(expected);
-  });
 });
