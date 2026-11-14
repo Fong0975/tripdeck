@@ -1,7 +1,13 @@
 import { useState } from 'react';
 
+import { useSubmitting } from '@/hooks/useSubmitting';
 import { showToast } from '@/lib/toast';
-import type { AttractionImage, Trip } from '@/types';
+import type { Trip } from '@/types';
+import {
+  showSavedToast,
+  uploadStagedImages,
+  type StagedImage,
+} from '@/utils/stagedImages';
 import { createTrip, uploadTripImage } from '@/utils/storage';
 
 import StagedImageUploader from './StagedImageUploader';
@@ -21,10 +27,9 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
     endDate: '',
     description: '',
   });
-  const [stagedImages, setStagedImages] = useState<
-    { file: File; title: string }[]
-  >([]);
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
   const [error, setError] = useState('');
+  const { submitting, run } = useSubmitting();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -42,7 +47,30 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
     setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const createWithImages = async () => {
+    let trip: Trip;
+    try {
+      trip = await createTrip({
+        title: form.title.trim(),
+        destination: form.destination.trim() || undefined,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        description: form.description.trim() || undefined,
+      });
+    } catch {
+      showToast('error', '建立旅程失敗，請稍後再試');
+      return;
+    }
+
+    const { uploaded, failedCount } = await uploadStagedImages(
+      stagedImages,
+      (file, title) => uploadTripImage(trip.id, file, title),
+    );
+    onAdded({ ...trip, images: uploaded });
+    showSavedToast('已建立旅程。', failedCount);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) {
       return setError('請輸入旅程名稱');
@@ -53,26 +81,7 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
     if (form.endDate < form.startDate) {
       return setError('結束日期不能早於開始日期');
     }
-
-    try {
-      const trip = await createTrip({
-        title: form.title.trim(),
-        destination: form.destination.trim() || undefined,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        description: form.description.trim() || undefined,
-      });
-
-      const images: AttractionImage[] = [];
-      for (const { file, title } of stagedImages) {
-        images.push(await uploadTripImage(trip.id, file, title));
-      }
-
-      onAdded({ ...trip, images });
-      showToast('success', '已建立旅程。');
-    } catch {
-      showToast('error', '建立旅程失敗，請稍後再試');
-    }
+    void run(createWithImages);
   };
 
   return (
@@ -155,7 +164,12 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
 
         {error && <p className='text-sm text-destructive'>{error}</p>}
 
-        <ModalFooterActions onCancel={onClose} submitLabel='建立旅程' />
+        <ModalFooterActions
+          onCancel={onClose}
+          submitLabel='建立旅程'
+          submitting={submitting}
+          submittingLabel='建立中…'
+        />
       </form>
     </Modal>
   );

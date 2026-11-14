@@ -2,8 +2,10 @@ import { useState } from 'react';
 
 import { INPUT_CLS } from '@/components/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { useSubmitting } from '@/hooks/useSubmitting';
 import type { TravelConnection, TransportMode } from '@/types';
 import { parseDurationMinutes } from '@/utils/duration';
+import type { StagedImage } from '@/utils/stagedImages';
 import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
@@ -18,10 +20,13 @@ interface Props {
   fromName: string;
   toName: string;
   onClose: () => void;
+  /** Return the save promise so the modal can block repeat submits until it settles. */
   onSave: (
     connection: TravelConnection,
-    stagedImages?: { file: File; title: string }[],
-  ) => void;
+    stagedImages?: StagedImage[],
+  ) => Promise<void> | void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
 const TRANSPORT_OPTIONS: {
@@ -45,6 +50,7 @@ export default function TravelConnectionModal({
   toName,
   onClose,
   onSave,
+  onImagesChanged,
 }: Props) {
   const [form, setForm] = useState<TravelConnection>({ ...connection });
   const connectionId = connection.id;
@@ -63,13 +69,13 @@ export default function TravelConnectionModal({
       tripId && connectionId
         ? imageId => deleteConnectionImage(tripId, connectionId, imageId)
         : undefined,
+    onImagesChanged,
   });
   const initialDurationMinutes = parseDurationMinutes(connection.duration) ?? 0;
   const [hours, setHours] = useState(Math.floor(initialDurationMinutes / 60));
   const [minutes, setMinutes] = useState(initialDurationMinutes % 60);
-  const [stagedImages, setStagedImages] = useState<
-    { file: File; title: string }[]
-  >([]);
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+  const { submitting, run } = useSubmitting();
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -79,13 +85,15 @@ export default function TravelConnectionModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const totalMinutes = hours * 60 + minutes;
-    onSave(
-      {
-        ...form,
-        duration: totalMinutes > 0 ? String(totalMinutes) : null,
-        images,
-      },
-      isEditing ? undefined : stagedImages,
+    void run(() =>
+      onSave(
+        {
+          ...form,
+          duration: totalMinutes > 0 ? String(totalMinutes) : null,
+          images,
+        },
+        isEditing ? undefined : stagedImages,
+      ),
     );
   };
 
@@ -193,7 +201,7 @@ export default function TravelConnectionModal({
           )}
         </div>
 
-        <ModalFooterActions onCancel={onClose} />
+        <ModalFooterActions onCancel={onClose} submitting={submitting} />
       </form>
     </Modal>
   );

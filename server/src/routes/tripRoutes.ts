@@ -56,6 +56,10 @@ router.patch(
   '/:tripId/days/:dayId/attractions/order',
   attractionController.reorderAttractions,
 );
+router.patch(
+  '/:tripId/attractions/:attractionId/move',
+  attractionController.moveAttraction,
+);
 
 // Day locations
 router.post(

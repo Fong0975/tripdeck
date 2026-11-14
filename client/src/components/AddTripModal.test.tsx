@@ -137,6 +137,61 @@ describe('AddTripModal', () => {
     expect(showToast).toHaveBeenCalledWith('success', '已建立旅程。');
   });
 
+  it('still reports the created trip with a warning when an image upload fails', async () => {
+    const trip = makeTrip({ title: 'My Trip', endDate: '2026-01-04' });
+    vi.mocked(createTrip).mockResolvedValue(trip);
+    vi.mocked(uploadTripImage).mockRejectedValueOnce(new Error('too big'));
+    const onAdded = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+      <AddTripModal onClose={vi.fn()} onAdded={onAdded} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('例：東京五日遊'), {
+      target: { value: 'My Trip' },
+    });
+    fillDateField(container, 'startDate', '2026-01-01');
+    selectFile(container, new File(['a'], 'a.jpg'));
+    await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'Cover');
+    await user.click(screen.getByText('加入圖片'));
+    submitForm(container);
+
+    await waitFor(() =>
+      expect(onAdded).toHaveBeenCalledWith({ ...trip, images: [] }),
+    );
+    expect(createTrip).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith(
+      'info',
+      '已儲存，但部分圖片上傳失敗',
+    );
+  });
+
+  it('ignores repeated submits while the trip is being created', async () => {
+    let resolveCreate!: (trip: ReturnType<typeof makeTrip>) => void;
+    vi.mocked(createTrip).mockReturnValue(
+      new Promise(resolve => {
+        resolveCreate = resolve;
+      }),
+    );
+    const onAdded = vi.fn();
+    const { container } = render(
+      <AddTripModal onClose={vi.fn()} onAdded={onAdded} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('例：東京五日遊'), {
+      target: { value: 'My Trip' },
+    });
+    fillDateField(container, 'startDate', '2026-01-01');
+    submitForm(container);
+    submitForm(container);
+
+    expect(createTrip).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('建立中…')).toBeDisabled();
+
+    resolveCreate(makeTrip());
+    await waitFor(() => expect(onAdded).toHaveBeenCalledTimes(1));
+  });
+
   it('shows an error and does not report to the parent on failure', async () => {
     vi.mocked(createTrip).mockRejectedValue(new Error('network error'));
     const onAdded = vi.fn();

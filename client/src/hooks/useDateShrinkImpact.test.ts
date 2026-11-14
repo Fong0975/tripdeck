@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/lib/toast';
 import {
   makeAttraction,
   makeConnection,
@@ -10,6 +11,8 @@ import {
 } from '@/test-utils/fixtures';
 
 import { imageCountOf, useDateShrinkImpact } from './useDateShrinkImpact';
+
+vi.mock('@/lib/toast');
 
 describe('imageCountOf', () => {
   it('sums images across attractions, connections, and the day itself', () => {
@@ -66,24 +69,43 @@ describe('useDateShrinkImpact', () => {
     expect(result.current.pendingImpact).toBeNull();
   });
 
-  it('returns true when content is unavailable', async () => {
-    const getContent = vi.fn().mockResolvedValue(null);
-    const { result } = renderHook(() =>
-      useDateShrinkImpact({
-        tripStartDate: '2026-01-05',
-        tripEndDate: '2026-01-10',
-        getContent,
-      }),
-    );
+  it.each([
+    {
+      description: 'content resolves to null',
+      getContent: () => vi.fn().mockResolvedValue(null),
+    },
+    {
+      description: 'fetching content rejects',
+      getContent: () =>
+        vi.fn().mockRejectedValue(new Error('API error 500: /content')),
+    },
+  ])(
+    'returns false and shows an error toast when $description',
+    async ({ getContent }) => {
+      const { result } = renderHook(() =>
+        useDateShrinkImpact({
+          tripStartDate: '2026-01-05',
+          tripEndDate: '2026-01-10',
+          getContent: getContent(),
+        }),
+      );
 
-    let canProceed = false;
-    await act(async () => {
-      canProceed = await result.current.checkImpact('2026-01-06', '2026-01-08');
-    });
+      let canProceed = true;
+      await act(async () => {
+        canProceed = await result.current.checkImpact(
+          '2026-01-06',
+          '2026-01-08',
+        );
+      });
 
-    expect(canProceed).toBe(true);
-    expect(result.current.pendingImpact).toBeNull();
-  });
+      expect(canProceed).toBe(false);
+      expect(result.current.pendingImpact).toBeNull();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '無法確認日期變更的影響，請稍後再試',
+      );
+    },
+  );
 
   it('returns true and does not set pendingImpact when no days fall outside the new range', async () => {
     const days = [makeDay({ id: 1, date: '2026-01-06' })];

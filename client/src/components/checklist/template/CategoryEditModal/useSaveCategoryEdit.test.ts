@@ -248,4 +248,71 @@ describe('useSaveCategoryEdit', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(result.current.saving).toBe(false);
   });
+
+  it.each([
+    {
+      description: 'an item delete and add saved before a later spec failure',
+      mutate: (edit: EditCategory) => {
+        edit.items = [
+          {
+            id: -1,
+            name: 'Brand New',
+            quantity: null,
+            notes: null,
+            storage_location: null,
+            specs: [{ id: -2, name: 'Brand New Spec', storage_location: null }],
+          },
+        ];
+      },
+      failOnce: () =>
+        vi
+          .mocked(addTemplateItemSpec)
+          .mockRejectedValueOnce(new Error('network')),
+      expectedCalls: [
+        [deleteTemplateItem, 1],
+        [addTemplateItem, 1],
+        [addTemplateItemSpec, 2],
+      ] as const,
+    },
+    {
+      description: 'a spec delete saved before a later item failure',
+      mutate: (edit: EditCategory) => {
+        edit.items[0].specs = [];
+        edit.items.push({
+          id: -3,
+          name: 'Brand New',
+          quantity: null,
+          notes: null,
+          storage_location: null,
+          specs: [],
+        });
+      },
+      failOnce: () =>
+        vi.mocked(addTemplateItem).mockRejectedValueOnce(new Error('network')),
+      expectedCalls: [
+        [deleteTemplateItemSpec, 1],
+        [addTemplateItem, 2],
+      ] as const,
+    },
+  ])(
+    'does not repeat completed creates/deletes when retrying after $description',
+    async ({ mutate, failOnce, expectedCalls }) => {
+      failOnce();
+      const edit = unchangedEdit();
+      mutate(edit);
+      const onSaved = vi.fn();
+      const { result } = renderHook(() =>
+        useSaveCategoryEdit(category, edit, onSaved, vi.fn()),
+      );
+
+      await act(() => result.current.handleSave());
+      expect(onSaved).not.toHaveBeenCalled();
+      await act(() => result.current.handleSave());
+
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      for (const [api, times] of expectedCalls) {
+        expect(api).toHaveBeenCalledTimes(times);
+      }
+    },
+  );
 });

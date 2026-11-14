@@ -10,6 +10,7 @@ export const updateAttraction = vi.fn();
 export const deleteAttraction = vi.fn();
 export const duplicateAttraction = vi.fn();
 export const reorderAttractions = vi.fn();
+export const moveAttraction = vi.fn();
 
 export const exportTripsBackup = vi.fn();
 export const importTripsBackup = vi.fn();

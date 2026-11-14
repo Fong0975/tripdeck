@@ -1,11 +1,16 @@
 import { useState } from 'react';
 
+import { showToast } from '@/lib/toast';
 import type { DayPlan, TripContent } from '@/types';
 
 interface Options {
   tripStartDate: string;
   tripEndDate: string;
-  /** Fetches the trip's current content, used to find days outside the new range. */
+  /**
+   * Fetches the trip's current content, used to find days outside the new
+   * range. Resolving to `null` or rejecting blocks the update, since the
+   * impact can't be confirmed.
+   */
   getContent: () => Promise<TripContent | null>;
 }
 
@@ -32,10 +37,13 @@ export function useDateShrinkImpact({
 
   /**
    * Returns true when the new date range is safe to apply immediately (a
-   * pure expansion, content unavailable, or no days fall outside it).
-   * Otherwise records the impacted days into `pendingImpact` and returns
-   * false, so the caller can hold off until the user confirms or cancels
-   * via `dismissImpact`.
+   * pure expansion, or no days fall outside it). Otherwise returns false and
+   * the caller must not apply the update now:
+   * - when days would be dropped, they are recorded into `pendingImpact` so
+   *   the caller can confirm or cancel via `dismissImpact`;
+   * - when the content can't be fetched, an error toast is shown and
+   *   `pendingImpact` stays null, aborting the update outright rather than
+   *   risking deleting days without confirmation.
    */
   const checkImpact = async (
     newStartDate: string,
@@ -47,9 +55,10 @@ export function useDateShrinkImpact({
       return true;
     }
 
-    const content = await getContent();
+    const content = await getContent().catch(() => null);
     if (!content) {
-      return true;
+      showToast('error', '無法確認日期變更的影響，請稍後再試');
+      return false;
     }
 
     const impacted = content.days.filter(

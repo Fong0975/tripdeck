@@ -5,6 +5,7 @@ vi.mock('../../repositories/attraction', () => ({
   deleteById: vi.fn(),
   duplicate: vi.fn(),
   getDayIdForAttraction: vi.fn(),
+  moveToDay: vi.fn(),
   update: vi.fn(),
   updateOrder: vi.fn(),
   verifyBelongsToTrip: vi.fn(),
@@ -27,6 +28,7 @@ import {
   addAttraction,
   deleteAttraction,
   duplicateAttraction,
+  moveAttraction,
   reorderAttractions,
   updateAttraction,
 } from './attractionController';
@@ -230,6 +232,100 @@ describe('Attractions', () => {
       expectNoContent(res);
     });
   });
+
+  describe('moveAttraction', () => {
+    const validParams = { tripId: '1', attractionId: '100' };
+
+    it.each([
+      {
+        name: 'tripId is not a positive integer',
+        params: { ...validParams, tripId: 'abc' },
+        body: { dayId: 20, index: 0 },
+      },
+      {
+        name: 'attractionId is not a positive integer',
+        params: { ...validParams, attractionId: '0' },
+        body: { dayId: 20, index: 0 },
+      },
+      {
+        name: 'dayId is missing',
+        params: validParams,
+        body: { index: 0 },
+      },
+      {
+        name: 'dayId is not a positive integer',
+        params: validParams,
+        body: { dayId: -3, index: 0 },
+      },
+      {
+        name: 'index is missing',
+        params: validParams,
+        body: { dayId: 20 },
+      },
+      {
+        name: 'index is negative',
+        params: validParams,
+        body: { dayId: 20, index: -1 },
+      },
+      {
+        name: 'index is not an integer',
+        params: validParams,
+        body: { dayId: 20, index: 1.5 },
+      },
+      {
+        name: 'index is a numeric string',
+        params: validParams,
+        body: { dayId: 20, index: '1' },
+      },
+      {
+        name: 'the body is missing',
+        params: validParams,
+        body: undefined,
+      },
+    ])('returns 400 when $name', async ({ params, body }) => {
+      const { req, res } = createMockReqRes({ params, body });
+
+      await moveAttraction(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(attractionRepo.moveToDay).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        result: 'attraction_not_found' as const,
+        status: 404,
+        error: 'Attraction not found',
+      },
+      { result: 'day_not_found' as const, status: 404, error: 'Day not found' },
+    ])(
+      'responds $status when the repository returns $result',
+      async ({ result, status, error }) => {
+        vi.mocked(attractionRepo.moveToDay).mockResolvedValue(result);
+        const { req, res } = createMockReqRes({
+          params: validParams,
+          body: { dayId: 20, index: 2 },
+        });
+
+        await moveAttraction(req, res);
+
+        expectJsonStatus(res, status, { error });
+      },
+    );
+
+    it('moves the attraction and responds with 204', async () => {
+      vi.mocked(attractionRepo.moveToDay).mockResolvedValue('moved');
+      const { req, res } = createMockReqRes({
+        params: validParams,
+        body: { dayId: 20, index: 0 },
+      });
+
+      await moveAttraction(req, res);
+
+      expect(attractionRepo.moveToDay).toHaveBeenCalledWith(1, 100, 20, 0);
+      expectNoContent(res);
+    });
+  });
 });
 
 describe('500 error handling', () => {
@@ -282,6 +378,17 @@ describe('500 error handling', () => {
       arrange: error =>
         vi.mocked(tripRepo.findDayByIdAndTripId).mockRejectedValue(error),
       expectedError: 'Failed to reorder attractions',
+    },
+    {
+      name: 'moveAttraction',
+      handler: moveAttraction,
+      req: {
+        params: { tripId: '1', attractionId: '100' },
+        body: { dayId: 20, index: 0 },
+      },
+      arrange: error =>
+        vi.mocked(attractionRepo.moveToDay).mockRejectedValue(error),
+      expectedError: 'Failed to move attraction',
     },
   ];
 

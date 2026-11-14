@@ -11,15 +11,18 @@ import { useState } from 'react';
 import { showToast } from '@/lib/toast';
 import type { Attraction, TripContent } from '@/types';
 import { findConnectionsBrokenByMove } from '@/utils/connectionAdjacency';
-import {
-  addAttraction,
-  deleteAttraction,
-  reorderAttractions,
-} from '@/utils/storage';
+import { moveAttraction, reorderAttractions } from '@/utils/storage';
+
+import { crossDayInsertIndex, resolveDropTarget } from './dragTarget';
 
 type PendingMove =
   | { type: 'sameDay'; dayId: number; orderedIds: number[] }
-  | { type: 'crossDay'; attraction: Attraction; targetDayId: number };
+  | {
+      type: 'crossDay';
+      attractionId: number;
+      targetDayId: number;
+      targetIndex: number;
+    };
 
 export function useDragAndDrop(
   tripId: number | null,
@@ -35,22 +38,6 @@ export function useDragAndDrop(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const findDayIndexByAttractionId = (attractionId: number): number => {
-    /* v8 ignore next 3 -- defensive guard; content is always loaded before drag-and-drop is interactive */
-    if (!content) {
-      return -1;
-    }
-    return content.days.findIndex(d =>
-      d.attractions.some(a => a.id === attractionId),
-    );
-  };
-
-  const findDayIndexByDroppableId = (droppableId: string): number => {
-    const match = droppableId.match(/^day-(\d+)$/);
-    /* v8 ignore next -- droppableId is always internally generated as `day-N`; non-matching fallback is defensive */
-    return match ? parseInt(match[1], 10) : -1;
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     setActiveAttractionId(event.active.id as number);
   };
@@ -65,23 +52,20 @@ export function useDragAndDrop(
       .catch(() => showToast('error', '調整景點順序失敗，請稍後再試'));
   };
 
-  const performCrossDayMove = (attraction: Attraction, targetDayId: number) => {
+  const performCrossDayMove = (
+    attractionId: number,
+    targetDayId: number,
+    targetIndex: number,
+  ) => {
     /* v8 ignore next 3 -- defensive guard; tripId is always set once a drag is possible */
     if (!tripId) {
       return;
     }
-    void deleteAttraction(tripId, attraction.id)
-      .then(() =>
-        addAttraction(tripId, targetDayId, {
-          name: attraction.name,
-          googleMapUrl: attraction.googleMapUrl ?? undefined,
-          notes: attraction.notes ?? undefined,
-          nearbyAttractions: attraction.nearbyAttractions ?? undefined,
-          referenceWebsites: attraction.referenceWebsites,
-        }),
-      )
-      .then(() => onReload())
-      .catch(() => showToast('error', '移動景點失敗，請稍後再試'));
+    // Reload on failure too: the server may have rejected a move based on
+    // stale client state (e.g. the day was deleted elsewhere).
+    void moveAttraction(tripId, attractionId, targetDayId, targetIndex)
+      .catch(() => showToast('error', '移動景點失敗，請稍後再試'))
+      .then(() => onReload());
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -92,31 +76,19 @@ export function useDragAndDrop(
     }
 
     const activeId = active.id as number;
-    const overId = over.id;
-
-    const sourceDayIdx = findDayIndexByAttractionId(activeId);
-    if (sourceDayIdx === -1) {
+    const target = resolveDropTarget(content.days, activeId, over.id);
+    if (!target) {
       return;
     }
 
-    const targetDayIdx =
-      typeof overId === 'string' && overId.startsWith('day-')
-        ? findDayIndexByDroppableId(overId)
-        : findDayIndexByAttractionId(overId as number);
-
-    if (targetDayIdx === -1) {
-      return;
-    }
-
-    if (sourceDayIdx === targetDayIdx) {
-      const day = content.days[sourceDayIdx];
-      const oldIdx = day.attractions.findIndex(a => a.id === activeId);
-      const newIdx = day.attractions.findIndex(a => a.id === overId);
-      if (oldIdx === newIdx || newIdx === -1) {
+    if (target.sourceDayIndex === target.targetDayIndex) {
+      const day = content.days[target.sourceDayIndex];
+      const { sourceIndex, overIndex } = target;
+      if (overIndex === null || overIndex === sourceIndex) {
         return;
       }
 
-      const orderedIds = arrayMove(day.attractions, oldIdx, newIdx).map(
+      const orderedIds = arrayMove(day.attractions, sourceIndex, overIndex).map(
         a => a.id,
       );
       const broken = findConnectionsBrokenByMove(
@@ -131,32 +103,38 @@ export function useDragAndDrop(
 
       performSameDayReorder(day.id, orderedIds);
     } else {
-      const sourceDay = content.days[sourceDayIdx];
-      const attraction = sourceDay.attractions.find(a => a.id === activeId);
-      /* v8 ignore next 3 -- defensive guard; the attraction was just dragged from this day so it is always found */
-      if (!attraction) {
-        return;
-      }
-
-      const targetDay = content.days[targetDayIdx];
-      const remainingIds = sourceDay.attractions
-        .filter(a => a.id !== activeId)
-        .map(a => a.id);
-      const broken = findConnectionsBrokenByMove(
-        sourceDay.connections,
-        sourceDay.attractions.map(a => a.id),
-        remainingIds,
+      const sourceDay = content.days[target.sourceDayIndex];
+      const targetDay = content.days[target.targetDayIndex];
+      const targetIndex = crossDayInsertIndex(
+        target,
+        targetDay.attractions.length,
       );
+
+      const sourceIds = sourceDay.attractions.map(a => a.id);
+      const targetIds = targetDay.attractions.map(a => a.id);
+      const broken = [
+        ...findConnectionsBrokenByMove(
+          sourceDay.connections,
+          sourceIds,
+          sourceIds.filter(id => id !== activeId),
+        ),
+        ...findConnectionsBrokenByMove(targetDay.connections, targetIds, [
+          ...targetIds.slice(0, targetIndex),
+          activeId,
+          ...targetIds.slice(targetIndex),
+        ]),
+      ];
       if (broken.length > 0) {
         setPendingMove({
           type: 'crossDay',
-          attraction,
+          attractionId: activeId,
           targetDayId: targetDay.id,
+          targetIndex,
         });
         return;
       }
 
-      performCrossDayMove(attraction, targetDay.id);
+      performCrossDayMove(activeId, targetDay.id, targetIndex);
     }
   };
 
@@ -167,7 +145,11 @@ export function useDragAndDrop(
     if (pendingMove.type === 'sameDay') {
       performSameDayReorder(pendingMove.dayId, pendingMove.orderedIds);
     } else {
-      performCrossDayMove(pendingMove.attraction, pendingMove.targetDayId);
+      performCrossDayMove(
+        pendingMove.attractionId,
+        pendingMove.targetDayId,
+        pendingMove.targetIndex,
+      );
     }
     setPendingMove(null);
   };

@@ -25,13 +25,20 @@ afterEach(() => {
 });
 
 describe('api', () => {
-  it('throws an error naming the status and url when the response is not ok', async () => {
-    vi.mocked(fetch).mockResolvedValue(makeResponse(false, 404));
+  it.each([{ status: 404 }, { status: 500 }])(
+    'throws an ApiError carrying status $status when the response is not ok',
+    async ({ status }) => {
+      vi.mocked(fetch).mockResolvedValue(makeResponse(false, status));
 
-    await expect(api('/api/trips/1')).rejects.toThrow(
-      'API error 404: /api/trips/1',
-    );
-  });
+      const promise = api('/api/trips/1');
+
+      await expect(promise).rejects.toBeInstanceOf(ApiError);
+      await promise.catch((err: ApiError) => {
+        expect(err.message).toBe(`API error ${status}: /api/trips/1`);
+        expect(err.status).toBe(status);
+      });
+    },
+  );
 
   it.each([
     {
@@ -180,6 +187,7 @@ describe('apiJson', () => {
     await expect(promise).rejects.toBeInstanceOf(ApiError);
     await promise.catch((err: ApiError) => {
       expect(err.details).toEqual(details);
+      expect(err.status).toBe(400);
     });
   });
 

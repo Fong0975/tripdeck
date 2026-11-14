@@ -4,9 +4,18 @@ import { showToast } from '@/lib/toast';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 
+import { pruneLocalChecks, type LocalChecks } from './localChecks';
+
 /**
  * Loads a trip's checklist and manages local (unsaved) check-state edits,
  * including dirty tracking, a beforeunload guard, and save/discard actions.
+ *
+ * A failed initial load sets `loadError` (with `retryLoad` to try again)
+ * instead of leaving the caller on a permanent loading state.
+ *
+ * @param tripId The trip whose checklist to load.
+ * @param onDirtyChange Notified whenever the unsaved state changes, and with
+ *   `false` on unmount so a parent flag never outlives the panel.
  */
 export function useChecklistState(
   tripId: number,
@@ -14,20 +23,30 @@ export function useChecklistState(
 ) {
   const [checklist, setChecklist] = useState<TripChecklist | null>(null);
   const [loading, setLoading] = useState(true);
-  const [localChecks, setLocalChecks] = useState<
-    Record<number, Record<number, boolean>>
-  >({});
+  const [loadError, setLoadError] = useState(false);
+  const [localChecks, setLocalChecks] = useState<LocalChecks>({});
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
     setChecklist(await getTripChecklist(tripId));
   }, [tripId]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- flag loading before the reload starts
+  const loadChecklist = useCallback(async () => {
     setLoading(true);
-    void reload().finally(() => setLoading(false));
+    setLoadError(false);
+    try {
+      await reload();
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [reload]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    void loadChecklist();
+  }, [loadChecklist]);
 
   const isDirty = useMemo(() => {
     if (!checklist) {
@@ -48,6 +67,10 @@ export function useChecklistState(
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    return () => onDirtyChange?.(false);
+  }, [onDirtyChange]);
 
   useEffect(() => {
     if (!isDirty) {
@@ -111,14 +134,27 @@ export function useChecklistState(
     setLocalChecks({});
   };
 
+  /**
+   * Reloads after a checklist structure edit, keeping unsaved checks for
+   * items that still exist and dropping only those for removed items or
+   * occasions. Always resolves; a failed reload keeps the current state and
+   * shows an error toast.
+   */
   const handleEditSaved = async () => {
-    setLocalChecks({});
-    await reload();
+    try {
+      const fresh = await getTripChecklist(tripId);
+      setChecklist(fresh);
+      setLocalChecks(prev => pruneLocalChecks(prev, fresh));
+    } catch {
+      showToast('error', '重新載入打包清單失敗，請稍後再試');
+    }
   };
 
   return {
     checklist,
     loading,
+    loadError,
+    retryLoad: loadChecklist,
     saving,
     isDirty,
     getCheck,

@@ -10,7 +10,7 @@ import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripChecklistPanel from '@/components/TripChecklistPanel';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
-import StatusMessage from '@/components/ui/StatusMessage';
+import RetryableError from '@/components/ui/RetryableError';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { showToast } from '@/lib/toast';
 
@@ -23,20 +23,33 @@ import { useDayLocationActions } from './useDayLocationActions';
 import { useDayNoteActions } from './useDayNoteActions';
 import { useDragAndDrop } from './useDragAndDrop';
 import { useTripData } from './useTripData';
+import { useTripTabs } from './useTripTabs';
 
 export default function TripDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { trip, content, reloadContent, setTrip, loadError, retryLoad } =
-    useTripData(id);
+  const {
+    trip,
+    content,
+    reloadContent,
+    reloadTrip,
+    setTrip,
+    loadError,
+    retryLoad,
+  } = useTripData(id);
+  const handleImagesChanged = () => void reloadContent();
 
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'checklist'>(
-    'itinerary',
-  );
   const [exporting, setExporting] = useState(false);
   const [checklistDirty, setChecklistDirty] = useState(false);
+  const {
+    activeTab,
+    requestTab,
+    showDiscardConfirm,
+    confirmTabSwitch,
+    cancelTabSwitch,
+  } = useTripTabs(checklistDirty);
   const [showEditTrip, setShowEditTrip] = useState(false);
 
   const dnd = useDragAndDrop(trip?.id ?? null, content, reloadContent);
@@ -114,17 +127,11 @@ export default function TripDetail() {
 
   if (loadError) {
     return (
-      <div className='flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-4'>
-        <StatusMessage variant='error'>
-          載入旅程資料失敗，請稍後再試
-        </StatusMessage>
-        <button
-          onClick={() => void retryLoad()}
-          className='rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-95'
-        >
-          重試
-        </button>
-      </div>
+      <RetryableError
+        message='載入旅程資料失敗，請稍後再試'
+        onRetry={() => void retryLoad()}
+        className='min-h-screen bg-background p-4'
+      />
     );
   }
 
@@ -162,7 +169,7 @@ export default function TripDetail() {
           ).map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => requestTab(tab.key)}
               className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? 'border-primary text-primary'
@@ -242,8 +249,9 @@ export default function TripDetail() {
           tripId={trip.id}
           onClose={closeModal}
           onSave={(a, staged) =>
-            void handleSaveAttraction(modal.dayIndex, a, staged)
+            handleSaveAttraction(modal.dayIndex, a, staged)
           }
+          onImagesChanged={handleImagesChanged}
         />
       )}
 
@@ -252,7 +260,8 @@ export default function TripDetail() {
           tripId={trip.id}
           attraction={modal.attraction}
           onClose={closeModal}
-          onSave={a => void handleSaveAttraction(modal.dayIndex, a)}
+          onSave={a => handleSaveAttraction(modal.dayIndex, a)}
+          onImagesChanged={handleImagesChanged}
         />
       )}
 
@@ -264,8 +273,9 @@ export default function TripDetail() {
           toName={editConnectionData.toName}
           onClose={closeModal}
           onSave={(c, staged) =>
-            void handleSaveConnection(editConnectionData.dayIndex, c, staged)
+            handleSaveConnection(editConnectionData.dayIndex, c, staged)
           }
+          onImagesChanged={handleImagesChanged}
         />
       )}
 
@@ -277,7 +287,7 @@ export default function TripDetail() {
             closeModal();
             void reloadContent();
           }}
-          onSave={notes => void handleSaveDayNotes(modal.dayIndex, notes)}
+          onSave={notes => handleSaveDayNotes(modal.dayIndex, notes)}
         />
       )}
 
@@ -300,6 +310,7 @@ export default function TripDetail() {
             setShowEditTrip(false);
           }}
           onContentChanged={() => void reloadContent()}
+          onImagesChanged={() => void reloadTrip()}
         />
       )}
 
@@ -315,11 +326,23 @@ export default function TripDetail() {
         />
       )}
 
+      {/* Tab-switch confirmation when the checklist has unsaved checks */}
+      {showDiscardConfirm && (
+        <ConfirmDialog
+          title='確定要切換分頁嗎？'
+          message='清單有尚未儲存的勾選，確定要離開嗎？'
+          cancelLabel='留下'
+          confirmLabel='確定離開'
+          onCancel={cancelTabSwitch}
+          onConfirm={confirmTabSwitch}
+        />
+      )}
+
       {/* Move confirmation when the dragged card would break an existing connection */}
       {dnd.showMoveConfirm && (
         <ConfirmDialog
           title='確定要移動這張卡片嗎？'
-          message='此景點與相鄰卡片之間已設定交通方式，移動後該筆交通方式將會被移除，確定要繼續嗎？'
+          message='移動後，部分卡片之間已設定的交通方式將不再相鄰，並會被一併移除，確定要繼續嗎？'
           cancelLabel='取消'
           confirmLabel='確定移動'
           onCancel={dnd.cancelMove}

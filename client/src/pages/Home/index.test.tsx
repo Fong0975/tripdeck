@@ -31,6 +31,8 @@ vi.mock('./TripList', () => ({
   default: ({
     trips,
     loading,
+    loadError,
+    onRetry,
     onAdd,
     onDelete,
     onEdit,
@@ -38,6 +40,8 @@ vi.mock('./TripList', () => ({
   }: {
     trips: Trip[];
     loading: boolean;
+    loadError?: boolean;
+    onRetry?: () => void;
     onAdd: () => void;
     onDelete: (id: number) => void;
     onEdit: (trip: Trip) => void;
@@ -47,6 +51,8 @@ vi.mock('./TripList', () => ({
       <span>trip-list</span>
       <span>trips:{trips.length}</span>
       <span>loading:{String(loading)}</span>
+      <span>load-error:{String(loadError)}</span>
+      <button onClick={() => onRetry?.()}>trigger-retry</button>
       <button onClick={onAdd}>trigger-add</button>
       <button onClick={() => onDelete(1)}>trigger-delete</button>
       <button onClick={() => onEdit(sampleTrip)}>trigger-edit</button>
@@ -94,10 +100,12 @@ vi.mock('@/components/EditTripModal', () => ({
     trip,
     onClose,
     onUpdated,
+    onImagesChanged,
   }: {
     trip: Trip;
     onClose: () => void;
     onUpdated: (trip: Trip) => void;
+    onImagesChanged?: () => void;
   }) => (
     <div>
       <span>edit-trip-modal</span>
@@ -106,6 +114,7 @@ vi.mock('@/components/EditTripModal', () => ({
       <button onClick={() => onUpdated({ ...trip, title: 'Updated Trip' })}>
         trigger-updated
       </button>
+      <button onClick={onImagesChanged}>trigger-images-changed</button>
     </div>
   ),
 }));
@@ -114,6 +123,7 @@ function makeHomeData(overrides: Partial<ReturnType<typeof useHomeData>> = {}) {
   return {
     trips: [],
     loading: false,
+    loadError: false,
     handleTripAdded: vi.fn(),
     handleDeleteTrip: vi.fn(),
     handleTripUpdated: vi.fn(),
@@ -142,13 +152,14 @@ describe('Home', () => {
   it('passes loading and trips from useHomeData through to TripList', () => {
     const trip = makeTrip({ title: 'Trip A' });
     vi.mocked(useHomeData).mockReturnValue(
-      makeHomeData({ trips: [trip], loading: true }),
+      makeHomeData({ trips: [trip], loading: true, loadError: true }),
     );
 
     render(<Home />);
 
     expect(screen.getByText('trips:1')).toBeInTheDocument();
     expect(screen.getByText('loading:true')).toBeInTheDocument();
+    expect(screen.getByText('load-error:true')).toBeInTheDocument();
   });
 
   it('shows the modal after triggering add and hides it after closing', async () => {
@@ -232,17 +243,36 @@ describe('Home', () => {
     expect(screen.queryByText('import-export-modal')).not.toBeInTheDocument();
   });
 
-  it('calls reloadTrips when the import/export modal reports an import', async () => {
-    const user = userEvent.setup();
-    const reloadTrips = vi.fn();
-    vi.mocked(useHomeData).mockReturnValue(makeHomeData({ reloadTrips }));
-    render(<Home />);
-    await user.click(
-      screen.getByRole('button', { name: 'trigger-import-export' }),
-    );
+  it.each([
+    {
+      description: 'the import/export modal reports an import',
+      openTrigger: 'trigger-import-export',
+      changeTrigger: 'trigger-imported',
+    },
+    {
+      description: 'the edit trip modal reports changed images',
+      openTrigger: 'trigger-edit',
+      changeTrigger: 'trigger-images-changed',
+    },
+    {
+      description: 'the trip list asks to retry a failed load',
+      openTrigger: undefined,
+      changeTrigger: 'trigger-retry',
+    },
+  ])(
+    'calls reloadTrips when $description',
+    async ({ openTrigger, changeTrigger }) => {
+      const user = userEvent.setup();
+      const reloadTrips = vi.fn();
+      vi.mocked(useHomeData).mockReturnValue(makeHomeData({ reloadTrips }));
+      render(<Home />);
+      if (openTrigger) {
+        await user.click(screen.getByRole('button', { name: openTrigger }));
+      }
 
-    await user.click(screen.getByRole('button', { name: 'trigger-imported' }));
+      await user.click(screen.getByRole('button', { name: changeTrigger }));
 
-    expect(reloadTrips).toHaveBeenCalledTimes(1);
-  });
+      expect(reloadTrips).toHaveBeenCalledTimes(1);
+    },
+  );
 });

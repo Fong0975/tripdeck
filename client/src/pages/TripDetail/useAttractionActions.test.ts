@@ -146,6 +146,49 @@ describe('useAttractionActions', () => {
       );
     });
 
+    it.each([
+      {
+        description: 'every staged image uploads',
+        uploadFails: false,
+        variant: 'success' as const,
+        message: '已儲存景點。',
+      },
+      {
+        description: 'a staged image upload fails',
+        uploadFails: true,
+        variant: 'info' as const,
+        message: '已儲存，但部分圖片上傳失敗',
+      },
+    ])(
+      'still reloads and closes the modal after creating when $description',
+      async ({ uploadFails, variant, message }) => {
+        vi.mocked(addAttraction).mockResolvedValue(makeAttraction({ id: 99 }));
+        if (uploadFails) {
+          vi.mocked(uploadAttractionImage).mockRejectedValueOnce(
+            new Error('upload failed'),
+          );
+        }
+        const reloadContent = vi.fn();
+        const closeModal = vi.fn();
+        const { handleSaveAttraction } = useAttractionActions(
+          makeTrip(),
+          makeContent(),
+          reloadContent,
+          closeModal,
+        );
+
+        await handleSaveAttraction(0, makeAttraction({ id: 0 }), [
+          { file: new File(['a'], 'a.jpg'), title: 'First' },
+          { file: new File(['b'], 'b.jpg'), title: 'Second' },
+        ]);
+
+        expect(uploadAttractionImage).toHaveBeenCalledTimes(2);
+        expect(reloadContent).toHaveBeenCalledTimes(1);
+        expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith(variant, message);
+      },
+    );
+
     it('does not upload images when updating an existing attraction', async () => {
       const { handleSaveAttraction } = useAttractionActions(
         makeTrip(),

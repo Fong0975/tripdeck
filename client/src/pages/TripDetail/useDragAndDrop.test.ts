@@ -10,11 +10,7 @@ import {
   makeDay,
 } from '@/test-utils/fixtures';
 import type { TripContent } from '@/types';
-import {
-  addAttraction,
-  deleteAttraction,
-  reorderAttractions,
-} from '@/utils/storage';
+import { moveAttraction, reorderAttractions } from '@/utils/storage';
 
 import { useDragAndDrop } from './useDragAndDrop';
 
@@ -23,8 +19,7 @@ vi.mock('@/utils/storage');
 vi.mock('@/lib/toast');
 
 beforeEach(() => {
-  vi.mocked(addAttraction).mockResolvedValue({ id: 999, name: 'New' });
-  vi.mocked(deleteAttraction).mockResolvedValue(undefined);
+  vi.mocked(moveAttraction).mockResolvedValue(undefined);
   vi.mocked(reorderAttractions).mockResolvedValue(undefined);
 });
 
@@ -151,8 +146,7 @@ describe('useDragAndDrop', () => {
         });
 
         expect(reorderAttractions).not.toHaveBeenCalled();
-        expect(deleteAttraction).not.toHaveBeenCalled();
-        expect(addAttraction).not.toHaveBeenCalled();
+        expect(moveAttraction).not.toHaveBeenCalled();
         expect(onReload).not.toHaveBeenCalled();
       },
     );
@@ -195,31 +189,39 @@ describe('useDragAndDrop', () => {
       expect(onReload).not.toHaveBeenCalled();
     });
 
-    it('moves an attraction to a different day and reloads', async () => {
-      const onReload = vi.fn();
-      const { result } = renderHook(() =>
-        useDragAndDrop(1, makeTwoDayContent(), onReload),
-      );
+    it.each([
+      {
+        description: 'over an attraction in another day, at its index',
+        overId: 200 as number | string,
+        expectedIndex: 0,
+      },
+      {
+        description: "on another day's column, at the end",
+        overId: 'day-1',
+        expectedIndex: 1,
+      },
+    ])(
+      'moves an attraction dropped $description and reloads',
+      async ({ overId, expectedIndex }) => {
+        const onReload = vi.fn();
+        const { result } = renderHook(() =>
+          useDragAndDrop(1, makeTwoDayContent(), onReload),
+        );
 
-      act(() => {
-        result.current.handleDragEnd(makeDragEndEvent(100, 200));
-      });
+        act(() => {
+          result.current.handleDragEnd(makeDragEndEvent(100, overId));
+        });
 
-      await vi.waitFor(() => {
-        expect(onReload).toHaveBeenCalled();
-      });
-      expect(deleteAttraction).toHaveBeenCalledWith(1, 100);
-      expect(addAttraction).toHaveBeenCalledWith(1, 20, {
-        name: 'A',
-        googleMapUrl: undefined,
-        notes: undefined,
-        nearbyAttractions: undefined,
-        referenceWebsites: undefined,
-      });
-    });
+        await vi.waitFor(() => {
+          expect(onReload).toHaveBeenCalled();
+        });
+        expect(moveAttraction).toHaveBeenCalledWith(1, 100, 20, expectedIndex);
+        expect(showToast).not.toHaveBeenCalled();
+      },
+    );
 
-    it('shows an error toast and does not reload when moving fails', async () => {
-      vi.mocked(deleteAttraction).mockRejectedValueOnce(
+    it('shows an error toast and still reloads when moving fails', async () => {
+      vi.mocked(moveAttraction).mockRejectedValueOnce(
         new Error('network error'),
       );
       const onReload = vi.fn();
@@ -232,12 +234,12 @@ describe('useDragAndDrop', () => {
       });
 
       await vi.waitFor(() => {
-        expect(showToast).toHaveBeenCalledWith(
-          'error',
-          '移動景點失敗，請稍後再試',
-        );
+        expect(onReload).toHaveBeenCalled();
       });
-      expect(onReload).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '移動景點失敗，請稍後再試',
+      );
     });
 
     describe('when the move would break an existing connection', () => {
@@ -306,9 +308,55 @@ describe('useDragAndDrop', () => {
           result.current.handleDragEnd(makeDragEndEvent(102, 200));
         });
 
-        expect(deleteAttraction).toHaveBeenCalledWith(1, 102);
+        expect(moveAttraction).toHaveBeenCalledWith(1, 102, 20, 0);
         expect(result.current.showMoveConfirm).toBe(false);
       });
+
+      it.each([
+        {
+          description: 'between two connected attractions',
+          overId: 101 as number | string,
+          expectedDialog: true,
+          expectedIndex: 1,
+        },
+        {
+          description: 'before a connected pair',
+          overId: 100,
+          expectedDialog: false,
+          expectedIndex: 0,
+        },
+        {
+          description: 'after a connected pair, on the day column',
+          overId: 'day-0',
+          expectedDialog: false,
+          expectedIndex: 3,
+        },
+      ])(
+        'gates a drop into another day $description on the target day connection',
+        ({ overId, expectedDialog, expectedIndex }) => {
+          const { result } = renderHook(() =>
+            useDragAndDrop(1, makeContentWithConnection(), vi.fn()),
+          );
+
+          // Day 20's attraction 200 has no connection of its own; day 10 holds
+          // the 100 -> 101 connection.
+          act(() => {
+            result.current.handleDragEnd(makeDragEndEvent(200, overId));
+          });
+
+          expect(result.current.showMoveConfirm).toBe(expectedDialog);
+          if (expectedDialog) {
+            expect(moveAttraction).not.toHaveBeenCalled();
+          } else {
+            expect(moveAttraction).toHaveBeenCalledWith(
+              1,
+              200,
+              10,
+              expectedIndex,
+            );
+          }
+        },
+      );
 
       it('shows the dialog before moving a card with a connection to another day', async () => {
         const onReload = vi.fn();
@@ -320,7 +368,7 @@ describe('useDragAndDrop', () => {
           result.current.handleDragEnd(makeDragEndEvent(100, 200));
         });
 
-        expect(deleteAttraction).not.toHaveBeenCalled();
+        expect(moveAttraction).not.toHaveBeenCalled();
         expect(result.current.showMoveConfirm).toBe(true);
 
         act(() => {
@@ -330,14 +378,8 @@ describe('useDragAndDrop', () => {
         await vi.waitFor(() => {
           expect(onReload).toHaveBeenCalled();
         });
-        expect(deleteAttraction).toHaveBeenCalledWith(1, 100);
-        expect(addAttraction).toHaveBeenCalledWith(1, 20, {
-          name: 'A',
-          googleMapUrl: undefined,
-          notes: undefined,
-          nearbyAttractions: undefined,
-          referenceWebsites: undefined,
-        });
+        expect(moveAttraction).toHaveBeenCalledWith(1, 100, 20, 0);
+        expect(result.current.showMoveConfirm).toBe(false);
       });
     });
 

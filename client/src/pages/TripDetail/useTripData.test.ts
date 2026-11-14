@@ -36,9 +36,20 @@ describe('useTripData', () => {
     expect(getTrip).not.toHaveBeenCalled();
   });
 
-  it('navigates home when the fetched trip is not found', async () => {
-    vi.mocked(getTrip).mockResolvedValue(null);
-    vi.mocked(getTripContent).mockResolvedValue(makeContent([]));
+  it.each([
+    {
+      description: 'the trip is not found',
+      trip: null,
+      content: makeContent([]),
+    },
+    {
+      description: 'the trip content is not found',
+      trip: makeTrip(),
+      content: null,
+    },
+  ])('navigates home when $description', async ({ trip, content }) => {
+    vi.mocked(getTrip).mockResolvedValue(trip);
+    vi.mocked(getTripContent).mockResolvedValue(content);
 
     const { result } = renderHook(() => useTripData('1'));
 
@@ -46,6 +57,7 @@ describe('useTripData', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
     expect(result.current.trip).toBeNull();
+    expect(result.current.loadError).toBe(false);
   });
 
   it('loads the trip and content for a valid numeric id', async () => {
@@ -64,34 +76,47 @@ describe('useTripData', () => {
   });
 
   describe('load failure', () => {
-    it('sets loadError and shows a toast when fetching fails, then recovers via retryLoad', async () => {
-      const trip = makeTrip();
-      const content = makeContent([]);
-      vi.mocked(getTrip).mockRejectedValueOnce(new Error('network error'));
-      vi.mocked(getTripContent).mockResolvedValue(content);
+    it.each([
+      { description: 'fetching the trip fails', failing: 'trip' },
+      { description: 'fetching the content fails', failing: 'content' },
+    ])(
+      'sets loadError and shows a toast when $description, then recovers via retryLoad',
+      async ({ failing }) => {
+        const trip = makeTrip();
+        const content = makeContent([]);
+        vi.mocked(getTrip).mockResolvedValue(trip);
+        vi.mocked(getTripContent).mockResolvedValue(content);
+        if (failing === 'trip') {
+          vi.mocked(getTrip).mockRejectedValueOnce(new Error('API error 500'));
+        } else {
+          vi.mocked(getTripContent).mockRejectedValueOnce(
+            new Error('API error 500'),
+          );
+        }
 
-      const { result } = renderHook(() => useTripData('1'));
+        const { result } = renderHook(() => useTripData('1'));
 
-      await waitFor(() => {
-        expect(result.current.loadError).toBe(true);
-      });
-      expect(result.current.trip).toBeNull();
-      expect(result.current.content).toBeNull();
-      expect(showToast).toHaveBeenCalledWith(
-        'error',
-        '載入旅程資料失敗，請稍後再試',
-      );
+        await waitFor(() => {
+          expect(result.current.loadError).toBe(true);
+        });
+        expect(result.current.trip).toBeNull();
+        expect(result.current.content).toBeNull();
+        expect(showToast).toHaveBeenCalledWith(
+          'error',
+          '載入旅程資料失敗，請稍後再試',
+        );
 
-      vi.mocked(getTrip).mockResolvedValue(trip);
+        vi.mocked(getTrip).mockResolvedValue(trip);
 
-      await act(async () => {
-        await result.current.retryLoad();
-      });
+        await act(async () => {
+          await result.current.retryLoad();
+        });
 
-      expect(result.current.loadError).toBe(false);
-      expect(result.current.trip).toEqual(trip);
-      expect(result.current.content).toEqual(content);
-    });
+        expect(result.current.loadError).toBe(false);
+        expect(result.current.trip).toEqual(trip);
+        expect(result.current.content).toEqual(content);
+      },
+    );
   });
 
   describe('reloadContent', () => {
@@ -122,6 +147,101 @@ describe('useTripData', () => {
       });
 
       expect(result.current.content).toEqual(refreshedContent);
+      expect(showToast).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        description: 'the request rejects',
+        mockReload: () =>
+          vi
+            .mocked(getTripContent)
+            .mockRejectedValueOnce(new Error('API error 500')),
+      },
+      {
+        description: 'the content is not found',
+        mockReload: () => vi.mocked(getTripContent).mockResolvedValueOnce(null),
+      },
+    ])(
+      'keeps the previous content and shows a toast when $description',
+      async ({ mockReload }) => {
+        const initialContent = makeContent([makeDay()]);
+        vi.mocked(getTrip).mockResolvedValue(makeTrip());
+        vi.mocked(getTripContent).mockResolvedValueOnce(initialContent);
+
+        const { result } = renderHook(() => useTripData('1'));
+        await waitFor(() => {
+          expect(result.current.content).toEqual(initialContent);
+        });
+
+        mockReload();
+        await act(async () => {
+          await expect(result.current.reloadContent()).resolves.toBeUndefined();
+        });
+
+        expect(result.current.content).toEqual(initialContent);
+        expect(showToast).toHaveBeenCalledWith(
+          'error',
+          '重新載入行程內容失敗，請稍後再試',
+        );
+      },
+    );
+  });
+
+  describe('reloadTrip', () => {
+    it('does nothing when id is undefined', async () => {
+      const { result } = renderHook(() => useTripData(undefined));
+
+      await result.current.reloadTrip();
+
+      expect(getTrip).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        description: 'replaces the trip when the refetch succeeds',
+        mockReload: (fresh: ReturnType<typeof makeTrip>) =>
+          vi.mocked(getTrip).mockResolvedValueOnce(fresh),
+        expectFresh: true,
+      },
+      {
+        description: 'keeps the previous trip when the refetch rejects',
+        mockReload: () =>
+          vi.mocked(getTrip).mockRejectedValueOnce(new Error('API error 500')),
+        expectFresh: false,
+      },
+      {
+        description: 'keeps the previous trip when the trip is not found',
+        mockReload: () => vi.mocked(getTrip).mockResolvedValueOnce(null),
+        expectFresh: false,
+      },
+    ])('$description', async ({ mockReload, expectFresh }) => {
+      const initialTrip = makeTrip();
+      const freshTrip = { ...makeTrip(), title: 'Refreshed' };
+      vi.mocked(getTrip).mockResolvedValueOnce(initialTrip);
+      vi.mocked(getTripContent).mockResolvedValue(makeContent([]));
+
+      const { result } = renderHook(() => useTripData('1'));
+      await waitFor(() => {
+        expect(result.current.trip).toEqual(initialTrip);
+      });
+
+      mockReload(freshTrip);
+      await act(async () => {
+        await expect(result.current.reloadTrip()).resolves.toBeUndefined();
+      });
+
+      expect(result.current.trip).toEqual(
+        expectFresh ? freshTrip : initialTrip,
+      );
+      if (expectFresh) {
+        expect(showToast).not.toHaveBeenCalled();
+      } else {
+        expect(showToast).toHaveBeenCalledWith(
+          'error',
+          '重新載入旅程資料失敗，請稍後再試',
+        );
+      }
     });
   });
 

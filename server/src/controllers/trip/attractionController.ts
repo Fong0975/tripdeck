@@ -8,6 +8,7 @@ import type {
   ReorderAttractionsBody,
   UpdateAttractionBody,
 } from '../../types/trip';
+import { parseId } from '../../utils/parseId';
 
 const logger = createLogger('attraction');
 
@@ -268,5 +269,99 @@ export async function reorderAttractions(
       err,
     );
     res.status(500).json({ error: 'Failed to reorder attractions' });
+  }
+}
+
+/** Request body of {@link moveAttraction}. */
+interface MoveAttractionBody {
+  dayId?: unknown;
+  index?: unknown;
+}
+
+/** Returns whether value is a non-negative safe integer. */
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+export async function moveAttraction(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Attractions']
+     #swagger.summary = 'Move an attraction to a position in another (or the same) day'
+     #swagger.description = 'Keeps the attraction id, so images, websites, times and geo stay attached. Connections whose endpoints are no longer adjacent in the source or target day are deleted. A same-day target behaves as a reorder. index is 0-based and clamped to the end of the day.'
+     #swagger.requestBody = {
+       required: true,
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             required: ['dayId', 'index'],
+             properties: {
+               dayId: { type: 'integer', example: 2 },
+               index: { type: 'integer', minimum: 0, example: 0 }
+             }
+           }
+         }
+       }
+     }
+     #swagger.responses[204] = { description: 'Attraction moved' }
+     #swagger.responses[400] = { description: 'Invalid tripId, attractionId, dayId or index' }
+     #swagger.responses[404] = { description: 'Attraction or day not found' } */
+  try {
+    const tripId = parseId(req.params.tripId);
+    const attractionId = parseId(req.params.attractionId);
+    const body = (req.body ?? {}) as MoveAttractionBody;
+    const dayId = parseId(body.dayId);
+    if (
+      tripId === null ||
+      attractionId === null ||
+      dayId === null ||
+      !isNonNegativeInteger(body.index)
+    ) {
+      logger.warn('Rejected move-attraction request: invalid input', {
+        tripId: req.params.tripId,
+        attractionId: req.params.attractionId,
+        dayId: body.dayId,
+        index: body.index,
+      });
+      res.status(400).json({
+        error:
+          'tripId, attractionId and dayId must be positive integers and index a non-negative integer',
+      });
+      return;
+    }
+
+    const result = await attractionRepo.moveToDay(
+      tripId,
+      attractionId,
+      dayId,
+      body.index,
+    );
+    if (result === 'attraction_not_found') {
+      logger.warn('Move-attraction rejected: attraction not found', {
+        tripId,
+        attractionId,
+      });
+      res.status(404).json({ error: 'Attraction not found' });
+      return;
+    }
+    if (result === 'day_not_found') {
+      logger.warn('Move-attraction rejected: day not found', {
+        tripId,
+        dayId,
+      });
+      res.status(404).json({ error: 'Day not found' });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    logger.error(
+      'Failed to move attraction',
+      { tripId: req.params.tripId, attractionId: req.params.attractionId },
+      err,
+    );
+    res.status(500).json({ error: 'Failed to move attraction' });
   }
 }

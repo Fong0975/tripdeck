@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createSyncTracker,
   type DiffSyncHandlers,
   type EditableEntity,
   itemFieldsChanged,
@@ -332,5 +333,112 @@ describe('syncEditableList', () => {
     expect(add).toHaveBeenCalledTimes(2);
     expect(syncChildren).toHaveBeenNthCalledWith(1, edited[0], 101, undefined);
     expect(syncChildren).toHaveBeenNthCalledWith(2, edited[1], 102, undefined);
+  });
+
+  describe('with a tracker', () => {
+    const isNameChanged = (e: TestEdit, o: TestOrig) => e.name !== o.name;
+
+    it.each([
+      {
+        description: 'skips a delete that already succeeded',
+        removed: [2],
+        added: [] as [number, TestOrig][],
+        originals: [
+          { id: 1, name: 'Kept' },
+          { id: 2, name: 'Removed' },
+        ],
+        edited: [{ id: 1, name: 'Kept' }] as TestEdit[],
+        expected: { add: [], update: [], remove: [], childIds: [1] },
+      },
+      {
+        description: 'skips a create that already succeeded',
+        removed: [],
+        added: [[-1, { id: 101, name: 'New' }]] as [number, TestOrig][],
+        originals: [],
+        edited: [{ id: -1, name: 'New' }] as TestEdit[],
+        expected: { add: [], update: [], remove: [], childIds: [101] },
+      },
+      {
+        description: 'updates a created entry that was edited since',
+        removed: [],
+        added: [[-1, { id: 101, name: 'Old' }]] as [number, TestOrig][],
+        originals: [],
+        edited: [{ id: -1, name: 'New' }] as TestEdit[],
+        expected: { add: [], update: [101], remove: [], childIds: [101] },
+      },
+      {
+        description: 'deletes a created entry that was removed locally since',
+        removed: [],
+        added: [[-1, { id: 101, name: 'New' }]] as [number, TestOrig][],
+        originals: [],
+        edited: [{ id: -1, name: 'New', _deleted: true }] as TestEdit[],
+        expected: { add: [], update: [], remove: [101], childIds: [] },
+      },
+      {
+        description: 'creates an entry not created before',
+        removed: [],
+        added: [] as [number, TestOrig][],
+        originals: [],
+        edited: [{ id: -1, name: 'New' }] as TestEdit[],
+        expected: { add: [-1], update: [], remove: [], childIds: [100] },
+      },
+    ])(
+      '$description',
+      async ({ removed, added, originals, edited, expected }) => {
+        const tracker = createSyncTracker<TestOrig>();
+        removed.forEach(id => tracker.removed.add(id));
+        added.forEach(([tempId, saved]) => tracker.added.set(tempId, saved));
+        const syncChildren = vi.fn<
+          NonNullable<DiffSyncHandlers<TestOrig, TestEdit>['syncChildren']>
+        >(async () => undefined);
+        const handlers = makeHandlers({
+          isChanged: isNameChanged,
+          syncChildren,
+          tracker,
+        });
+
+        await syncEditableList(originals, edited, handlers);
+
+        expect(vi.mocked(handlers.add).mock.calls.map(([e]) => e.id)).toEqual(
+          expected.add,
+        );
+        expect(vi.mocked(handlers.update).mock.calls.map(([id]) => id)).toEqual(
+          expected.update,
+        );
+        expect(vi.mocked(handlers.remove).mock.calls.map(([id]) => id)).toEqual(
+          expected.remove,
+        );
+        expect(syncChildren.mock.calls.map(call => call[1])).toEqual(
+          expected.childIds,
+        );
+      },
+    );
+
+    it('does not repeat completed deletes or creates when retried after a failure', async () => {
+      const tracker = createSyncTracker<TestOrig>();
+      const originals: TestOrig[] = [{ id: 1, name: 'Removed' }];
+      const edited: TestEdit[] = [
+        { id: -1, name: 'First' },
+        { id: -2, name: 'Second' },
+      ];
+      const add = vi
+        .fn()
+        .mockResolvedValueOnce({ id: 101, name: 'First' })
+        .mockRejectedValueOnce(new Error('network error'))
+        .mockResolvedValueOnce({ id: 102, name: 'Second' });
+      const handlers = makeHandlers({ add, tracker });
+
+      await expect(
+        syncEditableList(originals, edited, handlers),
+      ).rejects.toThrow('network error');
+      await syncEditableList(originals, edited, handlers);
+
+      expect(handlers.remove).toHaveBeenCalledTimes(1);
+      expect(add.mock.calls.map(([e]) => e.id)).toEqual([-1, -2, -2]);
+      expect([...tracker.added.entries()]).toEqual([
+        [-1, { id: 101, name: 'First' }],
+        [-2, { id: 102, name: 'Second' }],
+      ]);
+    });
   });
 });

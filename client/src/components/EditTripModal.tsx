@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { useSubmitting } from '@/hooks/useSubmitting';
 import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
@@ -26,6 +27,8 @@ interface Props {
   onUpdated: (trip: Trip) => void;
   /** Called after a successful update that removed day lanes, so the caller can reload its content. */
   onContentChanged?: () => void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
 export default function EditTripModal({
@@ -34,6 +37,7 @@ export default function EditTripModal({
   onClose,
   onUpdated,
   onContentChanged,
+  onImagesChanged,
 }: Props) {
   const [form, setForm] = useState({
     title: trip.title,
@@ -50,8 +54,10 @@ export default function EditTripModal({
     initialImages: trip.images ?? [],
     upload: (file, title) => uploadTripImage(trip.id, file, title),
     remove: imageId => deleteTripImage(trip.id, imageId),
+    onImagesChanged,
   });
   const [error, setError] = useState('');
+  const { submitting, run } = useSubmitting();
   const { pendingImpact, checkImpact, dismissImpact } = useDateShrinkImpact({
     tripStartDate: trip.startDate,
     tripEndDate: trip.endDate,
@@ -83,8 +89,7 @@ export default function EditTripModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateAndSubmit = async () => {
     if (!form.title.trim()) {
       return setError('請輸入旅程名稱');
     }
@@ -97,14 +102,19 @@ export default function EditTripModal({
 
     const canProceed = await checkImpact(form.startDate, form.endDate);
     if (canProceed) {
-      return submitUpdate();
+      await submitUpdate();
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run(validateAndSubmit);
   };
 
   return (
     <>
       <Modal title='編輯旅程' onClose={onClose}>
-        <form onSubmit={e => void handleSubmit(e)} className='space-y-4'>
+        <form onSubmit={handleSubmit} className='space-y-4'>
           <div>
             <label className='mb-1.5 block text-sm font-medium text-foreground'>
               旅程名稱 *
@@ -186,7 +196,7 @@ export default function EditTripModal({
 
           {error && <p className='text-sm text-destructive'>{error}</p>}
 
-          <ModalFooterActions onCancel={onClose} />
+          <ModalFooterActions onCancel={onClose} submitting={submitting} />
         </form>
       </Modal>
 
@@ -213,7 +223,7 @@ export default function EditTripModal({
           onCancel={dismissImpact}
           onConfirm={() => {
             dismissImpact();
-            void submitUpdate();
+            void run(submitUpdate);
           }}
         />
       )}

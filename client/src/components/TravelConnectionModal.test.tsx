@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { makeConnection } from '@/test-utils/fixtures';
+import { submitForm } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 import type { TravelConnection } from '@/types';
 
@@ -338,5 +339,50 @@ describe('TravelConnectionModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'delete image' }));
     expect(handleDelete).toHaveBeenCalledWith(42);
+  });
+
+  it('passes onImagesChanged through to useEntityImages', () => {
+    const onImagesChanged = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        connection={makeFormConnection({ id: 5 })}
+        onImagesChanged={onImagesChanged}
+      />,
+    );
+
+    expect(useEntityImages).toHaveBeenCalledWith(
+      expect.objectContaining({ onImagesChanged }),
+    );
+  });
+
+  it('ignores repeated submits until the pending save settles', async () => {
+    let resolveSave!: () => void;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSave = resolve;
+        }),
+    );
+    const { container } = render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeFormConnection({ id: 5 })}
+      />,
+    );
+
+    submitForm(container);
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('button', { name: '儲存中…' }),
+    ).toBeDisabled();
+
+    await act(async () => resolveSave());
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(2);
   });
 });

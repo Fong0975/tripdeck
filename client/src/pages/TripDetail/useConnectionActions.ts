@@ -1,6 +1,11 @@
 import { showToast } from '@/lib/toast';
 import type { Trip, TravelConnection, TripContent } from '@/types';
 import {
+  showSavedToast,
+  uploadStagedImages,
+  type StagedImage,
+} from '@/utils/stagedImages';
+import {
   addConnection,
   deleteConnection,
   updateConnection,
@@ -35,12 +40,13 @@ export function useConnectionActions(
   const handleSaveConnection = async (
     dayIndex: number,
     connection: TravelConnection,
-    stagedImages?: { file: File; title: string }[],
+    stagedImages?: StagedImage[],
   ) => {
     if (!trip || !content) {
       return;
     }
     const day = content.days[dayIndex];
+    let failedUploads = 0;
     try {
       if (connection.id === 0) {
         const created = await addConnection(trip.id, day.id, {
@@ -51,11 +57,11 @@ export function useConnectionActions(
           route: connection.route ?? undefined,
           notes: connection.notes ?? undefined,
         });
-        if (stagedImages?.length) {
-          for (const { file, title } of stagedImages) {
-            await uploadConnectionImage(trip.id, created.id, file, title);
-          }
-        }
+        ({ failedCount: failedUploads } = await uploadStagedImages(
+          stagedImages,
+          (file, title) =>
+            uploadConnectionImage(trip.id, created.id, file, title),
+        ));
       } else {
         await updateConnection(trip.id, connection.id, {
           transportMode: connection.transportMode,
@@ -66,7 +72,7 @@ export function useConnectionActions(
       }
       await reloadContent();
       closeModal();
-      showToast('success', '已儲存交通方式。');
+      showSavedToast('已儲存交通方式。', failedUploads);
     } catch {
       showToast('error', '儲存交通方式失敗，請稍後再試');
     }

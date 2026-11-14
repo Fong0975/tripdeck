@@ -80,6 +80,77 @@ describe('useEntityImages', () => {
     expect(showToast).toHaveBeenCalledWith('success', '已刪除圖片。');
   });
 
+  it.each([
+    {
+      description: 'an upload succeeds',
+      upload: () => Promise.resolve(makeImage({ id: 2 })),
+      remove: undefined,
+      act: (r: ReturnType<typeof useEntityImages>) =>
+        r.handleUpload(new File(['b'], 'b.jpg'), 'B'),
+      expectedCalls: 1,
+    },
+    {
+      description: 'a delete succeeds',
+      upload: undefined,
+      remove: () => Promise.resolve(),
+      act: (r: ReturnType<typeof useEntityImages>) => r.handleDelete(1),
+      expectedCalls: 1,
+    },
+    {
+      description: 'a delete fails',
+      upload: undefined,
+      remove: () => Promise.reject(new Error('network error')),
+      act: (r: ReturnType<typeof useEntityImages>) => r.handleDelete(1),
+      expectedCalls: 0,
+    },
+    {
+      description: 'no remove function is given',
+      upload: undefined,
+      remove: undefined,
+      act: (r: ReturnType<typeof useEntityImages>) => r.handleDelete(1),
+      expectedCalls: 0,
+    },
+  ])(
+    'calls onImagesChanged $expectedCalls time(s) when $description',
+    async ({ upload, remove, act: run, expectedCalls }) => {
+      const onImagesChanged = vi.fn();
+      const { result } = renderHook(() =>
+        useEntityImages({
+          initialImages: images,
+          upload,
+          remove,
+          onImagesChanged,
+        }),
+      );
+
+      await act(() => run(result.current));
+
+      expect(onImagesChanged).toHaveBeenCalledTimes(expectedCalls);
+    },
+  );
+
+  it('propagates upload failures without calling onImagesChanged', async () => {
+    const onImagesChanged = vi.fn();
+    const upload = vi.fn().mockRejectedValue(new Error('too big'));
+    const { result } = renderHook(() =>
+      useEntityImages({
+        initialImages: [],
+        upload,
+        remove: undefined,
+        onImagesChanged,
+      }),
+    );
+
+    await act(async () => {
+      await expect(
+        result.current.handleUpload(new File(['a'], 'a.jpg'), 'A'),
+      ).rejects.toThrow('too big');
+    });
+
+    expect(onImagesChanged).not.toHaveBeenCalled();
+    expect(result.current.images).toEqual([]);
+  });
+
   it('shows an error toast and keeps the image when remove fails', async () => {
     const remove = vi.fn().mockRejectedValue(new Error('network error'));
     const { result } = renderHook(() =>

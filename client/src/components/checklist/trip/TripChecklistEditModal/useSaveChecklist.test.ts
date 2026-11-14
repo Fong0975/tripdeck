@@ -331,4 +331,76 @@ describe('useSaveChecklist', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(result.current.saving).toBe(false);
   });
+
+  it.each([
+    {
+      description: 'occasions saved before a later category failure',
+      mutate: (edit: ReturnType<typeof unchangedEdit>) => {
+        edit.occasions = [{ id: -1, name: 'New' }];
+        edit.categories.push({ id: -2, name: 'New', items: [] });
+      },
+      failOnce: () =>
+        vi.mocked(addTripCategory).mockRejectedValueOnce(new Error('network')),
+      expectedCalls: [
+        [deleteOccasion, 1],
+        [addOccasion, 1],
+        [addTripCategory, 2],
+      ] as const,
+    },
+    {
+      description: 'items and specs saved before a later spec failure',
+      mutate: (edit: ReturnType<typeof unchangedEdit>) => {
+        edit.categories[0].items[0].specs = [];
+        edit.categories[0].items.push({
+          id: -3,
+          name: 'New',
+          quantity: null,
+          notes: null,
+          storage_location: null,
+          specs: [{ id: -4, name: 'New', storage_location: null }],
+        });
+      },
+      failOnce: () =>
+        vi.mocked(addTripItemSpec).mockRejectedValueOnce(new Error('network')),
+      expectedCalls: [
+        [deleteTripItemSpec, 1],
+        [addTripItem, 1],
+        [addTripItemSpec, 2],
+      ] as const,
+    },
+  ])(
+    'does not repeat completed creates/deletes when retrying after a failure: $description',
+    async ({ mutate, failOnce, expectedCalls }) => {
+      failOnce();
+      const edit = unchangedEdit();
+      mutate(edit);
+      const onSaved = vi.fn();
+      const { result } = renderHook(() =>
+        useSaveChecklist(1, checklist, edit, onSaved, vi.fn()),
+      );
+
+      await act(() => result.current.handleSave());
+      expect(onSaved).not.toHaveBeenCalled();
+      await act(() => result.current.handleSave());
+
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      for (const [api, times] of expectedCalls) {
+        expect(api).toHaveBeenCalledTimes(times);
+      }
+    },
+  );
+
+  it('ignores a second save while one is already in flight', async () => {
+    const edit = unchangedEdit();
+    edit.occasions.push({ id: -1, name: 'New' });
+    const { result } = renderHook(() =>
+      useSaveChecklist(1, checklist, edit, vi.fn(), vi.fn()),
+    );
+
+    await act(() =>
+      Promise.all([result.current.handleSave(), result.current.handleSave()]),
+    );
+
+    expect(addOccasion).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { useSubmitting } from '@/hooks/useSubmitting';
 import type { DayPlan } from '@/types';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
 
@@ -12,7 +13,10 @@ interface Props {
   tripId: number;
   day: DayPlan;
   onClose: () => void;
-  onSave: (notes: string | null) => void;
+  /** Return the save promise so the modal can block repeat submits until it settles. */
+  onSave: (notes: string | null) => Promise<void> | void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
 export default function EditDayNoteModal({
@@ -20,6 +24,7 @@ export default function EditDayNoteModal({
   day,
   onClose,
   onSave,
+  onImagesChanged,
 }: Props) {
   const [notes, setNotes] = useState(day.notes ?? '');
   const {
@@ -30,11 +35,13 @@ export default function EditDayNoteModal({
     initialImages: day.images ?? [],
     upload: (file, title) => uploadDayImage(tripId, day.id, file, title),
     remove: imageId => deleteDayImage(tripId, day.id, imageId),
+    onImagesChanged,
   });
+  const { submitting, run } = useSubmitting();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(notes.trim() || null);
+    void run(() => onSave(notes.trim() || null));
   };
 
   return (
@@ -64,7 +71,7 @@ export default function EditDayNoteModal({
           />
         </div>
 
-        <ModalFooterActions onCancel={onClose} />
+        <ModalFooterActions onCancel={onClose} submitting={submitting} />
       </form>
     </Modal>
   );

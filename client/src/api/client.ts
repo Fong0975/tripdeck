@@ -14,10 +14,22 @@ export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
+/**
+ * Sends a request to the backend and parses the JSON response.
+ *
+ * @param url - API path (e.g. `/api/trips/1`).
+ * @param init - Optional fetch options.
+ * @returns The parsed JSON body, or `undefined` for a 204 response.
+ * @throws {ApiError} carrying the HTTP `status` when the response is not ok.
+ */
 export async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, init);
   if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${url}`);
+    throw new ApiError(
+      `API error ${res.status}: ${url}`,
+      undefined,
+      res.status,
+    );
   }
   if (res.status === 204) {
     return undefined as T;
@@ -33,14 +45,16 @@ export function json(body: unknown): RequestInit {
 }
 
 /**
- * Thrown by {@link apiJson} so callers can surface structured validation
- * failures (e.g. which backup trips are missing which image files) rather
- * than just a message.
+ * Thrown by {@link api} and {@link apiJson} for non-ok responses, so callers
+ * can branch on the HTTP `status` or surface structured validation failures
+ * (e.g. which backup trips are missing which image files) rather than just a
+ * message.
  */
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly details?: unknown,
+    public readonly status?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -90,7 +104,7 @@ export async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, init);
   if (!res.ok) {
     const { message, details } = await readErrorBody(res, url);
-    throw new ApiError(message, details);
+    throw new ApiError(message, details, res.status);
   }
   if (res.status === 204) {
     return undefined as T;

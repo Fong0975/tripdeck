@@ -5,6 +5,30 @@ export interface EditableEntity {
   _deleted?: boolean;
 }
 
+/**
+ * Remembers which non-idempotent calls of a diff sync already succeeded, so
+ * re-running the same sync after a mid-way failure neither re-creates
+ * entries (duplicates) nor re-deletes them (404). Updates are idempotent and
+ * are simply re-issued.
+ *
+ * Use one tracker per entity kind (occasions, categories, items, specs):
+ * server ids are only unique per table, while temp ids are globally unique.
+ * Keep the trackers alive across save attempts for the same edit session.
+ */
+export interface SyncTracker<TOrig extends { id: number }> {
+  /** Server ids whose delete call already succeeded. */
+  removed: Set<number>;
+  /** Temp (negative) id → the entity the server created for it. */
+  added: Map<number, TOrig>;
+}
+
+/** Creates an empty {@link SyncTracker}. */
+export function createSyncTracker<
+  TOrig extends { id: number },
+>(): SyncTracker<TOrig> {
+  return { removed: new Set(), added: new Map() };
+}
+
 export interface DiffSyncHandlers<
   TOrig extends { id: number },
   TEdit extends EditableEntity,
@@ -18,7 +42,7 @@ export interface DiffSyncHandlers<
    * Diffs a nested list belonging to this entry (e.g. an item's specs)
    * against the same original/edited convention. Called for every kept or
    * newly-added entry, after its own update/add call. `orig` is undefined
-   * for a freshly-added parent, since all of its children are necessarily
+   * for a newly-added parent, since all of its children are necessarily
    * new too.
    */
   syncChildren?: (
@@ -26,6 +50,8 @@ export interface DiffSyncHandlers<
     savedId: number,
     orig: TOrig | undefined,
   ) => Promise<void>;
+  /** Makes the sync safe to retry after a partial failure; see {@link SyncTracker}. */
+  tracker?: SyncTracker<TOrig>;
 }
 
 /**
@@ -34,6 +60,10 @@ export interface DiffSyncHandlers<
  * editing convention: negative temp ids mark unsaved new entries, and a
  * `_deleted` flag marks entries removed locally but not yet deleted
  * server-side.
+ *
+ * With a `tracker`, a retry skips deletes and creates that already
+ * succeeded (a previously-created entry is updated instead if it was edited
+ * since, and deleted if it was removed locally since).
  */
 export async function syncEditableList<
   TOrig extends { id: number },
@@ -43,12 +73,23 @@ export async function syncEditableList<
   edited: TEdit[],
   handlers: DiffSyncHandlers<TOrig, TEdit>,
 ): Promise<void> {
+  const { tracker } = handlers;
+
   const keptIds = new Set(
     edited.filter(e => !e._deleted && e.id > 0).map(e => e.id),
   );
   for (const orig of originals) {
-    if (!keptIds.has(orig.id)) {
+    if (!keptIds.has(orig.id) && !tracker?.removed.has(orig.id)) {
       await handlers.remove(orig.id);
+      tracker?.removed.add(orig.id);
+    }
+  }
+
+  for (const e of edited.filter(e => e._deleted && e.id < 0)) {
+    const created = tracker?.added.get(e.id);
+    if (created) {
+      await handlers.remove(created.id);
+      tracker?.added.delete(e.id);
     }
   }
 
@@ -66,7 +107,13 @@ export async function syncEditableList<
   }
 
   for (const e of edited.filter(e => !e._deleted && e.id < 0)) {
-    const saved = await handlers.add(e);
+    let saved = tracker?.added.get(e.id);
+    if (!saved) {
+      saved = await handlers.add(e);
+      tracker?.added.set(e.id, saved);
+    } else if (handlers.isChanged(e, saved)) {
+      await handlers.update(saved.id, e, saved);
+    }
     if (handlers.syncChildren) {
       await handlers.syncChildren(e, saved.id, undefined);
     }

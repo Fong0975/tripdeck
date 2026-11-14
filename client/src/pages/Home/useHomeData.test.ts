@@ -27,6 +27,62 @@ describe('useHomeData', () => {
     expect(result.current.trips).toEqual(trips);
   });
 
+  it.each([
+    {
+      description: 'the initial load fails',
+      initial: null,
+    },
+    {
+      description: 'a reload fails after a successful load',
+      initial: [makeTrip()],
+    },
+  ])(
+    'clears loading, sets loadError, keeps trips, and shows a toast when $description',
+    async ({ initial }) => {
+      if (initial) {
+        vi.mocked(getTrips).mockResolvedValueOnce(initial);
+      } else {
+        vi.mocked(getTrips).mockRejectedValueOnce(new Error('API error 500'));
+      }
+      const { result } = renderHook(() => useHomeData());
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      if (initial) {
+        vi.mocked(getTrips).mockRejectedValueOnce(new Error('API error 500'));
+        await act(async () => {
+          await result.current.reloadTrips();
+        });
+      }
+
+      expect(result.current.loadError).toBe(true);
+      expect(result.current.trips).toEqual(initial ?? []);
+      expect(showToast).toHaveBeenCalledWith(
+        'error',
+        '載入旅程列表失敗，請稍後再試',
+      );
+    },
+  );
+
+  it('clears loadError once a reload succeeds', async () => {
+    const trips = [makeTrip()];
+    vi.mocked(getTrips)
+      .mockRejectedValueOnce(new Error('API error 500'))
+      .mockResolvedValueOnce(trips);
+    const { result } = renderHook(() => useHomeData());
+    await waitFor(() => {
+      expect(result.current.loadError).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.reloadTrips();
+    });
+
+    expect(result.current.loadError).toBe(false);
+    expect(result.current.trips).toEqual(trips);
+  });
+
   it('re-fetches trips from the API when reloadTrips is called again', async () => {
     const initial = [makeTrip({ id: 1, title: 'Trip A' })];
     const updated = [

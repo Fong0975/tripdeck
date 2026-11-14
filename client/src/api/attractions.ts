@@ -69,3 +69,24 @@ export async function reorderAttractions(
     ...json({ orderedIds }),
   });
 }
+
+/**
+ * Moves an attraction to a position in another (or the same) day, keeping its
+ * id so images, times and geo stay attached.
+ *
+ * @param tripId - Trip the attraction belongs to.
+ * @param attractionId - Attraction to move.
+ * @param dayId - Target day.
+ * @param index - 0-based position in the target day; the server clamps it.
+ */
+export async function moveAttraction(
+  tripId: number,
+  attractionId: number,
+  dayId: number,
+  index: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/attractions/${attractionId}/move`, {
+    method: 'PATCH',
+    ...json({ dayId, index }),
+  });
+}

@@ -89,6 +89,7 @@ vi.mock('@/components/AttractionModal', () => ({
     attraction,
     onClose,
     onSave,
+    onImagesChanged,
   }: {
     tripId?: number;
     attraction?: Attraction;
@@ -96,7 +97,8 @@ vi.mock('@/components/AttractionModal', () => ({
     onSave: (
       attraction: Attraction,
       stagedImages?: { file: File; title: string }[],
-    ) => void;
+    ) => Promise<void> | void;
+    onImagesChanged?: () => void;
   }) => (
     <div>
       <span>attraction-modal</span>
@@ -104,6 +106,9 @@ vi.mock('@/components/AttractionModal', () => ({
       <button onClick={onClose}>close-attraction-modal</button>
       <button onClick={() => onSave(attraction ?? { id: 0, name: 'New' })}>
         save-attraction-modal
+      </button>
+      <button onClick={() => onImagesChanged?.()}>
+        attraction-images-changed
       </button>
     </div>
   ),
@@ -116,13 +121,15 @@ vi.mock('@/components/TravelConnectionModal', () => ({
     toName,
     onClose,
     onSave,
+    onImagesChanged,
   }: {
     tripId?: number;
     connection: TravelConnection;
     fromName: string;
     toName: string;
     onClose: () => void;
-    onSave: (connection: TravelConnection) => void;
+    onSave: (connection: TravelConnection) => Promise<void> | void;
+    onImagesChanged?: () => void;
   }) => (
     <div>
       <span>connection-modal</span>
@@ -131,6 +138,9 @@ vi.mock('@/components/TravelConnectionModal', () => ({
       </span>
       <button onClick={onClose}>close-connection-modal</button>
       <button onClick={() => onSave(connection)}>save-connection-modal</button>
+      <button onClick={() => onImagesChanged?.()}>
+        connection-images-changed
+      </button>
     </div>
   ),
 }));
@@ -201,11 +211,13 @@ vi.mock('@/components/EditTripModal', () => ({
     onClose,
     onUpdated,
     onContentChanged,
+    onImagesChanged,
   }: {
     trip: Trip;
     onClose: () => void;
     onUpdated: (trip: Trip) => void;
     onContentChanged?: () => void;
+    onImagesChanged?: () => void;
   }) => (
     <div>
       <span>edit-trip-modal</span>
@@ -217,6 +229,7 @@ vi.mock('@/components/EditTripModal', () => ({
       <button onClick={() => onContentChanged?.()}>
         content-changed-trigger
       </button>
+      <button onClick={() => onImagesChanged?.()}>trip-images-changed</button>
     </div>
   ),
 }));
@@ -257,6 +270,7 @@ function makeTripData(
     trip: makeBoardTrip(),
     content: makeContent(makeBoardDays()),
     reloadContent: vi.fn(),
+    reloadTrip: vi.fn(),
     setTrip: vi.fn(),
     loadError: false,
     retryLoad: vi.fn(),
@@ -425,6 +439,58 @@ describe('TripDetail', () => {
     const calls = vi.mocked(useUnsavedChangesGuard).mock.calls;
     expect(calls[calls.length - 1][0]).toBe(true);
   });
+
+  it.each([
+    {
+      description: 'switches without confirmation when the checklist is clean',
+      markDirty: false,
+      resolve: null,
+      expectConfirm: false,
+      expectChecklist: false,
+    },
+    {
+      description: 'stays on the checklist when discarding is cancelled',
+      markDirty: true,
+      resolve: 'dialog-cancel',
+      expectConfirm: true,
+      expectChecklist: true,
+    },
+    {
+      description: 'switches once discarding is confirmed',
+      markDirty: true,
+      resolve: 'dialog-confirm',
+      expectConfirm: true,
+      expectChecklist: false,
+    },
+  ])(
+    'leaving the checklist tab $description',
+    async ({ markDirty, resolve, expectConfirm, expectChecklist }) => {
+      const user = userEvent.setup();
+      renderTripDetail();
+      await user.click(screen.getByText('行李清單'));
+      if (markDirty) {
+        await user.click(screen.getByText('mark-dirty'));
+      }
+
+      await user.click(screen.getByText('行程規劃'));
+
+      expect(screen.queryByText('確定要切換分頁嗎？') !== null).toBe(
+        expectConfirm,
+      );
+      if (resolve) {
+        await user.click(screen.getByText(resolve));
+        expect(
+          screen.queryByText('確定要切換分頁嗎？'),
+        ).not.toBeInTheDocument();
+      }
+      expect(screen.queryByText('trip-checklist-panel-1') !== null).toBe(
+        expectChecklist,
+      );
+      expect(screen.queryByText('day-column-0') !== null).toBe(
+        !expectChecklist,
+      );
+    },
+  );
 
   it('invokes guardedLeave when the header back trigger is clicked', async () => {
     const guardedLeave = vi.fn();
@@ -769,6 +835,52 @@ describe('TripDetail', () => {
 
     expect(reloadContent).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    {
+      name: 'the add-attraction modal',
+      open: 'add-attraction-0',
+      trigger: 'attraction-images-changed',
+      expected: 'content',
+    },
+    {
+      name: 'the edit-attraction modal',
+      open: 'edit-attraction-0',
+      trigger: 'attraction-images-changed',
+      expected: 'content',
+    },
+    {
+      name: 'the connection modal',
+      open: 'edit-connection-0',
+      trigger: 'connection-images-changed',
+      expected: 'content',
+    },
+    {
+      name: 'the edit trip modal',
+      open: 'edit-trip-trigger',
+      trigger: 'trip-images-changed',
+      expected: 'trip',
+    },
+  ])(
+    'reloads the $expected when $name reports changed images',
+    async ({ open, trigger, expected }) => {
+      const reloadContent = vi.fn();
+      const reloadTrip = vi.fn();
+      vi.mocked(useTripData).mockReturnValue(
+        makeTripData({ reloadContent, reloadTrip }),
+      );
+      const user = userEvent.setup();
+      renderTripDetail();
+      await user.click(screen.getByText(open));
+
+      await user.click(screen.getByText(trigger));
+
+      expect(reloadContent).toHaveBeenCalledTimes(
+        expected === 'content' ? 1 : 0,
+      );
+      expect(reloadTrip).toHaveBeenCalledTimes(expected === 'trip' ? 1 : 0);
+    },
+  );
 
   it('opens the edit day note modal for the clicked day, then closes it and reloads content via onClose', async () => {
     const reloadContent = vi.fn();

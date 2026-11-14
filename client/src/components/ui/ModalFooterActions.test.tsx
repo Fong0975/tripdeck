@@ -52,18 +52,37 @@ describe('ModalFooterActions', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('disables the submit button and blocks submission when disabled is true', async () => {
-    const onSubmit = vi.fn(e => e.preventDefault());
-    const user = userEvent.setup();
-    render(
-      <form onSubmit={onSubmit}>
-        <ModalFooterActions onCancel={vi.fn()} disabled />
-      </form>,
-    );
+  it.each([
+    {
+      description: 'disabled is true',
+      props: { disabled: true },
+      expectedLabel: '儲存',
+    },
+    {
+      description: 'submitting is true',
+      props: { submitting: true },
+      expectedLabel: '儲存中…',
+    },
+    {
+      description: 'submitting is true with a custom submitting label',
+      props: { submitting: true, submittingLabel: '建立中…' },
+      expectedLabel: '建立中…',
+    },
+  ])(
+    'disables the submit button and blocks submission when $description',
+    async ({ props, expectedLabel }) => {
+      const onSubmit = vi.fn(e => e.preventDefault());
+      const user = userEvent.setup();
+      render(
+        <form onSubmit={onSubmit}>
+          <ModalFooterActions onCancel={vi.fn()} {...props} />
+        </form>,
+      );
 
-    expect(screen.getByText('儲存')).toBeDisabled();
-    await user.click(screen.getByText('儲存'));
+      expect(screen.getByText(expectedLabel)).toBeDisabled();
+      await user.click(screen.getByText(expectedLabel));
 
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
+      expect(onSubmit).not.toHaveBeenCalled();
+    },
+  );
 });

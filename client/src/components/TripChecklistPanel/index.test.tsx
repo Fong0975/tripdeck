@@ -72,6 +72,8 @@ function makeState(
   return {
     checklist: makeChecklist(),
     loading: false,
+    loadError: false,
+    retryLoad: vi.fn(),
     saving: false,
     isDirty: false,
     getCheck: vi.fn(),
@@ -96,6 +98,24 @@ describe('TripChecklistPanel', () => {
     render(<TripChecklistPanel tripId={1} />);
 
     expect(screen.getByText('載入中…')).toBeInTheDocument();
+  });
+
+  it('shows an error with a retry button instead of the spinner when loading failed', async () => {
+    const retryLoad = vi.fn();
+    vi.mocked(useChecklistState).mockReturnValue(
+      makeState({ loadError: true, checklist: null, retryLoad }),
+    );
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+
+    expect(
+      screen.getByText('載入行李清單失敗，請稍後再試'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('載入中…')).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('重試'));
+
+    expect(retryLoad).toHaveBeenCalledTimes(1);
   });
 
   it('shows the empty state when there are no categories and opens and closes the edit modal from it', async () => {

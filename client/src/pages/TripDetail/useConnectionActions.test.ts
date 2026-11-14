@@ -164,6 +164,50 @@ describe('useConnectionActions', () => {
       );
     });
 
+    it.each([
+      {
+        description: 'every staged image uploads',
+        uploadFails: false,
+        variant: 'success' as const,
+        message: '已儲存交通方式。',
+      },
+      {
+        description: 'a staged image upload fails',
+        uploadFails: true,
+        variant: 'info' as const,
+        message: '已儲存，但部分圖片上傳失敗',
+      },
+    ])(
+      'still reloads and closes the modal after creating when $description',
+      async ({ uploadFails, variant, message }) => {
+        vi.mocked(addConnection).mockResolvedValue(makeConnection({ id: 99 }));
+        if (uploadFails) {
+          vi.mocked(uploadConnectionImage).mockRejectedValueOnce(
+            new Error('upload failed'),
+          );
+        }
+        const reloadContent = vi.fn();
+        const closeModal = vi.fn();
+        const { handleSaveConnection } = useConnectionActions(
+          makeTrip(),
+          makeContent(),
+          reloadContent,
+          closeModal,
+          vi.fn(),
+        );
+
+        await handleSaveConnection(0, makeConnection({ id: 0 }), [
+          { file: new File(['a'], 'a.jpg'), title: 'First' },
+          { file: new File(['b'], 'b.jpg'), title: 'Second' },
+        ]);
+
+        expect(uploadConnectionImage).toHaveBeenCalledTimes(2);
+        expect(reloadContent).toHaveBeenCalledTimes(1);
+        expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith(variant, message);
+      },
+    );
+
     it('does not upload images when updating an existing connection', async () => {
       const { handleSaveConnection } = useConnectionActions(
         makeTrip(),

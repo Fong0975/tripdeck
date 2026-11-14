@@ -1,6 +1,11 @@
 import { showToast } from '@/lib/toast';
 import type { Attraction, Trip, TripContent } from '@/types';
 import {
+  showSavedToast,
+  uploadStagedImages,
+  type StagedImage,
+} from '@/utils/stagedImages';
+import {
   addAttraction,
   deleteAttraction,
   duplicateAttraction,
@@ -21,12 +26,13 @@ export function useAttractionActions(
   const handleSaveAttraction = async (
     dayIndex: number,
     attraction: Attraction,
-    stagedImages?: { file: File; title: string }[],
+    stagedImages?: StagedImage[],
   ) => {
     if (!trip || !content) {
       return;
     }
     const day = content.days[dayIndex];
+    let failedUploads = 0;
     try {
       if (attraction.id === 0) {
         const created = await addAttraction(trip.id, day.id, {
@@ -38,11 +44,11 @@ export function useAttractionActions(
           endTime: attraction.endTime ?? undefined,
           referenceWebsites: attraction.referenceWebsites,
         });
-        if (stagedImages?.length) {
-          for (const { file, title } of stagedImages) {
-            await uploadAttractionImage(trip.id, created.id, file, title);
-          }
-        }
+        ({ failedCount: failedUploads } = await uploadStagedImages(
+          stagedImages,
+          (file, title) =>
+            uploadAttractionImage(trip.id, created.id, file, title),
+        ));
       } else {
         await updateAttraction(trip.id, attraction.id, {
           name: attraction.name,
@@ -56,7 +62,7 @@ export function useAttractionActions(
       }
       await reloadContent();
       closeModal();
-      showToast('success', '已儲存景點。');
+      showSavedToast('已儲存景點。', failedUploads);
     } catch {
       showToast('error', '儲存景點失敗，請稍後再試');
     }
