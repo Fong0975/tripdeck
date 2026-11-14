@@ -3,16 +3,77 @@ import type { Request, Response } from 'express';
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
 import type { CreateLocationBody, UpdateLocationBody } from '../../types/trip';
+import { parseId } from '../../utils/parseId';
 
 const logger = createLogger('day-location');
+
+/**
+ * Parses the `tripId` and `locationId` route params, responding with 400 when
+ * either is not a positive integer.
+ *
+ * @param req - Express request carrying the route params.
+ * @param res - Express response used for the 400 reply.
+ * @param action - Human-readable request name used in the log message.
+ * @returns The parsed ids, or null when a 400 response has already been sent.
+ */
+function parseLocationParams(
+  req: Request,
+  res: Response,
+  action: string,
+): { tripId: number; locationId: number } | null {
+  const tripId = parseId(req.params.tripId);
+  const locationId = parseId(req.params.locationId);
+  if (tripId === null || locationId === null) {
+    logger.warn(`${action} rejected: invalid ids`, {
+      tripId: req.params.tripId,
+      locationId: req.params.locationId,
+    });
+    res.status(400).json({ error: 'Invalid tripId or locationId' });
+    return null;
+  }
+  return { tripId, locationId };
+}
+
+/**
+ * Responds with 404 unless the location belongs to one of the trip's days.
+ *
+ * @param res - Express response used for the 404 reply.
+ * @param ids - Parsed trip and location ids.
+ * @param action - Human-readable request name used in the log message.
+ * @returns True when the location belongs to the trip; false when a 404
+ *   response has already been sent.
+ */
+async function ensureLocationInTrip(
+  res: Response,
+  ids: { tripId: number; locationId: number },
+  action: string,
+): Promise<boolean> {
+  const belongs = await tripRepo.verifyLocationBelongsToTrip(
+    ids.locationId,
+    ids.tripId,
+  );
+  if (!belongs) {
+    logger.warn(`${action} rejected: location not found in trip`, ids);
+    res.status(404).json({ error: 'Location not found' });
+  }
+  return belongs;
+}
 
 export async function addDayLocation(
   req: Request,
   res: Response,
 ): Promise<void> {
   try {
-    const tripId = Number(req.params.tripId);
-    const dayId = Number(req.params.dayId);
+    const tripId = parseId(req.params.tripId);
+    const dayId = parseId(req.params.dayId);
+    if (tripId === null || dayId === null) {
+      logger.warn('Add-location rejected: invalid ids', {
+        tripId: req.params.tripId,
+        dayId: req.params.dayId,
+      });
+      res.status(400).json({ error: 'Invalid tripId or dayId' });
+      return;
+    }
     const body = req.body as CreateLocationBody;
 
     if (!body.name?.trim()) {
@@ -53,8 +114,11 @@ export async function updateDayLocation(
   res: Response,
 ): Promise<void> {
   try {
-    const tripId = Number(req.params.tripId);
-    const locationId = Number(req.params.locationId);
+    const ids = parseLocationParams(req, res, 'Update-location');
+    if (!ids) {
+      return;
+    }
+    const { tripId, locationId } = ids;
     const body = req.body as UpdateLocationBody;
 
     if (!body.name?.trim()) {
@@ -66,10 +130,7 @@ export async function updateDayLocation(
       return;
     }
 
-    const trip = await tripRepo.findById(tripId);
-    if (!trip) {
-      logger.warn('Update-location rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
+    if (!(await ensureLocationInTrip(res, ids, 'Update-location'))) {
       return;
     }
 
@@ -98,13 +159,13 @@ export async function deleteDayLocation(
   res: Response,
 ): Promise<void> {
   try {
-    const tripId = Number(req.params.tripId);
-    const locationId = Number(req.params.locationId);
+    const ids = parseLocationParams(req, res, 'Delete-location');
+    if (!ids) {
+      return;
+    }
+    const { tripId, locationId } = ids;
 
-    const trip = await tripRepo.findById(tripId);
-    if (!trip) {
-      logger.warn('Delete-location rejected: trip not found', { tripId });
-      res.status(404).json({ error: 'Trip not found' });
+    if (!(await ensureLocationInTrip(res, ids, 'Delete-location'))) {
       return;
     }
 

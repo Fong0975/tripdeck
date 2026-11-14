@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as tripRepo from '../../repositories/checklist/trip';
 import { invalidNameCases } from '../../test-utils/fixtures';
@@ -22,15 +22,76 @@ import {
 vi.mock('../../repositories/checklist/trip', () => ({
   createOccasion: vi.fn(),
   createTripCategory: vi.fn(),
-  deleteOccasion: vi.fn(),
+  deleteOccasionIfNotLast: vi.fn(),
   deleteTripCategory: vi.fn(),
   findOrInitChecklist: vi.fn(),
-  getOccasionCount: vi.fn(),
+  tripExists: vi.fn(),
   updateOccasion: vi.fn(),
   updateTripCategory: vi.fn(),
   verifyCategoryBelongsToTrip: vi.fn(),
   verifyOccasionBelongsToTrip: vi.fn(),
 }));
+
+beforeEach(() => {
+  vi.mocked(tripRepo.tripExists).mockResolvedValue(true);
+});
+
+describe('invalid id params', () => {
+  const handlerCases: Array<{
+    name: string;
+    handler: typeof getTripChecklist;
+    params: Record<string, string>;
+  }> = [
+    { name: 'getTripChecklist', handler: getTripChecklist, params: {} },
+    { name: 'addOccasion', handler: addOccasion, params: {} },
+    { name: 'updateOccasion', handler: updateOccasion, params: { occId: '2' } },
+    { name: 'deleteOccasion', handler: deleteOccasion, params: { occId: '2' } },
+    { name: 'addTripCategory', handler: addTripCategory, params: {} },
+    {
+      name: 'updateTripCategory',
+      handler: updateTripCategory,
+      params: { catId: '2' },
+    },
+    {
+      name: 'deleteTripCategory',
+      handler: deleteTripCategory,
+      params: { catId: '2' },
+    },
+  ];
+  const tests = handlerCases.flatMap(({ name, handler, params }) => [
+    ...['abc', '0', '-1', '1.5'].map(tripId => ({
+      label: `${name} with tripId=${tripId}`,
+      handler,
+      params: { ...params, tripId },
+      expectedError: 'Invalid tripId',
+    })),
+    ...Object.keys(params).map(key => ({
+      label: `${name} with ${key}=abc`,
+      handler,
+      params: { ...params, tripId: '1', [key]: 'abc' },
+      expectedError: `Invalid ${key}`,
+    })),
+  ]);
+
+  it.each(tests)(
+    'returns 400 for $label',
+    async ({ handler, params, expectedError }) => {
+      const { req, res } = createMockReqRes({
+        params,
+        body: { name: 'Valid name' },
+      });
+
+      await handler(req, res);
+
+      expectJsonStatus(res, 400, { error: expectedError });
+      expect(tripRepo.findOrInitChecklist).not.toHaveBeenCalled();
+      expect(tripRepo.tripExists).not.toHaveBeenCalled();
+      expect(tripRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
+      expect(tripRepo.deleteOccasionIfNotLast).not.toHaveBeenCalled();
+      expect(tripRepo.verifyCategoryBelongsToTrip).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe('getTripChecklist', () => {
   it('returns 200 with the trip checklist', async () => {
@@ -42,6 +103,15 @@ describe('getTripChecklist', () => {
 
     expect(tripRepo.findOrInitChecklist).toHaveBeenCalledWith(5);
     expect(res.json).toHaveBeenCalledWith(checklist);
+  });
+
+  it('returns 404 when the trip does not exist', async () => {
+    vi.mocked(tripRepo.findOrInitChecklist).mockResolvedValue(null);
+    const { req, res } = createMockReqRes({ params: { tripId: '5' } });
+
+    await getTripChecklist(req, res);
+
+    expectJsonStatus(res, 404, { error: 'Trip not found' });
   });
 });
 
@@ -65,8 +135,22 @@ describe('addOccasion', () => {
 
     await addOccasion(req, res);
 
+    expect(tripRepo.tripExists).toHaveBeenCalledWith(1);
     expect(tripRepo.createOccasion).toHaveBeenCalledWith(1, 'Return trip');
     expectJsonStatus(res, 201, occasion);
+  });
+
+  it('returns 404 when the trip does not exist', async () => {
+    vi.mocked(tripRepo.tripExists).mockResolvedValue(false);
+    const { req, res } = createMockReqRes({
+      params: { tripId: '1' },
+      body: { name: 'Return trip' },
+    });
+
+    await addOccasion(req, res);
+
+    expectJsonStatus(res, 404, { error: 'Trip not found' });
+    expect(tripRepo.createOccasion).not.toHaveBeenCalled();
   });
 });
 
@@ -125,67 +209,42 @@ describe('updateOccasion', () => {
 });
 
 describe('deleteOccasion', () => {
-  it('returns 404 when the occasion does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(false);
-    const { req, res } = createMockReqRes({
-      params: { tripId: '1', occId: '2' },
-    });
-
-    await deleteOccasion(req, res);
-
-    expectJsonStatus(res, 404, { error: 'Occasion not found' });
-    expect(tripRepo.getOccasionCount).not.toHaveBeenCalled();
-  });
-
   it.each([
     {
-      count: 1,
+      result: 'deleted' as const,
+      expectStatus: 204,
+      expectBody: undefined,
+    },
+    {
+      result: 'not_found' as const,
+      expectStatus: 404,
+      expectBody: { error: 'Occasion not found' },
+    },
+    {
+      result: 'last_occasion' as const,
       expectStatus: 409,
-      expectError: 'Cannot delete the last occasion',
+      expectBody: { error: 'Cannot delete the last occasion' },
     },
   ])(
-    'returns 409 when the occasion count is $count',
-    async ({ count, expectStatus, expectError }) => {
-      vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-      vi.mocked(tripRepo.getOccasionCount).mockResolvedValue(count);
+    'responds $expectStatus when the repository returns $result',
+    async ({ result, expectStatus, expectBody }) => {
+      vi.mocked(tripRepo.deleteOccasionIfNotLast).mockResolvedValue(result);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', occId: '2' },
       });
 
       await deleteOccasion(req, res);
 
-      expectJsonStatus(res, expectStatus, { error: expectError });
-      expect(tripRepo.deleteOccasion).not.toHaveBeenCalled();
+      expect(tripRepo.deleteOccasionIfNotLast).toHaveBeenCalledWith(1, 2);
+      expect(res.status).toHaveBeenCalledWith(expectStatus);
+      if (expectBody) {
+        expect(res.json).toHaveBeenCalledWith(expectBody);
+      } else {
+        expect(res.send).toHaveBeenCalled();
+        expect(res.json).not.toHaveBeenCalled();
+      }
     },
   );
-
-  it('proceeds to delete when the occasion count is greater than 1', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.getOccasionCount).mockResolvedValue(2);
-    vi.mocked(tripRepo.deleteOccasion).mockResolvedValue(true);
-    const { req, res } = createMockReqRes({
-      params: { tripId: '1', occId: '2' },
-    });
-
-    await deleteOccasion(req, res);
-
-    expect(tripRepo.deleteOccasion).toHaveBeenCalledWith(2);
-    expect(res.status).toHaveBeenCalledWith(204);
-    expect(res.send).toHaveBeenCalled();
-  });
-
-  it('returns 404 when the count allows deletion but the delete resolves false', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.getOccasionCount).mockResolvedValue(2);
-    vi.mocked(tripRepo.deleteOccasion).mockResolvedValue(false);
-    const { req, res } = createMockReqRes({
-      params: { tripId: '1', occId: '2' },
-    });
-
-    await deleteOccasion(req, res);
-
-    expectJsonStatus(res, 404, { error: 'Occasion not found' });
-  });
 });
 
 describe('addTripCategory', () => {
@@ -208,8 +267,22 @@ describe('addTripCategory', () => {
 
     await addTripCategory(req, res);
 
+    expect(tripRepo.tripExists).toHaveBeenCalledWith(1);
     expect(tripRepo.createTripCategory).toHaveBeenCalledWith(1, 'Gear');
     expectJsonStatus(res, 201, category);
+  });
+
+  it('returns 404 when the trip does not exist', async () => {
+    vi.mocked(tripRepo.tripExists).mockResolvedValue(false);
+    const { req, res } = createMockReqRes({
+      params: { tripId: '1' },
+      body: { name: 'Gear' },
+    });
+
+    await addTripCategory(req, res);
+
+    expectJsonStatus(res, 404, { error: 'Trip not found' });
+    expect(tripRepo.createTripCategory).not.toHaveBeenCalled();
   });
 });
 
@@ -341,9 +414,7 @@ describe('500 responses', () => {
       handler: deleteOccasion,
       req: { params: { tripId: '1', occId: '2' } },
       arrange: error =>
-        vi
-          .mocked(tripRepo.verifyOccasionBelongsToTrip)
-          .mockRejectedValue(error),
+        vi.mocked(tripRepo.deleteOccasionIfNotLast).mockRejectedValue(error),
       expectedError: 'Failed to delete occasion',
     },
     {

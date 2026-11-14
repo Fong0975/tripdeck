@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { db, routeSql } from '../../test-utils/dbMocks';
 
-import { addLocation, deleteLocation, updateLocation } from './tripDayLocation';
+import {
+  addLocation,
+  deleteLocation,
+  updateLocation,
+  verifyLocationBelongsToTrip,
+} from './tripDayLocation';
 
 vi.mock('../../config/database', async () => {
   const { db } = await import('../../test-utils/dbMocks');
@@ -28,6 +33,26 @@ describe('tripDayLocation', () => {
         [10, 'Place X', 3],
       );
     });
+  });
+
+  describe('verifyLocationBelongsToTrip', () => {
+    it.each([
+      { rows: [{ id: 300 }], expected: true },
+      { rows: [], expected: false },
+    ])(
+      'returns $expected when rows.length is $rows.length',
+      async ({ rows, expected }) => {
+        mockPoolExecute.mockResolvedValueOnce([rows]);
+
+        const result = await verifyLocationBelongsToTrip(300, 1);
+
+        expect(result).toBe(expected);
+        expect(mockPoolExecute).toHaveBeenCalledWith(
+          expect.stringContaining('td.trip_id = ?'),
+          [300, 1],
+        );
+      },
+    );
   });
 
   describe('updateLocation', () => {

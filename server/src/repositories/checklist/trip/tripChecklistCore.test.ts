@@ -125,8 +125,27 @@ describe('tripChecklistCore', () => {
   describe('initChecklist', () => {
     const tripId = 5;
 
-    function mockTransactionCopyFlow() {
+    interface LockedState {
+      tripRows?: unknown[];
+      occasionRows?: unknown[];
+      categoryRows?: unknown[];
+    }
+
+    function mockTransactionCopyFlow({
+      tripRows = [{ id: tripId }],
+      occasionRows = [],
+      categoryRows = [],
+    }: LockedState = {}) {
       mockConnExecute.mockImplementation((sql: string) => {
+        if (sql.includes('FROM trips')) {
+          return Promise.resolve([tripRows]);
+        }
+        if (sql.startsWith('SELECT id FROM checklist_occasions')) {
+          return Promise.resolve([occasionRows]);
+        }
+        if (sql.startsWith('SELECT id FROM checklist_trip_categories')) {
+          return Promise.resolve([categoryRows]);
+        }
         if (sql.includes('checklist_template_categories')) {
           return Promise.resolve([[{ id: 1, name: '衣物' }]]);
         }
@@ -223,6 +242,11 @@ describe('tripChecklistCore', () => {
 
       const result = await initChecklist(tripId);
 
+      expect(mockConnExecute).toHaveBeenNthCalledWith(
+        1,
+        'SELECT id FROM trips WHERE id = ? FOR UPDATE',
+        [tripId],
+      );
       expect(mockConnExecute).toHaveBeenCalledWith(
         'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
         [tripId, '衣物'],
@@ -262,6 +286,67 @@ describe('tripChecklistCore', () => {
         occasions: [{ id: 900, name: '收拾', checks: {} }],
       });
     });
+
+    const INSERT_CATEGORY_SQL =
+      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)';
+    const INSERT_OCCASION_SQL =
+      "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')";
+
+    it.each([
+      {
+        label: 'the trip does not exist',
+        state: { tripRows: [] },
+        expectCopy: false,
+        expectOccasion: false,
+        expectNull: true,
+      },
+      {
+        label: 'occasions appeared after the lock was taken',
+        state: { occasionRows: [{ id: 900 }] },
+        expectCopy: false,
+        expectOccasion: false,
+        expectNull: false,
+      },
+      {
+        label: 'categories exist but no occasion does',
+        state: { categoryRows: [{ id: 500 }] },
+        expectCopy: false,
+        expectOccasion: true,
+        expectNull: false,
+      },
+      {
+        label: 'the trip has no checklist rows yet',
+        state: {},
+        expectCopy: true,
+        expectOccasion: true,
+        expectNull: false,
+      },
+    ])(
+      'locks the trip first and copies only what is missing when $label',
+      async ({ state, expectCopy, expectOccasion, expectNull }) => {
+        mockTransactionCopyFlow(state);
+        mockFindChecklistAfterInit();
+
+        const result = await initChecklist(tripId);
+
+        expect(mockConnExecute).toHaveBeenNthCalledWith(
+          1,
+          'SELECT id FROM trips WHERE id = ? FOR UPDATE',
+          [tripId],
+        );
+        const executedSql = mockConnExecute.mock.calls.map(([sql]) => sql);
+        expect(executedSql.includes(INSERT_CATEGORY_SQL)).toBe(expectCopy);
+        expect(executedSql.includes(INSERT_OCCASION_SQL)).toBe(expectOccasion);
+        expect(mockConnCommit).toHaveBeenCalled();
+        expect(mockConnRollback).not.toHaveBeenCalled();
+        if (expectNull) {
+          expect(result).toBeNull();
+          expect(mockPoolExecute).not.toHaveBeenCalled();
+        } else {
+          expect(result).not.toBeNull();
+        }
+      },
+    );
 
     it('rolls back the transaction and rethrows when a query fails mid-transaction', async () => {
       mockConnExecute.mockRejectedValueOnce(new Error('db error'));
@@ -318,10 +403,10 @@ describe('tripChecklistCore', () => {
         return Promise.resolve([[]]);
       });
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('checklist_template_categories')) {
-          return Promise.resolve([[]]);
+        if (sql.includes('FROM trips')) {
+          return Promise.resolve([[{ id: 5 }]]);
         }
-        if (sql.includes('checklist_occasions')) {
+        if (sql.startsWith('INSERT INTO checklist_occasions')) {
           return Promise.resolve([{ insertId: 900 }]);
         }
         return Promise.resolve([[]]);
@@ -330,6 +415,10 @@ describe('tripChecklistCore', () => {
       const result = await findOrInitChecklist(5);
 
       expect(mockGetConnection).toHaveBeenCalled();
+      expect(mockConnExecute).toHaveBeenCalledWith(
+        'SELECT id FROM trips WHERE id = ? FOR UPDATE',
+        [5],
+      );
       expect(mockConnExecute).toHaveBeenCalledWith(
         "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')",
         [5],
@@ -340,6 +429,21 @@ describe('tripChecklistCore', () => {
         categories: [],
         occasions: [{ id: 900, name: '收拾', checks: {} }],
       });
+    });
+
+    it('returns null without inserting anything when the trip does not exist', async () => {
+      mockPoolExecute.mockResolvedValue([[]]);
+      mockConnExecute.mockResolvedValue([[]]);
+
+      const result = await findOrInitChecklist(5);
+
+      expect(result).toBeNull();
+      expect(mockConnExecute).toHaveBeenCalledTimes(1);
+      expect(mockConnExecute).toHaveBeenCalledWith(
+        'SELECT id FROM trips WHERE id = ? FOR UPDATE',
+        [5],
+      );
+      expect(mockConnCommit).toHaveBeenCalled();
     });
   });
 });

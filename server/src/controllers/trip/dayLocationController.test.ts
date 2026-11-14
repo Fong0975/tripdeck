@@ -3,13 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../../repositories/trip', () => ({
   addLocation: vi.fn(),
   deleteLocation: vi.fn(),
-  findById: vi.fn(),
   findDayByIdAndTripId: vi.fn(),
   updateLocation: vi.fn(),
+  verifyLocationBelongsToTrip: vi.fn(),
 }));
 
 import * as tripRepo from '../../repositories/trip';
-import { makeTrip } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
@@ -23,8 +22,6 @@ import {
   deleteDayLocation,
   updateDayLocation,
 } from './dayLocationController';
-
-const sampleTrip = makeTrip();
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -54,6 +51,21 @@ describe('Day locations', () => {
       await addDayLocation(req, res);
 
       expectJsonStatus(res, 400, { error: 'name is required' });
+      expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { name: 'tripId is invalid', params: { tripId: 'abc', dayId: '10' } },
+      { name: 'dayId is invalid', params: { tripId: '1', dayId: '-10' } },
+    ])('returns 400 when $name', async ({ params }) => {
+      const { req, res } = createMockReqRes({
+        params,
+        body: { name: 'Kyoto Station' },
+      });
+
+      await addDayLocation(req, res);
+
+      expectJsonStatus(res, 400, { error: 'Invalid tripId or dayId' });
       expect(tripRepo.findDayByIdAndTripId).not.toHaveBeenCalled();
     });
 
@@ -99,11 +111,32 @@ describe('Day locations', () => {
       await updateDayLocation(req, res);
 
       expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.findById).not.toHaveBeenCalled();
+      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
     });
 
-    it('returns 404 when the trip is not found', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(null);
+    it.each([
+      {
+        name: 'tripId is invalid',
+        params: { tripId: 'abc', locationId: '300' },
+      },
+      {
+        name: 'locationId is invalid',
+        params: { tripId: '1', locationId: '0' },
+      },
+    ])('returns 400 when $name', async ({ params }) => {
+      const { req, res } = createMockReqRes({
+        params,
+        body: { name: 'Updated Location' },
+      });
+
+      await updateDayLocation(req, res);
+
+      expectJsonStatus(res, 400, { error: 'Invalid tripId or locationId' });
+      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the location does not belong to the trip', async () => {
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
         body: { name: 'Updated Location' },
@@ -111,12 +144,13 @@ describe('Day locations', () => {
 
       await updateDayLocation(req, res);
 
-      expectJsonStatus(res, 404, { error: 'Trip not found' });
+      expect(tripRepo.verifyLocationBelongsToTrip).toHaveBeenCalledWith(300, 1);
+      expectJsonStatus(res, 404, { error: 'Location not found' });
       expect(tripRepo.updateLocation).not.toHaveBeenCalled();
     });
 
     it('returns 404 when the location is not found', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(true);
       vi.mocked(tripRepo.updateLocation).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
@@ -129,7 +163,7 @@ describe('Day locations', () => {
     });
 
     it('updates the location and responds with the trimmed name', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(true);
       vi.mocked(tripRepo.updateLocation).mockResolvedValue(true);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
@@ -147,20 +181,39 @@ describe('Day locations', () => {
   });
 
   describe('deleteDayLocation', () => {
-    it('returns 404 when the trip is not found', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(null);
+    it.each([
+      {
+        name: 'tripId is invalid',
+        params: { tripId: '1.5', locationId: '300' },
+      },
+      {
+        name: 'locationId is invalid',
+        params: { tripId: '1', locationId: 'x' },
+      },
+    ])('returns 400 when $name', async ({ params }) => {
+      const { req, res } = createMockReqRes({ params });
+
+      await deleteDayLocation(req, res);
+
+      expectJsonStatus(res, 400, { error: 'Invalid tripId or locationId' });
+      expect(tripRepo.verifyLocationBelongsToTrip).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the location does not belong to the trip', async () => {
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
       });
 
       await deleteDayLocation(req, res);
 
-      expectJsonStatus(res, 404, { error: 'Trip not found' });
+      expect(tripRepo.verifyLocationBelongsToTrip).toHaveBeenCalledWith(300, 1);
+      expectJsonStatus(res, 404, { error: 'Location not found' });
       expect(tripRepo.deleteLocation).not.toHaveBeenCalled();
     });
 
     it('returns 404 when the location is not found', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(true);
       vi.mocked(tripRepo.deleteLocation).mockResolvedValue(false);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
@@ -172,7 +225,7 @@ describe('Day locations', () => {
     });
 
     it('deletes the location and responds with 204', async () => {
-      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      vi.mocked(tripRepo.verifyLocationBelongsToTrip).mockResolvedValue(true);
       vi.mocked(tripRepo.deleteLocation).mockResolvedValue(true);
       const { req, res } = createMockReqRes({
         params: { tripId: '1', locationId: '300' },
@@ -205,14 +258,20 @@ describe('500 error handling', () => {
         params: { tripId: '1', locationId: '300' },
         body: { name: 'Updated Location' },
       },
-      arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
+      arrange: error =>
+        vi
+          .mocked(tripRepo.verifyLocationBelongsToTrip)
+          .mockRejectedValue(error),
       expectedError: 'Failed to update location',
     },
     {
       name: 'deleteDayLocation',
       handler: deleteDayLocation,
       req: { params: { tripId: '1', locationId: '300' } },
-      arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
+      arrange: error =>
+        vi
+          .mocked(tripRepo.verifyLocationBelongsToTrip)
+          .mockRejectedValue(error),
       expectedError: 'Failed to delete location',
     },
   ];

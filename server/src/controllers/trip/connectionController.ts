@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 
+import { isTransportMode } from '../../constants/transportModes';
 import { createLogger } from '../../logger';
 import * as connectionRepo from '../../repositories/connectionRepository';
 import * as tripRepo from '../../repositories/trip';
@@ -7,8 +8,34 @@ import type {
   CreateConnectionBody,
   UpdateConnectionBody,
 } from '../../types/trip';
+import { parseId } from '../../utils/parseId';
+
+import {
+  ENDPOINTS_NOT_IN_DAY_ERROR,
+  INVALID_TRANSPORT_MODE_ERROR,
+  isMissing,
+  resolveEndpoints,
+} from './connectionValidation';
 
 const logger = createLogger('connection');
+
+/**
+ * Logs a rejected request and responds with `400 { error }`.
+ *
+ * @param res - Express response.
+ * @param action - Human-readable request name used in the log message.
+ * @param error - Client-facing error message.
+ * @param context - Structured log metadata.
+ */
+function rejectBadRequest(
+  res: Response,
+  action: string,
+  error: string,
+  context: Record<string, unknown>,
+): void {
+  logger.warn(`${action} rejected: ${error}`, context);
+  res.status(400).json({ error });
+}
 
 export async function addConnection(
   req: Request,
@@ -34,10 +61,19 @@ export async function addConnection(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Invalid ids, missing fields, unknown transportMode, or attractions not in this day' }
+     #swagger.responses[404] = { description: 'Day not found' } */
   try {
-    const tripId = Number(req.params.tripId);
-    const dayId = Number(req.params.dayId);
+    const tripId = parseId(req.params.tripId);
+    const dayId = parseId(req.params.dayId);
+    if (tripId === null || dayId === null) {
+      rejectBadRequest(res, 'Add-connection', 'Invalid tripId or dayId', {
+        tripId: req.params.tripId,
+        dayId: req.params.dayId,
+      });
+      return;
+    }
 
     const body = req.body as CreateConnectionBody;
     if (!body.fromAttractionId || !body.toAttractionId || !body.transportMode) {
@@ -52,6 +88,26 @@ export async function addConnection(
       return;
     }
 
+    const resolution = resolveEndpoints(
+      body.fromAttractionId,
+      body.toAttractionId,
+    );
+    if (!resolution.ok) {
+      rejectBadRequest(res, 'Add-connection', resolution.error, {
+        tripId,
+        dayId,
+      });
+      return;
+    }
+    if (!isTransportMode(body.transportMode)) {
+      rejectBadRequest(res, 'Add-connection', INVALID_TRANSPORT_MODE_ERROR, {
+        tripId,
+        dayId,
+        transportMode: body.transportMode,
+      });
+      return;
+    }
+
     const day = await tripRepo.findDayByIdAndTripId(tripId, dayId);
     if (!day) {
       logger.warn('Add-connection rejected: day not found', {
@@ -62,7 +118,26 @@ export async function addConnection(
       return;
     }
 
-    const connection = await connectionRepo.create(dayId, body);
+    const { fromAttractionId, toAttractionId } = resolution.endpoints;
+    const inDay = await connectionRepo.attractionsBelongToDay(
+      dayId,
+      fromAttractionId,
+      toAttractionId,
+    );
+    if (!inDay) {
+      rejectBadRequest(res, 'Add-connection', ENDPOINTS_NOT_IN_DAY_ERROR, {
+        tripId,
+        dayId,
+        fromAttractionId,
+        toAttractionId,
+      });
+      return;
+    }
+
+    const connection = await connectionRepo.create(dayId, {
+      ...body,
+      ...resolution.endpoints,
+    });
     logger.info('Connection created', {
       tripId,
       dayId,
@@ -103,16 +178,40 @@ export async function updateConnection(
            }
          }
        }
-     } */
+     }
+     #swagger.responses[400] = { description: 'Invalid ids, unknown transportMode, or attractions not in the connection\'s day' }
+     #swagger.responses[404] = { description: 'Connection not found' } */
   try {
-    const tripId = Number(req.params.tripId);
-    const connectionId = Number(req.params.connectionId);
+    const tripId = parseId(req.params.tripId);
+    const connectionId = parseId(req.params.connectionId);
+    if (tripId === null || connectionId === null) {
+      rejectBadRequest(
+        res,
+        'Update-connection',
+        'Invalid tripId or connectionId',
+        { tripId: req.params.tripId, connectionId: req.params.connectionId },
+      );
+      return;
+    }
 
-    const belongs = await connectionRepo.verifyBelongsToTrip(
+    const body = req.body as UpdateConnectionBody;
+    if (
+      !isMissing(body.transportMode) &&
+      !isTransportMode(body.transportMode)
+    ) {
+      rejectBadRequest(res, 'Update-connection', INVALID_TRANSPORT_MODE_ERROR, {
+        tripId,
+        connectionId,
+        transportMode: body.transportMode,
+      });
+      return;
+    }
+
+    const current = await connectionRepo.findEndpointsInTrip(
       connectionId,
       tripId,
     );
-    if (!belongs) {
+    if (!current) {
       logger.warn('Update-connection rejected: connection not found', {
         tripId,
         connectionId,
@@ -121,10 +220,39 @@ export async function updateConnection(
       return;
     }
 
-    const updated = await connectionRepo.update(
-      connectionId,
-      req.body as UpdateConnectionBody,
-    );
+    let data = body;
+    if (!isMissing(body.fromAttractionId) || !isMissing(body.toAttractionId)) {
+      const resolution = resolveEndpoints(
+        body.fromAttractionId,
+        body.toAttractionId,
+        current,
+      );
+      if (!resolution.ok) {
+        rejectBadRequest(res, 'Update-connection', resolution.error, {
+          tripId,
+          connectionId,
+        });
+        return;
+      }
+      const { fromAttractionId, toAttractionId } = resolution.endpoints;
+      const inDay = await connectionRepo.attractionsBelongToDay(
+        current.dayId,
+        fromAttractionId,
+        toAttractionId,
+      );
+      if (!inDay) {
+        rejectBadRequest(res, 'Update-connection', ENDPOINTS_NOT_IN_DAY_ERROR, {
+          tripId,
+          connectionId,
+          fromAttractionId,
+          toAttractionId,
+        });
+        return;
+      }
+      data = { ...body, ...resolution.endpoints };
+    }
+
+    const updated = await connectionRepo.update(connectionId, data);
     if (!updated) {
       logger.warn(
         'Update-connection rejected: connection not found on update',
@@ -149,10 +277,21 @@ export async function deleteConnection(
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Connections']
-     #swagger.summary = 'Delete a connection' */
+     #swagger.summary = 'Delete a connection'
+     #swagger.responses[400] = { description: 'Invalid tripId or connectionId' }
+     #swagger.responses[404] = { description: 'Connection not found' } */
   try {
-    const tripId = Number(req.params.tripId);
-    const connectionId = Number(req.params.connectionId);
+    const tripId = parseId(req.params.tripId);
+    const connectionId = parseId(req.params.connectionId);
+    if (tripId === null || connectionId === null) {
+      rejectBadRequest(
+        res,
+        'Delete-connection',
+        'Invalid tripId or connectionId',
+        { tripId: req.params.tripId, connectionId: req.params.connectionId },
+      );
+      return;
+    }
 
     const belongs = await connectionRepo.verifyBelongsToTrip(
       connectionId,

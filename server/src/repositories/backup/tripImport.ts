@@ -11,6 +11,8 @@ import type { ImportedTripResult, TripBackupData } from '../../types/backup';
 import type { AttractionResponse, ImageResponse } from '../../types/trip';
 import * as imageRepo from '../imageRepository';
 
+import { TripImportDataError } from './errors';
+
 const logger = createLogger('backup');
 
 /**
@@ -69,6 +71,52 @@ function toGeoColumns(
     return [null, null, null, null];
   }
   return [latitude, longitude, geoSource, geoKey];
+}
+
+/**
+ * Logs and builds the error for backup data that passed structural
+ * validation but is internally inconsistent (e.g. a dangling reference).
+ *
+ * @param originalTripId - The trip's ID in the backup, for the log entry.
+ * @param message - A user-safe description built only from backup IDs.
+ * @returns The error for the caller to throw.
+ */
+function consistencyError(
+  originalTripId: number,
+  message: string,
+): TripImportDataError {
+  logger.error('Trip import consistency error', { originalTripId, message });
+  return new TripImportDataError(message);
+}
+
+/**
+ * Removes a trip whose DB rows were committed but whose images could not all
+ * be written: deletes every image file already written, then the trip row
+ * (its `ON DELETE CASCADE` chain takes every other row with it). A failure
+ * of the trip delete is logged and swallowed so the caller can rethrow the
+ * original import error instead of masking it.
+ *
+ * @param newTripId - The ID of the newly-created trip to remove.
+ * @param title - The trip's title, for logging.
+ * @param writtenFilenames - Image files already written to disk.
+ */
+async function discardImportedTrip(
+  newTripId: number,
+  title: string,
+  writtenFilenames: string[],
+): Promise<void> {
+  for (const filename of writtenFilenames) {
+    deleteImageFromDisk(filename);
+  }
+  try {
+    await pool.execute('DELETE FROM trips WHERE id = ?', [newTripId]);
+  } catch (cleanupErr) {
+    logger.error(
+      'Failed to delete partially imported trip during rollback',
+      { newTripId, title },
+      cleanupErr,
+    );
+  }
 }
 
 interface PendingImage {
@@ -216,24 +264,20 @@ export async function importSingleTrip(
     for (const day of data.content.days) {
       const newDayId = dayIdMap.get(day.id);
       if (newDayId === undefined) {
-        const message = `Day ${day.id} was not imported before its connections`;
-        logger.error('Trip import consistency error', {
-          originalTripId: data.trip.id,
-          message,
-        });
-        throw new Error(message);
+        throw consistencyError(
+          data.trip.id,
+          `Day ${day.id} was not imported before its connections`,
+        );
       }
 
       for (const connection of day.connections) {
         const newFromId = attractionIdMap.get(connection.fromAttractionId);
         const newToId = attractionIdMap.get(connection.toAttractionId);
         if (newFromId === undefined || newToId === undefined) {
-          const message = `Connection ${connection.id} references an attraction that was not imported`;
-          logger.error('Trip import consistency error', {
-            originalTripId: data.trip.id,
-            message,
-          });
-          throw new Error(message);
+          throw consistencyError(
+            data.trip.id,
+            `Connection ${connection.id} references an attraction that was not imported`,
+          );
         }
 
         const [connectionResult] = await conn.execute<ResultSetHeader>(
@@ -312,12 +356,10 @@ export async function importSingleTrip(
           }
           const newItemId = itemIdMap.get(Number(itemIdStr));
           if (newItemId === undefined) {
-            const message = `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`;
-            logger.error('Trip import consistency error', {
-              originalTripId: data.trip.id,
-              message,
-            });
-            throw new Error(message);
+            throw consistencyError(
+              data.trip.id,
+              `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`,
+            );
           }
           await conn.execute(
             'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked) VALUES (?, ?, 1)',
@@ -354,7 +396,9 @@ export async function importSingleTrip(
     for (const pending of pendingImages) {
       const buffer = imageBuffers.get(pending.filename);
       if (!buffer) {
-        throw new Error(`Missing image data for ${pending.filename}`);
+        throw new TripImportDataError(
+          `Missing image data for ${pending.filename}`,
+        );
       }
       const newFilename = saveImportedImageBuffer(buffer, pending.filename);
       writtenFilenames.push(newFilename);
@@ -371,10 +415,7 @@ export async function importSingleTrip(
       },
       err,
     );
-    for (const filename of writtenFilenames) {
-      deleteImageFromDisk(filename);
-    }
-    await pool.execute('DELETE FROM trips WHERE id = ?', [newTripId]);
+    await discardImportedTrip(newTripId, title, writtenFilenames);
     throw err;
   }
 

@@ -26,6 +26,11 @@ import type { TripBackupData } from '../../types/backup';
 
 import { importBackupZip } from './backupImport';
 import type { ParsedBackup } from './backupValidate';
+import {
+  BackupValidationError,
+  GENERIC_IMPORT_ERROR_MESSAGE,
+  TripImportDataError,
+} from './errors';
 
 const sampleData = makeTripBackupData();
 
@@ -78,16 +83,15 @@ describe('importBackupZip', () => {
     const result = await importBackupZip(Buffer.from('zip'));
 
     expect(result.failed).toEqual([
-      { originalTripId: 1, title: 'Trip A', error: 'boom' },
+      {
+        originalTripId: 1,
+        title: 'Trip A',
+        error: GENERIC_IMPORT_ERROR_MESSAGE,
+      },
     ]);
     expect(result.imported).toEqual([
       { originalTripId: 2, newTripId: 1000, title: 'Trip B' },
     ]);
-    expect(mockLogger.warn).toHaveBeenCalledWith('Failed to import trip', {
-      originalTripId: 1,
-      title: 'Trip A',
-      error: 'boom',
-    });
     expect(mockLogger.info).toHaveBeenCalledWith('Trip imported', {
       originalTripId: 2,
       newTripId: 1000,
@@ -95,30 +99,69 @@ describe('importBackupZip', () => {
     });
   });
 
-  it('reports a generic message when importSingleTrip throws a non-Error value', async () => {
-    const parsed = makeParsedBackup({
-      trips: [
-        {
-          originalTripId: 1,
-          folder: 'trip_1',
-          data: sampleData,
-          imageBuffers: new Map(),
-        },
-      ],
-    });
-    mockParseBackupZip.mockReturnValue(parsed);
-    mockImportSingleTrip.mockRejectedValue('weird failure');
+  const failureCases = [
+    {
+      name: 'hides raw database error text',
+      thrown: new Error(
+        "Duplicate entry 'x' for key 'trips.PRIMARY' (INSERT INTO trips ...)",
+      ),
+      expectedError: GENERIC_IMPORT_ERROR_MESSAGE,
+    },
+    {
+      name: 'hides a programming error',
+      thrown: new TypeError(
+        "Cannot read properties of undefined (reading 'trim')",
+      ),
+      expectedError: GENERIC_IMPORT_ERROR_MESSAGE,
+    },
+    {
+      name: 'hides a non-Error thrown value',
+      thrown: 'weird failure',
+      expectedError: GENERIC_IMPORT_ERROR_MESSAGE,
+    },
+    {
+      name: 'passes through a trip data consistency error',
+      thrown: new TripImportDataError(
+        'Connection 5 references an attraction that was not imported',
+      ),
+      expectedError:
+        'Connection 5 references an attraction that was not imported',
+    },
+    {
+      name: 'passes through a backup validation error',
+      thrown: new BackupValidationError('Invalid backup file: bad data'),
+      expectedError: 'Invalid backup file: bad data',
+    },
+  ];
 
-    const result = await importBackupZip(Buffer.from('zip'));
+  it.each(failureCases)(
+    'reports a user-safe error and logs the original: $name',
+    async ({ thrown, expectedError }) => {
+      const parsed = makeParsedBackup({
+        trips: [
+          {
+            originalTripId: 1,
+            folder: 'trip_1',
+            data: sampleData,
+            imageBuffers: new Map(),
+          },
+        ],
+      });
+      mockParseBackupZip.mockReturnValue(parsed);
+      mockImportSingleTrip.mockRejectedValue(thrown);
 
-    expect(result.failed).toEqual([
-      {
-        originalTripId: 1,
-        title: 'Kyoto Trip',
-        error: 'Unknown import error',
-      },
-    ]);
-  });
+      const result = await importBackupZip(Buffer.from('zip'));
+
+      expect(result.failed).toEqual([
+        { originalTripId: 1, title: 'Kyoto Trip', error: expectedError },
+      ]);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to import trip',
+        { originalTripId: 1, title: 'Kyoto Trip', error: expectedError },
+        thrown,
+      );
+    },
+  );
 
   it('restores the template when restoreTemplate is true and the backup includes one', async () => {
     const template = { categories: [] };

@@ -61,6 +61,62 @@ export async function verifyBelongsToTrip(
   return rows.length > 0;
 }
 
+/** Day and endpoint attractions of a connection. */
+export interface ConnectionEndpoints {
+  dayId: number;
+  fromAttractionId: number;
+  toAttractionId: number;
+}
+
+/**
+ * Looks up a connection's day and endpoints, scoped to the given trip.
+ *
+ * @param connectionId - Connection to look up.
+ * @param tripId - Trip the connection must belong to.
+ * @returns The connection's day and endpoint attraction ids, or null when the
+ *   connection does not exist or belongs to another trip.
+ */
+export async function findEndpointsInTrip(
+  connectionId: number,
+  tripId: number,
+): Promise<ConnectionEndpoints | null> {
+  const [rows] = await pool.execute<TripConnectionRow[]>(
+    `SELECT tc.trip_day_id, tc.trip_attraction_id_from, tc.trip_attraction_id_to
+     FROM trip_connections tc
+     JOIN trip_days td ON td.id = tc.trip_day_id
+     WHERE tc.id = ? AND td.trip_id = ?`,
+    [connectionId, tripId],
+  );
+  if (rows.length === 0) {
+    return null;
+  }
+  return {
+    dayId: rows[0].trip_day_id,
+    fromAttractionId: rows[0].trip_attraction_id_from,
+    toAttractionId: rows[0].trip_attraction_id_to,
+  };
+}
+
+/**
+ * Confirms both endpoint attractions of a connection belong to the given day.
+ *
+ * @param dayId - Day the connection is attached to.
+ * @param fromAttractionId - Origin attraction id.
+ * @param toAttractionId - Destination attraction id; must differ from the origin.
+ * @returns True only when two distinct attractions of that day matched.
+ */
+export async function attractionsBelongToDay(
+  dayId: number,
+  fromAttractionId: number,
+  toAttractionId: number,
+): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM trip_attractions WHERE trip_day_id = ? AND id IN (?, ?)',
+    [dayId, fromAttractionId, toAttractionId],
+  );
+  return rows.length === 2;
+}
+
 export async function create(
   dayId: number,
   data: CreateConnectionBody,

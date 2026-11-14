@@ -1,4 +1,5 @@
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { PoolConnection } from 'mysql2/promise';
 
 import pool from '../../../config/database';
 import { createLogger } from '../../../logger';
@@ -8,10 +9,12 @@ import type {
   TripChecklistItemResponse,
   TripChecklistResponse,
 } from '../../../types/checklist';
+import { withTransaction } from '../../../utils/withTransaction';
 
 import {
   CheckRow,
   fetchSpecsByItemIds,
+  lockTrip,
   OccasionRow,
   placeholders,
   TemplateCategoryRow,
@@ -102,93 +105,154 @@ export async function findChecklist(
 }
 
 /**
- * Copies the current template into a new trip checklist and creates a
- * default occasion. Called automatically when no occasions exist for a trip.
+ * Copies every template category, item and spec into the trip's checklist.
+ *
+ * @param conn - Connection with an open transaction; all inserts run on it.
+ * @param tripId - Trip receiving the copied categories.
+ * @returns The number of categories copied.
+ */
+async function copyTemplateIntoTrip(
+  conn: PoolConnection,
+  tripId: number,
+): Promise<number> {
+  const [catRows] = await conn.execute<TemplateCategoryRow[]>(
+    'SELECT * FROM checklist_template_categories ORDER BY id',
+  );
+  logger.debug('Copying template into new trip checklist', {
+    tripId,
+    categoryCount: catRows.length,
+  });
+
+  for (const cat of catRows) {
+    const [catResult] = await conn.execute<ResultSetHeader>(
+      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
+      [tripId, cat.name],
+    );
+    const tripCatId = catResult.insertId;
+
+    const [itemRows] = await conn.execute<TemplateItemRow[]>(
+      'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
+      [cat.id],
+    );
+    for (const item of itemRows) {
+      const [itemResult] = await conn.execute<ResultSetHeader>(
+        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+        [
+          tripCatId,
+          item.name,
+          item.quantity,
+          item.notes,
+          item.storage_location,
+        ],
+      );
+      const tripItemId = itemResult.insertId;
+
+      const [specRows] = await conn.execute<TemplateItemSpecRow[]>(
+        'SELECT * FROM checklist_template_item_specs WHERE checklist_template_item_id = ? ORDER BY id',
+        [item.id],
+      );
+      for (const spec of specRows) {
+        await conn.execute(
+          'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
+          [tripItemId, spec.name, spec.storage_location],
+        );
+      }
+    }
+  }
+  return catRows.length;
+}
+
+/**
+ * Returns whether `table` already holds at least one row for the trip,
+ * read on the transaction's connection so it observes the locked state.
+ */
+async function hasTripRows(
+  conn: PoolConnection,
+  table: 'checklist_occasions' | 'checklist_trip_categories',
+  tripId: number,
+): Promise<boolean> {
+  const [rows] = await conn.execute<RowDataPacket[]>(
+    `SELECT id FROM ${table} WHERE trip_id = ? LIMIT 1`,
+    [tripId],
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Initializes a trip checklist from the current template and creates a
+ * default occasion, unless another request already did so.
+ *
+ * Runs in one transaction that first locks the parent trip row, so concurrent
+ * callers (e.g. a double-fetch on page load) are serialized and only the
+ * first one copies the template; later ones see the rows it committed.
+ * Template categories are only copied when the trip has none yet, so a
+ * partially initialized checklist never receives duplicates.
+ *
+ * @param tripId - Trip whose checklist to initialize.
+ * @returns The assembled checklist, or null when the trip does not exist.
+ * @throws Re-throws database errors after the transaction is rolled back.
  */
 export async function initChecklist(
   tripId: number,
-): Promise<TripChecklistResponse> {
-  const conn = await pool.getConnection();
+): Promise<TripChecklistResponse | null> {
+  let tripFound: boolean;
   try {
-    await conn.beginTransaction();
-
-    const [catRows] = await conn.execute<TemplateCategoryRow[]>(
-      'SELECT * FROM checklist_template_categories ORDER BY id',
-    );
-    logger.debug('Copying template into new trip checklist', {
-      tripId,
-      categoryCount: catRows.length,
-    });
-
-    for (const cat of catRows) {
-      const [catResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-        [tripId, cat.name],
-      );
-      const tripCatId = catResult.insertId;
-
-      const [itemRows] = await conn.execute<TemplateItemRow[]>(
-        'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
-        [cat.id],
-      );
-      for (const item of itemRows) {
-        const [itemResult] = await conn.execute<ResultSetHeader>(
-          'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
-          [
-            tripCatId,
-            item.name,
-            item.quantity,
-            item.notes,
-            item.storage_location,
-          ],
-        );
-        const tripItemId = itemResult.insertId;
-
-        const [specRows] = await conn.execute<TemplateItemSpecRow[]>(
-          'SELECT * FROM checklist_template_item_specs WHERE checklist_template_item_id = ? ORDER BY id',
-          [item.id],
-        );
-        for (const spec of specRows) {
-          await conn.execute(
-            'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-            [tripItemId, spec.name, spec.storage_location],
-          );
-        }
+    tripFound = await withTransaction(async conn => {
+      if (!(await lockTrip(conn, tripId))) {
+        return false;
       }
-    }
+      if (await hasTripRows(conn, 'checklist_occasions', tripId)) {
+        logger.debug('Trip checklist already initialized by another request', {
+          tripId,
+        });
+        return true;
+      }
 
-    await conn.execute(
-      "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')",
-      [tripId],
-    );
+      const hasCategories = await hasTripRows(
+        conn,
+        'checklist_trip_categories',
+        tripId,
+      );
+      const categoriesCopied = hasCategories
+        ? 0
+        : await copyTemplateIntoTrip(conn, tripId);
 
-    await conn.commit();
-    logger.info('Trip checklist initialized from template', {
-      tripId,
-      categoriesCopied: catRows.length,
+      await conn.execute(
+        "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')",
+        [tripId],
+      );
+      logger.info('Trip checklist initialized from template', {
+        tripId,
+        categoriesCopied,
+      });
+      return true;
     });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to initialize trip checklist, rolled back',
       { tripId },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
 
-  return (await findChecklist(tripId)) as TripChecklistResponse;
+  if (!tripFound) {
+    logger.warn('Cannot initialize checklist: trip not found', { tripId });
+    return null;
+  }
+  return findChecklist(tripId);
 }
 
 /**
  * Returns the existing checklist or initializes one from the current template
  * if none exists yet.
+ *
+ * @param tripId - Trip whose checklist to return.
+ * @returns The checklist, or null when the trip does not exist.
  */
 export async function findOrInitChecklist(
   tripId: number,
-): Promise<TripChecklistResponse> {
+): Promise<TripChecklistResponse | null> {
   const existing = await findChecklist(tripId);
   if (existing) {
     return existing;

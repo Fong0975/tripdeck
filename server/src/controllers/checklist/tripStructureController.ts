@@ -2,8 +2,74 @@ import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/checklist/trip';
+import { parseId } from '../../utils/parseId';
 
 const logger = createLogger('checklist-trip');
+
+/**
+ * Parses the named route params as ids, responding 400 when any is invalid.
+ *
+ * @param req - Incoming request.
+ * @param res - Response used to send the 400 on failure.
+ * @param names - Route param names to parse.
+ * @returns A map of param name to id, or null when a 400 has been sent.
+ */
+function parseIdParams<K extends string>(
+  req: Request,
+  res: Response,
+  ...names: K[]
+): Record<K, number> | null {
+  const ids = {} as Record<K, number>;
+  for (const name of names) {
+    const id = parseId(req.params[name]);
+    if (id === null) {
+      logger.warn('Rejected request with an invalid id param', {
+        param: name,
+        value: req.params[name],
+      });
+      res.status(400).json({ error: `Invalid ${name}` });
+      return null;
+    }
+    ids[name] = id;
+  }
+  return ids;
+}
+
+/**
+ * Logs and sends the 404 response for a missing trip.
+ *
+ * @param res - Response to send the 404 on.
+ * @param action - Log prefix naming the rejected operation.
+ * @param tripId - The missing trip's id.
+ */
+function respondTripNotFound(
+  res: Response,
+  action: string,
+  tripId: number,
+): void {
+  logger.warn(`${action} rejected: trip not found`, { tripId });
+  res.status(404).json({ error: 'Trip not found' });
+}
+
+/**
+ * Responds 404 when the trip does not exist.
+ *
+ * @param tripId - Trip id to check.
+ * @param res - Response to send the 404 on.
+ * @param action - Log prefix naming the operation being guarded.
+ * @returns True when the trip exists, false when a 404 has been sent.
+ */
+async function ensureTripExists(
+  tripId: number,
+  res: Response,
+  action: string,
+): Promise<boolean> {
+  if (await tripRepo.tripExists(tripId)) {
+    return true;
+  }
+  respondTripNotFound(res, action, tripId);
+  return false;
+}
 
 export async function getTripChecklist(
   req: Request,
@@ -75,8 +141,16 @@ export async function getTripChecklist(
        }
      } */
   try {
-    const tripId = Number(req.params.tripId);
-    res.json(await tripRepo.findOrInitChecklist(tripId));
+    const ids = parseIdParams(req, res, 'tripId');
+    if (!ids) {
+      return;
+    }
+    const checklist = await tripRepo.findOrInitChecklist(ids.tripId);
+    if (!checklist) {
+      respondTripNotFound(res, 'Get-checklist', ids.tripId);
+      return;
+    }
+    res.json(checklist);
   } catch (err) {
     logger.error(
       'Failed to fetch checklist',
@@ -106,13 +180,20 @@ export async function addOccasion(req: Request, res: Response): Promise<void> {
        }
      } */
   try {
-    const tripId = Number(req.params.tripId);
+    const ids = parseIdParams(req, res, 'tripId');
+    if (!ids) {
+      return;
+    }
+    const { tripId } = ids;
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
       logger.warn('Rejected add-occasion request with an invalid name', {
         tripId,
       });
       res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    if (!(await ensureTripExists(tripId, res, 'Add-occasion'))) {
       return;
     }
     const occasion = await tripRepo.createOccasion(tripId, name);
@@ -153,8 +234,11 @@ export async function updateOccasion(
        }
      } */
   try {
-    const tripId = Number(req.params.tripId);
-    const occId = Number(req.params.occId);
+    const ids = parseIdParams(req, res, 'tripId', 'occId');
+    if (!ids) {
+      return;
+    }
+    const { tripId, occId } = ids;
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
       logger.warn('Rejected update-occasion request with an invalid name', {
@@ -201,10 +285,13 @@ export async function deleteOccasion(
      #swagger.summary = 'Delete an occasion'
      #swagger.description = 'Rejected with 409 if this is the last remaining occasion.' */
   try {
-    const tripId = Number(req.params.tripId);
-    const occId = Number(req.params.occId);
-    const belongs = await tripRepo.verifyOccasionBelongsToTrip(occId, tripId);
-    if (!belongs) {
+    const ids = parseIdParams(req, res, 'tripId', 'occId');
+    if (!ids) {
+      return;
+    }
+    const { tripId, occId } = ids;
+    const result = await tripRepo.deleteOccasionIfNotLast(tripId, occId);
+    if (result === 'not_found') {
       logger.warn('Delete-occasion rejected: occasion not found', {
         tripId,
         occId,
@@ -212,23 +299,12 @@ export async function deleteOccasion(
       res.status(404).json({ error: 'Occasion not found' });
       return;
     }
-    const count = await tripRepo.getOccasionCount(tripId);
-    if (count <= 1) {
+    if (result === 'last_occasion') {
       logger.warn('Delete-occasion rejected: last remaining occasion', {
         tripId,
         occId,
-        occasionCount: count,
       });
       res.status(409).json({ error: 'Cannot delete the last occasion' });
-      return;
-    }
-    const deleted = await tripRepo.deleteOccasion(occId);
-    if (!deleted) {
-      logger.warn('Delete-occasion rejected: occasion not found on delete', {
-        tripId,
-        occId,
-      });
-      res.status(404).json({ error: 'Occasion not found' });
       return;
     }
     logger.info('Trip checklist occasion deleted', { tripId, occId });
@@ -250,13 +326,20 @@ export async function addTripCategory(
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Add a category to a trip checklist' */
   try {
-    const tripId = Number(req.params.tripId);
+    const ids = parseIdParams(req, res, 'tripId');
+    if (!ids) {
+      return;
+    }
+    const { tripId } = ids;
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
       logger.warn('Rejected add-category request with an invalid name', {
         tripId,
       });
       res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    if (!(await ensureTripExists(tripId, res, 'Add-category'))) {
       return;
     }
     const category = await tripRepo.createTripCategory(tripId, name);
@@ -278,8 +361,11 @@ export async function updateTripCategory(
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Update a trip checklist category name' */
   try {
-    const tripId = Number(req.params.tripId);
-    const catId = Number(req.params.catId);
+    const ids = parseIdParams(req, res, 'tripId', 'catId');
+    if (!ids) {
+      return;
+    }
+    const { tripId, catId } = ids;
     const { name } = req.body;
     if (!name || typeof name !== 'string') {
       logger.warn('Rejected update-category request with an invalid name', {
@@ -325,8 +411,11 @@ export async function deleteTripCategory(
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Delete a trip checklist category and all its items' */
   try {
-    const tripId = Number(req.params.tripId);
-    const catId = Number(req.params.catId);
+    const ids = parseIdParams(req, res, 'tripId', 'catId');
+    if (!ids) {
+      return;
+    }
+    const { tripId, catId } = ids;
     const belongs = await tripRepo.verifyCategoryBelongsToTrip(catId, tripId);
     if (!belongs) {
       logger.warn('Delete-category rejected: category not found', {

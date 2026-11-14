@@ -9,7 +9,14 @@ import {
 import type { ChecklistTemplateResponse } from '../../types/checklist';
 import type { ImageResponse } from '../../types/trip';
 
+import {
+  assertChecklistTemplate,
+  assertTripBackupData,
+  isJsonObject,
+  isManifestTripList,
+} from './backupSchema';
 import { BackupValidationError } from './errors';
+import { assertSafeZipSizes } from './zipSizeGuard';
 
 const logger = createLogger('backup');
 
@@ -39,41 +46,23 @@ interface MissingImagesEntry {
 }
 
 /**
- * Per-entry uncompressed-size cap enforced before any zip entry is
- * decompressed. Without this, a maliciously crafted entry can declare a
- * tiny compressed payload that expands to gigabytes on decompression (a
- * "zip bomb"), exhausting server memory. `entry.header.size` is read
- * straight from the zip's central directory, so the check happens before
- * `getData()` ever runs the actual decompression.
+ * Reads and JSON-parses one zip entry. Returns `undefined` (a value JSON can
+ * never produce) when the entry is missing or is not valid JSON; the parsed
+ * value is otherwise returned unvalidated.
  */
-const MAX_ENTRY_UNCOMPRESSED_BYTES = 20 * 1024 * 1024; // 20 MB
-
-function assertSafeEntrySize(entry: AdmZip.IZipEntry): void {
-  if (entry.header.size > MAX_ENTRY_UNCOMPRESSED_BYTES) {
-    logger.warn('Rejected oversized zip entry (possible zip bomb)', {
-      entryName: entry.entryName,
-      declaredSize: entry.header.size,
-    });
-    throw new BackupValidationError(
-      `Invalid backup file: "${entry.entryName}" is too large (${entry.header.size} bytes uncompressed)`,
-    );
-  }
-}
-
-function readJsonEntry<T>(zip: AdmZip, entryPath: string): T | null {
+function readJsonEntry(zip: AdmZip, entryPath: string): unknown {
   const entry = zip.getEntry(entryPath);
   if (!entry) {
-    return null;
+    return undefined;
   }
-  assertSafeEntrySize(entry);
   try {
-    return JSON.parse(entry.getData().toString('utf-8')) as T;
+    return JSON.parse(entry.getData().toString('utf-8')) as unknown;
   } catch (err) {
     logger.warn('Failed to parse JSON entry in backup zip', {
       entryPath,
       reason: err instanceof Error ? err.message : String(err),
     });
-    return null;
+    return undefined;
   }
 }
 
@@ -96,25 +85,23 @@ function collectImages(data: TripBackupData): ImageResponse[] {
  * Parses and validates a backup zip produced by `buildBackupZip`.
  *
  * Validation order:
- *  1. The archive itself must be readable, and `manifest.json` must be
- *     present and parseable.
+ *  1. The archive itself must be readable, its declared uncompressed sizes
+ *     must stay within the per-entry and total caps (see `zipSizeGuard`),
+ *     and `manifest.json` must be present and parseable.
  *  2. `manifest.formatVersion` must match the version this server writes.
  *  3. Every trip listed in the manifest must have a readable
- *     `trips/<folder>/data.json`. Any of these being wrong indicates a
- *     corrupt or foreign file, so they fail fast on the first problem.
+ *     `trips/<folder>/data.json` whose structure matches `TripBackupData`
+ *     (see `backupSchema`). Any of these being wrong indicates a corrupt or
+ *     foreign file, so they fail fast on the first problem.
  *  4. If `manifest.includesTemplate` is true, the zip's root `template.json`
- *     must also be readable — same "fail fast" treatment as a trip's
- *     data.json, since a system-wide backup that claims to include a
- *     template but doesn't is just as corrupt.
+ *     must also be readable and well-formed — same "fail fast" treatment
+ *     as a trip's data.json, since a system-wide backup that claims to
+ *     include a template but doesn't is just as corrupt.
  *  5. Every image referenced anywhere in every trip's data must exist as a
  *     zip entry. Missing images are collected across *all* trips first and
  *     reported together in a single error, so an incomplete backup is
  *     rejected as a whole rather than importing some trips with dangling
  *     image references.
- *
- * Every entry's declared uncompressed size is also checked against
- * `MAX_ENTRY_UNCOMPRESSED_BYTES` before it's decompressed, rejecting an
- * oversized ("zip bomb") entry up front instead of exhausting memory.
  *
  * On success, every referenced image's bytes are already read into
  * `imageBuffers` so the import step never has to re-open the archive.
@@ -132,14 +119,18 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
       'Invalid backup file: not a valid zip archive',
     );
   }
+  assertSafeZipSizes(zip);
 
-  const manifest = readJsonEntry<BackupManifest>(zip, 'manifest.json');
-  if (!manifest) {
+  const manifestJson = readJsonEntry(zip, 'manifest.json');
+  if (!isJsonObject(manifestJson)) {
     logger.warn('Rejected backup upload: manifest.json missing or unreadable');
     throw new BackupValidationError(
       'Invalid backup file: manifest.json missing or unreadable',
     );
   }
+  // The manifest's fields are checked one by one below so that a backup
+  // from another format version is reported as such before any shape issue.
+  const manifest = manifestJson as unknown as BackupManifest;
   if (manifest.formatVersion !== BACKUP_FORMAT_VERSION) {
     logger.warn('Rejected backup upload: unsupported format version', {
       receivedVersion: manifest.formatVersion,
@@ -149,7 +140,7 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
       `Unsupported backup format version: ${String(manifest.formatVersion)}`,
     );
   }
-  if (!Array.isArray(manifest.trips)) {
+  if (!isManifestTripList(manifest.trips)) {
     logger.warn('Rejected backup upload: manifest.trips missing or malformed');
     throw new BackupValidationError(
       'Invalid backup file: manifest.trips is missing or malformed',
@@ -158,18 +149,17 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
 
   const parsedTrips: ParsedBackupTrip[] = [];
   for (const tripEntry of manifest.trips) {
-    const data = readJsonEntry<TripBackupData>(
-      zip,
-      `trips/${tripEntry.folder}/data.json`,
-    );
-    if (!data) {
+    const dataPath = `trips/${tripEntry.folder}/data.json`;
+    const data = readJsonEntry(zip, dataPath);
+    if (data === undefined) {
       logger.warn('Rejected backup upload: trip data.json unreadable', {
         folder: tripEntry.folder,
       });
       throw new BackupValidationError(
-        `Invalid backup file: trips/${tripEntry.folder}/data.json missing or unreadable`,
+        `Invalid backup file: ${dataPath} missing or unreadable`,
       );
     }
+    assertTripBackupData(data, dataPath);
     parsedTrips.push({
       originalTripId: tripEntry.originalTripId,
       folder: tripEntry.folder,
@@ -180,8 +170,8 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
 
   let template: ChecklistTemplateResponse | null = null;
   if (manifest.includesTemplate) {
-    template = readJsonEntry<ChecklistTemplateResponse>(zip, 'template.json');
-    if (!template) {
+    const templateJson = readJsonEntry(zip, 'template.json');
+    if (templateJson === undefined) {
       logger.warn(
         'Rejected backup upload: template.json missing or unreadable',
       );
@@ -189,6 +179,8 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
         'Invalid backup file: template.json missing or unreadable',
       );
     }
+    assertChecklistTemplate(templateJson, 'template.json');
+    template = templateJson;
   }
 
   const missingImagesByTrip: MissingImagesEntry[] = [];
@@ -202,7 +194,6 @@ export function parseBackupZip(buffer: Buffer): ParsedBackup {
         missingFilenames.push(image.filename);
         continue;
       }
-      assertSafeEntrySize(entry);
       trip.imageBuffers.set(image.filename, entry.getData());
     }
     if (missingFilenames.length > 0) {

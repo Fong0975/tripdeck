@@ -24,6 +24,26 @@ export async function addLocation(
   return { id: result.insertId, name: data.name.trim() };
 }
 
+/**
+ * Confirms a day location is reachable through the given trip's days.
+ *
+ * @param locationId - Day location to check.
+ * @param tripId - Trip the location must belong to.
+ * @returns True when the location exists under one of the trip's days.
+ */
+export async function verifyLocationBelongsToTrip(
+  locationId: number,
+  tripId: number,
+): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT tdl.id FROM trip_day_locations tdl
+     JOIN trip_days td ON td.id = tdl.trip_day_id
+     WHERE tdl.id = ? AND td.trip_id = ?`,
+    [locationId, tripId],
+  );
+  return rows.length > 0;
+}
+
 export async function updateLocation(
   locationId: number,
   data: UpdateLocationBody,

@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, routeSql } from '../test-utils/dbMocks';
 
 import {
+  attractionsBelongToDay,
   create,
   deleteById,
+  findEndpointsInTrip,
   update,
   verifyBelongsToTrip,
 } from './connectionRepository';
@@ -54,6 +56,57 @@ describe('connectionRepository', () => {
         expect(result).toBe(expected);
       },
     );
+  });
+
+  describe('findEndpointsInTrip', () => {
+    it.each([
+      {
+        name: 'the connection belongs to the trip',
+        rows: [CURRENT_ROW],
+        expected: { dayId: 5, fromAttractionId: 100, toAttractionId: 101 },
+      },
+      {
+        name: 'the connection is missing or in another trip',
+        rows: [],
+        expected: null,
+      },
+    ])('returns $expected when $name', async ({ rows, expected }) => {
+      mockPoolExecute.mockResolvedValue([rows]);
+
+      const result = await findEndpointsInTrip(1, 10);
+
+      expect(result).toEqual(expected);
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        expect.stringContaining('td.trip_id = ?'),
+        [1, 10],
+      );
+    });
+  });
+
+  describe('attractionsBelongToDay', () => {
+    it.each([
+      {
+        name: 'both attractions match',
+        rows: [{ id: 100 }, { id: 101 }],
+        expected: true,
+      },
+      {
+        name: 'only one attraction matches',
+        rows: [{ id: 100 }],
+        expected: false,
+      },
+      { name: 'no attraction matches', rows: [], expected: false },
+    ])('returns $expected when $name', async ({ rows, expected }) => {
+      mockPoolExecute.mockResolvedValue([rows]);
+
+      const result = await attractionsBelongToDay(5, 100, 101);
+
+      expect(result).toBe(expected);
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'SELECT id FROM trip_attractions WHERE trip_day_id = ? AND id IN (?, ?)',
+        [5, 100, 101],
+      );
+    });
   });
 
   describe('create', () => {

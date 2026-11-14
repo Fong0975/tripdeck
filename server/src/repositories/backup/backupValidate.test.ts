@@ -13,6 +13,10 @@ vi.mock('../../logger', async () => {
 
 import { parseBackupZip } from './backupValidate';
 import { BackupValidationError } from './errors';
+import {
+  MAX_ENTRY_UNCOMPRESSED_BYTES,
+  MAX_TOTAL_UNCOMPRESSED_BYTES,
+} from './zipSizeGuard';
 
 /** Runs `fn`, expecting it to throw a `BackupValidationError`, and returns that error. */
 function captureValidationError(fn: () => unknown): BackupValidationError {
@@ -128,7 +132,9 @@ function buildZip({
   const zip = new AdmZip();
   const tripFixtures = trips ?? [{ folder: 'trip_1', data: sampleTripData() }];
 
-  const defaultManifest: BackupManifest = {
+  // Built lazily so fixtures with deliberately malformed data.json (e.g. no
+  // `trip` key) can be used together with an explicit manifest.
+  const buildDefaultManifest = (): BackupManifest => ({
     formatVersion: 1,
     exportedAt: '2024-01-01T00:00:00.000Z',
     tripCount: tripFixtures.length,
@@ -138,7 +144,7 @@ function buildZip({
       title: t.data.trip.title,
     })),
     ...(includesTemplate ? { includesTemplate: true } : {}),
-  };
+  });
 
   if (manifest === 'missing') {
     // Intentionally omit manifest.json entirely.
@@ -147,7 +153,7 @@ function buildZip({
   } else {
     zip.addFile(
       'manifest.json',
-      Buffer.from(JSON.stringify(manifest ?? defaultManifest), 'utf-8'),
+      Buffer.from(JSON.stringify(manifest ?? buildDefaultManifest()), 'utf-8'),
     );
   }
 
@@ -398,6 +404,125 @@ describe('parseBackupZip', () => {
         /"trips\/trip_1\/images\/trip1\.jpg" is too large \(\d+ bytes uncompressed\)/,
       );
     });
+
+    /** Number of max-size padding entries whose declared sizes alone fill the total cap. */
+    const entriesAtTotalCap = Math.floor(
+      MAX_TOTAL_UNCOMPRESSED_BYTES / MAX_ENTRY_UNCOMPRESSED_BYTES,
+    );
+
+    it.each([
+      {
+        name: 'accepts entries that stay under the total cap',
+        paddingEntries: entriesAtTotalCap - 1,
+        expectedError: null,
+      },
+      {
+        name: 'rejects entries that together exceed the total cap',
+        paddingEntries: entriesAtTotalCap + 1,
+        expectedError: expect.stringMatching(
+          /total uncompressed size \(\d+ bytes\) exceeds the \d+ byte limit/,
+        ),
+      },
+    ])('$name', ({ paddingEntries, expectedError }) => {
+      const zip = new AdmZip(buildZip());
+      const paddingNames = Array.from(
+        { length: paddingEntries },
+        (_, i) => `padding/${i}.bin`,
+      );
+      for (const name of paddingNames) {
+        zip.addFile(name, Buffer.from('x', 'utf-8'));
+      }
+      const patched = paddingNames.reduce(
+        (buffer, name) =>
+          declareUncompressedSize(buffer, name, MAX_ENTRY_UNCOMPRESSED_BYTES),
+        zip.toBuffer(),
+      );
+
+      let thrownMessage: string | null = null;
+      try {
+        parseBackupZip(patched);
+      } catch (err) {
+        thrownMessage = (err as Error).message;
+      }
+
+      expect(thrownMessage).toEqual(expectedError);
+    });
+  });
+
+  it.each([
+    {
+      name: 'a trip title that is not a string',
+      trips: [
+        {
+          folder: 'trip_1',
+          data: {
+            ...sampleTripData(),
+            trip: { ...sampleTripData().trip, title: 42 },
+          },
+        },
+      ],
+      expected:
+        'Invalid backup file: trips/trip_1/data.json has a missing or invalid "trip.title" field',
+    },
+    {
+      name: 'missing content.days',
+      trips: [
+        {
+          folder: 'trip_1',
+          data: { ...sampleTripData(), content: { tripId: 1 } },
+          imagesToInclude: [],
+        },
+      ],
+      expected:
+        'Invalid backup file: trips/trip_1/data.json has a missing or invalid "content.days" field',
+    },
+    {
+      name: 'a data.json that is not a JSON object',
+      trips: [{ folder: 'trip_1', data: [], imagesToInclude: [] }],
+      expected:
+        'Invalid backup file: trips/trip_1/data.json is not a JSON object',
+    },
+  ])(
+    'rejects a structurally invalid data.json: $name',
+    ({ trips, expected }) => {
+      const zip = buildZip({
+        manifest: {
+          formatVersion: 1,
+          exportedAt: '2024-01-01T00:00:00.000Z',
+          tripCount: 1,
+          trips: [{ originalTripId: 1, folder: 'trip_1', title: 'Trip' }],
+        },
+        trips: trips as unknown as TripFixture[],
+      });
+
+      const err = captureValidationError(() => parseBackupZip(zip));
+
+      expect(err.message).toBe(expected);
+    },
+  );
+
+  it('rejects a structurally invalid template.json', () => {
+    const template = {
+      categories: [{ name: 'Documents', items: [{ name: 'Passport' }] }],
+    } as unknown as ChecklistTemplateResponse;
+    const zip = buildZip({ includesTemplate: true, template });
+
+    expect(() => parseBackupZip(zip)).toThrow(
+      'Invalid backup file: template.json has a missing or invalid "categories[0].items[0].quantity" field',
+    );
+  });
+
+  it('rejects a manifest trip entry with a missing folder', () => {
+    const manifest = {
+      formatVersion: 1,
+      exportedAt: '2024-01-01T00:00:00.000Z',
+      tripCount: 1,
+      trips: [{ originalTripId: 1, title: 'Trip' }],
+    };
+
+    expect(() => parseBackupZip(buildZip({ manifest }))).toThrow(
+      /manifest\.trips is missing or malformed/,
+    );
   });
 
   it('collects missing images across every trip before throwing, not just the first', () => {

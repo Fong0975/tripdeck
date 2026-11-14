@@ -18,6 +18,7 @@ import {
   type Returns500Case,
 } from '../../test-utils/httpMocks';
 import type { TripContentResponse } from '../../types/trip';
+import { MAX_TRIP_DAYS } from '../../validation/tripValidation';
 
 import {
   createTrip,
@@ -100,11 +101,67 @@ describe('Trips', () => {
       expect(tripRepo.create).not.toHaveBeenCalled();
     });
 
-    it('creates the trip and responds with 201', async () => {
+    it.each([
+      {
+        name: 'title is whitespace only',
+        body: { title: '   ', startDate: '2024-05-10', endDate: '2024-05-12' },
+        error: 'title cannot be empty',
+      },
+      {
+        name: 'title is not a string',
+        body: { title: 42, startDate: '2024-05-10', endDate: '2024-05-12' },
+        error: 'title cannot be empty',
+      },
+      {
+        name: 'startDate is not YYYY-MM-DD',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024/05/10',
+          endDate: '2024-05-12',
+        },
+        error: 'startDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'endDate is not a real calendar date',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024-05-10',
+          endDate: '2024-02-30',
+        },
+        error: 'endDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'endDate is before startDate',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024-05-12',
+          endDate: '2024-05-10',
+        },
+        error: 'endDate cannot be before startDate',
+      },
+      {
+        name: 'the trip is longer than MAX_TRIP_DAYS',
+        body: {
+          title: 'Kyoto',
+          startDate: '2026-01-01',
+          endDate: '2027-01-01',
+        },
+        error: `A trip cannot span more than ${MAX_TRIP_DAYS} days`,
+      },
+    ])('returns 400 when $name', async ({ body, error }) => {
+      const { req, res } = createMockReqRes({ body });
+
+      await createTrip(req, res);
+
+      expectJsonStatus(res, 400, { error });
+      expect(tripRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the trip with a trimmed title and responds with 201', async () => {
       vi.mocked(tripRepo.create).mockResolvedValue(sampleTrip);
       const { req, res } = createMockReqRes({
         body: {
-          title: 'Kyoto Trip',
+          title: '  Kyoto Trip  ',
           startDate: '2024-05-10',
           endDate: '2024-05-12',
         },
@@ -112,6 +169,11 @@ describe('Trips', () => {
 
       await createTrip(req, res);
 
+      expect(tripRepo.create).toHaveBeenCalledWith({
+        title: 'Kyoto Trip',
+        startDate: '2024-05-10',
+        endDate: '2024-05-12',
+      });
       expectJsonStatus(res, 201, sampleTrip);
     });
   });
@@ -173,6 +235,32 @@ describe('Trips', () => {
       expect(tripRepo.update).not.toHaveBeenCalled();
     });
 
+    it.each([
+      {
+        name: 'the new startDate is not YYYY-MM-DD',
+        body: { startDate: '10-05-2024' },
+        error: 'startDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'the new endDate is not a real calendar date',
+        body: { endDate: '2024-05-32' },
+        error: 'endDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'the new range is longer than MAX_TRIP_DAYS',
+        body: { endDate: '2025-05-10' },
+        error: `A trip cannot span more than ${MAX_TRIP_DAYS} days`,
+      },
+    ])('returns 400 when $name', async ({ body, error }) => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const { req, res } = createMockReqRes({ params: { tripId: '1' }, body });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 400, { error });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
     it('updates the trip and responds with 200', async () => {
       vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
       const updated = { ...sampleTrip, title: 'New Title' };
@@ -231,6 +319,39 @@ describe('Trip content', () => {
       expect(res.status).not.toHaveBeenCalled();
     });
   });
+});
+
+describe('invalid tripId param', () => {
+  const handlers = [
+    { name: 'getTrip', handler: getTrip },
+    { name: 'updateTrip', handler: updateTrip },
+    { name: 'deleteTrip', handler: deleteTrip },
+    { name: 'getTripContent', handler: getTripContent },
+  ];
+  const invalidIds = ['abc', '0', '-1', '1.5', ''];
+  const cases = handlers.flatMap(({ name, handler }) =>
+    invalidIds.map(tripId => ({ name, handler, tripId })),
+  );
+
+  it.each(cases)(
+    '$name returns 400 for tripId "$tripId"',
+    async ({ handler, tripId }) => {
+      const { req, res } = createMockReqRes({
+        params: { tripId },
+        body: { title: 'New Title' },
+      });
+
+      await handler(req, res);
+
+      expectJsonStatus(res, 400, {
+        error: 'tripId must be a positive integer',
+      });
+      expect(tripRepo.findById).not.toHaveBeenCalled();
+      expect(tripRepo.update).not.toHaveBeenCalled();
+      expect(tripRepo.deleteById).not.toHaveBeenCalled();
+      expect(tripRepo.findContent).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('500 error handling', () => {

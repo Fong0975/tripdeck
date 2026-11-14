@@ -6,6 +6,7 @@ import type {
 } from '../../types/backup';
 
 import { parseBackupZip } from './backupValidate';
+import { toClientImportErrorMessage } from './errors';
 import { restoreTemplate } from './templateRestore';
 import { importSingleTrip } from './tripImport';
 
@@ -15,6 +16,10 @@ const logger = createLogger('backup');
  * Validates and imports every trip in a backup zip. Each trip is imported
  * independently: one trip failing does not stop the others, since every
  * imported trip is a self-contained new record.
+ *
+ * A failed trip's `error` is always a user-safe message (see
+ * `toClientImportErrorMessage`); the original error is only written to the
+ * server log.
  *
  * When `options.restoreTemplate` is true and the backup actually contains a
  * template snapshot (system-wide backups only), the global checklist
@@ -43,18 +48,21 @@ export async function importBackupZip(
         title: result.title,
       });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unknown import error';
+      const message = toClientImportErrorMessage(err);
       failed.push({
         originalTripId: trip.originalTripId,
         title: trip.data.trip.title,
         error: message,
       });
-      logger.warn('Failed to import trip', {
-        originalTripId: trip.originalTripId,
-        title: trip.data.trip.title,
-        error: message,
-      });
+      logger.error(
+        'Failed to import trip',
+        {
+          originalTripId: trip.originalTripId,
+          title: trip.data.trip.title,
+          error: message,
+        },
+        err,
+      );
     }
   }
 

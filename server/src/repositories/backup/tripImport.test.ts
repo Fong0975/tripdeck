@@ -34,6 +34,7 @@ import { db, routeSql } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
 
+import { TripImportDataError } from './errors';
 import { generateUniqueTripTitle, importSingleTrip } from './tripImport';
 
 const mockPoolExecute = db.pool.execute;
@@ -436,7 +437,7 @@ describe('importSingleTrip', () => {
 
     await expect(
       importSingleTrip(corrupted, sampleImageBuffers()),
-    ).rejects.toThrow(/references an attraction that was not imported/);
+    ).rejects.toBeInstanceOf(TripImportDataError);
 
     expect(mockConnRollback).toHaveBeenCalled();
     expect(mockConnCommit).not.toHaveBeenCalled();
@@ -532,7 +533,9 @@ describe('importSingleTrip', () => {
 
     await expect(
       importSingleTrip(sampleData, incompleteBuffers),
-    ).rejects.toThrow('Missing image data for trip1.jpg');
+    ).rejects.toThrow(
+      new TripImportDataError('Missing image data for trip1.jpg'),
+    );
 
     expect(mockSaveImportedImageBuffer).not.toHaveBeenCalled();
     expect(mockPoolExecute).toHaveBeenCalledWith(
@@ -540,6 +543,56 @@ describe('importSingleTrip', () => {
       [1000],
     );
   });
+
+  const cleanupFailureLog =
+    'Failed to delete partially imported trip during rollback';
+
+  it.each([
+    {
+      name: 'the trip delete succeeds',
+      deleteOutcome: () => Promise.resolve([{ affectedRows: 1 }]),
+      expectedCleanupLogs: [],
+    },
+    {
+      name: 'the trip delete itself fails',
+      deleteOutcome: () => Promise.reject(new Error('connection lost')),
+      expectedCleanupLogs: [
+        [
+          cleanupFailureLog,
+          { newTripId: 1000, title: 'Kyoto Trip' },
+          expect.objectContaining({ message: 'connection lost' }),
+        ],
+      ],
+    },
+  ])(
+    'rethrows the original image error when $name',
+    async ({ deleteOutcome, expectedCleanupLogs }) => {
+      mockPoolExecute.mockImplementation((sql: string) => {
+        if (sql.startsWith('DELETE FROM trips')) {
+          return deleteOutcome();
+        }
+        return Promise.resolve([[]]);
+      });
+      mockSequentialInserts();
+      const imageError = new Error('disk full');
+      mockSaveImportedImageBuffer.mockImplementation(() => {
+        throw imageError;
+      });
+
+      await expect(
+        importSingleTrip(sampleData, sampleImageBuffers()),
+      ).rejects.toBe(imageError);
+
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'DELETE FROM trips WHERE id = ?',
+        [1000],
+      );
+      const cleanupLogs = mockLogger.error.mock.calls.filter(
+        ([message]) => message === cleanupFailureLog,
+      );
+      expect(cleanupLogs).toEqual(expectedCleanupLogs);
+    },
+  );
 });
 
 describe('importSingleTrip geo fields', () => {
