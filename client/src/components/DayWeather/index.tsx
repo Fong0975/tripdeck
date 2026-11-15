@@ -5,8 +5,8 @@ import { usePointerSwipe } from '@/hooks/usePointerSwipe';
 import type { DayLocation } from '@/types';
 import {
   fetchDailyWeather,
-  type WeatherResult,
   type WeatherSource,
+  type WeatherState,
 } from '@/utils/weatherApi';
 
 import WeatherIcon from './WeatherIcon';
@@ -30,7 +30,7 @@ const SOURCE_LABELS: Record<WeatherSource, string> = {
  */
 export default function DayWeather({ locations, date }: Props) {
   const [idx, setIdx] = useState(0);
-  const [current, setCurrent] = useState<WeatherResult | null>(null);
+  const [current, setCurrent] = useState<WeatherState | null>(null);
 
   const lastIdx = Math.max(locations.length - 1, 0);
   // Clamp during render (not in an effect) so a shrunken locations list never

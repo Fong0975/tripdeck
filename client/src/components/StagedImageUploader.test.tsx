@@ -28,7 +28,7 @@ describe('StagedImageUploader', () => {
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
 
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
     expect(screen.getByText('加入圖片')).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     await user.click(screen.getByText('加入圖片'));
 
@@ -53,7 +53,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    const file = new File(['a'], 'a.jpg');
+    const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
 
     await user.type(
@@ -73,7 +73,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     // The pending-file preview's clear button has no accessible name, so
     // it is identified by position: it's the only button besides the
@@ -90,7 +90,7 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={onImagesChange} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
       'My Photo',
@@ -107,11 +107,11 @@ describe('StagedImageUploader', () => {
     const { container } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 
-    selectFile(container, new File(['b'], 'b.jpg'));
+    selectFile(container, new File(['b'], 'b.jpg', { type: 'image/jpeg' }));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
@@ -124,7 +124,7 @@ describe('StagedImageUploader', () => {
     const { container, unmount } = render(
       <StagedImageUploader onImagesChange={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     if (stage) {
       await user.type(
         screen.getByPlaceholderText('圖片標題（必填）'),

@@ -1,11 +1,7 @@
+import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type {
-  CreateSpecBody,
-  ItemSpecResponse,
-  UpdateSpecBody,
-} from '../../../types/checklist';
 import { placeholders } from '../../../utils/sql';
 
 /**
@@ -31,17 +27,11 @@ export interface SpecTableConfig {
 /** Spec CRUD operations bound to one spec table. */
 export interface SpecRepository {
   /** Loads every spec of the given items, grouped by item id. */
-  fetchByItemIds(itemIds: number[]): Promise<Map<number, ItemSpecResponse[]>>;
+  fetchByItemIds(itemIds: number[]): Promise<Map<number, ItemSpec[]>>;
   /** Inserts a spec; resolves to null when the parent item does not exist. */
-  create(
-    itemId: number,
-    data: CreateSpecBody,
-  ): Promise<ItemSpecResponse | null>;
+  create(itemId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   /** Updates a spec; resolves to null when the spec does not exist. */
-  update(
-    specId: number,
-    data: UpdateSpecBody,
-  ): Promise<ItemSpecResponse | null>;
+  update(specId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   /** Deletes a spec; resolves to true when a row was removed. */
   remove(specId: number): Promise<boolean>;
   /** Resolves to true when the spec exists and belongs to the item. */
@@ -54,7 +44,7 @@ export interface SpecRepository {
  * @param row - Spec row from any item-spec table.
  * @returns The spec response.
  */
-export function toSpecResponse(row: ItemSpecRow): ItemSpecResponse {
+export function toSpecResponse(row: ItemSpecRow): ItemSpec {
   return {
     id: row.id,
     name: row.name,
@@ -78,7 +68,7 @@ export function createSpecRepository({
 }: SpecTableConfig): SpecRepository {
   return {
     async fetchByItemIds(itemIds) {
-      const map = new Map<number, ItemSpecResponse[]>();
+      const map = new Map<number, ItemSpec[]>();
       if (itemIds.length === 0) {
         return map;
       }

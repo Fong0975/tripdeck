@@ -1,9 +1,9 @@
+import type { UploadedImage } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../storage/imageFiles';
-import type { ImageResponse } from '../../types/trip';
 import { placeholders } from '../../utils/sql';
 
 const logger = createLogger('image');
@@ -14,7 +14,7 @@ interface ImageRow extends RowDataPacket {
   title: string;
 }
 
-function toImageResponse(row: ImageRow): ImageResponse {
+function toImageResponse(row: ImageRow): UploadedImage {
   return {
     id: row.id,
     filename: row.filename,
@@ -30,7 +30,7 @@ function toImageResponse(row: ImageRow): ImageResponse {
  * table/column pair instead of being hand-duplicated for each entity.
  */
 function createImageRepo(table: string, idColumn: string) {
-  async function getImages(parentId: number): Promise<ImageResponse[]> {
+  async function getImages(parentId: number): Promise<UploadedImage[]> {
     const [rows] = await pool.execute<ImageRow[]>(
       `SELECT * FROM ${table} WHERE ${idColumn} = ? ORDER BY id`,
       [parentId],
@@ -44,8 +44,8 @@ function createImageRepo(table: string, idColumn: string) {
    */
   async function getImagesBatch(
     parentIds: number[],
-  ): Promise<Map<number, ImageResponse[]>> {
-    const result = new Map<number, ImageResponse[]>();
+  ): Promise<Map<number, UploadedImage[]>> {
+    const result = new Map<number, UploadedImage[]>();
     if (parentIds.length === 0) {
       return result;
     }
@@ -72,7 +72,7 @@ function createImageRepo(table: string, idColumn: string) {
     parentId: number,
     filename: string,
     title: string,
-  ): Promise<ImageResponse> {
+  ): Promise<UploadedImage> {
     try {
       const [result] = await pool.execute<ResultSetHeader>(
         `INSERT INTO ${table} (${idColumn}, filename, title) VALUES (?, ?, ?)`,

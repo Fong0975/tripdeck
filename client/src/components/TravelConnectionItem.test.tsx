@@ -24,6 +24,7 @@ describe('TravelConnectionItem', () => {
     { mode: 'taxi' as TransportMode, label: '計程車／Uber' },
     { mode: 'flight' as TransportMode, label: '飛機' },
     { mode: 'other' as TransportMode, label: '其他' },
+    { mode: null, label: '其他' },
   ])('shows the $label label for transport mode $mode', ({ mode, label }) => {
     render(
       <TravelConnectionItem

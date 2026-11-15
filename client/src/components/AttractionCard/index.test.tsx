@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 import ClampedTextSection from '@/components/ClampedTextSection';
 import { makeAttraction, makeImage } from '@/test-utils/fixtures';
 import RerenderHarness from '@/test-utils/RerenderHarness';
-import type { Attraction, AttractionImage } from '@/types';
+import type { Attraction, UploadedImage } from '@/types';
 
 import AttractionCard from './index';
 
@@ -137,7 +137,7 @@ describe('AttractionCard', () => {
 
   it('opens the lightbox when the thumbnail stack is clicked and closes it on Escape', async () => {
     const user = userEvent.setup();
-    const images: AttractionImage[] = [
+    const images: UploadedImage[] = [
       makeImage({ filename: 'a.jpg', title: 'Img 1' }),
       makeImage({ id: 2, filename: 'b.jpg', title: 'Img 2' }),
     ];

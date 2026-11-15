@@ -1,3 +1,4 @@
+import type { UploadedImage } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -33,7 +34,6 @@ import * as tripRepo from '../repositories/trip';
 import { deleteImageFromDisk, saveImageToDisk } from '../storage/imageFiles';
 import { makeTrip } from '../test-utils/fixtures';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import type { ImageResponse } from '../types/trip';
 
 import {
   deleteAttractionImage,
@@ -179,7 +179,7 @@ describe.each(variants)(
       });
 
       it('returns 201 with the created image on success', async () => {
-        const image: ImageResponse = {
+        const image: UploadedImage = {
           id: 42,
           filename: 'generated.jpg',
           title: 'Title',

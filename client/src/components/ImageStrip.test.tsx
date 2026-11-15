@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { imageUrl } from '@/api/images';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 import ImageStrip from './ImageStrip';
 
 describe('ImageStrip', () => {
   it('renders only the first 3 thumbnails plus an overflow count for more than 3 images', () => {
-    const images: AttractionImage[] = Array.from({ length: 5 }, (_, i) => ({
+    const images: UploadedImage[] = Array.from({ length: 5 }, (_, i) => ({
       id: i + 1,
       filename: `img-${i + 1}.jpg`,
       title: `Img ${i + 1}`,
@@ -27,7 +27,7 @@ describe('ImageStrip', () => {
   });
 
   it('does not show an overflow count for 3 or fewer images', () => {
-    const images: AttractionImage[] = [
+    const images: UploadedImage[] = [
       { id: 1, filename: 'a.jpg', title: 'Img 1' },
       { id: 2, filename: 'b.jpg', title: 'Img 2' },
     ];
@@ -40,7 +40,7 @@ describe('ImageStrip', () => {
   it('calls onOpenLightbox when the thumbnail stack is clicked', async () => {
     const user = userEvent.setup();
     const onOpenLightbox = vi.fn();
-    const images: AttractionImage[] = [
+    const images: UploadedImage[] = [
       { id: 1, filename: 'a.jpg', title: 'Img 1' },
     ];
     render(<ImageStrip images={images} onOpenLightbox={onOpenLightbox} />);
@@ -53,7 +53,7 @@ describe('ImageStrip', () => {
   it('does not bubble a click to the parent', async () => {
     const user = userEvent.setup();
     const onParentClick = vi.fn();
-    const images: AttractionImage[] = [
+    const images: UploadedImage[] = [
       { id: 1, filename: 'a.jpg', title: 'Img 1' },
     ];
     render(

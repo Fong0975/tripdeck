@@ -1,29 +1,16 @@
+import type {
+  MapsConfig,
+  MapsErrorReportBody,
+  MapsQuotaErrorBody,
+  MapsStatus,
+  ResolveGeoBody,
+  ResolveGeoResult,
+} from '@tripdeck/shared';
+
 import { api, apiUrl, json } from './client';
 
-/** Availability of the map feature as reported by the backend. */
-export interface MapsStatus {
-  /** A browser key is configured. */
-  enabled: boolean;
-  /** Today's map loads are used up (or Google rejected the key). */
-  exhausted: boolean;
-  /** Today's name lookups are used up; existing coordinates still work. */
-  geocodeExhausted: boolean;
-  /** When the daily counters reset (US Pacific midnight), ISO 8601. */
-  resetAt: string | null;
-}
-
-/** One attraction's location as resolved by the backend. */
-export interface ResolvedAttractionGeo {
-  id: number;
-  latitude: number | null;
-  longitude: number | null;
-  geoSource: 'url' | 'geocode' | 'not_found' | null;
-}
-
-export interface ResolveGeoResult {
-  attractions: ResolvedAttractionGeo[];
-  geocodeExhausted: boolean;
-}
+/** The 429 body, which may be missing or malformed. */
+type QuotaBody = Partial<MapsQuotaErrorBody>;
 
 /** The backend refused to hand out a map key because today's quota is spent. */
 export class MapsQuotaError extends Error {
@@ -46,17 +33,17 @@ export async function getMapsStatus(): Promise<MapsStatus> {
  *
  * @throws MapsQuotaError when the backend answers 429.
  */
-export async function getMapsConfig(): Promise<{ apiKey: string }> {
+export async function getMapsConfig(): Promise<MapsConfig> {
   const url = '/api/maps/config';
   const res = await fetch(apiUrl(url));
   if (res.status === 429) {
-    const body = (await res.json().catch(() => ({}))) as { resetAt?: string };
+    const body = (await res.json().catch(() => ({}))) as QuotaBody;
     throw new MapsQuotaError(body.resetAt ?? null);
   }
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${url}`);
   }
-  return res.json() as Promise<{ apiKey: string }>;
+  return res.json() as Promise<MapsConfig>;
 }
 
 /**
@@ -70,7 +57,7 @@ export async function resolveTripGeo(
 ): Promise<ResolveGeoResult> {
   return api<ResolveGeoResult>('/api/maps/resolve', {
     method: 'POST',
-    ...json({ tripId, dayId }),
+    ...json({ tripId, dayId } satisfies ResolveGeoBody),
   });
 }
 
@@ -78,6 +65,6 @@ export async function resolveTripGeo(
 export async function reportMapsError(): Promise<void> {
   return api<void>('/api/maps/report-error', {
     method: 'POST',
-    ...json({ reason: 'auth_failure' }),
+    ...json({ reason: 'auth_failure' } satisfies MapsErrorReportBody),
   });
 }

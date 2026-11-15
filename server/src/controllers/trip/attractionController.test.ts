@@ -1,3 +1,4 @@
+import type { Attraction } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/attraction', () => ({
@@ -22,7 +23,6 @@ import {
   itRejects,
   type RejectCase,
 } from '../../test-utils/httpMocks';
-import type { AttractionResponse } from '../../types/trip';
 
 import {
   addAttraction,
@@ -35,7 +35,7 @@ import {
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
-const sampleAttraction: AttractionResponse = {
+const sampleAttraction: Attraction = {
   id: 100,
   name: 'Fushimi Inari',
   googleMapUrl: null,

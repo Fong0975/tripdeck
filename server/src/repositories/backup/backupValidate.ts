@@ -1,3 +1,8 @@
+import type {
+  ChecklistTemplate,
+  ImportBackupErrorDetails,
+  MissingBackupImages,
+} from '@tripdeck/shared';
 import type AdmZip from 'adm-zip';
 
 import { createLogger } from '../../logger';
@@ -6,7 +11,6 @@ import {
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
-import type { ChecklistTemplateResponse } from '../../types/checklist';
 
 import { collectTripImages, tripDataPath, tripImagePath } from './backupLayout';
 import {
@@ -36,13 +40,7 @@ export interface ParsedBackup {
    * The zip's `template.json`, parsed. Null unless
    * `manifest.includesTemplate` is true (i.e. this is a system-wide backup).
    */
-  template: ChecklistTemplateResponse | null;
-}
-
-interface MissingImagesEntry {
-  folder: string;
-  title: string;
-  missingFilenames: string[];
+  template: ChecklistTemplate | null;
 }
 
 /**
@@ -121,7 +119,7 @@ function readTrips(zip: AdmZip, manifest: BackupManifest): ParsedBackupTrip[] {
 function readTemplate(
   zip: AdmZip,
   manifest: BackupManifest,
-): ChecklistTemplateResponse | null {
+): ChecklistTemplate | null {
   if (!manifest.includesTemplate) {
     return null;
   }
@@ -143,7 +141,7 @@ function readTemplate(
  *   trips, when any is missing.
  */
 function attachTripImages(zip: AdmZip, parsedTrips: ParsedBackupTrip[]): void {
-  const missingImagesByTrip: MissingImagesEntry[] = [];
+  const missingImagesByTrip: MissingBackupImages[] = [];
   for (const trip of parsedTrips) {
     const missingFilenames: string[] = [];
     for (const image of collectTripImages(trip.data)) {
@@ -177,7 +175,7 @@ function attachTripImages(zip: AdmZip, parsedTrips: ParsedBackupTrip[]): void {
     });
     throw new BackupValidationError(
       `Backup file is incomplete: ${totalMissing} image file(s) missing`,
-      { trips: missingImagesByTrip },
+      { trips: missingImagesByTrip } satisfies ImportBackupErrorDetails,
     );
   }
 }

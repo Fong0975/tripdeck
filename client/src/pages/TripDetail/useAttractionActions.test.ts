@@ -70,7 +70,7 @@ describe('useAttractionActions', () => {
             nearbyAttractions: undefined,
             startTime: undefined,
             endTime: undefined,
-            referenceWebsites: undefined,
+            referenceWebsites: [],
           });
           expect(updateAttraction).not.toHaveBeenCalled();
         } else {
@@ -81,7 +81,7 @@ describe('useAttractionActions', () => {
             nearbyAttractions: null,
             startTime: null,
             endTime: null,
-            referenceWebsites: undefined,
+            referenceWebsites: [],
           });
           expect(addAttraction).not.toHaveBeenCalled();
         }

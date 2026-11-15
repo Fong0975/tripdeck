@@ -1,3 +1,4 @@
+import type { DayLocation } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/trip', () => ({
@@ -15,7 +16,6 @@ import {
   itRejects,
   type RejectCase,
 } from '../../test-utils/httpMocks';
-import type { DayLocation } from '../../types/trip';
 
 import {
   addDayLocation,

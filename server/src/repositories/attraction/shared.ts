@@ -1,13 +1,13 @@
+import type {
+  Attraction,
+  GeoSource,
+  ReferenceWebsite,
+  UploadedImage,
+} from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import pool from '../../config/database';
-import type { GeoSource } from '../../maps/geoKey';
-import type {
-  AttractionResponse,
-  ImageResponse,
-  ReferenceWebsite,
-} from '../../types/trip';
 
 // --- Row types ---
 
@@ -93,8 +93,8 @@ export async function insertWebsites(
 export function toAttractionResponse(
   row: TripAttractionRow,
   referenceWebsites: ReferenceWebsite[],
-  images: ImageResponse[],
-): AttractionResponse {
+  images: UploadedImage[],
+): Attraction {
   return {
     id: row.id,
     name: row.name,

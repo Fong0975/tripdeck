@@ -4,10 +4,10 @@ import { createPortal } from 'react-dom';
 
 import { imageUrl } from '@/api/images';
 import { useEscapeToClose } from '@/hooks/useEscapeToClose';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 interface Props {
-  images: AttractionImage[];
+  images: UploadedImage[];
   initialIndex: number;
   onClose: () => void;
 }

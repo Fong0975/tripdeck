@@ -1,11 +1,11 @@
+import type {
+  ChecklistItem,
+  ChecklistItemBody,
+  UpdateTripChecklistItemBody,
+} from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type {
-  CreateTripItemBody,
-  TripChecklistItemResponse,
-  UpdateTripItemBody,
-} from '../../../types/checklist';
 
 import { fetchSpecsByItemIds, TripChecklistItemRow } from './shared';
 
@@ -26,8 +26,8 @@ export async function verifyItemBelongsToTrip(
 /** Appends a new item to a trip checklist category. */
 export async function createTripItem(
   catId: number,
-  data: CreateTripItemBody,
-): Promise<TripChecklistItemResponse> {
+  data: ChecklistItemBody,
+): Promise<ChecklistItem> {
   const [result] = await pool.execute<ResultSetHeader>(
     'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
     [
@@ -69,8 +69,8 @@ export async function deleteTripItem(itemId: number): Promise<boolean> {
  */
 export async function updateTripItem(
   itemId: number,
-  data: UpdateTripItemBody,
-): Promise<TripChecklistItemResponse | null> {
+  data: UpdateTripChecklistItemBody,
+): Promise<ChecklistItem | null> {
   const [rows] = await pool.execute<TripChecklistItemRow[]>(
     'SELECT * FROM checklist_trip_items WHERE id = ?',
     [itemId],

@@ -40,7 +40,10 @@ export default function TravelConnectionModal({
   onSave,
   onImagesChanged,
 }: Props) {
-  const [form, setForm] = useState<TravelConnection>({ ...connection });
+  const [form, setForm] = useState<TravelConnection>(() => ({
+    ...connection,
+    transportMode: connection.transportMode ?? 'other',
+  }));
   const connectionId = connection.id;
   const {
     images,

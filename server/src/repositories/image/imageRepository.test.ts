@@ -121,7 +121,7 @@ describe('image repositories', () => {
     variants[0];
 
   describe('getImages', () => {
-    it('maps rows to ImageResponse[]', async () => {
+    it('maps rows to UploadedImage[]', async () => {
       mockPoolExecute.mockResolvedValue([
         [
           { id: 1, filename: 'a.jpg', title: 'A', [idColumn]: 10 },

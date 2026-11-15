@@ -1,20 +1,20 @@
+import type { DayPlan, UploadedImage } from '@tripdeck/shared';
 import { describe, expect, it } from 'vitest';
 
 import { makeTripBackupData } from '../../test-utils/fixtures';
-import type { DayResponse, ImageResponse } from '../../types/trip';
 
 import { collectTripImages, tripDataPath, tripImagePath } from './backupLayout';
 
-function image(id: number): ImageResponse {
+function image(id: number): UploadedImage {
   return { id, filename: `img${id}.jpg`, title: `t${id}` };
 }
 
 function day(
   id: number,
-  images: ImageResponse[],
-  attractionImages: ImageResponse[][],
-  connectionImages: ImageResponse[][],
-): DayResponse {
+  images: UploadedImage[],
+  attractionImages: UploadedImage[][],
+  connectionImages: UploadedImage[][],
+): DayPlan {
   return {
     id,
     day: id,
@@ -80,8 +80,8 @@ describe('backupLayout', () => {
     it.each([
       {
         name: 'returns nothing for a trip without images',
-        tripImages: [] as ImageResponse[],
-        days: [] as DayResponse[],
+        tripImages: [] as UploadedImage[],
+        days: [] as DayPlan[],
         expectedIds: [] as number[],
       },
       {

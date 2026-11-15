@@ -1,10 +1,10 @@
+import type {
+  ChecklistCategory,
+  ChecklistItem,
+  ItemSpec,
+} from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 
-import type {
-  ItemSpecResponse,
-  TemplateCategoryResponse,
-  TemplateItemResponse,
-} from '../../../types/checklist';
 import {
   createSpecRepository,
   type ItemSpecRow,
@@ -41,15 +41,15 @@ export const templateSpecRepository = createSpecRepository({
 
 export function toCategoryResponse(
   row: TemplateCategoryRow,
-  items: TemplateItemResponse[],
-): TemplateCategoryResponse {
+  items: ChecklistItem[],
+): ChecklistCategory {
   return { id: row.id, name: row.name, items };
 }
 
 export function toItemResponse(
   row: TemplateItemRow,
-  specs: ItemSpecResponse[],
-): TemplateItemResponse {
+  specs: ItemSpec[],
+): ChecklistItem {
   return {
     id: row.id,
     name: row.name,
@@ -68,6 +68,6 @@ export function toItemResponse(
  */
 export function fetchSpecsByItemIds(
   itemIds: number[],
-): Promise<Map<number, ItemSpecResponse[]>> {
+): Promise<Map<number, ItemSpec[]>> {
   return templateSpecRepository.fetchByItemIds(itemIds);
 }

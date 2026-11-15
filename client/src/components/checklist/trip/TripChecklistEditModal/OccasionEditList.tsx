@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Plus, Trash2 } from 'lucide-react';
 
 import type { EditOccasion } from '../../shared/types';
@@ -28,6 +29,7 @@ export default function OccasionEditList({
           >
             <input
               value={occ.name}
+              maxLength={FIELD_LIMITS.name}
               /* v8 ignore next -- select-all-on-focus convenience UX, low risk */
               onFocus={e => e.target.select()}
               onChange={e => onUpdateName(occ.id, e.target.value)}

@@ -8,6 +8,7 @@ export type {
   WeatherIconCode,
   WeatherResult,
   WeatherSource,
+  WeatherState,
 } from './types';
 
 let _enabled: Promise<boolean> | null = null;

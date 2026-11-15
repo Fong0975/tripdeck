@@ -1,13 +1,13 @@
-import type { Request, Response } from 'express';
-
-import { isTransportMode } from '../../constants/transportModes';
-import { createLogger } from '../../logger';
-import * as connectionRepo from '../../repositories/connection';
-import * as tripRepo from '../../repositories/trip';
 import type {
   CreateConnectionBody,
   UpdateConnectionBody,
-} from '../../types/trip';
+} from '@tripdeck/shared';
+import type { Request, Response } from 'express';
+
+import { createLogger } from '../../logger';
+import * as connectionRepo from '../../repositories/connection';
+import * as tripRepo from '../../repositories/trip';
+import { isTransportMode } from '../../validation/transportMode';
 import { idParam } from '../params';
 
 import {

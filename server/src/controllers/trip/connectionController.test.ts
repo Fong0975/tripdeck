@@ -1,3 +1,4 @@
+import type { TravelConnection } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/connection', () => ({
@@ -20,7 +21,6 @@ import {
   itRejects,
   type RejectCase,
 } from '../../test-utils/httpMocks';
-import type { ConnectionResponse } from '../../types/trip';
 
 import {
   addConnection,
@@ -42,7 +42,7 @@ const currentEndpoints = {
   toAttractionId: 101,
 };
 
-const sampleConnection: ConnectionResponse = {
+const sampleConnection: TravelConnection = {
   id: 200,
   fromAttractionId: 100,
   toAttractionId: 101,

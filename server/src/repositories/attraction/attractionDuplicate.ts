@@ -1,9 +1,9 @@
+import type { Attraction } from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { copyImageFile } from '../../storage/imageFiles';
-import type { AttractionResponse } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
 import * as imageRepo from '../image';
 import { nextSortOrderInDay } from '../shared/daySortOrder';
@@ -25,7 +25,7 @@ const logger = createLogger('attraction');
 export async function duplicate(
   attractionId: number,
   dayId: number,
-): Promise<AttractionResponse> {
+): Promise<Attraction> {
   const [rows] = await pool.execute<TripAttractionRow[]>(
     'SELECT * FROM trip_attractions WHERE id = ?',
     [attractionId],

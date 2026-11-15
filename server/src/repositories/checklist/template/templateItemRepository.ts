@@ -1,18 +1,14 @@
+import type { ChecklistItem, ChecklistItemBody } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type {
-  CreateItemBody,
-  TemplateItemResponse,
-  UpdateItemBody,
-} from '../../../types/checklist';
 
 import { fetchSpecsByItemIds, TemplateItemRow, toItemResponse } from './shared';
 
 export async function createItem(
   catId: number,
-  data: CreateItemBody,
-): Promise<TemplateItemResponse | null> {
+  data: ChecklistItemBody,
+): Promise<ChecklistItem | null> {
   const [catRows] = await pool.execute<RowDataPacket[]>(
     'SELECT id FROM checklist_template_categories WHERE id = ?',
     [catId],
@@ -44,8 +40,8 @@ export async function createItem(
 
 export async function updateItem(
   itemId: number,
-  data: UpdateItemBody,
-): Promise<TemplateItemResponse | null> {
+  data: ChecklistItemBody,
+): Promise<ChecklistItem | null> {
   const [rows] = await pool.execute<TemplateItemRow[]>(
     'SELECT * FROM checklist_template_items WHERE id = ?',
     [itemId],

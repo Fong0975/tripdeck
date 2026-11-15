@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -17,6 +18,10 @@ const decodeHtmlEntities = (str: string): string => {
   el.innerHTML = str;
   return el.value.replace(/\s+/g, ' ').trim();
 };
+
+/** Cuts `str` to at most `max` code points, the unit the server limits by. */
+const truncateCodePoints = (str: string, max: number): string =>
+  Array.from(str).slice(0, max).join('');
 
 /**
  * List editor for an attraction's reference websites, including a debounced
@@ -55,7 +60,9 @@ export default function ReferenceWebsitesEditor({
       try {
         const title = await fetchPageTitle(url, AbortSignal.timeout(10000));
         if (title) {
-          setSuggestedTitle(decodeHtmlEntities(title));
+          setSuggestedTitle(
+            truncateCodePoints(decodeHtmlEntities(title), FIELD_LIMITS.name),
+          );
           setTitleFetchStatus('found');
         } else {
           setTitleFetchStatus('not-found');
@@ -131,6 +138,7 @@ export default function ReferenceWebsitesEditor({
                 }
               }}
               placeholder='標題 *'
+              maxLength={FIELD_LIMITS.name}
               className={`${INPUT_CLS} flex-1 text-sm`}
             />
             {titleFetchStatus !== 'idle' && (

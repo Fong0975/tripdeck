@@ -1,14 +1,14 @@
+import type {
+  ChecklistCategory,
+  ChecklistItem,
+  ChecklistOccasion,
+  TripChecklist,
+} from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import pool from '../../../config/database';
 import { createLogger } from '../../../logger';
-import type {
-  OccasionResponse,
-  TripChecklistCategoryResponse,
-  TripChecklistItemResponse,
-  TripChecklistResponse,
-} from '../../../types/checklist';
 import { placeholders } from '../../../utils/sql';
 import { withTransaction } from '../../../utils/withTransaction';
 
@@ -30,7 +30,7 @@ const logger = createLogger('checklist-trip');
  */
 export async function findChecklist(
   tripId: number,
-): Promise<TripChecklistResponse | null> {
+): Promise<TripChecklist | null> {
   const [occRows] = await pool.execute<OccasionRow[]>(
     'SELECT * FROM checklist_occasions WHERE trip_id = ? ORDER BY id',
     [tripId],
@@ -44,7 +44,7 @@ export async function findChecklist(
     [tripId],
   );
 
-  const itemsByCatId = new Map<number, TripChecklistItemResponse[]>();
+  const itemsByCatId = new Map<number, ChecklistItem[]>();
   if (catRows.length > 0) {
     const catIds = catRows.map(r => r.id);
     const [itemRows] = await pool.execute<TripChecklistItemRow[]>(
@@ -70,7 +70,7 @@ export async function findChecklist(
     }
   }
 
-  const categories: TripChecklistCategoryResponse[] = catRows.map(row => ({
+  const categories: ChecklistCategory[] = catRows.map(row => ({
     id: row.id,
     name: row.name,
     items: itemsByCatId.get(row.id) ?? [],
@@ -93,7 +93,7 @@ export async function findChecklist(
     }
   }
 
-  const occasions: OccasionResponse[] = occRows.map(row => ({
+  const occasions: ChecklistOccasion[] = occRows.map(row => ({
     id: row.id,
     name: row.name,
     checks: checksByOccId.get(row.id) ?? {},
@@ -134,7 +134,7 @@ async function hasTripRows(
  */
 export async function initChecklist(
   tripId: number,
-): Promise<TripChecklistResponse | null> {
+): Promise<TripChecklist | null> {
   let tripFound: boolean;
   try {
     tripFound = await withTransaction(async conn => {
@@ -192,7 +192,7 @@ export async function initChecklist(
  */
 export async function findOrInitChecklist(
   tripId: number,
-): Promise<TripChecklistResponse | null> {
+): Promise<TripChecklist | null> {
   const existing = await findChecklist(tripId);
   if (existing) {
     return existing;

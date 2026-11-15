@@ -1,19 +1,16 @@
-import type { Attraction, ReferenceWebsite } from '@/types';
+import type {
+  CreateAttractionBody,
+  UpdateAttractionBody,
+} from '@tripdeck/shared';
+
+import type { Attraction } from '@/types';
 
 import { api, json } from './client';
 
 export async function addAttraction(
   tripId: number,
   dayId: number,
-  data: {
-    name: string;
-    googleMapUrl?: string;
-    notes?: string;
-    nearbyAttractions?: string;
-    startTime?: string;
-    endTime?: string;
-    referenceWebsites?: ReferenceWebsite[];
-  },
+  data: CreateAttractionBody,
 ): Promise<Attraction> {
   return api<Attraction>(`/api/trips/${tripId}/days/${dayId}/attractions`, {
     method: 'POST',
@@ -24,15 +21,7 @@ export async function addAttraction(
 export async function updateAttraction(
   tripId: number,
   attractionId: number,
-  data: {
-    name?: string;
-    googleMapUrl?: string | null;
-    notes?: string | null;
-    nearbyAttractions?: string | null;
-    startTime?: string | null;
-    endTime?: string | null;
-    referenceWebsites?: ReferenceWebsite[];
-  },
+  data: UpdateAttractionBody,
 ): Promise<Attraction> {
   return api<Attraction>(`/api/trips/${tripId}/attractions/${attractionId}`, {
     method: 'PUT',

@@ -79,6 +79,13 @@ describe('saveImageToDisk', () => {
     expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 
+  it('throws and does not write to disk when the declared mimetype is not an accepted image type', () => {
+    expect(() =>
+      saveImageToDisk(mimeCases[0].validBuffer, 'image/bmp'),
+    ).toThrow('File content does not match declared image type');
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
   describe('webp-specific signature checks', () => {
     it('throws when the RIFF header is correct but the WEBP marker at offset 8 is wrong', () => {
       const wrongMarker = Buffer.from([

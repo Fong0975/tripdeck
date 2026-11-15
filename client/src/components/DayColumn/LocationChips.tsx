@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { MapPin, Plus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -62,6 +63,7 @@ export default function LocationChips({
             key={loc.id}
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
+            maxLength={FIELD_LIMITS.name}
             onBlur={() => commitEdit(loc.id)}
             onKeyDown={e => {
               if (e.key === 'Enter') {
@@ -102,6 +104,7 @@ export default function LocationChips({
           ref={addInputRef}
           value={addValue}
           onChange={e => setAddValue(e.target.value)}
+          maxLength={FIELD_LIMITS.name}
           onBlur={commitAdd}
           onKeyDown={e => {
             if (e.key === 'Enter') {

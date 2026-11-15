@@ -1,5 +1,5 @@
 import { showToast } from '@/components/ui/toast';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 /** An image picked in a create form, uploaded only after its entity exists. */
 export interface StagedImage {
@@ -8,7 +8,7 @@ export interface StagedImage {
 }
 
 export interface StagedUploadResult {
-  uploaded: AttractionImage[];
+  uploaded: UploadedImage[];
   failedCount: number;
 }
 
@@ -25,9 +25,9 @@ export interface StagedUploadResult {
  */
 export async function uploadStagedImages(
   stagedImages: StagedImage[] | undefined,
-  upload: (file: File, title: string) => Promise<AttractionImage>,
+  upload: (file: File, title: string) => Promise<UploadedImage>,
 ): Promise<StagedUploadResult> {
-  const uploaded: AttractionImage[] = [];
+  const uploaded: UploadedImage[] = [];
   let failedCount = 0;
   for (const { file, title } of stagedImages ?? []) {
     try {

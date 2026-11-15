@@ -1,7 +1,7 @@
+import type { UploadedImage } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../test-utils/dbMocks';
-import type { ImageResponse } from '../../types/trip';
 import * as imageRepo from '../image';
 
 import { moveToDay, updateOrder } from './attractionOrder';
@@ -338,7 +338,7 @@ describe('attractionOrder', () => {
       });
       vi.mocked(imageRepo.getConnectionImagesBatch).mockImplementation(ids =>
         Promise.resolve(
-          new Map<number, ImageResponse[]>(
+          new Map<number, UploadedImage[]>(
             ids.map(id => [
               id,
               [{ id: id * 10, filename: `conn-${id}.jpg`, title: '' }],

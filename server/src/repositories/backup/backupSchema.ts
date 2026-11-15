@@ -1,9 +1,10 @@
+import type { ChecklistTemplate } from '@tripdeck/shared';
+
 import { createLogger } from '../../logger';
 import type {
   BackupManifestTripEntry,
   TripBackupData,
 } from '../../types/backup';
-import type { ChecklistTemplateResponse } from '../../types/checklist';
 
 import { BackupValidationError } from './errors';
 
@@ -244,7 +245,7 @@ export function assertTripBackupData(
 export function assertChecklistTemplate(
   value: unknown,
   entryPath: string,
-): asserts value is ChecklistTemplateResponse {
+): asserts value is ChecklistTemplate {
   assertShape(checklistTemplateValidator, value, entryPath);
 }
 

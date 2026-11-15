@@ -1,4 +1,4 @@
-import type { Attraction, ReferenceWebsite } from '@/types';
+import type { AttractionDraft, ReferenceWebsite } from '@/types';
 
 /**
  * Create/update API payload for an attraction, where `TEmpty` is the value
@@ -28,19 +28,19 @@ export interface AttractionPayload<TEmpty extends null | undefined> {
  * @returns The payload accepted by `addAttraction` / `updateAttraction`.
  */
 export function toAttractionPayload(
-  attraction: Attraction,
+  attraction: AttractionDraft,
   empty: undefined,
 ): AttractionPayload<undefined>;
 export function toAttractionPayload(
-  attraction: Attraction,
+  attraction: AttractionDraft,
   empty: null,
 ): AttractionPayload<null>;
 export function toAttractionPayload(
-  attraction: Attraction,
+  attraction: AttractionDraft,
   empty: null | undefined,
 ): AttractionPayload<null | undefined>;
 export function toAttractionPayload(
-  attraction: Attraction,
+  attraction: AttractionDraft,
   empty: null | undefined,
 ): AttractionPayload<null | undefined> {
   return {

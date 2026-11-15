@@ -1,4 +1,4 @@
-import type { ImageResponse, TripResponse } from '../../types/trip';
+import type { Trip, UploadedImage } from '@tripdeck/shared';
 
 import { TripRow } from './types';
 
@@ -21,8 +21,8 @@ export function toISOString(d: Date | string): string {
 
 export function toTripResponse(
   row: TripRow,
-  images: ImageResponse[] = [],
-): TripResponse {
+  images: UploadedImage[] = [],
+): Trip {
   return {
     id: row.id,
     title: row.title,

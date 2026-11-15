@@ -33,6 +33,9 @@ jobs:
       # `format` runs the repository-wide Prettier check on its own so that a
       # server-only change still verifies JSON/CSS formatting. Type-checking is
       # part of each workspace's `build` (tsc), hence the empty `typecheck`.
+      # client and server consume the `shared` workspace, so a change there
+      # re-runs both, and their commands build `shared` first so its emitted
+      # `dist/` (types and the CommonJS runtime) exists before they resolve it.
       projects: |
         [
           {
@@ -46,14 +49,24 @@ jobs:
             "build": ""
           },
           {
+            "name": "shared",
+            "language": "node",
+            "paths": ["shared/**", "package.json", "package-lock.json", ".nvmrc"],
+            "format": "",
+            "lint": "",
+            "typecheck": "",
+            "test": "",
+            "build": "npm run build -w shared"
+          },
+          {
             "name": "client",
             "language": "node",
-            "paths": ["client/**", "package.json", "package-lock.json", ".nvmrc", ".prettierrc.json", ".prettierignore"],
+            "paths": ["client/**", "shared/**", "package.json", "package-lock.json", ".nvmrc", ".prettierrc.json", ".prettierignore"],
             "format": "",
-            "lint": "npm run lint:check -w client",
+            "lint": "npm run build -w shared && npm run lint:check -w client",
             "typecheck": "",
-            "test": "npm run test:coverage -w client",
-            "build": "npm run build -w client",
+            "test": "npm run build -w shared && npm run test:coverage -w client",
+            "build": "npm run build -w shared && npm run build -w client",
             "test-results": "client/test-results.json",
             "coverage-file": "client/coverage/coverage-summary.json",
             "coverage-threshold": 80
@@ -61,12 +74,12 @@ jobs:
           {
             "name": "server",
             "language": "node",
-            "paths": ["server/**", "package.json", "package-lock.json", ".nvmrc", ".prettierrc.json", ".prettierignore"],
+            "paths": ["server/**", "shared/**", "package.json", "package-lock.json", ".nvmrc", ".prettierrc.json", ".prettierignore"],
             "format": "",
-            "lint": "npm run lint:check -w server",
+            "lint": "npm run build -w shared && npm run lint:check -w server",
             "typecheck": "",
-            "test": "npm run test:coverage -w server",
-            "build": "npm run build -w server",
+            "test": "npm run build -w shared && npm run test:coverage -w server",
+            "build": "npm run build -w shared && npm run build -w server",
             "test-results": "server/test-results.json",
             "coverage-file": "server/coverage/coverage-summary.json",
             "coverage-threshold": 80
@@ -77,4 +90,4 @@ jobs:
       enable-swagger: false
       enable-bump-version: true
       bump-level: minor
-      npm-workspaces: '["client", "server"]'
+      npm-workspaces: '["client", "server", "shared"]'

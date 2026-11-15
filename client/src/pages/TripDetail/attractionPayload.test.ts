@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { makeAttraction } from '@/test-utils/fixtures';
+import type { AttractionDraft } from '@/types';
 
 import { toAttractionPayload } from './attractionPayload';
 
@@ -17,29 +18,33 @@ const filled = makeAttraction({
   longitude: 2,
 });
 
+interface UnsetFieldsCase {
+  description: string;
+  attraction: AttractionDraft;
+  empty: null | undefined;
+}
+
 describe('toAttractionPayload', () => {
-  it.each([
+  it.each<UnsetFieldsCase>([
     {
-      description: 'fills unset optional fields with undefined',
-      attraction: makeAttraction({ name: 'Spot' }),
+      description: 'fills unset draft fields with undefined',
+      attraction: { id: 0, name: 'Spot' },
       empty: undefined,
     },
     {
-      description: 'fills unset optional fields with null',
-      attraction: makeAttraction({ name: 'Spot' }),
+      description: 'fills unset draft fields with null',
+      attraction: { id: 0, name: 'Spot' },
       empty: null,
     },
     {
       description: 'replaces null optional fields with the empty value',
-      attraction: makeAttraction({
-        name: 'Spot',
-        googleMapUrl: null,
-        notes: null,
-        nearbyAttractions: null,
-        startTime: null,
-        endTime: null,
-      }),
+      attraction: makeAttraction({ name: 'Spot' }),
       empty: undefined,
+    },
+    {
+      description: 'replaces null optional fields with null',
+      attraction: makeAttraction({ name: 'Spot' }),
+      empty: null,
     },
   ])('$description', ({ attraction, empty }) => {
     expect(toAttractionPayload(attraction, empty)).toEqual({
@@ -49,7 +54,7 @@ describe('toAttractionPayload', () => {
       nearbyAttractions: empty,
       startTime: empty,
       endTime: empty,
-      referenceWebsites: undefined,
+      referenceWebsites: attraction.referenceWebsites,
     });
   });
 

@@ -10,7 +10,13 @@ import {
   makeContent,
   makeTrip,
 } from '@/test-utils/fixtures';
-import type { Attraction, DayPlan, Trip, TravelConnection } from '@/types';
+import type {
+  Attraction,
+  AttractionDraft,
+  DayPlan,
+  Trip,
+  TravelConnection,
+} from '@/types';
 
 import TripModals from './TripModals';
 import type { ModalState } from './types';
@@ -27,7 +33,7 @@ vi.mock('@/components/AttractionModal', () => ({
     attraction?: Attraction;
     onClose: () => void;
     onSave: (
-      attraction: Attraction,
+      attraction: AttractionDraft,
       stagedImages?: { file: File; title: string }[],
     ) => Promise<void> | void;
     onImagesChanged?: () => void;

@@ -97,7 +97,7 @@ describe('EditDayNoteModal', () => {
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
     expect(onImagesChanged).toHaveBeenCalledTimes(1);
 
-    const file = new File(['a'], 'b.jpg');
+    const file = new File(['a'], 'b.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
     await user.click(screen.getByText('確認上傳'));

@@ -281,6 +281,25 @@ describe('TravelConnectionModal', () => {
     );
   });
 
+  it('falls back to the "other" mode when the connection has none', async () => {
+    const user = setupUser();
+    const onSave = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeFormConnection({ id: 5, transportMode: null })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '儲存' }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ transportMode: 'other' }),
+      undefined,
+    );
+  });
+
   it.each([
     {
       field: 'route',

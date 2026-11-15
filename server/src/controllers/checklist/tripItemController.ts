@@ -1,8 +1,8 @@
+import type { UpdateTripChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as checklistRepo from '../../repositories/checklist/trip';
-import type { UpdateTripItemBody } from '../../types/checklist';
 
 import { idParams } from './params';
 import {
@@ -20,7 +20,7 @@ const logger = createLogger('checklist-trip');
  * Trip items are scoped by their `:tripId` trip. Updates are partial: only
  * the fields present in the body are validated and written.
  */
-const tripItems: ItemStore<UpdateTripItemBody> = {
+const tripItems: ItemStore<UpdateTripChecklistItemBody> = {
   logger,
   label: 'Trip checklist item',
   parentParam: 'tripId',

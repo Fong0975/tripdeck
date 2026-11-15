@@ -1,6 +1,6 @@
+import type { WeatherResult } from '@tripdeck/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { WeatherResult } from './types';
 import * as weatherService from './weatherService';
 
 interface LoadConfig {

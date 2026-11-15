@@ -1,6 +1,31 @@
-node_modules
-client/
-server/node_modules
-server/dist
+# Both images (server/Dockerfile and client/Dockerfile) build from the
+# repository root, so this is the only .dockerignore Docker reads.
+.git
+.github
+.claude
+.vscode
+.idea
+docker
+raw
+
+# Dependencies and build outputs (installed/built inside the image)
+**/node_modules
+**/dist
+**/dist-ssr
+**/coverage
+**/.cache
+**/*.tsbuildinfo
+**/test-results.json
+
+# Runtime data
+.uploads
+.backups
+.logs
 server/uploads
-*.log
+server/backups
+server/logs
+**/*.log
+
+# Environment files and secrets
+**/.env
+**/.env.*

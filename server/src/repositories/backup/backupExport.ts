@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises';
 import path from 'path';
 
+import type { UploadedImage } from '@tripdeck/shared';
 import AdmZip from 'adm-zip';
 
 import { createLogger } from '../../logger';
@@ -10,7 +11,6 @@ import {
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
-import type { ImageResponse } from '../../types/trip';
 import { mapWithConcurrency } from '../../utils/mapWithConcurrency';
 import * as templateRepo from '../checklist/template';
 import * as checklistRepo from '../checklist/trip';
@@ -72,7 +72,7 @@ export async function buildTripBackupData(
  */
 async function addTripImagesToZip(
   zip: AdmZip,
-  images: ImageResponse[],
+  images: UploadedImage[],
   tripId: number,
   folder: string,
 ): Promise<number> {

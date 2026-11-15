@@ -1,12 +1,12 @@
+import type {
+  ChecklistCategory,
+  ChecklistOccasion,
+  TripChecklist,
+} from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import { createLogger } from '../../logger';
-import type {
-  OccasionResponse,
-  TripChecklistCategoryResponse,
-  TripChecklistResponse,
-} from '../../types/checklist';
 import { bulkInsert } from '../../utils/bulkInsert';
 
 import { consistencyError } from './tripImportHelpers';
@@ -23,7 +23,7 @@ const logger = createLogger('backup');
 async function insertCategories(
   conn: PoolConnection,
   newTripId: number,
-  categories: TripChecklistCategoryResponse[],
+  categories: ChecklistCategory[],
 ): Promise<Map<number, number>> {
   const itemIdMap = new Map<number, number>();
   const specRows: unknown[][] = [];
@@ -75,7 +75,7 @@ async function insertOccasions(
   conn: PoolConnection,
   originalTripId: number,
   newTripId: number,
-  occasions: OccasionResponse[],
+  occasions: ChecklistOccasion[],
   itemIdMap: Map<number, number>,
 ): Promise<void> {
   const checkRows: unknown[][] = [];
@@ -123,7 +123,7 @@ export async function importTripChecklist(
   conn: PoolConnection,
   originalTripId: number,
   newTripId: number,
-  checklist: TripChecklistResponse,
+  checklist: TripChecklist,
 ): Promise<void> {
   logger.debug('Importing checklist', {
     originalTripId,

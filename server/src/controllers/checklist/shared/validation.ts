@@ -1,12 +1,11 @@
-import type {
-  CreateItemBody,
-  CreateSpecBody,
-  UpdateTripItemBody,
-} from '../../../types/checklist';
 import {
+  type ChecklistItemBody,
+  type ChecklistSpecBody,
   FIELD_LIMITS,
-  findTooLongField,
-} from '../../../validation/fieldLimits';
+  type UpdateTripChecklistItemBody,
+} from '@tripdeck/shared';
+
+import { findTooLongField } from '../../../validation/fieldLimits';
 
 export const NAME_REQUIRED_ERROR = 'name is required';
 export const INVALID_QUANTITY_ERROR = 'quantity must be a non-negative integer';
@@ -83,14 +82,14 @@ export function requireName(body: unknown): Validated<string> {
  * @param body - Raw request body.
  * @returns The item fields, or the first client-facing validation error.
  */
-export function parseItemFields(body: unknown): Validated<CreateItemBody> {
+export function parseItemFields(body: unknown): Validated<ChecklistItemBody> {
   const name = requireName(body);
   if (!name.ok) {
     return name;
   }
   const { quantity, notes, storage_location } = asRecord(
     body,
-  ) as Partial<CreateItemBody>;
+  ) as Partial<ChecklistItemBody>;
   const error = findOptionalFieldError(quantity, storage_location);
   if (error) {
     return invalid(error);
@@ -109,12 +108,12 @@ export function parseItemFields(body: unknown): Validated<CreateItemBody> {
  * @param body - Raw request body.
  * @returns The spec fields, or the first client-facing validation error.
  */
-export function parseSpecFields(body: unknown): Validated<CreateSpecBody> {
+export function parseSpecFields(body: unknown): Validated<ChecklistSpecBody> {
   const name = requireName(body);
   if (!name.ok) {
     return name;
   }
-  const { storage_location } = asRecord(body) as Partial<CreateSpecBody>;
+  const { storage_location } = asRecord(body) as Partial<ChecklistSpecBody>;
   const error = findOptionalFieldError(undefined, storage_location);
   if (error) {
     return invalid(error);
@@ -132,11 +131,11 @@ export function parseSpecFields(body: unknown): Validated<CreateSpecBody> {
  */
 export function parseTripItemPatch(
   body: unknown,
-): Validated<UpdateTripItemBody> {
+): Validated<UpdateTripChecklistItemBody> {
   const record = asRecord(body);
   const { quantity, notes, storage_location } =
-    record as Partial<UpdateTripItemBody>;
-  const patch: UpdateTripItemBody = {};
+    record as Partial<UpdateTripChecklistItemBody>;
+  const patch: UpdateTripChecklistItemBody = {};
 
   if ('name' in record) {
     const name = requireName(record);

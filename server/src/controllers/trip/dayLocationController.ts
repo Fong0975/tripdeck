@@ -1,9 +1,9 @@
+import { type DayLocationBody, FIELD_LIMITS } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
-import type { CreateLocationBody, UpdateLocationBody } from '../../types/trip';
-import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
+import { findTooLongField } from '../../validation/fieldLimits';
 import { idParam } from '../params';
 
 const logger = createLogger('day-location');
@@ -74,7 +74,7 @@ export async function addDayLocation(
 ): Promise<void> {
   const tripId = idParam(req, 'tripId');
   const dayId = idParam(req, 'dayId');
-  const body = (req.body ?? {}) as CreateLocationBody;
+  const body = (req.body ?? {}) as DayLocationBody;
 
   const nameError = findLocationNameError(body.name);
   if (nameError) {
@@ -109,7 +109,7 @@ export async function updateDayLocation(
 ): Promise<void> {
   const ids = locationParams(req);
   const { tripId, locationId } = ids;
-  const body = (req.body ?? {}) as UpdateLocationBody;
+  const body = (req.body ?? {}) as DayLocationBody;
 
   const nameError = findLocationNameError(body.name);
   if (nameError) {

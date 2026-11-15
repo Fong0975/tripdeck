@@ -1,11 +1,7 @@
+import type { DayLocation, DayLocationBody } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
-import type {
-  CreateLocationBody,
-  DayLocation,
-  UpdateLocationBody,
-} from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
 import { nextSortOrderInDay } from '../shared/daySortOrder';
 
@@ -20,7 +16,7 @@ import { nextSortOrderInDay } from '../shared/daySortOrder';
  */
 export async function addLocation(
   dayId: number,
-  data: CreateLocationBody,
+  data: DayLocationBody,
 ): Promise<DayLocation> {
   const name = data.name.trim();
   const id = await withTransaction(async conn => {
@@ -60,7 +56,7 @@ export async function verifyLocationBelongsToTrip(
 
 export async function updateLocation(
   locationId: number,
-  data: UpdateLocationBody,
+  data: DayLocationBody,
 ): Promise<boolean> {
   const [result] = await pool.execute<ResultSetHeader>(
     'UPDATE trip_day_locations SET name = ? WHERE id = ?',

@@ -34,6 +34,10 @@ describe('useConnectionActions', () => {
         fromAttractionId: 100,
         toAttractionId: 200,
         transportMode: 'transit',
+        duration: null,
+        route: null,
+        notes: null,
+        images: [],
       });
     });
   });
@@ -108,6 +112,36 @@ describe('useConnectionActions', () => {
         expect(showToast).toHaveBeenCalledWith('success', '已儲存交通方式。');
       });
     });
+
+    it.each([
+      {
+        description: 'creates with the "other" mode',
+        connection: makeConnection({ id: 0, transportMode: null }),
+        api: addConnection,
+        expected: expect.objectContaining({ transportMode: 'other' }),
+      },
+      {
+        description: 'updates without changing the mode',
+        connection: makeConnection({ id: 7, transportMode: null }),
+        api: updateConnection,
+        expected: expect.objectContaining({ transportMode: undefined }),
+      },
+    ])(
+      'with a null transport mode, $description',
+      async ({ connection, api, expected }) => {
+        const { handleSaveConnection } = useConnectionActions(
+          makeTrip(),
+          makeContent(),
+          vi.fn(),
+          vi.fn(),
+          vi.fn(),
+        );
+
+        await handleSaveConnection(0, connection);
+
+        expect(api).toHaveBeenCalledWith(1, expect.any(Number), expected);
+      },
+    );
 
     it('shows an error toast and does not reload or close the modal when saving fails', async () => {
       vi.mocked(updateConnection).mockRejectedValue(new Error('network error'));

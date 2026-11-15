@@ -1,4 +1,6 @@
-import { resolveTripGeo, type ResolveGeoResult } from '@/api/maps';
+import type { ResolveGeoResult } from '@tripdeck/shared';
+
+import { resolveTripGeo } from '@/api/maps';
 import type { Attraction, DayPlan } from '@/types';
 
 type GeoFields = Pick<Attraction, 'latitude' | 'longitude' | 'geoSource'>;

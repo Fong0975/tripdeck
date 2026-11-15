@@ -1,3 +1,4 @@
+import type { UploadedImage } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../config/database', async () => {
@@ -15,8 +16,6 @@ vi.mock('../../logger', async () => {
   return { createLogger: () => mockLogger };
 });
 
-import type { ImageResponse } from '../../types/trip';
-
 import { toPendingImages } from './pendingImages';
 
 describe('toPendingImages', () => {
@@ -25,7 +24,7 @@ describe('toPendingImages', () => {
   it.each([
     {
       name: 'returns an empty list for a parent without images',
-      images: [] as ImageResponse[],
+      images: [] as UploadedImage[],
       expected: [],
     },
     {

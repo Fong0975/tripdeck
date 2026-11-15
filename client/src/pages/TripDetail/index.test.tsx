@@ -547,10 +547,9 @@ describe('TripDetail', () => {
     await user.click(screen.getByText('delete-location-0'));
 
     expect(handleDeleteAttraction).toHaveBeenCalledWith(10);
-    expect(handleDuplicateAttraction).toHaveBeenCalledWith({
-      id: 10,
-      name: 'Attraction A',
-    });
+    expect(handleDuplicateAttraction).toHaveBeenCalledWith(
+      makeAttraction({ id: 10, name: 'Attraction A' }),
+    );
     expect(handleAddConnection).toHaveBeenCalledWith(0, 10, 11);
     expect(handleDeleteConnection).toHaveBeenCalledWith(100);
     expect(handleAddLocation).toHaveBeenCalledWith(0, 'New Location');

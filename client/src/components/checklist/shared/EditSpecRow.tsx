@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Trash2 } from 'lucide-react';
 
 import StorageCheckboxes from './StorageCheckboxes';
@@ -29,6 +30,7 @@ export default function EditSpecRow({
       </span>
       <input
         value={spec.name}
+        maxLength={FIELD_LIMITS.name}
         onFocus={e => e.target.select()}
         onChange={e => onUpdate({ name: e.target.value })}
         placeholder='規格名稱'

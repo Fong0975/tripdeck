@@ -1,8 +1,8 @@
+import type { UpdateDayNotesBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
-import type { UpdateDayNotesBody } from '../../types/trip';
 import { idParam } from '../params';
 
 const logger = createLogger('day-note');

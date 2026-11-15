@@ -1,11 +1,8 @@
+import type { WeatherIconCode, WeatherResult } from '@tripdeck/shared';
+
 import { createLogger } from '../logger';
 
-import { fetchJson } from './http';
-import {
-  WEATHER_FETCH_TIMEOUT_MS,
-  type WeatherIconCode,
-  type WeatherResult,
-} from './types';
+import { fetchJson, WEATHER_FETCH_TIMEOUT_MS } from './http';
 
 const logger = createLogger('weather');
 

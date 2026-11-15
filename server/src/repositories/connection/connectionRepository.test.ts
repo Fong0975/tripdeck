@@ -7,6 +7,8 @@ import {
   create,
   deleteById,
   findEndpointsInTrip,
+  toConnectionResponse,
+  type TripConnectionRow,
   update,
   verifyBelongsToTrip,
 } from './connectionRepository';
@@ -42,6 +44,42 @@ const CURRENT_ROW = {
 describe('connectionRepository', () => {
   beforeEach(() => {
     mockGetConnectionImages.mockResolvedValue([]);
+  });
+
+  describe('toConnectionResponse', () => {
+    const tests: {
+      name: string;
+      transportMode: string | null;
+      expected: string | null;
+    }[] = [
+      { name: 'known mode', transportMode: 'transit', expected: 'transit' },
+      { name: 'unknown mode', transportMode: 'hovercraft', expected: null },
+      { name: 'wrong case', transportMode: 'Walk', expected: null },
+      { name: 'empty string', transportMode: '', expected: null },
+      { name: 'null', transportMode: null, expected: null },
+    ];
+
+    it.each(tests)(
+      'maps transport_mode for $name',
+      ({ transportMode, expected }) => {
+        const images = [{ id: 7, filename: 'a.jpg', title: 'A' }];
+        const row = {
+          ...CURRENT_ROW,
+          transport_mode: transportMode,
+        } as TripConnectionRow;
+
+        expect(toConnectionResponse(row, images)).toEqual({
+          id: 1,
+          fromAttractionId: 100,
+          toAttractionId: 101,
+          transportMode: expected,
+          duration: '10 min',
+          route: 'main street',
+          notes: 'old notes',
+          images,
+        });
+      },
+    );
   });
 
   describe('verifyBelongsToTrip', () => {
@@ -208,14 +246,14 @@ describe('connectionRepository', () => {
       const result = await update(1, {
         fromAttractionId: 200,
         toAttractionId: 201,
-        transportMode: 'car',
+        transportMode: 'drive',
         duration: '30 min',
       });
 
       expect(findUpdateParams()).toEqual([
         200,
         201,
-        'car',
+        'drive',
         '30 min',
         CURRENT_ROW.route,
         CURRENT_ROW.notes,

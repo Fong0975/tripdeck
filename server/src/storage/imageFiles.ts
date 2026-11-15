@@ -2,42 +2,43 @@ import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
+import { IMAGE_MIME_TYPES, type ImageMimeType } from '@tripdeck/shared';
+
 import { createLogger } from '../logger';
 
 const logger = createLogger('upload');
 
-const MAGIC_BYTES: Array<{ mime: string; bytes: number[]; offset?: number }> = [
-  { mime: 'image/jpeg', bytes: [0xff, 0xd8, 0xff] },
-  {
-    mime: 'image/png',
-    bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-  },
-  { mime: 'image/gif', bytes: [0x47, 0x49, 0x46, 0x38] },
-  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46], offset: 0 },
-];
+/** Leading signature bytes of each accepted image type. */
+const MAGIC_BYTES: Record<ImageMimeType, number[]> = {
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  'image/gif': [0x47, 0x49, 0x46, 0x38],
+  'image/webp': [0x52, 0x49, 0x46, 0x46],
+};
 
-const MIME_TO_EXT: Record<string, string> = {
+const MIME_TO_EXT: Record<ImageMimeType, string> = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/gif': '.gif',
   'image/webp': '.webp',
 };
 
-const EXT_TO_MIME: Record<string, string> = Object.fromEntries(
-  Object.entries(MIME_TO_EXT).map(([mime, ext]) => [ext, mime]),
+const EXT_TO_MIME: Record<string, ImageMimeType> = Object.fromEntries(
+  IMAGE_MIME_TYPES.map(mime => [MIME_TO_EXT[mime], mime]),
 );
 
-/**
- * Validates the magic bytes of an image buffer against known image signatures.
- * For WebP, additionally verifies the RIFF...WEBP marker at offset 8.
- */
-function hasValidMagicBytes(buffer: Buffer, mime: string): boolean {
-  const entry = MAGIC_BYTES.find(m => m.mime === mime);
-  if (!entry) {
-    return false;
-  }
+/** Narrows a declared MIME type to one of the accepted image types. */
+function isImageMimeType(value: string): value is ImageMimeType {
+  return (IMAGE_MIME_TYPES as readonly string[]).includes(value);
+}
 
-  const { bytes } = entry;
+/**
+ * Validates the magic bytes of an image buffer against the signature of its
+ * declared type. For WebP, additionally verifies the RIFF...WEBP marker at
+ * offset 8.
+ */
+function hasValidMagicBytes(buffer: Buffer, mime: ImageMimeType): boolean {
+  const bytes = MAGIC_BYTES[mime];
   if (buffer.length < bytes.length + (mime === 'image/webp' ? 12 : 0)) {
     return false;
   }
@@ -67,15 +68,15 @@ export const UPLOADS_DIR = path.join(__dirname, '../../uploads');
  * Writes a validated image buffer to disk using a UUID-based filename.
  * Returns the generated filename (with extension) for storage in the database.
  *
- * @throws {Error} When magic bytes do not match the declared MIME type.
+ * @throws {Error} When the declared MIME type is not an accepted image type
+ *   or the magic bytes do not match it.
  */
 export function saveImageToDisk(buffer: Buffer, mimetype: string): string {
-  if (!hasValidMagicBytes(buffer, mimetype)) {
+  if (!isImageMimeType(mimetype) || !hasValidMagicBytes(buffer, mimetype)) {
     throw new Error('File content does not match declared image type');
   }
 
-  const ext = MIME_TO_EXT[mimetype] ?? '.jpg';
-  const filename = `${randomUUID()}${ext}`;
+  const filename = `${randomUUID()}${MIME_TO_EXT[mimetype]}`;
   const dest = path.join(UPLOADS_DIR, filename);
 
   fs.writeFileSync(dest, buffer);

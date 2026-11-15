@@ -1,3 +1,5 @@
+import type { CreateTripBody, UpdateTripBody } from '@tripdeck/shared';
+
 import type { Trip, TripContent } from '@/types';
 
 import { api, ApiError, json } from './client';
@@ -36,27 +38,13 @@ export async function getTrip(id: number): Promise<Trip | null> {
   return nullIfNotFound(api<Trip>(`/api/trips/${id}`));
 }
 
-export async function createTrip(data: {
-  title: string;
-  destination?: string;
-  startDate: string;
-  endDate: string;
-  description?: string;
-}): Promise<Trip> {
+export async function createTrip(data: CreateTripBody): Promise<Trip> {
   return api<Trip>('/api/trips/', { method: 'POST', ...json(data) });
-}
-
-export interface UpdateTripData {
-  title?: string;
-  destination?: string | null;
-  startDate?: string;
-  endDate?: string;
-  description?: string | null;
 }
 
 export async function updateTrip(
   id: number,
-  data: UpdateTripData,
+  data: UpdateTripBody,
 ): Promise<Trip> {
   return api<Trip>(`/api/trips/${id}`, { method: 'PUT', ...json(data) });
 }

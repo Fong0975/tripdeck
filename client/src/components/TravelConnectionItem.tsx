@@ -1,7 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 
-import { TRANSPORT_MODE_META } from '@/constants/transportModes';
+import { getTransportModeMeta } from '@/constants/transportModes';
 import type { TravelConnection } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
@@ -27,7 +27,7 @@ function TravelConnectionItem({ connection, onEdit, onDelete }: Props) {
   const hasRoute = !!connection.route?.trim();
   const hasNotes = !!connection.notes?.trim();
   const hasImages = (connection.images ?? []).length > 0;
-  const mode = TRANSPORT_MODE_META[connection.transportMode];
+  const mode = getTransportModeMeta(connection.transportMode);
 
   return (
     <div className='group my-1 flex items-center gap-2 px-3'>

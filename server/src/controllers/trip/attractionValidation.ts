@@ -1,4 +1,6 @@
-import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
+import { FIELD_LIMITS } from '@tripdeck/shared';
+
+import { findTooLongField } from '../../validation/fieldLimits';
 
 import { isMissing } from './connectionValidation';
 

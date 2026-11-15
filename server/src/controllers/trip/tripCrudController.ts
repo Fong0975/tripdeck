@@ -1,9 +1,13 @@
+import {
+  type CreateTripBody,
+  FIELD_LIMITS,
+  type UpdateTripBody,
+} from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as tripRepo from '../../repositories/trip';
-import type { CreateTripBody, UpdateTripBody } from '../../types/trip';
-import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
+import { findTooLongField } from '../../validation/fieldLimits';
 import {
   normalizeTripTitle,
   validateTripDates,

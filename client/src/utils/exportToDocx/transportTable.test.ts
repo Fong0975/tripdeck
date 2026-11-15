@@ -155,7 +155,7 @@ describe('makeTransportTable', () => {
   it.each([
     {
       description: 'no duration and no destination name',
-      duration: undefined,
+      duration: null,
       toName: '',
       expectedHeader: '交通方式：步行',
     },
@@ -173,7 +173,7 @@ describe('makeTransportTable', () => {
     },
     {
       description: 'a destination name is set',
-      duration: undefined,
+      duration: null,
       toName: '淺草寺',
       expectedHeader: '交通方式：步行 → 淺草寺',
     },
@@ -189,6 +189,25 @@ describe('makeTransportTable', () => {
       const table = await makeTransportTable(
         makeConnection({ duration }),
         toName,
+      );
+
+      expect(cellChildren(table)[0]).toEqual(
+        paragraph([textRun(expectedHeader, { bold: true })], {
+          spacing: { before: 40, after: 40 },
+        }),
+      );
+    },
+  );
+
+  it.each([
+    { transportMode: 'flight' as const, expectedHeader: '交通方式：飛機' },
+    { transportMode: null, expectedHeader: '交通方式：其他' },
+  ])(
+    'labels the $transportMode transport mode in the header',
+    async ({ transportMode, expectedHeader }) => {
+      const table = await makeTransportTable(
+        makeConnection({ transportMode }),
+        '',
       );
 
       expect(cellChildren(table)[0]).toEqual(

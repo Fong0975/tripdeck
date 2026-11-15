@@ -1,8 +1,8 @@
+import type { ChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
-import type { UpdateItemBody } from '../../types/checklist';
 
 import {
   handleAddItem,
@@ -13,7 +13,7 @@ import {
 import { parseItemFields } from './shared/validation';
 
 /** Template items are scoped by their `:catId` category. */
-const templateItems: ItemStore<UpdateItemBody> = {
+const templateItems: ItemStore<ChecklistItemBody> = {
   logger: createLogger('checklist-template'),
   label: 'Template item',
   parentParam: 'catId',

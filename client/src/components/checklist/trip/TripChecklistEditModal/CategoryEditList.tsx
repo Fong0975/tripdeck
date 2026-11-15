@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 import EditableItemRow from '../../shared/EditableItemRow';
@@ -70,6 +71,7 @@ export default function CategoryEditList({
                 </button>
                 <input
                   value={cat.name}
+                  maxLength={FIELD_LIMITS.name}
                   /* v8 ignore next -- select-all-on-focus convenience UX, low risk */
                   onFocus={e => e.target.select()}
                   onChange={e => onUpdateName(cat.id, e.target.value)}

@@ -1,13 +1,14 @@
+import type {
+  CreateAttractionBody,
+  MoveAttractionBody,
+  ReorderAttractionsBody,
+  UpdateAttractionBody,
+} from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
 import * as attractionRepo from '../../repositories/attraction';
 import * as tripRepo from '../../repositories/trip';
-import type {
-  CreateAttractionBody,
-  ReorderAttractionsBody,
-  UpdateAttractionBody,
-} from '../../types/trip';
 import { parseId } from '../../utils/parseId';
 import { idParam } from '../params';
 
@@ -270,12 +271,6 @@ export async function reorderAttractions(
     count: orderedIds.length,
   });
   res.status(204).send();
-}
-
-/** Request body of {@link moveAttraction}. */
-interface MoveAttractionBody {
-  dayId?: unknown;
-  index?: unknown;
 }
 
 export async function moveAttraction(

@@ -1,12 +1,12 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { INPUT_CLS } from '@/components/ui/formStyles';
+import { showToast } from '@/components/ui/toast';
 import { useObjectUrls } from '@/hooks/useObjectUrls';
 import { useSubmitting } from '@/hooks/useSubmitting';
-
-/** File types accepted by the backend's image upload endpoints. */
-const ACCEPTED_IMAGE_TYPES = 'image/jpeg,image/png,image/gif,image/webp';
+import { ACCEPTED_IMAGE_TYPES, validateImageFile } from '@/utils/uploadLimits';
 
 interface Props {
   /** Label of the confirm button. */
@@ -59,17 +59,22 @@ export default function PendingImageForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
+    // Clear the input so picking the same file again still fires onChange.
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     if (!file) {
+      return;
+    }
+    const invalidReason = validateImageFile(file);
+    if (invalidReason) {
+      showToast('error', invalidReason);
       return;
     }
     replacePreview(file);
     setPendingFile(file);
     setPendingTitle('');
     setError('');
-    // Clear the input so picking the same file again still fires onChange.
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const handleCancel = () => {
@@ -127,6 +132,7 @@ export default function PendingImageForm({
               setError('');
             }}
             placeholder='圖片標題（必填）'
+            maxLength={FIELD_LIMITS.name}
             className={`${INPUT_CLS} text-sm`}
           />
           {error && <p className='text-xs text-destructive'>{error}</p>}

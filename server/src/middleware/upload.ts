@@ -1,15 +1,19 @@
+import {
+  MAX_BACKUP_UPLOAD_BYTES,
+  MAX_IMAGE_UPLOAD_BYTES,
+} from '@tripdeck/shared';
 import multer from 'multer';
 
 /**
  * Multer instance using memory storage so magic-byte validation can happen
- * before anything touches the filesystem. Max file size: 10 MB.
+ * before anything touches the filesystem, capped at `MAX_IMAGE_UPLOAD_BYTES`.
  * MIME type and magic-byte validation are performed by saveImageToDisk
  * (storage/imageFiles) after the file is received, so the controller can
  * return a structured 400 response.
  */
 export const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_IMAGE_UPLOAD_BYTES },
 });
 
 /**
@@ -19,5 +23,5 @@ export const upload = multer({
  */
 export const backupUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 300 * 1024 * 1024 },
+  limits: { fileSize: MAX_BACKUP_UPLOAD_BYTES },
 });

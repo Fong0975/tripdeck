@@ -1,13 +1,9 @@
+import type { CreateTripBody, Trip, UpdateTripBody } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../storage/imageFiles';
-import type {
-  CreateTripBody,
-  TripResponse,
-  UpdateTripBody,
-} from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
 import * as imageRepo from '../image';
 
@@ -50,7 +46,7 @@ export async function tripExists(id: number): Promise<boolean> {
  *
  * @returns All trips.
  */
-export async function findAll(): Promise<TripResponse[]> {
+export async function findAll(): Promise<Trip[]> {
   const [rows] = await pool.execute<TripRow[]>(
     'SELECT * FROM trips ORDER BY start_date DESC, created_at DESC',
   );
@@ -64,7 +60,7 @@ export async function findAll(): Promise<TripResponse[]> {
  * @param id - Trip id.
  * @returns The trip, or null when it does not exist.
  */
-export async function findById(id: number): Promise<TripResponse | null> {
+export async function findById(id: number): Promise<Trip | null> {
   const row = await selectTripRow(id);
   if (!row) {
     return null;
@@ -80,7 +76,7 @@ export async function findById(id: number): Promise<TripResponse | null> {
  * @param data - New trip fields.
  * @returns The created trip (without images).
  */
-export async function create(data: CreateTripBody): Promise<TripResponse> {
+export async function create(data: CreateTripBody): Promise<Trip> {
   let tripId: number;
   try {
     tripId = await withTransaction(async conn => {
@@ -138,7 +134,7 @@ export async function create(data: CreateTripBody): Promise<TripResponse> {
 export async function update(
   id: number,
   data: UpdateTripBody,
-): Promise<TripResponse | null> {
+): Promise<Trip | null> {
   const cur = await selectTripRow(id);
   if (!cur) {
     return null;

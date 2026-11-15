@@ -1,7 +1,7 @@
+import type { ChecklistOccasion } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type { OccasionResponse } from '../../../types/checklist';
 import { withTransaction } from '../../../utils/withTransaction';
 
 import { CheckRow, lockTrip, OccasionRow } from './shared';
@@ -21,7 +21,7 @@ export async function verifyOccasionBelongsToTrip(
 export async function createOccasion(
   tripId: number,
   name: string,
-): Promise<OccasionResponse> {
+): Promise<ChecklistOccasion> {
   const [result] = await pool.execute<ResultSetHeader>(
     'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
     [tripId, name],
@@ -32,7 +32,7 @@ export async function createOccasion(
 export async function updateOccasion(
   occId: number,
   name: string,
-): Promise<OccasionResponse | null> {
+): Promise<ChecklistOccasion | null> {
   const [rows] = await pool.execute<OccasionRow[]>(
     'SELECT * FROM checklist_occasions WHERE id = ?',
     [occId],

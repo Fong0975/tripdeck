@@ -3,13 +3,13 @@ import { useState } from 'react';
 
 import { imageUrl } from '@/api/images';
 import { showToast } from '@/components/ui/toast';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
 import PendingImageForm from './PendingImageForm';
 
 interface Props {
-  images: AttractionImage[];
+  images: UploadedImage[];
   onUpload: (file: File, title: string) => Promise<void>;
   onDelete: (imageId: number) => Promise<void>;
 }

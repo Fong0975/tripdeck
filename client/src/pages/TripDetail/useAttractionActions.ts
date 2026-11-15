@@ -1,4 +1,10 @@
-import type { Attraction, DayPlan, Trip, TripContent } from '@/types';
+import type {
+  Attraction,
+  AttractionDraft,
+  DayPlan,
+  Trip,
+  TripContent,
+} from '@/types';
 import {
   showSavedToast,
   uploadStagedImages,
@@ -27,7 +33,7 @@ import { runMutation } from './runMutation';
 async function persistAttraction(
   tripId: number,
   day: DayPlan,
-  attraction: Attraction,
+  attraction: AttractionDraft,
   stagedImages?: StagedImage[],
 ): Promise<number> {
   if (attraction.id !== 0) {
@@ -62,7 +68,7 @@ export function useAttractionActions(
 ) {
   const handleSaveAttraction = async (
     dayIndex: number,
-    attraction: Attraction,
+    attraction: AttractionDraft,
     stagedImages?: StagedImage[],
   ) => {
     if (!trip || !content) {

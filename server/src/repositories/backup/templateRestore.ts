@@ -1,7 +1,7 @@
+import type { ChecklistTemplate } from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 
 import { createLogger } from '../../logger';
-import type { ChecklistTemplateResponse } from '../../types/checklist';
 import { bulkInsert } from '../../utils/bulkInsert';
 import { withTransaction } from '../../utils/withTransaction';
 
@@ -18,7 +18,7 @@ const logger = createLogger('backup');
  * a collection the user adds to.
  */
 export async function restoreTemplate(
-  template: ChecklistTemplateResponse,
+  template: ChecklistTemplate,
 ): Promise<void> {
   logger.info('Replacing checklist template', {
     incomingCategoryCount: template.categories.length,

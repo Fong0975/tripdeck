@@ -1,5 +1,6 @@
+import type { UploadedImage } from '@tripdeck/shared';
+
 import type { TripBackupData } from '../../types/backup';
-import type { ImageResponse } from '../../types/trip';
 
 /**
  * Zip path of one trip's `data.json`.
@@ -29,8 +30,8 @@ export function tripImagePath(folder: string, filename: string): string {
  * @param data - One trip's backup data.
  * @returns The images, trip-level first, then per day in document order.
  */
-export function collectTripImages(data: TripBackupData): ImageResponse[] {
-  const images: ImageResponse[] = [...data.trip.images];
+export function collectTripImages(data: TripBackupData): UploadedImage[] {
+  const images: UploadedImage[] = [...data.trip.images];
   for (const day of data.content.days) {
     images.push(...day.images);
     for (const attraction of day.attractions) {

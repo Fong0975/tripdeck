@@ -1,3 +1,5 @@
+import type { PageTitleResult } from '@tripdeck/shared';
+
 import { api } from './client';
 
 /**
@@ -14,7 +16,7 @@ export async function fetchPageTitle(
   url: string,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const data = await api<{ title: string | null }>(
+  const data = await api<PageTitleResult>(
     `/api/fetch-title?url=${encodeURIComponent(url)}`,
     { signal },
   );

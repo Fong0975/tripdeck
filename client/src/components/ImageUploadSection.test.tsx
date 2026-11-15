@@ -54,7 +54,7 @@ describe('ImageUploadSection', () => {
       <ImageUploadSection images={[]} onUpload={vi.fn()} onDelete={vi.fn()} />,
     );
 
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
     expect(screen.getByText('確認上傳')).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     await user.click(screen.getByText('確認上傳'));
 
@@ -81,7 +81,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    const file = new File(['a'], 'a.jpg');
+    const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
@@ -101,7 +101,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
       'My Photo',
@@ -187,8 +187,8 @@ describe('ImageUploadSection', () => {
       <ImageUploadSection images={[]} onUpload={vi.fn()} onDelete={vi.fn()} />,
     );
 
-    selectFile(container, new File(['a'], 'a.jpg'));
-    selectFile(container, new File(['b'], 'b.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
+    selectFile(container, new File(['b'], 'b.jpg', { type: 'image/jpeg' }));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
   });

@@ -1,3 +1,4 @@
+import type { TripContent } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/trip', () => ({
@@ -17,7 +18,6 @@ import {
   itRejects,
   type RejectCase,
 } from '../../test-utils/httpMocks';
-import type { TripContentResponse } from '../../types/trip';
 import { MAX_TRIP_DAYS } from '../../validation/tripValidation';
 
 import {
@@ -31,7 +31,7 @@ import {
 
 const sampleTrip = makeTrip();
 
-const sampleTripContent: TripContentResponse = {
+const sampleTripContent: TripContent = {
   tripId: 1,
   days: [],
 };

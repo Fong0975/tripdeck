@@ -1,7 +1,7 @@
 import { ImageRun, Paragraph, TextRun } from 'docx';
 
 import { imageUrl } from '@/api/images';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 import { CONTENT_WIDTH_PX, FONT, HALF_WIDTH_PX } from './constants';
 
@@ -133,7 +133,7 @@ function calcImageDimensions(
  * image can't be fetched or decoded.
  */
 export async function makeImageParagraphs(
-  img: AttractionImage,
+  img: UploadedImage,
 ): Promise<Paragraph[]> {
   const url = imageUrl(img.filename);
   try {

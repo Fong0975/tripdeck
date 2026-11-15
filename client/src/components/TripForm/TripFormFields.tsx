@@ -1,3 +1,5 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
+
 import { INPUT_CLS, LABEL_CLS, TEXTAREA_CLS } from '@/components/ui/formStyles';
 
 import type { TripFormValues } from './validateTripForm';
@@ -20,6 +22,7 @@ export default function TripFormFields({ values, onChange }: Props) {
           name='title'
           value={values.title}
           onChange={onChange}
+          maxLength={FIELD_LIMITS.name}
           placeholder='例：東京五日遊'
           className={INPUT_CLS}
         />
@@ -31,6 +34,7 @@ export default function TripFormFields({ values, onChange }: Props) {
           name='destination'
           value={values.destination}
           onChange={onChange}
+          maxLength={FIELD_LIMITS.name}
           placeholder='例：日本東京'
           className={INPUT_CLS}
         />

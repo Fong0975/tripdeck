@@ -1,12 +1,11 @@
 import path from 'path';
 
+import type { Trip, TripChecklist, TripContent } from '@tripdeck/shared';
 import AdmZip from 'adm-zip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeTemplate, makeTrip } from '../../test-utils/fixtures';
 import { mockLogger } from '../../test-utils/loggerMock';
-import type { TripChecklistResponse } from '../../types/checklist';
-import type { TripContentResponse, TripResponse } from '../../types/trip';
 
 import { buildBackupZip, buildTripBackupData } from './backupExport';
 import { TripNotFoundError } from './errors';
@@ -42,13 +41,13 @@ vi.mock('../../logger', async () => {
   return { createLogger: () => mockLogger };
 });
 
-const sampleTrip: TripResponse = makeTrip({
+const sampleTrip: Trip = makeTrip({
   title: '東京 🗼 五日遊',
   destination: 'Tokyo',
   images: [{ id: 1, filename: 'trip1.jpg', title: '封面' }],
 });
 
-const sampleContent: TripContentResponse = {
+const sampleContent: TripContent = {
   tripId: 1,
   days: [
     {
@@ -91,7 +90,7 @@ const sampleContent: TripContentResponse = {
   ],
 };
 
-const sampleChecklist: TripChecklistResponse = {
+const sampleChecklist: TripChecklist = {
   tripId: 1,
   categories: [],
   occasions: [],

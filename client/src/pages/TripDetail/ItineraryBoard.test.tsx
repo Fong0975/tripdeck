@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeAttraction, makeBoardDays } from '@/test-utils/fixtures';
+import {
+  makeAttraction,
+  makeBoardDays,
+  makeConnection,
+} from '@/test-utils/fixtures';
 
 import ItineraryBoard from './ItineraryBoard';
 
@@ -84,21 +88,19 @@ describe('ItineraryBoard', () => {
     expect(props.onEditDayNote).toHaveBeenCalledWith(1);
     expect(props.onOpenDayMap).toHaveBeenCalledWith(1);
     expect(props.onAddAttraction).toHaveBeenCalledWith(1);
-    expect(props.onEditAttraction).toHaveBeenCalledWith(0, {
-      id: 10,
-      name: 'Attraction A',
-    });
+    expect(props.onEditAttraction).toHaveBeenCalledWith(
+      0,
+      makeAttraction({ id: 10, name: 'Attraction A' }),
+    );
     expect(props.onDeleteAttraction).toHaveBeenCalledWith(0, 10);
-    expect(props.onDuplicateAttraction).toHaveBeenCalledWith(0, {
-      id: 10,
-      name: 'Attraction A',
-    });
-    expect(props.onEditConnection).toHaveBeenCalledWith(0, {
-      id: 100,
-      fromAttractionId: 10,
-      toAttractionId: 11,
-      transportMode: 'walk',
-    });
+    expect(props.onDuplicateAttraction).toHaveBeenCalledWith(
+      0,
+      makeAttraction({ id: 10, name: 'Attraction A' }),
+    );
+    expect(props.onEditConnection).toHaveBeenCalledWith(
+      0,
+      makeConnection({ id: 100, fromAttractionId: 10, toAttractionId: 11 }),
+    );
     expect(props.onDeleteConnection).toHaveBeenCalledWith(0, 100);
     expect(props.onAddConnection).toHaveBeenCalledWith(0, 10, 11);
     expect(props.onAddLocation).toHaveBeenCalledWith(0, 'New Location');

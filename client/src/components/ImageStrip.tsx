@@ -1,10 +1,10 @@
 import { Images } from 'lucide-react';
 
 import { imageUrl } from '@/api/images';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 interface ImageStripProps {
-  images: AttractionImage[];
+  images: UploadedImage[];
   onOpenLightbox: () => void;
 }
 

@@ -1,9 +1,9 @@
+import type { Attraction, DayPlan } from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import { createLogger } from '../../logger';
 import type { TripBackupData } from '../../types/backup';
-import type { AttractionResponse, DayResponse } from '../../types/trip';
 import { bulkInsert } from '../../utils/bulkInsert';
 import * as imageRepo from '../image';
 
@@ -52,7 +52,7 @@ export async function insertTrip(
 async function insertAttraction(
   conn: PoolConnection,
   newDayId: number,
-  attraction: AttractionResponse,
+  attraction: Attraction,
 ): Promise<number> {
   const [attractionResult] = await conn.execute<ResultSetHeader>(
     `INSERT INTO trip_attractions
@@ -88,7 +88,7 @@ async function insertAttraction(
 async function insertDay(
   conn: PoolConnection,
   newTripId: number,
-  day: DayResponse,
+  day: DayPlan,
   attractionIdMap: IdMap,
 ): Promise<{ newDayId: number; pendingImages: PendingImage[] }> {
   const [dayResult] = await conn.execute<ResultSetHeader>(
@@ -143,7 +143,7 @@ async function insertDay(
 async function insertDayConnections(
   conn: PoolConnection,
   originalTripId: number,
-  day: DayResponse,
+  day: DayPlan,
   dayIdMap: IdMap,
   attractionIdMap: IdMap,
 ): Promise<PendingImage[]> {

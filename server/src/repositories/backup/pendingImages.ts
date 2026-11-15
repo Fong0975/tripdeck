@@ -1,10 +1,11 @@
+import type { UploadedImage } from '@tripdeck/shared';
+
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import {
   deleteImageFromDisk,
   saveImportedImageBuffer,
 } from '../../storage/imageFiles';
-import type { ImageResponse } from '../../types/trip';
 
 import { TripImportDataError } from './errors';
 
@@ -15,7 +16,7 @@ export type AddImageFn = (
   parentId: number,
   filename: string,
   title: string,
-) => Promise<ImageResponse>;
+) => Promise<UploadedImage>;
 
 /**
  * An image from the backup whose file still has to be written to disk and
@@ -38,7 +39,7 @@ export interface PendingImage {
  * @returns One pending image per backup image, in the same order.
  */
 export function toPendingImages(
-  images: ImageResponse[],
+  images: UploadedImage[],
   newParentId: number,
   add: AddImageFn,
 ): PendingImage[] {

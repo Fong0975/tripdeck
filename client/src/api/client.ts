@@ -1,3 +1,5 @@
+import type { ApiErrorBody } from '@tripdeck/shared';
+
 const _apiDomain = import.meta.env.VITE_API_DOMAIN;
 // The public-facing port can differ from the backend's internal listen port
 // when a reverse proxy maps VITE_API_DOMAIN to a different external port.
@@ -70,7 +72,7 @@ async function readErrorBody(
   url: string,
 ): Promise<{ message: string; details?: unknown }> {
   try {
-    const body = (await res.json()) as { error?: string; details?: unknown };
+    const body = (await res.json()) as Partial<ApiErrorBody>;
     return {
       message: body.error ?? `API error ${res.status}: ${url}`,
       details: body.details,

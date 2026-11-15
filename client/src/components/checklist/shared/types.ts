@@ -1,16 +1,8 @@
-export type EditSpec = {
-  id: number;
-  name: string;
-  storage_location: string | null;
-};
+import type { ChecklistItem, ItemSpec } from '@/types';
 
-export type EditItem = {
-  id: number;
-  name: string;
-  quantity: number | null;
-  notes: string | null;
-  storage_location: string | null;
-  specs: EditSpec[];
+export type EditSpec = ItemSpec;
+
+export type EditItem = ChecklistItem & {
   _deleted?: boolean;
 };
 

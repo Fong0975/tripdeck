@@ -1,10 +1,11 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
 import { INPUT_CLS } from '@/components/ui/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';
-import type { Attraction } from '@/types';
+import type { Attraction, AttractionDraft } from '@/types';
 import type { StagedImage } from '@/utils/stagedImages';
 import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
 
@@ -23,14 +24,14 @@ interface Props {
   onClose: () => void;
   /** Return the save promise so the modal can block repeat submits until it settles. */
   onSave: (
-    attraction: Attraction,
+    attraction: AttractionDraft,
     stagedImages?: StagedImage[],
   ) => Promise<void> | void;
   /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
   onImagesChanged?: () => void;
 }
 
-const empty: Attraction = {
+const empty: AttractionDraft = {
   id: 0,
   name: '',
   googleMapUrl: '',
@@ -49,7 +50,7 @@ export default function AttractionModal({
   onSave,
   onImagesChanged,
 }: Props) {
-  const [form, setForm] = useState<Attraction>(
+  const [form, setForm] = useState<AttractionDraft>(
     attraction ? { ...attraction } : { ...empty },
   );
   const attractionId = attraction?.id;
@@ -79,7 +80,7 @@ export default function AttractionModal({
   );
   const { submitting, run } = useSubmitting();
 
-  const set = (key: keyof Attraction, value: unknown) =>
+  const set = (key: keyof AttractionDraft, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
   const doSave = () =>
@@ -128,6 +129,7 @@ export default function AttractionModal({
                 setError('');
               }}
               placeholder='例：淺草寺'
+              maxLength={FIELD_LIMITS.name}
               className={INPUT_CLS}
             />
           </div>

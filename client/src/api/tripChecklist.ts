@@ -1,4 +1,10 @@
 import type {
+  ChecklistItemBody,
+  ChecklistSpecBody,
+  UpdateTripChecklistItemBody,
+} from '@tripdeck/shared';
+
+import type {
   ChecklistCategory,
   ChecklistItem,
   ChecklistOccasion,
@@ -7,23 +13,6 @@ import type {
 } from '@/types';
 
 import { api, json } from './client';
-
-/**
- * Request body for creating a trip checklist item; on update every field is
- * optional.
- */
-export interface TripItemBody {
-  name: string;
-  quantity?: number | null;
-  notes?: string | null;
-  storage_location?: string | null;
-}
-
-/** Request body for creating or updating a trip checklist item spec. */
-export interface TripSpecBody {
-  name: string;
-  storage_location?: string | null;
-}
 
 // --- Categories / Items / Specs (per-trip checklist) ---
 
@@ -60,7 +49,7 @@ export async function deleteTripCategory(
 export async function addTripItem(
   tripId: number,
   catId: number,
-  data: TripItemBody,
+  data: ChecklistItemBody,
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/trips/${tripId}/checklist/categories/${catId}/items`,
@@ -71,7 +60,7 @@ export async function addTripItem(
 export async function updateTripItem(
   tripId: number,
   itemId: number,
-  data: Partial<TripItemBody>,
+  data: UpdateTripChecklistItemBody,
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(`/api/trips/${tripId}/checklist/items/${itemId}`, {
     method: 'PUT',
@@ -91,7 +80,7 @@ export async function deleteTripItem(
 export async function addTripItemSpec(
   tripId: number,
   itemId: number,
-  data: TripSpecBody,
+  data: ChecklistSpecBody,
 ): Promise<ItemSpec> {
   return api<ItemSpec>(`/api/trips/${tripId}/checklist/items/${itemId}/specs`, {
     method: 'POST',
@@ -103,7 +92,7 @@ export async function updateTripItemSpec(
   tripId: number,
   itemId: number,
   specId: number,
-  data: TripSpecBody,
+  data: ChecklistSpecBody,
 ): Promise<void> {
   await api<void>(
     `/api/trips/${tripId}/checklist/items/${itemId}/specs/${specId}`,

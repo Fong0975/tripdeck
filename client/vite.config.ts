@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
 const NODE_TEST_FILES = [
   'src/api/**/*.test.ts',
   'src/constants/**/*.test.ts',
-  'src/utils/{date,duration,connectionAdjacency}.test.ts',
+  'src/utils/{date,duration,connectionAdjacency,uploadLimits}.test.ts',
   'src/utils/weatherApi/**/*.test.ts',
   'src/utils/mapsApi/**/*.test.ts',
   'src/utils/googleMaps/mapPoints.test.ts',
@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        '@tripdeck/shared': path.resolve(__dirname, '../shared/src/index.ts'),
       },
     },
     define: {

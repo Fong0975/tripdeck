@@ -1,9 +1,9 @@
+import type { Attraction, GeoSource } from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { computeGeoKey, isGeoSource, type GeoSource } from '../../maps/geoKey';
-import type { AttractionResponse } from '../../types/trip';
+import { computeGeoKey, isGeoSource } from '../../maps/geoKey';
 
 import { TripImportDataError } from './errors';
 
@@ -49,7 +49,7 @@ export async function generateUniqueTripTitle(
  * @returns The four geo column values, in insert order.
  */
 export function toGeoColumns(
-  attraction: Partial<AttractionResponse> & {
+  attraction: Partial<Attraction> & {
     name: string;
     googleMapUrl: string | null;
   },

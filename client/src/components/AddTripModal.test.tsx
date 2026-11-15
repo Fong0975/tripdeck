@@ -123,7 +123,7 @@ describe('AddTripModal', () => {
     });
     fillDateField(container, 'startDate', '2026-01-01');
 
-    const file = new File(['a'], 'a.jpg');
+    const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'Cover');
     await user.click(screen.getByText('加入圖片'));
@@ -151,7 +151,7 @@ describe('AddTripModal', () => {
       target: { value: 'My Trip' },
     });
     fillDateField(container, 'startDate', '2026-01-01');
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'Cover');
     await user.click(screen.getByText('加入圖片'));
     submitForm(container);

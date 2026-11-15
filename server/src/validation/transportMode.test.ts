@@ -1,6 +1,7 @@
+import { TRANSPORT_MODES } from '@tripdeck/shared';
 import { describe, expect, it } from 'vitest';
 
-import { isTransportMode, TRANSPORT_MODES } from './transportModes';
+import { isTransportMode } from './transportMode';
 
 describe('isTransportMode', () => {
   const tests: { name: string; input: unknown; expected: boolean }[] = [

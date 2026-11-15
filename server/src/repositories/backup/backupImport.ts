@@ -1,9 +1,10 @@
-import { createLogger } from '../../logger';
 import type {
   FailedTripResult,
   ImportBackupResult,
   ImportedTripResult,
-} from '../../types/backup';
+} from '@tripdeck/shared';
+
+import { createLogger } from '../../logger';
 
 import { parseBackupZip } from './backupValidate';
 import { toClientImportErrorMessage } from './errors';

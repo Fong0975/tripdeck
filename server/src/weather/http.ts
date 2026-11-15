@@ -1,3 +1,6 @@
+/** Upper bound for every weather provider request. */
+export const WEATHER_FETCH_TIMEOUT_MS = 8000;
+
 /** Outcome of {@link fetchJson}: the parsed body, or the failing HTTP status. */
 export type FetchJsonResult<T> =
   { ok: true; data: T } | { ok: false; status: number };

@@ -1,9 +1,9 @@
-import type { WeatherResult } from '@/utils/weatherApi/types';
+import type { WeatherResult, WeatherStatus } from '@tripdeck/shared';
 
 import { api } from './client';
 
-export async function getWeatherStatus(): Promise<{ enabled: boolean }> {
-  return api<{ enabled: boolean }>('/api/weather/status');
+export async function getWeatherStatus(): Promise<WeatherStatus> {
+  return api<WeatherStatus>('/api/weather/status');
 }
 
 /**

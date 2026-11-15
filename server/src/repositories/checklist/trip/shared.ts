@@ -1,7 +1,7 @@
+import type { ItemSpec } from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
-import type { ItemSpecResponse } from '../../../types/checklist';
 import { createSpecRepository } from '../shared/specRepository';
 
 // --- Row types ---
@@ -69,6 +69,6 @@ export const tripSpecRepository = createSpecRepository({
  */
 export function fetchSpecsByItemIds(
   itemIds: number[],
-): Promise<Map<number, ItemSpecResponse[]>> {
+): Promise<Map<number, ItemSpec[]>> {
   return tripSpecRepository.fetchByItemIds(itemIds);
 }

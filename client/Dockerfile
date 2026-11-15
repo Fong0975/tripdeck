@@ -1,19 +1,29 @@
-# Multi-stage build for Vite React frontend
+# Multi-stage build for Vite React frontend.
+# Build context is the repository root (see docker-compose.yml) so the
+# `@tripdeck/shared` sources under shared/src are reachable by the Vite alias.
 FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --verbose
+# Replicate the npm workspace layout so `npm ci` honours the root lockfile.
+# server/package.json is copied (manifest only) because npm validates every
+# workspace listed in the root package.json; its dependencies are not
+# installed thanks to the `-w` filter below.
+COPY package.json package-lock.json ./
+COPY shared/package.json ./shared/
+COPY client/package.json ./client/
+COPY server/package.json ./server/
+RUN npm ci -w shared -w client --include-workspace-root=false
 
-COPY . .
+COPY shared/ ./shared/
+COPY client/ ./client/
 ARG VITE_API_DOMAIN=
 ARG VITE_API_PORT=3001
 ARG VITE_API_PUBLIC_PORT=
 ENV VITE_API_DOMAIN=$VITE_API_DOMAIN
 ENV VITE_API_PORT=$VITE_API_PORT
 ENV VITE_API_PUBLIC_PORT=$VITE_API_PUBLIC_PORT
-RUN npm run build
+RUN npm run build -w client
 
 # Final stage
 FROM nginx:alpine
@@ -25,8 +35,8 @@ FROM nginx:alpine
 RUN sed -i -e '/^user /d' -e 's#^pid .*#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
     && chmod -R a+rwX /var/cache/nginx /etc/nginx/conf.d
 
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf.template /tmp/nginx.conf.template
+COPY --from=builder /app/client/dist /usr/share/nginx/html
+COPY client/nginx.conf.template /tmp/nginx.conf.template
 
 ARG FRONTEND_PORT=3000
 EXPOSE ${FRONTEND_PORT}

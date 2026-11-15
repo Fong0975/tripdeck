@@ -1,8 +1,4 @@
-import type {
-  CreateSpecBody,
-  ItemSpecResponse,
-  UpdateSpecBody,
-} from '../../../types/checklist';
+import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
 import { templateSpecRepository } from './shared';
 
@@ -15,8 +11,8 @@ import { templateSpecRepository } from './shared';
  */
 export function createItemSpec(
   itemId: number,
-  data: CreateSpecBody,
-): Promise<ItemSpecResponse | null> {
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
   return templateSpecRepository.create(itemId, data);
 }
 
@@ -30,8 +26,8 @@ export function createItemSpec(
  */
 export function updateItemSpec(
   specId: number,
-  data: UpdateSpecBody,
-): Promise<ItemSpecResponse | null> {
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
   return templateSpecRepository.update(specId, data);
 }
 

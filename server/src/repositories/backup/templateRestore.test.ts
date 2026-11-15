@@ -1,3 +1,4 @@
+import type { ChecklistTemplate } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../config/database', async () => {
@@ -12,7 +13,6 @@ vi.mock('../../logger', async () => {
 
 import { db } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
-import type { ChecklistTemplateResponse } from '../../types/checklist';
 
 import { restoreTemplate } from './templateRestore';
 
@@ -54,7 +54,7 @@ const passport = {
   storage_location: null,
 };
 
-const sampleTemplate: ChecklistTemplateResponse = {
+const sampleTemplate: ChecklistTemplate = {
   categories: [
     {
       id: 1,

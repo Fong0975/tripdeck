@@ -1,7 +1,7 @@
+import type { UpdateAttractionBody } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../test-utils/dbMocks';
-import type { UpdateAttractionBody } from '../../types/trip';
 import * as imageRepo from '../image';
 
 import { create, deleteById, update } from './attractionCrud';

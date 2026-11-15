@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Pencil, Plus, X } from 'lucide-react';
 
 import DiscardChangesDialog from '@/components/ui/DiscardChangesDialog';
@@ -61,6 +62,7 @@ export default function CategoryEditModal({
             </label>
             <input
               value={edit.name}
+              maxLength={FIELD_LIMITS.name}
               onFocus={e => e.target.select()}
               onChange={e => updateCategoryName(e.target.value)}
               className='w-full bg-transparent text-sm font-semibold text-foreground focus:outline-hidden'

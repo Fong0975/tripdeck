@@ -1,3 +1,5 @@
+import type { ChecklistItemBody, ChecklistSpecBody } from '@tripdeck/shared';
+
 import type { EditItem, EditSpec } from './types';
 
 export interface EditableEntity {
@@ -122,16 +124,9 @@ export async function syncEditableList<
 
 // --- Shared field-diff / payload helpers for checklist items & specs ---
 
-interface ItemFieldsSource {
-  name: string;
-  quantity?: number | null;
-  notes?: string | null;
-  storage_location?: string | null;
-}
-
 export function itemFieldsChanged(
   edited: EditItem,
-  orig: ItemFieldsSource,
+  orig: ChecklistItemBody,
 ): boolean {
   return (
     edited.name.trim() !== orig.name ||
@@ -141,7 +136,10 @@ export function itemFieldsChanged(
   );
 }
 
-export function itemPayload(edited: EditItem, fallbackName: string) {
+export function itemPayload(
+  edited: EditItem,
+  fallbackName: string,
+): ChecklistItemBody {
   return {
     name: edited.name.trim() || fallbackName,
     quantity: edited.quantity,
@@ -150,14 +148,9 @@ export function itemPayload(edited: EditItem, fallbackName: string) {
   };
 }
 
-interface SpecFieldsSource {
-  name: string;
-  storage_location?: string | null;
-}
-
 export function specFieldsChanged(
   edited: EditSpec,
-  orig: SpecFieldsSource,
+  orig: ChecklistSpecBody,
 ): boolean {
   return (
     edited.name.trim() !== orig.name ||
@@ -165,7 +158,10 @@ export function specFieldsChanged(
   );
 }
 
-export function specPayload(edited: EditSpec, fallbackName = '新規格') {
+export function specPayload(
+  edited: EditSpec,
+  fallbackName = '新規格',
+): ChecklistSpecBody {
   return {
     name: edited.name.trim() || fallbackName,
     storage_location: edited.storage_location,

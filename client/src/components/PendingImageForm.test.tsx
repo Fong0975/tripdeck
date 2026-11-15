@@ -1,10 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { MAX_IMAGE_UPLOAD_BYTES } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/components/ui/toast';
 import { selectFile } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 
 import PendingImageForm from './PendingImageForm';
+
+vi.mock('@/components/ui/toast');
 
 const TITLE_PLACEHOLDER = '圖片標題（必填）';
 
@@ -16,7 +20,7 @@ function renderWithPendingFile(
   const utils = render(
     <PendingImageForm confirmLabel='確認' {...props} onConfirm={onConfirm} />,
   );
-  const file = new File(['a'], 'a.jpg');
+  const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
   selectFile(utils.container, file);
   return { ...utils, file, onConfirm };
 }
@@ -30,6 +34,36 @@ describe('PendingImageForm', () => {
       screen.queryByPlaceholderText(TITLE_PLACEHOLDER),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    {
+      name: 'an oversized image',
+      file: new File(['a'], 'big.png', { type: 'image/png' }),
+      size: MAX_IMAGE_UPLOAD_BYTES + 1,
+      message: '圖片大小不可超過 10 MB',
+    },
+    {
+      name: 'an unsupported file type',
+      file: new File(['a'], 'a.svg', { type: 'image/svg+xml' }),
+      size: 1,
+      message: '僅支援 JPEG、PNG、GIF、WEBP 格式的圖片',
+    },
+  ])(
+    'rejects $name with an error toast instead of staging it',
+    ({ file, size, message }) => {
+      Object.defineProperty(file, 'size', { value: size });
+      const { container } = render(
+        <PendingImageForm confirmLabel='確認' onConfirm={vi.fn()} />,
+      );
+
+      selectFile(container, file);
+
+      expect(showToast).toHaveBeenCalledWith('error', message);
+      expect(
+        screen.queryByPlaceholderText(TITLE_PLACEHOLDER),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it.each([
     { name: 'an empty title', typed: '' },

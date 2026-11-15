@@ -1,11 +1,7 @@
+import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import type { Logger } from '../../../logger';
-import type {
-  CreateSpecBody,
-  ItemSpecResponse,
-  UpdateSpecBody,
-} from '../../../types/checklist';
 import { idParams } from '../params';
 
 import { rejectInvalidBody, rejectNotFound } from './responses';
@@ -23,14 +19,8 @@ export interface SpecStore {
   parentParam: string;
   verifyItem(itemId: number, parentId: number): Promise<boolean>;
   verifySpec(specId: number, itemId: number): Promise<boolean>;
-  create(
-    itemId: number,
-    data: CreateSpecBody,
-  ): Promise<ItemSpecResponse | null>;
-  update(
-    specId: number,
-    data: UpdateSpecBody,
-  ): Promise<ItemSpecResponse | null>;
+  create(itemId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
+  update(specId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   remove(specId: number): Promise<boolean>;
 }
 

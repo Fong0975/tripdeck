@@ -4,7 +4,7 @@ import EditDayNoteModal from '@/components/EditDayNoteModal';
 import EditTripModal from '@/components/EditTripModal';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import type {
-  Attraction,
+  AttractionDraft,
   DayPlan,
   TravelConnection,
   Trip,
@@ -21,7 +21,7 @@ interface Props {
   onClose: () => void;
   onSaveAttraction: (
     dayIndex: number,
-    attraction: Attraction,
+    attraction: AttractionDraft,
     stagedImages?: StagedImage[],
   ) => Promise<void>;
   onSaveConnection: (

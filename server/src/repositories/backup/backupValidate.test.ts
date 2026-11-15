@@ -1,10 +1,10 @@
+import type { ChecklistTemplate } from '@tripdeck/shared';
 import AdmZip from 'adm-zip';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeTemplate, makeTripBackupData } from '../../test-utils/fixtures';
 import { mockLogger } from '../../test-utils/loggerMock';
 import type { BackupManifest, TripBackupData } from '../../types/backup';
-import type { ChecklistTemplateResponse } from '../../types/checklist';
 
 vi.mock('../../logger', async () => {
   const { mockLogger } = await import('../../test-utils/loggerMock');
@@ -117,7 +117,7 @@ interface BuildZipOptions {
   trips?: TripFixture[];
   /** When set, the manifest declares `includesTemplate: true`. */
   includesTemplate?: boolean;
-  template?: ChecklistTemplateResponse;
+  template?: ChecklistTemplate;
   skipTemplateJson?: boolean;
 }
 
@@ -504,7 +504,7 @@ describe('parseBackupZip', () => {
   it('rejects a structurally invalid template.json', () => {
     const template = {
       categories: [{ name: 'Documents', items: [{ name: 'Passport' }] }],
-    } as unknown as ChecklistTemplateResponse;
+    } as unknown as ChecklistTemplate;
     const zip = buildZip({ includesTemplate: true, template });
 
     expect(() => parseBackupZip(zip)).toThrow(

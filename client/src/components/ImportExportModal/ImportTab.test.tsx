@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MAX_BACKUP_UPLOAD_BYTES } from '@tripdeck/shared';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -63,6 +64,21 @@ describe('ImportTab', () => {
     fireEvent.change(getFileInput(container), { target: { files: [] } });
 
     expect(screen.getByText('選擇備份檔案')).toBeInTheDocument();
+    expect(screen.getByText('匯入')).toBeDisabled();
+  });
+
+  it('rejects a backup over the size limit with an error toast', () => {
+    const { container } = render(<ImportTab onClose={vi.fn()} />);
+    const file = new File(['zip-bytes'], 'huge.zip');
+    Object.defineProperty(file, 'size', { value: MAX_BACKUP_UPLOAD_BYTES + 1 });
+
+    selectFile(container, file);
+
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '備份檔大小不可超過 300 MB',
+    );
+    expect(screen.queryByText('huge.zip')).not.toBeInTheDocument();
     expect(screen.getByText('匯入')).toBeDisabled();
   });
 

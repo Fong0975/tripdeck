@@ -1,6 +1,7 @@
+import type { ResolveGeoResult } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveTripGeo, type ResolveGeoResult } from '@/api/maps';
+import { resolveTripGeo } from '@/api/maps';
 import { makeAttraction, makeDay } from '@/test-utils/fixtures';
 
 import {
@@ -106,7 +107,7 @@ describe('resolveDayGeo', () => {
 
     const [day1, day2] = withResolvedGeo(days);
     expect(day1.attractions[0]).toMatchObject(LOCATED);
-    expect(day1.attractions[1].geoSource).toBeUndefined();
+    expect(day1.attractions[1].geoSource).toBeNull();
     expect(day2.attractions[0]).toMatchObject({
       latitude: null,
       geoSource: 'not_found',
@@ -220,7 +221,7 @@ describe('withResolvedGeo', () => {
 
       edit(days[0].attractions[0] as never);
 
-      expect(withResolvedGeo(days)[0].attractions[0].geoSource).toBeUndefined();
+      expect(withResolvedGeo(days)[0].attractions[0].geoSource).toBeNull();
     },
   );
 
@@ -230,6 +231,6 @@ describe('withResolvedGeo', () => {
 
     withResolvedGeo(days);
 
-    expect(days[0].attractions[0].geoSource).toBeUndefined();
+    expect(days[0].attractions[0].geoSource).toBeNull();
   });
 });

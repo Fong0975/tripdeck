@@ -1,3 +1,4 @@
+import { FIELD_LIMITS, type UploadedImage } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../logger';
@@ -6,8 +7,7 @@ import * as connectionRepo from '../repositories/connection';
 import * as imageRepo from '../repositories/image';
 import * as tripRepo from '../repositories/trip';
 import { deleteImageFromDisk, saveImageToDisk } from '../storage/imageFiles';
-import type { ImageResponse } from '../types/trip';
-import { FIELD_LIMITS, findTooLongField } from '../validation/fieldLimits';
+import { findTooLongField } from '../validation/fieldLimits';
 
 import { idParam } from './params';
 
@@ -24,7 +24,7 @@ interface ImageHandlerConfig {
     parentId: number,
     filename: string,
     title: string,
-  ) => Promise<ImageResponse>;
+  ) => Promise<UploadedImage>;
   deleteImage: (imageId: number, parentId: number) => Promise<boolean>;
 }
 
@@ -68,7 +68,7 @@ async function addImageOrDiscardFile(
   parentId: number,
   filename: string,
   title: string,
-): Promise<ImageResponse> {
+): Promise<UploadedImage> {
   try {
     return await config.addImage(parentId, filename, title);
   } catch (err) {

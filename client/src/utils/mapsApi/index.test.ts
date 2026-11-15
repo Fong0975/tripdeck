@@ -1,6 +1,7 @@
+import type { MapsStatus } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getMapsStatus, type MapsStatus } from '@/api/maps';
+import { getMapsStatus } from '@/api/maps';
 
 import {
   __resetMapsApiForTests,

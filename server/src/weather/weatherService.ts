@@ -1,9 +1,10 @@
+import type { WeatherResult } from '@tripdeck/shared';
+
 import { createLogger } from '../logger';
 import { TtlCache } from '../utils/ttlCache';
 
 import { getWeatherKeys } from './config';
 import { fetchOwmWeather, geocode, type GeoResult } from './openWeatherMap';
-import type { WeatherResult } from './types';
 import { fetchVcWeather } from './visualCrossing';
 
 const logger = createLogger('weather');

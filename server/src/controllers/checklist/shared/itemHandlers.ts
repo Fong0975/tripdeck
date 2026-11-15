@@ -1,7 +1,7 @@
+import type { ChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import type { Logger } from '../../../logger';
-import type { CreateItemBody } from '../../../types/checklist';
 import { idParams } from '../params';
 
 import { rejectInvalidBody, rejectNotFound } from './responses';
@@ -22,7 +22,10 @@ export interface ItemStore<TUpdate extends object> {
    * is validated. Without it, `create` reports a missing category as null.
    */
   verifyCategory?: (catId: number, parentId: number) => Promise<boolean>;
-  create(catId: number, data: CreateItemBody): Promise<{ id: number } | null>;
+  create(
+    catId: number,
+    data: ChecklistItemBody,
+  ): Promise<{ id: number } | null>;
   /** Validates an update body, returning the fields or a client-facing error. */
   parseUpdate(body: unknown): Validated<TUpdate>;
   verifyItem(itemId: number, parentId: number): Promise<boolean>;

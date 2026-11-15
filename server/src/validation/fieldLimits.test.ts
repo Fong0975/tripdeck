@@ -1,6 +1,7 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { describe, expect, it } from 'vitest';
 
-import { FIELD_LIMITS, findTooLongField } from './fieldLimits';
+import { findTooLongField } from './fieldLimits';
 
 describe('findTooLongField', () => {
   const max = FIELD_LIMITS.time;

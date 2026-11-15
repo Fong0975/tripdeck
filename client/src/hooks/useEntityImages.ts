@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
 import { showToast } from '@/components/ui/toast';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 interface Options {
-  initialImages: AttractionImage[];
+  initialImages: UploadedImage[];
   /** Undefined when the entity isn't persisted yet — upload is then a no-op. */
-  upload: ((file: File, title: string) => Promise<AttractionImage>) | undefined;
+  upload: ((file: File, title: string) => Promise<UploadedImage>) | undefined;
   /** Undefined when the entity isn't persisted yet — delete is then a no-op. */
   remove: ((imageId: number) => Promise<void>) | undefined;
   /**
@@ -29,7 +29,7 @@ export function useEntityImages({
   remove,
   onImagesChanged,
 }: Options) {
-  const [images, setImages] = useState<AttractionImage[]>(initialImages);
+  const [images, setImages] = useState<UploadedImage[]>(initialImages);
 
   const handleUpload = async (file: File, title: string) => {
     if (!upload) {

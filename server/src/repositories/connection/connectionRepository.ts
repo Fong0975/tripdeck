@@ -1,14 +1,15 @@
+import type {
+  CreateConnectionBody,
+  TravelConnection,
+  UpdateConnectionBody,
+  UploadedImage,
+} from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../storage/imageFiles';
-import type {
-  ConnectionResponse,
-  CreateConnectionBody,
-  ImageResponse,
-  UpdateConnectionBody,
-} from '../../types/trip';
+import { isTransportMode } from '../../validation/transportMode';
 import * as imageRepo from '../image';
 
 const logger = createLogger('connection');
@@ -34,17 +35,20 @@ export interface TripConnectionRow extends RowDataPacket {
  *
  * @param row - Raw connection row.
  * @param images - Images attached to the connection.
- * @returns The connection response.
+ * @returns The connection response; an unknown stored `transport_mode`
+ *   (legacy or hand-edited data) is reported as null.
  */
 export function toConnectionResponse(
   row: TripConnectionRow,
-  images: ImageResponse[] = [],
-): ConnectionResponse {
+  images: UploadedImage[] = [],
+): TravelConnection {
   return {
     id: row.id,
     fromAttractionId: row.trip_attraction_id_from,
     toAttractionId: row.trip_attraction_id_to,
-    transportMode: row.transport_mode,
+    transportMode: isTransportMode(row.transport_mode)
+      ? row.transport_mode
+      : null,
     duration: row.duration,
     route: row.route,
     notes: row.notes,
@@ -127,7 +131,7 @@ export async function attractionsBelongToDay(
 export async function create(
   dayId: number,
   data: CreateConnectionBody,
-): Promise<ConnectionResponse> {
+): Promise<TravelConnection> {
   const [result] = await pool.execute<ResultSetHeader>(
     `INSERT INTO trip_connections
        (trip_day_id, trip_attraction_id_from, trip_attraction_id_to,
@@ -160,7 +164,7 @@ export async function create(
 export async function update(
   connectionId: number,
   data: UpdateConnectionBody,
-): Promise<ConnectionResponse | null> {
+): Promise<TravelConnection | null> {
   const [rows] = await pool.execute<TripConnectionRow[]>(
     'SELECT * FROM trip_connections WHERE id = ?',
     [connectionId],

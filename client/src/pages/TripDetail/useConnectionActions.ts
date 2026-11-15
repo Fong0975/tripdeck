@@ -30,7 +30,7 @@ async function persistConnection(
 ): Promise<number> {
   if (connection.id !== 0) {
     await updateConnection(tripId, connection.id, {
-      transportMode: connection.transportMode,
+      transportMode: connection.transportMode ?? undefined,
       duration: connection.duration ?? null,
       route: connection.route ?? null,
       notes: connection.notes ?? null,
@@ -40,7 +40,7 @@ async function persistConnection(
   const created = await addConnection(tripId, day.id, {
     fromAttractionId: connection.fromAttractionId,
     toAttractionId: connection.toAttractionId,
-    transportMode: connection.transportMode,
+    transportMode: connection.transportMode ?? 'other',
     duration: connection.duration ?? undefined,
     route: connection.route ?? undefined,
     notes: connection.notes ?? undefined,
@@ -73,6 +73,10 @@ export function useConnectionActions(
       fromAttractionId: fromId,
       toAttractionId: toId,
       transportMode: 'transit',
+      duration: null,
+      route: null,
+      notes: null,
+      images: [],
     };
     openConnectionModal(dayIndex, pending);
   };

@@ -101,7 +101,7 @@ describe('toEditCategory', () => {
         id: 2,
         name: 'Sparse',
         items: [{ id: 11, name: 'Bare' }],
-      },
+      } as unknown as ChecklistCategory,
       expected: {
         id: 2,
         name: 'Sparse',

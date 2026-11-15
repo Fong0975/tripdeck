@@ -1,13 +1,14 @@
+import type {
+  Attraction,
+  DayLocation,
+  DayPlan,
+  ReferenceWebsite,
+  TravelConnection,
+  TripContent,
+} from '@tripdeck/shared';
+
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import type {
-  AttractionResponse,
-  ConnectionResponse,
-  DayLocation,
-  DayResponse,
-  ReferenceWebsite,
-  TripContentResponse,
-} from '../../types/trip';
 import { placeholders } from '../../utils/sql';
 import {
   toAttractionResponse,
@@ -61,9 +62,7 @@ async function getWebsitesByAttractionId(
  * @param tripId - Trip to load.
  * @returns The trip's content, or null when the trip does not exist.
  */
-export async function findContent(
-  tripId: number,
-): Promise<TripContentResponse | null> {
+export async function findContent(tripId: number): Promise<TripContent | null> {
   const [exists, [dayRows]] = await Promise.all([
     tripExists(tripId),
     pool.execute<TripDayRow[]>(
@@ -122,7 +121,7 @@ export async function findContent(
     locationsByDayId.set(row.trip_day_id, list);
   }
 
-  const attractionsByDayId = new Map<number, AttractionResponse[]>();
+  const attractionsByDayId = new Map<number, Attraction[]>();
   for (const row of attractionRows) {
     const list = attractionsByDayId.get(row.trip_day_id) ?? [];
     list.push(
@@ -135,7 +134,7 @@ export async function findContent(
     attractionsByDayId.set(row.trip_day_id, list);
   }
 
-  const connectionsByDayId = new Map<number, ConnectionResponse[]>();
+  const connectionsByDayId = new Map<number, TravelConnection[]>();
   for (const row of connectionRows) {
     const list = connectionsByDayId.get(row.trip_day_id) ?? [];
     list.push(
@@ -144,7 +143,7 @@ export async function findContent(
     connectionsByDayId.set(row.trip_day_id, list);
   }
 
-  const days: DayResponse[] = dayRows.map(row => ({
+  const days: DayPlan[] = dayRows.map(row => ({
     id: row.id,
     day: row.day,
     date: toDateString(row.date),

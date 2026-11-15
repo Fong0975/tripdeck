@@ -7,7 +7,7 @@ import {
   WidthType,
 } from 'docx';
 
-import { TRANSPORT_MODE_META } from '@/constants/transportModes';
+import { getTransportModeMeta } from '@/constants/transportModes';
 import type { TravelConnection } from '@/types';
 import { formatDurationDisplay } from '@/utils/duration';
 
@@ -70,7 +70,7 @@ export async function makeTransportTable(
 ): Promise<Table> {
   const cellChildren: (Paragraph | Table)[] = [];
 
-  const parts = [TRANSPORT_MODE_META[conn.transportMode].label];
+  const parts = [getTransportModeMeta(conn.transportMode).label];
   const durationDisplay = formatDurationDisplay(conn.duration);
   if (durationDisplay) {
     parts.push(durationDisplay);

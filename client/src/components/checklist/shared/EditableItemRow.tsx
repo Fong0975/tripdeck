@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Plus, Trash2 } from 'lucide-react';
 
 import EditSpecRow from './EditSpecRow';
@@ -45,6 +46,7 @@ export default function EditableItemRow({
         <div className='min-w-0 flex-1 space-y-1.5'>
           <input
             value={item.name}
+            maxLength={FIELD_LIMITS.name}
             onFocus={e => e.target.select()}
             onChange={e => onUpdateItem(item.id, { name: e.target.value })}
             className='w-full bg-transparent text-sm font-medium text-foreground focus:outline-hidden'

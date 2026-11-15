@@ -1,4 +1,4 @@
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 import { api, apiUrl } from './client';
 
@@ -26,11 +26,11 @@ function uploadImage(
   path: string,
   file: File,
   title: string,
-): Promise<AttractionImage> {
+): Promise<UploadedImage> {
   const form = new FormData();
   form.append('image', file);
   form.append('title', title);
-  return api<AttractionImage>(path, { method: 'POST', body: form });
+  return api<UploadedImage>(path, { method: 'POST', body: form });
 }
 
 export async function uploadAttractionImage(
@@ -38,7 +38,7 @@ export async function uploadAttractionImage(
   attractionId: number,
   file: File,
   title: string,
-): Promise<AttractionImage> {
+): Promise<UploadedImage> {
   return uploadImage(
     `/api/trips/${tripId}/attractions/${attractionId}/images`,
     file,
@@ -62,7 +62,7 @@ export async function uploadConnectionImage(
   connectionId: number,
   file: File,
   title: string,
-): Promise<AttractionImage> {
+): Promise<UploadedImage> {
   return uploadImage(
     `/api/trips/${tripId}/connections/${connectionId}/images`,
     file,
@@ -85,7 +85,7 @@ export async function uploadTripImage(
   tripId: number,
   file: File,
   title: string,
-): Promise<AttractionImage> {
+): Promise<UploadedImage> {
   return uploadImage(`/api/trips/${tripId}/images`, file, title);
 }
 
@@ -103,7 +103,7 @@ export async function uploadDayImage(
   dayId: number,
   file: File,
   title: string,
-): Promise<AttractionImage> {
+): Promise<UploadedImage> {
   return uploadImage(`/api/trips/${tripId}/days/${dayId}/images`, file, title);
 }
 

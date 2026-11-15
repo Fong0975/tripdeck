@@ -1,6 +1,7 @@
-import { TRANSPORT_MODES } from '../../constants/transportModes';
+import { FIELD_LIMITS, TRANSPORT_MODES } from '@tripdeck/shared';
+
 import { parseId } from '../../utils/parseId';
-import { FIELD_LIMITS, findTooLongField } from '../../validation/fieldLimits';
+import { findTooLongField } from '../../validation/fieldLimits';
 
 export const INVALID_ENDPOINT_IDS_ERROR =
   'fromAttractionId and toAttractionId must be positive integers';
