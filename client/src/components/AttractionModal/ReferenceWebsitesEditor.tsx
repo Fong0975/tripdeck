@@ -2,7 +2,7 @@ import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { fetchPageTitle } from '@/api/pageTitle';
-import { INPUT_CLS, LABEL_CLS } from '@/components/formStyles';
+import { INPUT_CLS, LABEL_CLS } from '@/components/ui/formStyles';
 import type { ReferenceWebsite } from '@/types';
 
 interface Props {

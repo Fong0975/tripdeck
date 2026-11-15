@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';
 import type { Attraction } from '@/types';

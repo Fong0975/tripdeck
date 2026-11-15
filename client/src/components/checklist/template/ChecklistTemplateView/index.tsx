@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { ChecklistCategory, ChecklistTemplate } from '@/types';
 import {
   addTemplateCategory,

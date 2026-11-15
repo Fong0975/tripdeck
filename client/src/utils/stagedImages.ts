@@ -1,4 +1,4 @@
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { AttractionImage } from '@/types';
 
 /** An image picked in a create form, uploaded only after its entity exists. */

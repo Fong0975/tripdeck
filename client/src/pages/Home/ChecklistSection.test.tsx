@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ChecklistSection from './ChecklistSection';
 
-vi.mock('@/components/checklist/template/ChecklistTemplateView', () => ({
+vi.mock('@/components/Checklist/template/ChecklistTemplateView', () => ({
   default: () => <div>checklist-template-view</div>,
 }));
 

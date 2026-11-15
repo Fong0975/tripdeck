@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -18,7 +18,7 @@ import ChecklistTemplateView from './index';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 vi.mock('../CategoryEditModal', () => ({
   default: ({

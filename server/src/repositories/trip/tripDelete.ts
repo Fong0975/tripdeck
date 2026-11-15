@@ -2,9 +2,9 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
-import * as connectionRepo from '../connectionRepository';
-import * as imageRepo from '../imageRepository';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
+import * as connectionRepo from '../connection';
+import * as imageRepo from '../image';
 
 const logger = createLogger('trip');
 

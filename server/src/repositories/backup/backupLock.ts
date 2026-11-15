@@ -1,4 +1,4 @@
-import { createSerialQueue } from '../../maps/serialQueue';
+import { createSerialQueue } from '../../utils/serialQueue';
 
 /**
  * Process-wide queue shared by every backup operation (scheduled automatic

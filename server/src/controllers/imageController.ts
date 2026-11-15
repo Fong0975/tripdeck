@@ -1,11 +1,11 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../logger';
-import { deleteImageFromDisk, saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
-import * as connectionRepo from '../repositories/connectionRepository';
-import * as imageRepo from '../repositories/imageRepository';
+import * as connectionRepo from '../repositories/connection';
+import * as imageRepo from '../repositories/image';
 import * as tripRepo from '../repositories/trip';
+import { deleteImageFromDisk, saveImageToDisk } from '../storage/imageFiles';
 import type { ImageResponse } from '../types/trip';
 import { FIELD_LIMITS, findTooLongField } from '../validation/fieldLimits';
 

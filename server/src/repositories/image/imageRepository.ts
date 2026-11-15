@@ -1,10 +1,10 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
-import pool from '../config/database';
-import { createLogger } from '../logger';
-import { deleteImageFromDisk } from '../middleware/upload';
-import type { ImageResponse } from '../types/trip';
-import { placeholders } from '../utils/sql';
+import pool from '../../config/database';
+import { createLogger } from '../../logger';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
+import type { ImageResponse } from '../../types/trip';
+import { placeholders } from '../../utils/sql';
 
 const logger = createLogger('image');
 

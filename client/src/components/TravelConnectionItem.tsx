@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 import { TRANSPORT_MODE_META } from '@/constants/transportModes';
 import type { TravelConnection } from '@/types';
@@ -16,11 +16,11 @@ interface Props {
   onDelete: (connectionId: number) => void;
 }
 
-export default function TravelConnectionItem({
-  connection,
-  onEdit,
-  onDelete,
-}: Props) {
+/**
+ * Travel connection between two consecutive attractions. Memoized so it only
+ * re-renders when its own props change.
+ */
+function TravelConnectionItem({ connection, onEdit, onDelete }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const durationDisplay = formatDurationDisplay(connection.duration);
@@ -119,3 +119,5 @@ export default function TravelConnectionItem({
     </div>
   );
 }
+
+export default memo(TravelConnectionItem);

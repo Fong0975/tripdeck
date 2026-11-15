@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../test-utils/dbMocks';
 import type { UpdateAttractionBody } from '../../types/trip';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { create, deleteById, update } from './attractionCrud';
 
@@ -18,16 +18,16 @@ const mockConnRollback = db.conn.rollback;
 const mockGetConnection = db.pool.getConnection;
 
 const mockConnectionDeleteById = vi.fn().mockResolvedValue(true);
-vi.mock('../connectionRepository', () => ({
+vi.mock('../connection', () => ({
   deleteById: (...args: unknown[]) => mockConnectionDeleteById(...args),
 }));
 
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getAttractionImages: vi.fn().mockResolvedValue([]),
   addAttractionImage: vi.fn(),
 }));
 
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: vi.fn(),
   copyImageFile: vi.fn(),
 }));

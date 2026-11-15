@@ -344,5 +344,11 @@ export async function moveAttraction(
     return;
   }
 
+  logger.info('Attraction moved', {
+    tripId,
+    attractionId,
+    dayId,
+    index: body.index,
+  });
   res.status(204).send();
 }

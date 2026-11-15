@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeImage } from '@/test-utils/fixtures';
 
 import {
@@ -9,7 +9,7 @@ import {
   uploadStagedImages,
 } from './stagedImages';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const fileA = new File(['a'], 'a.jpg');
 const fileB = new File(['b'], 'b.jpg');

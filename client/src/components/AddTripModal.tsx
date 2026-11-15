@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-import { LABEL_CLS } from '@/components/formStyles';
+import { LABEL_CLS } from '@/components/ui/formStyles';
+import { showToast } from '@/components/ui/toast';
 import { useSubmitting } from '@/hooks/useSubmitting';
-import { showToast } from '@/lib/toast';
 import type { Trip } from '@/types';
 import {
   showSavedToast,

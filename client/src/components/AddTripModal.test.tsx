@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeImage, makeTrip } from '@/test-utils/fixtures';
 import { fillDateField, selectFile, submitForm } from '@/test-utils/queries';
 import { createTrip, uploadTripImage } from '@/utils/storage';
@@ -11,7 +11,7 @@ import AddTripModal from './AddTripModal';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 // Pin the timezone so the startDate -> endDate auto-calculation (which round
 // trips through Date/toISOString) produces a deterministic result.

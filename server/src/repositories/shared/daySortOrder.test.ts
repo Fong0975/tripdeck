@@ -1,7 +1,7 @@
 import type { PoolConnection } from 'mysql2/promise';
 import { describe, expect, it } from 'vitest';
 
-import { db } from '../test-utils/dbMocks';
+import { db } from '../../test-utils/dbMocks';
 
 import { type DayOrderedTable, nextSortOrderInDay } from './daySortOrder';
 

@@ -2,11 +2,11 @@ import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { copyImageFile } from '../../middleware/upload';
+import { copyImageFile } from '../../storage/imageFiles';
 import type { AttractionResponse } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
-import { nextSortOrderInDay } from '../daySortOrder';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
+import { nextSortOrderInDay } from '../shared/daySortOrder';
 
 import {
   getWebsites,

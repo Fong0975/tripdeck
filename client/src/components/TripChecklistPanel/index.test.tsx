@@ -21,7 +21,7 @@ vi.mock('./ChecklistTable', () => ({
   ),
 }));
 
-vi.mock('../checklist/trip/CheckSaveBar', () => ({
+vi.mock('../Checklist/trip/CheckSaveBar', () => ({
   default: ({
     saving,
     onSave,
@@ -39,7 +39,7 @@ vi.mock('../checklist/trip/CheckSaveBar', () => ({
   ),
 }));
 
-vi.mock('../checklist/trip/TripChecklistEditModal', () => ({
+vi.mock('../Checklist/trip/TripChecklistEditModal', () => ({
   default: ({
     onClose,
     onSaved,

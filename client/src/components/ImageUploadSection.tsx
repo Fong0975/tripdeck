@@ -2,7 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { imageUrl } from '@/api/images';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { AttractionImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';

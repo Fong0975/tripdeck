@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../connectionRepository');
+vi.mock('../connection');
 
 import { db } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
-import * as connectionRepo from '../connectionRepository';
+import * as connectionRepo from '../connection';
 
 import { deleteById } from './tripDelete';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
 const mockGetAttractionImagesBatch = vi.fn().mockResolvedValue(new Map());
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
   getDayImagesBatch: (...args: unknown[]) => mockGetDayImagesBatch(...args),
   getAttractionImagesBatch: (...args: unknown[]) =>
@@ -19,7 +19,7 @@ vi.mock('../imageRepository', () => ({
 }));
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 

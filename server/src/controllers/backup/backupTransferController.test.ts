@@ -17,7 +17,7 @@ import * as backupRepo from '../../repositories/backup';
 import { runExclusive } from '../../repositories/backup/backupLock';
 import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
 
-import { exportTrips, importTrips } from './backupController';
+import { exportTrips, importTrips } from './backupTransferController';
 
 describe('exportTrips', () => {
   it.each([

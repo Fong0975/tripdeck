@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeConnection, makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addConnection,
@@ -13,7 +13,7 @@ import { useConnectionActions } from './useConnectionActions';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useConnectionActions', () => {
   describe('handleAddConnection', () => {

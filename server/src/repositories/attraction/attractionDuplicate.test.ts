@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { copyImageFile } from '../../middleware/upload';
+import { copyImageFile } from '../../storage/imageFiles';
 import { db } from '../../test-utils/dbMocks';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { duplicate } from './attractionDuplicate';
 
@@ -17,12 +17,12 @@ const mockConnCommit = db.conn.commit;
 const mockConnRollback = db.conn.rollback;
 const mockGetConnection = db.pool.getConnection;
 
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getAttractionImages: vi.fn().mockResolvedValue([]),
   addAttractionImage: vi.fn(),
 }));
 
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: vi.fn(),
   copyImageFile: vi.fn(),
 }));

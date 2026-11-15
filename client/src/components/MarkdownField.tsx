@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import { INPUT_CLS } from './formStyles';
 import MarkdownContent from './MarkdownContent';
+import { INPUT_CLS } from './ui/formStyles';
 
 interface Props {
   label: string;

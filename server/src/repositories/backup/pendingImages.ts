@@ -3,7 +3,7 @@ import { createLogger } from '../../logger';
 import {
   deleteImageFromDisk,
   saveImportedImageBuffer,
-} from '../../middleware/upload';
+} from '../../storage/imageFiles';
 import type { ImageResponse } from '../../types/trip';
 
 import { TripImportDataError } from './errors';

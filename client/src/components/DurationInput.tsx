@@ -1,4 +1,4 @@
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
 
 interface Props {
   /** Total duration in minutes. */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck } from '@/utils/storage';
 

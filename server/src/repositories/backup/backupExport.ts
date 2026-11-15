@@ -4,14 +4,14 @@ import path from 'path';
 import AdmZip from 'adm-zip';
 
 import { createLogger } from '../../logger';
-import { mapWithConcurrency } from '../../maps/mapWithConcurrency';
-import { UPLOADS_DIR } from '../../middleware/upload';
+import { UPLOADS_DIR } from '../../storage/imageFiles';
 import {
   BACKUP_FORMAT_VERSION,
   type BackupManifest,
   type TripBackupData,
 } from '../../types/backup';
 import type { ImageResponse } from '../../types/trip';
+import { mapWithConcurrency } from '../../utils/mapWithConcurrency';
 import * as templateRepo from '../checklist/template';
 import * as checklistRepo from '../checklist/trip';
 import * as tripRepo from '../trip';
@@ -115,7 +115,7 @@ async function addTripImagesToZip(
  * export, since a DB image row should never outlive its file under normal
  * operation.
  */
-export async function addTripsToZip(
+async function addTripsToZip(
   zip: AdmZip,
   tripIds: number[],
 ): Promise<BackupManifest['trips']> {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addDayLocation,
@@ -12,7 +12,7 @@ import { useDayLocationActions } from './useDayLocationActions';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useDayLocationActions', () => {
   describe('handleAddLocation', () => {

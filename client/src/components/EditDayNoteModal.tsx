@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { LABEL_CLS, TEXTAREA_CLS } from '@/components/formStyles';
+import { LABEL_CLS, TEXTAREA_CLS } from '@/components/ui/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';
 import type { DayPlan } from '@/types';

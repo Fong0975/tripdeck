@@ -7,7 +7,7 @@ import type {
   UpdateLocationBody,
 } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
-import { nextSortOrderInDay } from '../daySortOrder';
+import { nextSortOrderInDay } from '../shared/daySortOrder';
 
 /**
  * Appends a location to the end of a day. The next sort_order is computed

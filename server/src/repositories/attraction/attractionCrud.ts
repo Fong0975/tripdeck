@@ -2,16 +2,16 @@ import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
 import type {
   AttractionResponse,
   CreateAttractionBody,
   UpdateAttractionBody,
 } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
-import * as connectionRepo from '../connectionRepository';
-import { nextSortOrderInDay } from '../daySortOrder';
-import * as imageRepo from '../imageRepository';
+import * as connectionRepo from '../connection';
+import * as imageRepo from '../image';
+import { nextSortOrderInDay } from '../shared/daySortOrder';
 
 import {
   getWebsites,

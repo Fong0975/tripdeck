@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Tripdeck API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "REST API for the Tripdeck travel planning application."
   },
   "servers": [
@@ -14,7 +14,9 @@
   "paths": {
     "/api/health": {
       "get": {
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "summary": "Health check",
         "description": "",
         "responses": {
@@ -44,7 +46,9 @@
     },
     "/api/info": {
       "get": {
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "summary": "Application info",
         "description": "",
         "responses": {
@@ -73,7 +77,9 @@
     },
     "/api/fetch-title": {
       "get": {
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "summary": "Fetch page title via server-side proxy",
         "description": "",
         "parameters": [
@@ -104,14 +110,29 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing or invalid url, disallowed protocol, or a target (or redirect target) that is not publicly routable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "URL not allowed"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/trips/": {
       "get": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "List all trips",
         "description": "",
         "responses": {
@@ -162,14 +183,13 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
       "post": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Create a new trip",
         "description": "",
         "responses": {
@@ -219,10 +239,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Missing or empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days"
           }
         },
         "requestBody": {
@@ -239,6 +256,9 @@
                   },
                   "endDate": {
                     "example": "any"
+                  },
+                  "destination": {
+                    "example": "any"
                   }
                 }
               }
@@ -249,7 +269,9 @@
     },
     "/api/trips/{tripId}": {
       "get": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Get a trip by ID",
         "description": "",
         "parameters": [
@@ -308,16 +330,18 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
       "put": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Update a trip",
         "description": "",
         "parameters": [
@@ -377,13 +401,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid tripId, empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days"
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -393,6 +414,9 @@
                 "type": "object",
                 "properties": {
                   "title": {
+                    "example": "any"
+                  },
+                  "destination": {
                     "example": "any"
                   },
                   "startDate": {
@@ -408,7 +432,9 @@
         }
       },
       "delete": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Delete a trip",
         "description": "",
         "parameters": [
@@ -425,18 +451,20 @@
           "204": {
             "description": "No Content"
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/content": {
       "get": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Get full trip content (days, attractions, connections)",
         "description": "",
         "parameters": [
@@ -522,7 +550,9 @@
                                   "items": {
                                     "type": "string"
                                   },
-                                  "example": ["https://inari.jp/"]
+                                  "example": [
+                                    "https://inari.jp/"
+                                  ]
                                 },
                                 "sortOrder": {
                                   "type": "integer",
@@ -541,7 +571,11 @@
                                 "geoSource": {
                                   "type": "string",
                                   "nullable": true,
-                                  "enum": ["url", "geocode", "not_found"],
+                                  "enum": [
+                                    "url",
+                                    "geocode",
+                                    "not_found"
+                                  ],
                                   "example": "url"
                                 }
                               }
@@ -595,18 +629,20 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/export": {
       "post": {
-        "tags": ["Backup"],
+        "tags": [
+          "Backup"
+        ],
         "summary": "Export one or more trips (and optionally the checklist template) as a backup zip",
         "description": "",
         "responses": {
@@ -621,9 +657,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -638,7 +671,10 @@
                     "items": {
                       "type": "integer"
                     },
-                    "example": [1, 2]
+                    "example": [
+                      1,
+                      2
+                    ]
                   },
                   "includeTemplate": {
                     "type": "boolean",
@@ -646,7 +682,9 @@
                     "description": "Also include a snapshot of the global packing checklist template."
                   }
                 },
-                "required": ["tripIds"]
+                "required": [
+                  "tripIds"
+                ]
               }
             }
           }
@@ -655,7 +693,9 @@
     },
     "/api/trips/import": {
       "post": {
-        "tags": ["Backup"],
+        "tags": [
+          "Backup"
+        ],
         "summary": "Import every trip in a backup zip as new trips",
         "description": "",
         "responses": {
@@ -717,9 +757,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {}
@@ -727,7 +764,9 @@
     },
     "/api/trips/{tripId}/days/{dayId}/attractions": {
       "post": {
-        "tags": ["Attractions"],
+        "tags": [
+          "Attractions"
+        ],
         "summary": "Add an attraction to a day",
         "description": "",
         "parameters": [
@@ -794,7 +833,9 @@
                       "items": {
                         "type": "string"
                       },
-                      "example": ["https://inari.jp/"]
+                      "example": [
+                        "https://inari.jp/"
+                      ]
                     },
                     "sortOrder": {
                       "type": "integer",
@@ -806,13 +847,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing name, malformed referenceWebsites, or a field exceeding its maximum length"
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -833,7 +871,9 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}": {
       "put": {
-        "tags": ["Attractions"],
+        "tags": [
+          "Attractions"
+        ],
         "summary": "Update an attraction",
         "description": "",
         "parameters": [
@@ -900,7 +940,9 @@
                       "items": {
                         "type": "string"
                       },
-                      "example": ["https://inari.jp/"]
+                      "example": [
+                        "https://inari.jp/"
+                      ]
                     },
                     "sortOrder": {
                       "type": "integer",
@@ -911,16 +953,18 @@
               }
             }
           },
+          "400": {
+            "description": "Malformed referenceWebsites, or a field exceeding its maximum length"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
       "delete": {
-        "tags": ["Attractions"],
+        "tags": [
+          "Attractions"
+        ],
         "summary": "Delete an attraction",
         "description": "",
         "parameters": [
@@ -947,16 +991,15 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/attractions/{attractionId}/duplicate": {
       "post": {
-        "tags": ["Attractions"],
+        "tags": [
+          "Attractions"
+        ],
         "summary": "Duplicate an attraction to the end of its day",
         "description": "",
         "parameters": [
@@ -983,18 +1026,17 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/days/{dayId}/attractions/order": {
       "patch": {
-        "tags": ["Attractions"],
+        "tags": [
+          "Attractions"
+        ],
         "summary": "Reorder attractions within a day",
-        "description": "",
+        "description": "orderedIds must list every attraction of the day exactly once.",
         "parameters": [
           {
             "name": "tripId",
@@ -1015,16 +1057,13 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "Attractions reordered"
           },
           "400": {
-            "description": "Bad Request"
+            "description": "orderedIds is not an array of positive integers, or does not list every attraction of the day exactly once"
           },
           "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Day not found"
           }
         },
         "requestBody": {
@@ -1035,6 +1074,69 @@
                 "properties": {
                   "orderedIds": {
                     "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/attractions/{attractionId}/move": {
+      "patch": {
+        "tags": [
+          "Attractions"
+        ],
+        "summary": "Move an attraction to a position in another (or the same) day",
+        "description": "Keeps the attraction id, so images, websites, times and geo stay attached. Connections whose endpoints are no longer adjacent in the source or target day are deleted. A same-day target behaves as a reorder. index is 0-based and clamped to the end of the day.",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Attraction moved"
+          },
+          "400": {
+            "description": "Invalid tripId, attractionId, dayId or index"
+          },
+          "404": {
+            "description": "Attraction or day not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dayId",
+                  "index"
+                ],
+                "properties": {
+                  "dayId": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 0
                   }
                 }
               }
@@ -1073,9 +1175,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1124,9 +1223,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1170,16 +1266,15 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/days/{dayId}/notes": {
       "put": {
-        "tags": ["Trips"],
+        "tags": [
+          "Trips"
+        ],
         "summary": "Update the notes for a day",
         "description": "",
         "parameters": [
@@ -1204,11 +1299,11 @@
           "200": {
             "description": "OK"
           },
+          "400": {
+            "description": "notes is neither a string nor null"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1229,7 +1324,9 @@
     },
     "/api/trips/{tripId}/days/{dayId}/connections": {
       "post": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Add a connection between two attractions",
         "description": "",
         "parameters": [
@@ -1296,13 +1393,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid ids, missing fields, unknown transportMode, duration longer than 100 characters, or attractions not in this day"
           },
           "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Day not found"
           }
         },
         "requestBody": {
@@ -1329,7 +1423,9 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}": {
       "put": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Update a connection",
         "description": "",
         "parameters": [
@@ -1395,16 +1491,38 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
+          "400": {
+            "description": "Invalid ids, unknown transportMode, duration longer than 100 characters, or attractions not in the connection's day"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "404": {
+            "description": "Connection not found"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "transportMode": {
+                    "example": "any"
+                  },
+                  "fromAttractionId": {
+                    "example": "any"
+                  },
+                  "toAttractionId": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
           }
         }
       },
       "delete": {
-        "tags": ["Connections"],
+        "tags": [
+          "Connections"
+        ],
         "summary": "Delete a connection",
         "description": "",
         "parameters": [
@@ -1429,18 +1547,20 @@
           "204": {
             "description": "No Content"
           },
-          "404": {
-            "description": "Not Found"
+          "400": {
+            "description": "Invalid tripId or connectionId"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "404": {
+            "description": "Connection not found"
           }
         }
       }
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images": {
       "post": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Upload an image for an attraction",
         "description": "",
         "parameters": [
@@ -1462,15 +1582,17 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images/{imageId}": {
       "delete": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Delete an attraction image",
         "description": "",
         "parameters": [
@@ -1508,7 +1630,9 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}/images": {
       "post": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Upload an image for a connection",
         "description": "",
         "parameters": [
@@ -1530,15 +1654,17 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
     },
     "/api/trips/{tripId}/connections/{connectionId}/images/{imageId}": {
       "delete": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Delete a connection image",
         "description": "",
         "parameters": [
@@ -1576,7 +1702,9 @@
     },
     "/api/trips/{tripId}/images": {
       "post": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Upload an image for a trip",
         "description": "",
         "parameters": [
@@ -1590,15 +1718,17 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
     },
     "/api/trips/{tripId}/images/{imageId}": {
       "delete": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Delete a trip image",
         "description": "",
         "parameters": [
@@ -1628,7 +1758,9 @@
     },
     "/api/trips/{tripId}/days/{dayId}/images": {
       "post": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Upload an image for a day",
         "description": "",
         "parameters": [
@@ -1650,15 +1782,17 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
     },
     "/api/trips/{tripId}/days/{dayId}/images/{imageId}": {
       "delete": {
-        "tags": ["Images"],
+        "tags": [
+          "Images"
+        ],
         "summary": "Delete a day image",
         "description": "",
         "parameters": [
@@ -1696,7 +1830,9 @@
     },
     "/api/trips/{tripId}/checklist/": {
       "get": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Get the packing checklist for a trip",
         "description": "Returns the trip checklist. Automatically initialized from the global template if it does not exist yet.",
         "parameters": [
@@ -1819,16 +1955,15 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/occasions": {
       "post": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Add a packing occasion to a trip checklist",
         "description": "",
         "parameters": [
@@ -1870,43 +2005,16 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "checks": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/occasions/{occId}": {
       "put": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Update an occasion name",
         "description": "",
         "parameters": [
@@ -1959,44 +2067,14 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "checks": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
       "delete": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Delete an occasion",
         "description": "Rejected with 409 if this is the last remaining occasion.",
         "parameters": [
@@ -2021,21 +2099,17 @@
           "204": {
             "description": "No Content"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "409": {
             "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/occasions/{occId}/items/{itemId}/check": {
       "put": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Set the checked state of an item within an occasion",
         "description": "",
         "parameters": [
@@ -2070,12 +2144,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -2096,7 +2164,9 @@
     },
     "/api/trips/{tripId}/checklist/categories": {
       "post": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Add a category to a trip checklist",
         "description": "",
         "parameters": [
@@ -2114,31 +2184,16 @@
             "description": "Created"
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/categories/{catId}": {
       "put": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Update a trip checklist category name",
         "description": "",
         "parameters": [
@@ -2164,32 +2219,14 @@
             "description": "No Content"
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
       "delete": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Delete a trip checklist category and all its items",
         "description": "",
         "parameters": [
@@ -2213,19 +2250,15 @@
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/categories/{catId}/items": {
       "post": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Add an item to a trip checklist category",
         "description": "",
         "parameters": [
@@ -2288,55 +2321,16 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/items/{itemId}": {
       "put": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Update name, quantity, notes or storage_location of a trip checklist item",
         "description": "",
         "parameters": [
@@ -2414,16 +2408,15 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "400": {
+            "description": "Blank or too long name, too long storage_location, or quantity not a non-negative integer"
           }
         }
       },
       "delete": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Delete an item from a trip checklist",
         "description": "",
         "parameters": [
@@ -2445,21 +2438,17 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/items/{itemId}/specs": {
       "post": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Add a spec to a trip checklist item",
         "description": "",
         "parameters": [
@@ -2481,41 +2470,17 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       }
     },
     "/api/trips/{tripId}/checklist/items/{itemId}/specs/{specId}": {
       "put": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Update a trip checklist item spec",
         "description": "",
         "parameters": [
@@ -2545,39 +2510,15 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       },
       "delete": {
-        "tags": ["Trip Checklist"],
+        "tags": [
+          "Trip Checklist"
+        ],
         "summary": "Delete a trip checklist item spec",
         "description": "",
         "parameters": [
@@ -2607,21 +2548,17 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
     },
     "/api/checklist-template/": {
       "get": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Get the global packing checklist template",
         "description": "",
         "responses": {
@@ -2704,16 +2641,15 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/checklist-template/categories": {
       "post": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Add a category to the template",
         "description": "",
         "responses": {
@@ -2743,43 +2679,16 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "items": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
     },
     "/api/checklist-template/categories/{catId}": {
       "put": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Update a template category name",
         "description": "",
         "parameters": [
@@ -2850,56 +2759,14 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "items": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
       "delete": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Delete a template category and all its items",
         "description": "",
         "parameters": [
@@ -2915,19 +2782,15 @@
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/checklist-template/categories/{catId}/items": {
       "post": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Add an item to a template category",
         "description": "",
         "parameters": [
@@ -2982,55 +2845,16 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       }
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}": {
       "put": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Update a template item",
         "description": "",
         "parameters": [
@@ -3109,50 +2933,14 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       },
       "delete": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Delete a template item",
         "description": "",
         "parameters": [
@@ -3174,21 +2962,17 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}/specs": {
       "post": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Add a spec to a template item",
         "description": "",
         "parameters": [
@@ -3210,41 +2994,17 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       }
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}/specs/{specId}": {
       "put": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Update a template item spec",
         "description": "",
         "parameters": [
@@ -3274,39 +3034,15 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       },
       "delete": {
-        "tags": ["Checklist Template"],
+        "tags": [
+          "Checklist Template"
+        ],
         "summary": "Delete a template item spec",
         "description": "",
         "parameters": [
@@ -3336,21 +3072,17 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
     },
     "/api/backups/": {
       "get": {
-        "tags": ["Backup"],
+        "tags": [
+          "Backup"
+        ],
         "summary": "List automatic backups",
         "description": "",
         "responses": {
@@ -3381,17 +3113,12 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/backups/{filename}": {
       "get": {
-        "tags": ["Backup"],
-        "summary": "Download one automatic backup file",
         "description": "",
         "parameters": [
           {
@@ -3404,17 +3131,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Backup zip file",
-            "content": {
-              "application/zip": {}
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }

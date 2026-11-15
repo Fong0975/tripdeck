@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type MockReqOverrides,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -32,7 +33,9 @@ const blankNameCases = [
 
 describe('addTripItem', () => {
   it('returns 404 when the category does not belong to the trip, checked before name validation', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      false,
+    );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
       body: {},
@@ -41,13 +44,15 @@ describe('addTripItem', () => {
     await addTripItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
-    expect(tripRepo.createTripItem).not.toHaveBeenCalled();
+    expect(checklistRepo.createTripItem).not.toHaveBeenCalled();
   });
 
   it.each(blankNameCases)(
     'returns 400 when $label once the category belongs to the trip',
     async ({ body }) => {
-      vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
+      vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+        true,
+      );
       const { req, res } = createMockReqRes({
         params: { tripId: '1', catId: '2' },
         body,
@@ -56,7 +61,7 @@ describe('addTripItem', () => {
       await addTripItem(req, res);
 
       expectJsonStatus(res, 400, { error: 'name is required' });
-      expect(tripRepo.createTripItem).not.toHaveBeenCalled();
+      expect(checklistRepo.createTripItem).not.toHaveBeenCalled();
     },
   );
 
@@ -69,8 +74,10 @@ describe('addTripItem', () => {
       storage_location: null,
       specs: [],
     };
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.createTripItem).mockResolvedValue(item);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.createTripItem).mockResolvedValue(item);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
       body: { name: 'Neck pillow' },
@@ -78,8 +85,11 @@ describe('addTripItem', () => {
 
     await addTripItem(req, res);
 
-    expect(tripRepo.verifyCategoryBelongsToTrip).toHaveBeenCalledWith(2, 1);
-    expect(tripRepo.createTripItem).toHaveBeenCalledWith(2, {
+    expect(checklistRepo.verifyCategoryBelongsToTrip).toHaveBeenCalledWith(
+      2,
+      1,
+    );
+    expect(checklistRepo.createTripItem).toHaveBeenCalledWith(2, {
       name: 'Neck pillow',
       quantity: undefined,
       notes: undefined,
@@ -91,7 +101,7 @@ describe('addTripItem', () => {
 
 describe('deleteTripItem', () => {
   it('returns 404 when the item does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
     });
@@ -99,12 +109,12 @@ describe('deleteTripItem', () => {
     await deleteTripItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
-    expect(tripRepo.deleteTripItem).not.toHaveBeenCalled();
+    expect(checklistRepo.deleteTripItem).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the delete resolves false', async () => {
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.deleteTripItem).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.deleteTripItem).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
     });
@@ -115,8 +125,8 @@ describe('deleteTripItem', () => {
   });
 
   it('returns 204 on success', async () => {
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.deleteTripItem).mockResolvedValue(true);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.deleteTripItem).mockResolvedValue(true);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
     });
@@ -130,7 +140,7 @@ describe('deleteTripItem', () => {
 
 describe('updateTripItem', () => {
   it('returns 404 when the item does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
       body: { name: 'Charger' },
@@ -139,12 +149,12 @@ describe('updateTripItem', () => {
     await updateTripItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
-    expect(tripRepo.updateTripItem).not.toHaveBeenCalled();
+    expect(checklistRepo.updateTripItem).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the update resolves null', async () => {
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripItem).mockResolvedValue(null);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.updateTripItem).mockResolvedValue(null);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
       body: { name: 'Charger' },
@@ -185,8 +195,8 @@ describe('updateTripItem', () => {
     await updateTripItem(req, res);
 
     expectJsonStatus(res, 400, { error });
-    expect(tripRepo.verifyItemBelongsToTrip).not.toHaveBeenCalled();
-    expect(tripRepo.updateTripItem).not.toHaveBeenCalled();
+    expect(checklistRepo.verifyItemBelongsToTrip).not.toHaveBeenCalled();
+    expect(checklistRepo.updateTripItem).not.toHaveBeenCalled();
   });
 
   it('passes only the present fields to the repository', async () => {
@@ -198,8 +208,8 @@ describe('updateTripItem', () => {
       storage_location: null,
       specs: [],
     };
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripItem).mockResolvedValue(item);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.updateTripItem).mockResolvedValue(item);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
       body: { quantity: 3, unknown: 'dropped' },
@@ -207,7 +217,9 @@ describe('updateTripItem', () => {
 
     await updateTripItem(req, res);
 
-    expect(tripRepo.updateTripItem).toHaveBeenCalledWith(2, { quantity: 3 });
+    expect(checklistRepo.updateTripItem).toHaveBeenCalledWith(2, {
+      quantity: 3,
+    });
     expect(res.json).toHaveBeenCalledWith(item);
   });
 
@@ -220,8 +232,8 @@ describe('updateTripItem', () => {
       storage_location: null,
       specs: [],
     };
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripItem).mockResolvedValue(item);
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.updateTripItem).mockResolvedValue(item);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', itemId: '2' },
       body: {},
@@ -230,7 +242,7 @@ describe('updateTripItem', () => {
     await updateTripItem(req, res);
 
     expect(res.status).not.toHaveBeenCalledWith(400);
-    expect(tripRepo.updateTripItem).toHaveBeenCalledWith(2, {});
+    expect(checklistRepo.updateTripItem).toHaveBeenCalledWith(2, {});
     expect(res.json).toHaveBeenCalledWith(item);
   });
 });
@@ -245,11 +257,13 @@ describe('setCheck', () => {
     await setCheck(req, res);
 
     expectJsonStatus(res, 400, { error: 'checked must be a boolean' });
-    expect(tripRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
+    expect(checklistRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the occasion does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      false,
+    );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
       body: { checked: true },
@@ -258,12 +272,14 @@ describe('setCheck', () => {
     await setCheck(req, res);
 
     expectJsonStatus(res, 404, { error: 'Occasion not found' });
-    expect(tripRepo.verifyItemBelongsToTrip).not.toHaveBeenCalled();
+    expect(checklistRepo.verifyItemBelongsToTrip).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the item does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
       body: { checked: true },
@@ -272,12 +288,14 @@ describe('setCheck', () => {
     await setCheck(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
-    expect(tripRepo.setCheck).not.toHaveBeenCalled();
+    expect(checklistRepo.setCheck).not.toHaveBeenCalled();
   });
 
   it('returns 204 on success', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
       body: { checked: true },
@@ -285,26 +303,21 @@ describe('setCheck', () => {
 
     await setCheck(req, res);
 
-    expect(tripRepo.setCheck).toHaveBeenCalledWith(2, 3, true);
+    expect(checklistRepo.setCheck).toHaveBeenCalledWith(2, 3, true);
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
   });
 });
 
 describe('unexpected repository errors', () => {
-  const tests: Array<{
-    name: string;
-    handler: typeof addTripItem;
-    req: MockReqOverrides;
-    arrange: (error: Error) => void;
-  }> = [
+  const tests: RejectCase[] = [
     {
       name: 'addTripItem',
       handler: addTripItem,
       req: { params: { tripId: '1', catId: '2' }, body: { name: 'Pillow' } },
       arrange: error =>
         vi
-          .mocked(tripRepo.verifyCategoryBelongsToTrip)
+          .mocked(checklistRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
     },
     {
@@ -312,14 +325,18 @@ describe('unexpected repository errors', () => {
       handler: deleteTripItem,
       req: { params: { tripId: '1', itemId: '2' } },
       arrange: error =>
-        vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
+        vi
+          .mocked(checklistRepo.verifyItemBelongsToTrip)
+          .mockRejectedValue(error),
     },
     {
       name: 'updateTripItem',
       handler: updateTripItem,
       req: { params: { tripId: '1', itemId: '2' }, body: {} },
       arrange: error =>
-        vi.mocked(tripRepo.verifyItemBelongsToTrip).mockRejectedValue(error),
+        vi
+          .mocked(checklistRepo.verifyItemBelongsToTrip)
+          .mockRejectedValue(error),
     },
     {
       name: 'setCheck',
@@ -330,21 +347,10 @@ describe('unexpected repository errors', () => {
       },
       arrange: error =>
         vi
-          .mocked(tripRepo.verifyOccasionBelongsToTrip)
+          .mocked(checklistRepo.verifyOccasionBelongsToTrip)
           .mockRejectedValue(error),
     },
   ];
 
-  it.each(tests)(
-    '$name rejects with the repository error and sends nothing',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-      expect(res.json).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(tests);
 });

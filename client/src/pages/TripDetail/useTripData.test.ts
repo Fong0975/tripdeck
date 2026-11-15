@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeContent, makeDay, makeTrip } from '@/test-utils/fixtures';
 import { getTrip, getTripContent } from '@/utils/storage';
 
@@ -15,7 +15,7 @@ vi.mock('react-router-dom', () => ({
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useTripData', () => {
   it.each([

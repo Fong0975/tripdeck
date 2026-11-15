@@ -1,7 +1,7 @@
 import { createLogger } from '../../logger';
 import type { ImportedTripResult, TripBackupData } from '../../types/backup';
 import { withTransaction } from '../../utils/withTransaction';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import {
   type PendingImage,

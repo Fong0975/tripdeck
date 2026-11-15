@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { db, routeSql } from '../test-utils/dbMocks';
-import { mockLogger } from '../test-utils/loggerMock';
+import { db, routeSql } from '../../test-utils/dbMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
 
 import {
   addAttractionImage,
@@ -22,20 +22,20 @@ import {
   getTripImagesBatch,
 } from './imageRepository';
 
-vi.mock('../config/database', async () => {
-  const { db } = await import('../test-utils/dbMocks');
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
   return db.module;
 });
 
 const mockPoolExecute = db.pool.execute;
 
-vi.mock('../logger', async () => {
-  const { mockLogger } = await import('../test-utils/loggerMock');
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
   return { createLogger: () => mockLogger };
 });
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 

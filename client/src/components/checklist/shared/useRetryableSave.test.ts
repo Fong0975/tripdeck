@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 
 import { useRetryableSave } from './useRetryableSave';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 interface Trackers {
   label: string;

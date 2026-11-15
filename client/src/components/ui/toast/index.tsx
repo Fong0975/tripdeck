@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 
-import { ToastCard } from './ToastCard';
-
-export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
+import { ToastCard, type ToastVariant } from './ToastCard';
 
 interface ShowToastOptions {
   duration?: number;

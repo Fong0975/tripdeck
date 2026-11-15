@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -23,7 +23,7 @@ import { useSaveCategoryEdit } from './useSaveCategoryEdit';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const category = makeChecklistCategory({
   name: 'Category A',

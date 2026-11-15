@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTheme } from '@/hooks/useTheme';
 import { createMatchMedia } from '@/test-utils/dom';
 
-import { ThemeProvider } from './ThemeContext.tsx';
+import { ThemeProvider } from './ThemeProvider';
 
 function TestConsumer() {
   const { theme, toggle } = useTheme();
@@ -39,7 +39,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ThemeContext.ts only declares the context object + its default value —
+// themeContext.ts only declares the context object + its default value —
 // covered here directly, separately from ThemeProvider's own behavior below.
 describe('ThemeContext default value', () => {
   it('defaults to the light theme when rendered without a provider', () => {
@@ -80,6 +80,20 @@ describe('ThemeProvider', () => {
       description: 'a stored theme overrides the system preference',
       stored: 'light',
       systemPrefersDark: true,
+      expected: 'light',
+    },
+    {
+      description:
+        'an unrecognized theme is stored and the system prefers dark',
+      stored: 'purple',
+      systemPrefersDark: true,
+      expected: 'dark',
+    },
+    {
+      description:
+        'an unrecognized theme is stored and the system prefers light',
+      stored: 'purple',
+      systemPrefersDark: false,
       expected: 'light',
     },
   ])(
@@ -139,5 +153,29 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('theme')).toHaveTextContent('light');
     expect(localStorage.getItem('tripdeck_theme')).toBe('light');
     expect(document.documentElement).not.toHaveClass('dark');
+  });
+
+  it('keeps the context value stable across re-renders that do not change the theme', () => {
+    mockMatchMedia(false);
+    const onValue = vi.fn();
+    function Capture() {
+      onValue(useTheme());
+      return null;
+    }
+
+    const { rerender } = render(
+      <ThemeProvider>
+        <Capture />
+      </ThemeProvider>,
+    );
+    rerender(
+      <ThemeProvider>
+        <Capture />
+      </ThemeProvider>,
+    );
+
+    const values = onValue.mock.calls.map(([value]) => value);
+    expect(values.length).toBeGreaterThanOrEqual(2);
+    expect(values[values.length - 1]).toBe(values[0]);
   });
 });

@@ -1,9 +1,9 @@
 import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-import { getAutoBackupDownloadUrl, listAutoBackups } from '@/api/backup';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { AutoBackupFileInfo } from '@/types';
+import { getAutoBackupDownloadUrl, listAutoBackups } from '@/utils/storage';
 
 import LoadingIndicator from '../ui/LoadingIndicator';
 import StatusMessage from '../ui/StatusMessage';

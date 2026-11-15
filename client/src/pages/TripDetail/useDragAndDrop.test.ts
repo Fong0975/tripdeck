@@ -2,7 +2,7 @@ import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeAttraction,
   makeConnection,
@@ -16,7 +16,7 @@ import { useDragAndDrop } from './useDragAndDrop';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 beforeEach(() => {
   vi.mocked(moveAttraction).mockResolvedValue(undefined);

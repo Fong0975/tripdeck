@@ -59,7 +59,13 @@ export async function deleteTripItem(itemId: number): Promise<boolean> {
 }
 
 /**
- * Updates quantity and/or notes for a single trip checklist item.
+ * Partially updates a single trip checklist item: any of name, quantity,
+ * notes and storage location present in `data` is overwritten (a blank name
+ * keeps the current one); absent fields keep their stored values.
+ *
+ * @param itemId - Id of the item to update.
+ * @param data - Fields to change.
+ * @returns The updated item with its specs, or null if it does not exist.
  */
 export async function updateTripItem(
   itemId: number,

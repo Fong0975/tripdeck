@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 
 import {
   handleAddSpec,
@@ -15,11 +15,11 @@ const tripSpecs: SpecStore = {
   logger: createLogger('checklist-trip'),
   label: 'Trip checklist item spec',
   parentParam: 'tripId',
-  verifyItem: tripRepo.verifyItemBelongsToTrip,
-  verifySpec: tripRepo.verifyTripSpecBelongsToItem,
-  create: tripRepo.createTripItemSpec,
-  update: tripRepo.updateTripItemSpec,
-  remove: tripRepo.deleteTripItemSpec,
+  verifyItem: checklistRepo.verifyItemBelongsToTrip,
+  verifySpec: checklistRepo.verifyTripSpecBelongsToItem,
+  create: checklistRepo.createTripItemSpec,
+  update: checklistRepo.updateTripItemSpec,
+  remove: checklistRepo.deleteTripItemSpec,
 };
 
 export async function addTripItemSpec(

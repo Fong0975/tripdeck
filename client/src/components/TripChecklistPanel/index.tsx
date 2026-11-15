@@ -4,8 +4,8 @@ import { useState } from 'react';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import RetryableError from '@/components/ui/RetryableError';
 
-import CheckSaveBar from '../checklist/trip/CheckSaveBar';
-import TripChecklistEditModal from '../checklist/trip/TripChecklistEditModal';
+import CheckSaveBar from '../Checklist/trip/CheckSaveBar';
+import TripChecklistEditModal from '../Checklist/trip/TripChecklistEditModal';
 
 import ChecklistTable from './ChecklistTable';
 import { useChecklistState } from './useChecklistState';

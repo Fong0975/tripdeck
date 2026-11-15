@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeAttraction, makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addAttraction,
@@ -14,7 +14,7 @@ import { useAttractionActions } from './useAttractionActions';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useAttractionActions', () => {
   describe('handleSaveAttraction', () => {

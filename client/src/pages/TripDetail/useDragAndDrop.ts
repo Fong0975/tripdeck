@@ -8,7 +8,7 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { useState } from 'react';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Attraction, TripContent } from '@/types';
 import { findConnectionsBrokenByMove } from '@/utils/connectionAdjacency';
 import { moveAttraction, reorderAttractions } from '@/utils/storage';

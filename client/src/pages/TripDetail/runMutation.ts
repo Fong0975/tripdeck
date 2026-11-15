@@ -1,4 +1,4 @@
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 
 export interface MutationOptions<T> {
   /** Refreshes the page data once the mutation has succeeded. */

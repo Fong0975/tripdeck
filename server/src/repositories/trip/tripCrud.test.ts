@@ -7,7 +7,7 @@ import { create, findAll, findById, tripExists, update } from './tripCrud';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
   getTripImagesBatch: (...args: unknown[]) => mockGetTripImagesBatch(...args),
 }));
@@ -19,7 +19,7 @@ vi.mock('./tripDayCleanup', () => ({
 }));
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 

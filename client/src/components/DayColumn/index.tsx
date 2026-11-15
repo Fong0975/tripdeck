@@ -4,6 +4,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Plus } from 'lucide-react';
+import { memo, useCallback, useMemo } from 'react';
 
 import { useMapsStatus } from '@/hooks/useMapsStatus';
 import { useWeatherEnabled } from '@/hooks/useWeatherEnabled';
@@ -39,7 +40,21 @@ interface Props {
   onDeleteLocation: (dayIndex: number, locationId: number) => void;
 }
 
-export default function DayColumn({
+/** Builds the lookup key for the connection between two attractions. */
+function connectionKey(fromId: number, toId: number): string {
+  return `${fromId}->${toId}`;
+}
+
+/**
+ * One droppable day lane on the itinerary board: header, notes, locations,
+ * weather, and the sortable attraction cards with the travel connections
+ * between consecutive attractions.
+ *
+ * Memoized, and every prop it hands to its cards and connection items is
+ * kept referentially stable, so editing one day does not re-render the
+ * cards of the other days.
+ */
+function DayColumn({
   day,
   dayIndex,
   onEditDayNote,
@@ -62,6 +77,44 @@ export default function DayColumn({
   const dateLabel = formatDayDate(day.date, 'M/d (EEE)');
 
   const isPast = isPastDate(day.date);
+
+  const attractionIds = useMemo(
+    () => day.attractions.map(a => a.id),
+    [day.attractions],
+  );
+
+  const connectionsByPair = useMemo(() => {
+    const map = new Map<string, TravelConnection>();
+    for (const c of day.connections) {
+      const key = connectionKey(c.fromAttractionId, c.toAttractionId);
+      // Keep the first match, mirroring `Array.prototype.find` semantics.
+      if (!map.has(key)) {
+        map.set(key, c);
+      }
+    }
+    return map;
+  }, [day.connections]);
+
+  const handleEditAttraction = useCallback(
+    (attraction: Attraction) => onEditAttraction(dayIndex, attraction),
+    [dayIndex, onEditAttraction],
+  );
+  const handleDeleteAttraction = useCallback(
+    (attractionId: number) => onDeleteAttraction(dayIndex, attractionId),
+    [dayIndex, onDeleteAttraction],
+  );
+  const handleDuplicateAttraction = useCallback(
+    (attraction: Attraction) => onDuplicateAttraction(dayIndex, attraction),
+    [dayIndex, onDuplicateAttraction],
+  );
+  const handleEditConnection = useCallback(
+    (connection: TravelConnection) => onEditConnection(dayIndex, connection),
+    [dayIndex, onEditConnection],
+  );
+  const handleDeleteConnection = useCallback(
+    (connectionId: number) => onDeleteConnection(dayIndex, connectionId),
+    [dayIndex, onDeleteConnection],
+  );
 
   return (
     <div className='flex w-80 shrink-0 flex-col'>
@@ -105,16 +158,14 @@ export default function DayColumn({
         }`}
       >
         <SortableContext
-          items={day.attractions.map(a => a.id)}
+          items={attractionIds}
           strategy={verticalListSortingStrategy}
         >
           {day.attractions.map((attraction, i) => {
             const nextAttraction = day.attractions[i + 1];
             const conn = nextAttraction
-              ? day.connections.find(
-                  c =>
-                    c.fromAttractionId === attraction.id &&
-                    c.toAttractionId === nextAttraction.id,
+              ? connectionsByPair.get(
+                  connectionKey(attraction.id, nextAttraction.id),
                 )
               : undefined;
 
@@ -122,16 +173,16 @@ export default function DayColumn({
               <div key={attraction.id}>
                 <AttractionCard
                   attraction={attraction}
-                  onEdit={a => onEditAttraction(dayIndex, a)}
-                  onDelete={id => onDeleteAttraction(dayIndex, id)}
-                  onDuplicate={a => onDuplicateAttraction(dayIndex, a)}
+                  onEdit={handleEditAttraction}
+                  onDelete={handleDeleteAttraction}
+                  onDuplicate={handleDuplicateAttraction}
                 />
                 {nextAttraction &&
                   (conn ? (
                     <TravelConnectionItem
                       connection={conn}
-                      onEdit={c => onEditConnection(dayIndex, c)}
-                      onDelete={id => onDeleteConnection(dayIndex, id)}
+                      onEdit={handleEditConnection}
+                      onDelete={handleDeleteConnection}
                     />
                   ) : (
                     <div className='my-1 flex items-center gap-2 px-3'>
@@ -168,3 +219,5 @@ export default function DayColumn({
     </div>
   );
 }
+
+export default memo(DayColumn);

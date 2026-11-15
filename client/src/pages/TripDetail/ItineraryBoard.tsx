@@ -10,6 +10,8 @@ import AttractionCard from '@/components/AttractionCard';
 import DayColumn from '@/components/DayColumn';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 
+const noop = () => {};
+
 /** Per-day board callbacks forwarded to every `DayColumn`. */
 export interface BoardCallbacks {
   onEditDayNote: (dayIndex: number) => void;
@@ -102,8 +104,8 @@ export default function ItineraryBoard({
           <div className='rotate-2 opacity-90 shadow-xl'>
             <AttractionCard
               attraction={activeAttraction}
-              onEdit={() => {}}
-              onDelete={() => {}}
+              onEdit={noop}
+              onDelete={noop}
             />
           </div>
         )}

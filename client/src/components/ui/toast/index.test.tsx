@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { toast } from 'sonner';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from './toast';
+import { showToast } from '.';
 
 vi.mock('sonner', () => ({
   toast: { custom: vi.fn(), dismiss: vi.fn() },

@@ -59,7 +59,7 @@ export function makeTemplate(
 }
 
 /** Overrides for `makeTripBackupData`; `trip` is merged field by field. */
-export interface TripBackupDataOverrides {
+interface TripBackupDataOverrides {
   trip?: Partial<TripBackupData['trip']>;
   content?: TripBackupData['content'];
   checklist?: TripBackupData['checklist'];

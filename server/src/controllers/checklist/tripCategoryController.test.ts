@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type MockReqOverrides,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -28,7 +29,7 @@ const blankNameCases = [
 ];
 
 beforeEach(() => {
-  vi.mocked(tripRepo.tripExists).mockResolvedValue(true);
+  vi.mocked(checklistRepo.tripExists).mockResolvedValue(true);
 });
 
 describe('addTripCategory', () => {
@@ -38,12 +39,12 @@ describe('addTripCategory', () => {
     await addTripCategory(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
-    expect(tripRepo.createTripCategory).not.toHaveBeenCalled();
+    expect(checklistRepo.createTripCategory).not.toHaveBeenCalled();
   });
 
   it('returns 201 with the created category', async () => {
     const category = { id: 3, name: 'Gear', items: [] };
-    vi.mocked(tripRepo.createTripCategory).mockResolvedValue(category);
+    vi.mocked(checklistRepo.createTripCategory).mockResolvedValue(category);
     const { req, res } = createMockReqRes({
       params: { tripId: '1' },
       body: { name: 'Gear' },
@@ -51,13 +52,13 @@ describe('addTripCategory', () => {
 
     await addTripCategory(req, res);
 
-    expect(tripRepo.tripExists).toHaveBeenCalledWith(1);
-    expect(tripRepo.createTripCategory).toHaveBeenCalledWith(1, 'Gear');
+    expect(checklistRepo.tripExists).toHaveBeenCalledWith(1);
+    expect(checklistRepo.createTripCategory).toHaveBeenCalledWith(1, 'Gear');
     expectJsonStatus(res, 201, category);
   });
 
   it('returns 404 when the trip does not exist', async () => {
-    vi.mocked(tripRepo.tripExists).mockResolvedValue(false);
+    vi.mocked(checklistRepo.tripExists).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1' },
       body: { name: 'Gear' },
@@ -66,7 +67,7 @@ describe('addTripCategory', () => {
     await addTripCategory(req, res);
 
     expectJsonStatus(res, 404, { error: 'Trip not found' });
-    expect(tripRepo.createTripCategory).not.toHaveBeenCalled();
+    expect(checklistRepo.createTripCategory).not.toHaveBeenCalled();
   });
 });
 
@@ -80,11 +81,13 @@ describe('updateTripCategory', () => {
     await updateTripCategory(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
-    expect(tripRepo.verifyCategoryBelongsToTrip).not.toHaveBeenCalled();
+    expect(checklistRepo.verifyCategoryBelongsToTrip).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the category does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      false,
+    );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
       body: { name: 'Gear' },
@@ -93,12 +96,14 @@ describe('updateTripCategory', () => {
     await updateTripCategory(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
-    expect(tripRepo.updateTripCategory).not.toHaveBeenCalled();
+    expect(checklistRepo.updateTripCategory).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the update resolves false', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripCategory).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.updateTripCategory).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
       body: { name: 'Gear' },
@@ -110,8 +115,10 @@ describe('updateTripCategory', () => {
   });
 
   it('returns 204 with no body on success', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateTripCategory).mockResolvedValue(true);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.updateTripCategory).mockResolvedValue(true);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
       body: { name: 'Gear' },
@@ -119,7 +126,7 @@ describe('updateTripCategory', () => {
 
     await updateTripCategory(req, res);
 
-    expect(tripRepo.updateTripCategory).toHaveBeenCalledWith(2, 'Gear');
+    expect(checklistRepo.updateTripCategory).toHaveBeenCalledWith(2, 'Gear');
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
@@ -128,7 +135,9 @@ describe('updateTripCategory', () => {
 
 describe('deleteTripCategory', () => {
   it('returns 404 when the category does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      false,
+    );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
     });
@@ -136,12 +145,14 @@ describe('deleteTripCategory', () => {
     await deleteTripCategory(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
-    expect(tripRepo.deleteTripCategory).not.toHaveBeenCalled();
+    expect(checklistRepo.deleteTripCategory).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the delete resolves false', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.deleteTripCategory).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.deleteTripCategory).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
     });
@@ -152,8 +163,10 @@ describe('deleteTripCategory', () => {
   });
 
   it('returns 204 on success', async () => {
-    vi.mocked(tripRepo.verifyCategoryBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.deleteTripCategory).mockResolvedValue(true);
+    vi.mocked(checklistRepo.verifyCategoryBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.deleteTripCategory).mockResolvedValue(true);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', catId: '2' },
     });
@@ -166,18 +179,13 @@ describe('deleteTripCategory', () => {
 });
 
 describe('unexpected repository errors', () => {
-  const tests: Array<{
-    name: string;
-    handler: typeof addTripCategory;
-    req: MockReqOverrides;
-    arrange: (error: Error) => void;
-  }> = [
+  const tests: RejectCase[] = [
     {
       name: 'addTripCategory',
       handler: addTripCategory,
       req: { params: { tripId: '1' }, body: { name: 'Gear' } },
       arrange: error =>
-        vi.mocked(tripRepo.createTripCategory).mockRejectedValue(error),
+        vi.mocked(checklistRepo.createTripCategory).mockRejectedValue(error),
     },
     {
       name: 'updateTripCategory',
@@ -185,7 +193,7 @@ describe('unexpected repository errors', () => {
       req: { params: { tripId: '1', catId: '2' }, body: { name: 'Gear' } },
       arrange: error =>
         vi
-          .mocked(tripRepo.verifyCategoryBelongsToTrip)
+          .mocked(checklistRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
     },
     {
@@ -194,21 +202,10 @@ describe('unexpected repository errors', () => {
       req: { params: { tripId: '1', catId: '2' } },
       arrange: error =>
         vi
-          .mocked(tripRepo.verifyCategoryBelongsToTrip)
+          .mocked(checklistRepo.verifyCategoryBelongsToTrip)
           .mockRejectedValue(error),
     },
   ];
 
-  it.each(tests)(
-    '$name rejects with the repository error and sends nothing',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-      expect(res.json).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(tests);
 });

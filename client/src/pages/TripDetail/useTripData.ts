@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Trip, TripContent } from '@/types';
 import { getTrip, getTripContent } from '@/utils/storage';
 

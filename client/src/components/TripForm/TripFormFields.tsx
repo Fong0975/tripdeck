@@ -1,4 +1,4 @@
-import { INPUT_CLS, LABEL_CLS, TEXTAREA_CLS } from '@/components/formStyles';
+import { INPUT_CLS, LABEL_CLS, TEXTAREA_CLS } from '@/components/ui/formStyles';
 
 import type { TripFormValues } from './validateTripForm';
 

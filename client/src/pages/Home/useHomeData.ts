@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Trip } from '@/types';
 import { getTrips, deleteTrip } from '@/utils/storage';
 

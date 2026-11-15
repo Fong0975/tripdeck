@@ -14,7 +14,8 @@ import { makeTrip } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 import type { TripContentResponse } from '../../types/trip';
 import { MAX_TRIP_DAYS } from '../../validation/tripValidation';
@@ -27,8 +28,6 @@ import {
   getTrips,
   updateTrip,
 } from './tripCrudController';
-
-type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleTrip = makeTrip();
 
@@ -401,15 +400,5 @@ describe('unexpected errors', () => {
     },
   ];
 
-  it.each(cases)(
-    '$name rejects with the underlying error for the error handler',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(cases);
 });

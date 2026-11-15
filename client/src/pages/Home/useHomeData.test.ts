@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeTrip } from '@/test-utils/fixtures';
 import { deleteTrip, getTrips } from '@/utils/storage';
 
@@ -9,7 +9,7 @@ import { useHomeData } from './useHomeData';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useHomeData', () => {
   it('starts in a loading state and loads trips once getTrips resolves', async () => {

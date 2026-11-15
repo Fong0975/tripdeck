@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { imageUrl } from '@/api/images';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeImage } from '@/test-utils/fixtures';
 import { getFileInput, selectFile } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 
 import ImageUploadSection from './ImageUploadSection';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const images = [
   makeImage({ id: 1, filename: 'a.jpg', title: 'Photo A' }),

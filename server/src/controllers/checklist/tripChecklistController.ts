@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParam } from './params';
 import { rejectNotFound } from './shared/responses';
@@ -78,7 +78,7 @@ export async function getTripChecklist(
        }
      } */
   const tripId = idParam(req, 'tripId');
-  const checklist = await tripRepo.findOrInitChecklist(tripId);
+  const checklist = await checklistRepo.findOrInitChecklist(tripId);
   if (!checklist) {
     const message = 'Get-checklist rejected: trip not found';
     rejectNotFound(res, logger, 'Trip', message, { tripId });

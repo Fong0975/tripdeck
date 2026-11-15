@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 
 import { isTransportMode } from '../../constants/transportModes';
 import { createLogger } from '../../logger';
-import * as connectionRepo from '../../repositories/connectionRepository';
+import * as connectionRepo from '../../repositories/connection';
 import * as tripRepo from '../../repositories/trip';
 import type {
   CreateConnectionBody,

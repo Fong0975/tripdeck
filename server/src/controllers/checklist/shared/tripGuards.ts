@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 
 import type { Logger } from '../../../logger';
-import * as tripRepo from '../../../repositories/checklist/trip';
+import * as checklistRepo from '../../../repositories/checklist/trip';
 
 import { rejectNotFound } from './responses';
 
@@ -20,7 +20,7 @@ export async function ensureTripExists(
   logger: Logger,
   action: string,
 ): Promise<boolean> {
-  if (await tripRepo.tripExists(tripId)) {
+  if (await checklistRepo.tripExists(tripId)) {
     return true;
   }
   const message = `${action} rejected: trip not found`;

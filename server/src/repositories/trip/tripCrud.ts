@@ -2,14 +2,14 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
 import type {
   CreateTripBody,
   TripResponse,
   UpdateTripBody,
 } from '../../types/trip';
 import { withTransaction } from '../../utils/withTransaction';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
 import { planTripDayChanges, reconcileTripDays } from './tripDayReconcile';

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParam, idParams } from './params';
 import { rejectInvalidBody, rejectNotFound } from './shared/responses';
@@ -38,7 +38,7 @@ export async function addOccasion(req: Request, res: Response): Promise<void> {
   if (!(await ensureTripExists(tripId, res, logger, 'Add-occasion'))) {
     return;
   }
-  const occasion = await tripRepo.createOccasion(tripId, name.value);
+  const occasion = await checklistRepo.createOccasion(tripId, name.value);
   logger.info('Trip checklist occasion created', {
     tripId,
     occId: occasion.id,
@@ -79,12 +79,12 @@ export async function updateOccasion(
     rejectInvalidBody(res, logger, 'update-occasion', name.error, meta);
     return;
   }
-  if (!(await tripRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
+  if (!(await checklistRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
     const message = 'Update-occasion rejected: occasion not found';
     rejectNotFound(res, logger, 'Occasion', message, meta);
     return;
   }
-  const occasion = await tripRepo.updateOccasion(occId, name.value);
+  const occasion = await checklistRepo.updateOccasion(occId, name.value);
   if (!occasion) {
     const message = 'Update-occasion rejected: occasion not found on update';
     rejectNotFound(res, logger, 'Occasion', message, meta);
@@ -101,7 +101,7 @@ export async function deleteOccasion(
      #swagger.summary = 'Delete an occasion'
      #swagger.description = 'Rejected with 409 if this is the last remaining occasion.' */
   const meta = idParams(req, 'tripId', 'occId');
-  const result = await tripRepo.deleteOccasionIfNotLast(
+  const result = await checklistRepo.deleteOccasionIfNotLast(
     meta.tripId,
     meta.occId,
   );

@@ -17,7 +17,7 @@ const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
 // The trip's own images are irrelevant to findContent; it must only check
 // that the trip exists, so this mock lets tests assert they are never loaded.
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getAttractionImagesBatch: (...args: unknown[]) =>
     mockGetAttractionImagesBatch(...args),
   getConnectionImagesBatch: (...args: unknown[]) =>

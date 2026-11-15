@@ -1,16 +1,15 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
-import pool from '../config/database';
-import { createLogger } from '../logger';
-import { deleteImageFromDisk } from '../middleware/upload';
+import pool from '../../config/database';
+import { createLogger } from '../../logger';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
 import type {
   ConnectionResponse,
   CreateConnectionBody,
   ImageResponse,
   UpdateConnectionBody,
-} from '../types/trip';
-
-import * as imageRepo from './imageRepository';
+} from '../../types/trip';
+import * as imageRepo from '../image';
 
 const logger = createLogger('connection');
 

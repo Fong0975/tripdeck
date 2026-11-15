@@ -1,12 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeImage } from '@/test-utils/fixtures';
 
 import { useEntityImages } from './useEntityImages';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const images = [makeImage({ filename: 'a.jpg', title: 'A' })];
 

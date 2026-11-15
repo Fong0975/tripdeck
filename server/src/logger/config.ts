@@ -11,7 +11,7 @@ const DEFAULT_LEVEL: LogLevel = 'info';
  * (`src/`) and the compiled build (`dist/`), unless overridden by `LOG_DIR`.
  */
 const DEFAULT_DIR = path.join(__dirname, '../../logs');
-const DEFAULT_FILENAME = 'app.log';
+const DEFAULT_FILENAME = 'tripdeck.log';
 const DEFAULT_MAX_SIZE_MB = 10;
 const DEFAULT_MAX_FILES = 5;
 

@@ -29,7 +29,7 @@ vi.mock('../checklist/trip', () => ({
   findChecklist: (...args: unknown[]) => mockFindChecklist(...args),
 }));
 
-vi.mock('../../middleware/upload', () => ({ UPLOADS_DIR: '/uploads' }));
+vi.mock('../../storage/imageFiles', () => ({ UPLOADS_DIR: '/uploads' }));
 
 const mockReadFile = vi.fn();
 vi.mock('fs/promises', () => {

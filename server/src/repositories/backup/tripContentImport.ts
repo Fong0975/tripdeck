@@ -5,7 +5,7 @@ import { createLogger } from '../../logger';
 import type { TripBackupData } from '../../types/backup';
 import type { AttractionResponse, DayResponse } from '../../types/trip';
 import { bulkInsert } from '../../utils/bulkInsert';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { type PendingImage, toPendingImages } from './pendingImages';
 import { consistencyError, toGeoColumns } from './tripImportHelpers';

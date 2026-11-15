@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 import type { UpdateTripItemBody } from '../../types/checklist';
 
 import { idParams } from './params';
@@ -24,12 +24,12 @@ const tripItems: ItemStore<UpdateTripItemBody> = {
   logger,
   label: 'Trip checklist item',
   parentParam: 'tripId',
-  verifyCategory: tripRepo.verifyCategoryBelongsToTrip,
-  create: tripRepo.createTripItem,
+  verifyCategory: checklistRepo.verifyCategoryBelongsToTrip,
+  create: checklistRepo.createTripItem,
   parseUpdate: parseTripItemPatch,
-  verifyItem: tripRepo.verifyItemBelongsToTrip,
-  update: tripRepo.updateTripItem,
-  remove: tripRepo.deleteTripItem,
+  verifyItem: checklistRepo.verifyItemBelongsToTrip,
+  update: checklistRepo.updateTripItem,
+  remove: checklistRepo.deleteTripItem,
 };
 
 export async function addTripItem(req: Request, res: Response): Promise<void> {
@@ -115,17 +115,17 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
     res.status(400).json({ error: 'checked must be a boolean' });
     return;
   }
-  if (!(await tripRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
+  if (!(await checklistRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
     const message = 'Set-check rejected: occasion not found';
     rejectNotFound(res, logger, 'Occasion', message, meta);
     return;
   }
-  if (!(await tripRepo.verifyItemBelongsToTrip(itemId, tripId))) {
+  if (!(await checklistRepo.verifyItemBelongsToTrip(itemId, tripId))) {
     const message = 'Set-check rejected: item not found';
     rejectNotFound(res, logger, 'Item', message, meta);
     return;
   }
-  await tripRepo.setCheck(occId, itemId, checked);
+  await checklistRepo.setCheck(occId, itemId, checked);
   logger.debug('Trip checklist item check toggled', { ...meta, checked });
   res.status(204).send();
 }

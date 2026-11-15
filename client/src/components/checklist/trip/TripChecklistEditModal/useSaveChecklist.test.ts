@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -29,7 +29,7 @@ import { useSaveChecklist } from './useSaveChecklist';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const checklist = makeTripChecklist({
   occasions: [{ id: 1, name: 'Occasion A', checks: {} }],

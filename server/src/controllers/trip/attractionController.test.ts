@@ -19,7 +19,8 @@ import * as tripRepo from '../../repositories/trip';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 import type { AttractionResponse } from '../../types/trip';
 
@@ -31,8 +32,6 @@ import {
   reorderAttractions,
   updateAttraction,
 } from './attractionController';
-
-type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 const sampleDay = { id: 10, day: 1, date: '2024-05-10' };
 
@@ -537,15 +536,5 @@ describe('unexpected errors', () => {
     },
   ];
 
-  it.each(cases)(
-    '$name rejects with the underlying error for the error handler',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(cases);
 });

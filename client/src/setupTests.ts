@@ -9,7 +9,7 @@ afterEach(() => {
   cleanup();
 });
 
-// jsdom does not implement matchMedia; ThemeContext.getInitialTheme() (and
+// jsdom does not implement matchMedia; ThemeProvider's getInitialTheme() (and
 // anything else relying on prefers-color-scheme) needs it defined. Individual
 // tests can override this default with vi.spyOn(window, 'matchMedia').
 if (!window.matchMedia) {

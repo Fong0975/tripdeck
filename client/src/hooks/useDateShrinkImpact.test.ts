@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeAttraction,
   makeConnection,
@@ -12,7 +12,7 @@ import {
 
 import { imageCountOf, useDateShrinkImpact } from './useDateShrinkImpact';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('imageCountOf', () => {
   it('sums images across attractions, connections, and the day itself', () => {

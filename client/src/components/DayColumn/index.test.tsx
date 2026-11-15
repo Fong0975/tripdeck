@@ -1,5 +1,5 @@
 import { DndContext } from '@dnd-kit/core';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale/zh-TW';
@@ -13,38 +13,45 @@ import {
   makeDay,
   makeLocation,
 } from '@/test-utils/fixtures';
+import RerenderHarness from '@/test-utils/RerenderHarness';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 import { isPastDate } from '@/utils/date';
 
 import DayColumn from './index';
+
+type ChildProps = Record<string, unknown>;
+
+const { attractionCardRender, travelConnectionRender } = vi.hoisted(() => ({
+  attractionCardRender: vi.fn<(props: ChildProps) => void>(),
+  travelConnectionRender: vi.fn<(props: ChildProps) => void>(),
+}));
 
 vi.mock('@/utils/date', () => ({ isPastDate: vi.fn() }));
 vi.mock('@/hooks/useWeatherEnabled', () => ({ useWeatherEnabled: vi.fn() }));
 vi.mock('@/hooks/useMapsStatus', () => ({ useMapsStatus: vi.fn() }));
 
 vi.mock('../AttractionCard', () => ({
-  default: ({
-    attraction,
-    onEdit,
-    onDelete,
-    onDuplicate,
-  }: {
+  default: (props: {
     attraction: Attraction;
     onEdit: (a: Attraction) => void;
     onDelete: (id: number) => void;
     onDuplicate: (a: Attraction) => void;
-  }) => (
-    <div>
-      <span>attraction-{attraction.id}</span>
-      <button onClick={() => onEdit(attraction)}>edit-{attraction.id}</button>
-      <button onClick={() => onDelete(attraction.id)}>
-        delete-{attraction.id}
-      </button>
-      <button onClick={() => onDuplicate(attraction)}>
-        duplicate-{attraction.id}
-      </button>
-    </div>
-  ),
+  }) => {
+    attractionCardRender(props);
+    const { attraction, onEdit, onDelete, onDuplicate } = props;
+    return (
+      <div>
+        <span>attraction-{attraction.id}</span>
+        <button onClick={() => onEdit(attraction)}>edit-{attraction.id}</button>
+        <button onClick={() => onDelete(attraction.id)}>
+          delete-{attraction.id}
+        </button>
+        <button onClick={() => onDuplicate(attraction)}>
+          duplicate-{attraction.id}
+        </button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('../DayWeather', () => ({
@@ -52,24 +59,24 @@ vi.mock('../DayWeather', () => ({
 }));
 
 vi.mock('../TravelConnectionItem', () => ({
-  default: ({
-    connection,
-    onEdit,
-    onDelete,
-  }: {
+  default: (props: {
     connection: TravelConnection;
     onEdit: (c: TravelConnection) => void;
     onDelete: (id: number) => void;
-  }) => (
-    <div>
-      <button onClick={() => onEdit(connection)}>
-        connection-{connection.id}
-      </button>
-      <button onClick={() => onDelete(connection.id)}>
-        delete-connection-{connection.id}
-      </button>
-    </div>
-  ),
+  }) => {
+    travelConnectionRender(props);
+    const { connection, onEdit, onDelete } = props;
+    return (
+      <div>
+        <button onClick={() => onEdit(connection)}>
+          connection-{connection.id}
+        </button>
+        <button onClick={() => onDelete(connection.id)}>
+          delete-connection-{connection.id}
+        </button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('./LocationChips', () => ({
@@ -102,7 +109,34 @@ function setupColumn(day: DayPlan, dayIndex = 0, callbacks = makeCallbacks()) {
   return callbacks;
 }
 
+/**
+ * Renders a day with two attractions joined by a connection inside a
+ * {@link RerenderHarness}, so the column can be re-rendered without
+ * re-rendering the surrounding `DndContext`.
+ */
+function setupHarnessedColumn(
+  nextDay: (day: DayPlan) => DayPlan,
+  callbacks = makeCallbacks(),
+) {
+  const day = makeDay({
+    attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
+    connections: [makeConnection({ id: 5 })],
+  });
+  render(
+    <DndContext>
+      <RerenderHarness
+        initialProps={{ day, dayIndex: 0, ...callbacks }}
+        nextProps={props => ({ ...props, day: nextDay(props.day) })}
+      >
+        {props => <DayColumn {...props} />}
+      </RerenderHarness>
+    </DndContext>,
+  );
+}
+
 beforeEach(() => {
+  attractionCardRender.mockClear();
+  travelConnectionRender.mockClear();
   vi.mocked(isPastDate).mockReturnValue(false);
   vi.mocked(useWeatherEnabled).mockReturnValue(true);
   vi.mocked(useMapsStatus).mockReturnValue({ state: 'unavailable' });
@@ -297,5 +331,51 @@ describe('DayColumn', () => {
     await user.click(screen.getByLabelText('檢視當日地圖'));
 
     expect(callbacks.onOpenDayMap).not.toHaveBeenCalled();
+  });
+
+  describe('memoization', () => {
+    it('does not re-render its cards when re-rendered with identical props', () => {
+      setupHarnessedColumn(day => day);
+      const cardRenders = attractionCardRender.mock.calls.length;
+      const connectionRenders = travelConnectionRender.mock.calls.length;
+
+      fireEvent.click(screen.getByText('rerender-harness'));
+
+      expect(attractionCardRender).toHaveBeenCalledTimes(cardRenders);
+      expect(travelConnectionRender).toHaveBeenCalledTimes(connectionRenders);
+    });
+
+    it.each([
+      {
+        child: 'AttractionCard',
+        spy: attractionCardRender,
+        keys: ['attraction', 'onEdit', 'onDelete', 'onDuplicate'],
+      },
+      {
+        child: 'TravelConnectionItem',
+        spy: travelConnectionRender,
+        keys: ['connection', 'onEdit', 'onDelete'],
+      },
+    ])(
+      'keeps the props passed to $child stable when only the day object changes',
+      ({ spy, keys }) => {
+        setupHarnessedColumn(day => ({ ...day }));
+        // The day renders several children, so compare each child's props
+        // from the initial render with the same child's props from the
+        // re-render (children render in the same order both times).
+        const initialCalls = spy.mock.calls.slice();
+
+        fireEvent.click(screen.getByText('rerender-harness'));
+
+        const rerenderCalls = spy.mock.calls.slice(initialCalls.length);
+        expect(rerenderCalls).toHaveLength(initialCalls.length);
+        rerenderCalls.forEach(([latestProps], index) => {
+          const [initialProps] = initialCalls[index];
+          for (const key of keys) {
+            expect(latestProps[key]).toBe(initialProps[key]);
+          }
+        });
+      },
+    );
   });
 });

@@ -2,10 +2,10 @@ import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
 import { placeholders } from '../../utils/sql';
 import { withTransaction } from '../../utils/withTransaction';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { TripConnectionAdjacencyRow } from './shared';
 
@@ -335,11 +335,9 @@ export async function moveToDay(
 
   deleteImagesFromDisk(outcome.cleanup.imageFilenames);
   if (outcome.result === 'moved') {
-    logger.info('Attraction moved', {
-      tripId,
+    logger.debug('Attraction moved', {
       attractionId,
       targetDayId,
-      targetIndex,
       connectionsRemoved: outcome.cleanup.connectionsRemoved,
       imagesRemoved: outcome.cleanup.imageFilenames.length,
     });

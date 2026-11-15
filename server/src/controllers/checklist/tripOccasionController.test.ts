@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type MockReqOverrides,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -28,7 +29,7 @@ const blankNameCases = [
 ];
 
 beforeEach(() => {
-  vi.mocked(tripRepo.tripExists).mockResolvedValue(true);
+  vi.mocked(checklistRepo.tripExists).mockResolvedValue(true);
 });
 
 describe('addOccasion', () => {
@@ -38,12 +39,12 @@ describe('addOccasion', () => {
     await addOccasion(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
-    expect(tripRepo.createOccasion).not.toHaveBeenCalled();
+    expect(checklistRepo.createOccasion).not.toHaveBeenCalled();
   });
 
   it('returns 201 with the created occasion', async () => {
     const occasion = { id: 2, name: 'Return trip', checks: {} };
-    vi.mocked(tripRepo.createOccasion).mockResolvedValue(occasion);
+    vi.mocked(checklistRepo.createOccasion).mockResolvedValue(occasion);
     const { req, res } = createMockReqRes({
       params: { tripId: '1' },
       body: { name: 'Return trip' },
@@ -51,13 +52,13 @@ describe('addOccasion', () => {
 
     await addOccasion(req, res);
 
-    expect(tripRepo.tripExists).toHaveBeenCalledWith(1);
-    expect(tripRepo.createOccasion).toHaveBeenCalledWith(1, 'Return trip');
+    expect(checklistRepo.tripExists).toHaveBeenCalledWith(1);
+    expect(checklistRepo.createOccasion).toHaveBeenCalledWith(1, 'Return trip');
     expectJsonStatus(res, 201, occasion);
   });
 
   it('returns 404 when the trip does not exist', async () => {
-    vi.mocked(tripRepo.tripExists).mockResolvedValue(false);
+    vi.mocked(checklistRepo.tripExists).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1' },
       body: { name: 'Return trip' },
@@ -66,7 +67,7 @@ describe('addOccasion', () => {
     await addOccasion(req, res);
 
     expectJsonStatus(res, 404, { error: 'Trip not found' });
-    expect(tripRepo.createOccasion).not.toHaveBeenCalled();
+    expect(checklistRepo.createOccasion).not.toHaveBeenCalled();
   });
 });
 
@@ -80,11 +81,13 @@ describe('updateOccasion', () => {
     await updateOccasion(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
-    expect(tripRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
+    expect(checklistRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the occasion does not belong to the trip', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(false);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      false,
+    );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2' },
       body: { name: 'Departure' },
@@ -93,12 +96,14 @@ describe('updateOccasion', () => {
     await updateOccasion(req, res);
 
     expectJsonStatus(res, 404, { error: 'Occasion not found' });
-    expect(tripRepo.updateOccasion).not.toHaveBeenCalled();
+    expect(checklistRepo.updateOccasion).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the update resolves null', async () => {
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateOccasion).mockResolvedValue(null);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.updateOccasion).mockResolvedValue(null);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2' },
       body: { name: 'Departure' },
@@ -111,8 +116,10 @@ describe('updateOccasion', () => {
 
   it('returns 200 with the updated occasion', async () => {
     const occasion = { id: 2, name: 'Departure', checks: {} };
-    vi.mocked(tripRepo.verifyOccasionBelongsToTrip).mockResolvedValue(true);
-    vi.mocked(tripRepo.updateOccasion).mockResolvedValue(occasion);
+    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+      true,
+    );
+    vi.mocked(checklistRepo.updateOccasion).mockResolvedValue(occasion);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2' },
       body: { name: 'Departure' },
@@ -144,14 +151,16 @@ describe('deleteOccasion', () => {
   ])(
     'responds $expectStatus when the repository returns $result',
     async ({ result, expectStatus, expectBody }) => {
-      vi.mocked(tripRepo.deleteOccasionIfNotLast).mockResolvedValue(result);
+      vi.mocked(checklistRepo.deleteOccasionIfNotLast).mockResolvedValue(
+        result,
+      );
       const { req, res } = createMockReqRes({
         params: { tripId: '1', occId: '2' },
       });
 
       await deleteOccasion(req, res);
 
-      expect(tripRepo.deleteOccasionIfNotLast).toHaveBeenCalledWith(1, 2);
+      expect(checklistRepo.deleteOccasionIfNotLast).toHaveBeenCalledWith(1, 2);
       expect(res.status).toHaveBeenCalledWith(expectStatus);
       if (expectBody) {
         expect(res.json).toHaveBeenCalledWith(expectBody);
@@ -164,18 +173,13 @@ describe('deleteOccasion', () => {
 });
 
 describe('unexpected repository errors', () => {
-  const tests: Array<{
-    name: string;
-    handler: typeof addOccasion;
-    req: MockReqOverrides;
-    arrange: (error: Error) => void;
-  }> = [
+  const tests: RejectCase[] = [
     {
       name: 'addOccasion',
       handler: addOccasion,
       req: { params: { tripId: '1' }, body: { name: 'Departure' } },
       arrange: error =>
-        vi.mocked(tripRepo.createOccasion).mockRejectedValue(error),
+        vi.mocked(checklistRepo.createOccasion).mockRejectedValue(error),
     },
     {
       name: 'updateOccasion',
@@ -183,7 +187,7 @@ describe('unexpected repository errors', () => {
       req: { params: { tripId: '1', occId: '2' }, body: { name: 'Departure' } },
       arrange: error =>
         vi
-          .mocked(tripRepo.verifyOccasionBelongsToTrip)
+          .mocked(checklistRepo.verifyOccasionBelongsToTrip)
           .mockRejectedValue(error),
     },
     {
@@ -191,20 +195,11 @@ describe('unexpected repository errors', () => {
       handler: deleteOccasion,
       req: { params: { tripId: '1', occId: '2' } },
       arrange: error =>
-        vi.mocked(tripRepo.deleteOccasionIfNotLast).mockRejectedValue(error),
+        vi
+          .mocked(checklistRepo.deleteOccasionIfNotLast)
+          .mockRejectedValue(error),
     },
   ];
 
-  it.each(tests)(
-    '$name rejects with the repository error and sends nothing',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-      expect(res.json).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(tests);
 });

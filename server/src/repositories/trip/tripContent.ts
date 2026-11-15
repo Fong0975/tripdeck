@@ -14,11 +14,8 @@ import {
   TripAttractionRow,
   TripAttractionWebsiteRow,
 } from '../attraction/shared';
-import {
-  toConnectionResponse,
-  TripConnectionRow,
-} from '../connectionRepository';
-import * as imageRepo from '../imageRepository';
+import { toConnectionResponse, TripConnectionRow } from '../connection';
+import * as imageRepo from '../image';
 
 import { toDateString } from './helpers';
 import { tripExists } from './tripCrud';

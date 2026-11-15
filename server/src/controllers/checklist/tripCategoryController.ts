@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
-import * as tripRepo from '../../repositories/checklist/trip';
+import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParam, idParams } from './params';
 import { rejectInvalidBody, rejectNotFound } from './shared/responses';
@@ -26,7 +26,7 @@ export async function addTripCategory(
   if (!(await ensureTripExists(tripId, res, logger, 'Add-category'))) {
     return;
   }
-  const category = await tripRepo.createTripCategory(tripId, name.value);
+  const category = await checklistRepo.createTripCategory(tripId, name.value);
   logger.info('Trip checklist category created', {
     tripId,
     catId: category.id,
@@ -48,12 +48,12 @@ export async function updateTripCategory(
     rejectInvalidBody(res, logger, 'update-category', name.error, meta);
     return;
   }
-  if (!(await tripRepo.verifyCategoryBelongsToTrip(catId, tripId))) {
+  if (!(await checklistRepo.verifyCategoryBelongsToTrip(catId, tripId))) {
     const message = 'Update-category rejected: category not found';
     rejectNotFound(res, logger, 'Category', message, meta);
     return;
   }
-  if (!(await tripRepo.updateTripCategory(catId, name.value))) {
+  if (!(await checklistRepo.updateTripCategory(catId, name.value))) {
     const message = 'Update-category rejected: category not found on update';
     rejectNotFound(res, logger, 'Category', message, meta);
     return;
@@ -69,12 +69,12 @@ export async function deleteTripCategory(
      #swagger.summary = 'Delete a trip checklist category and all its items' */
   const meta = idParams(req, 'tripId', 'catId');
   const { tripId, catId } = meta;
-  if (!(await tripRepo.verifyCategoryBelongsToTrip(catId, tripId))) {
+  if (!(await checklistRepo.verifyCategoryBelongsToTrip(catId, tripId))) {
     const message = 'Delete-category rejected: category not found';
     rejectNotFound(res, logger, 'Category', message, meta);
     return;
   }
-  if (!(await tripRepo.deleteTripCategory(catId))) {
+  if (!(await checklistRepo.deleteTripCategory(catId))) {
     const message = 'Delete-category rejected: category not found on delete';
     rejectNotFound(res, logger, 'Category', message, meta);
     return;

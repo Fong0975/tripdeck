@@ -1,7 +1,7 @@
 import { ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
 import { useObjectUrls } from '@/hooks/useObjectUrls';
 import { useSubmitting } from '@/hooks/useSubmitting';
 

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 
+import { showToast } from '@/components/ui/toast';
 import { useSubmitting } from '@/hooks/useSubmitting';
-import { showToast } from '@/lib/toast';
 
 /** Options for {@link useRetryableSave}. */
 export interface RetryableSaveOptions<TTrackers> {

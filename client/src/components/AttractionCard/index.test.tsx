@@ -5,16 +5,24 @@ import {
 } from '@dnd-kit/sortable';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import ClampedTextSection from '@/components/ClampedTextSection';
 import { makeAttraction, makeImage } from '@/test-utils/fixtures';
+import RerenderHarness from '@/test-utils/RerenderHarness';
 import type { Attraction, AttractionImage } from '@/types';
 
 import AttractionCard from './index';
 
 vi.mock('@/components/ClampedTextSection', async () => ({
-  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+  default: vi.fn((await import('@/test-utils/stubs')).ClampedTextSectionStub),
 }));
+
+type CardProps = ComponentProps<typeof AttractionCard>;
+
+const memoAttraction = makeAttraction({ notes: 'memo notes' });
+const memoSortableItems = [memoAttraction.id];
 
 function renderCard(options: { attraction?: Attraction } = {}) {
   const attraction = options.attraction ?? makeAttraction();
@@ -198,6 +206,60 @@ describe('AttractionCard', () => {
         expect(screen.getAllByRole('separator')).toHaveLength(
           expectedSeparators,
         );
+      },
+    );
+  });
+
+  describe('memoization', () => {
+    it.each([
+      {
+        description: 'identical props',
+        nextProps: (props: CardProps) => props,
+        rerenders: false,
+      },
+      {
+        description: 'a new attraction object',
+        nextProps: (props: CardProps) => ({
+          ...props,
+          attraction: { ...props.attraction },
+        }),
+        rerenders: true,
+      },
+      {
+        description: 'a new onEdit callback',
+        nextProps: (props: CardProps) => ({ ...props, onEdit: vi.fn() }),
+        rerenders: true,
+      },
+    ])(
+      're-renders: $rerenders when the parent re-renders with $description',
+      ({ nextProps, rerenders }) => {
+        const initialProps: CardProps = {
+          attraction: memoAttraction,
+          onEdit: vi.fn(),
+          onDelete: vi.fn(),
+        };
+        render(
+          <DndContext>
+            <SortableContext
+              items={memoSortableItems}
+              strategy={verticalListSortingStrategy}
+            >
+              <RerenderHarness
+                initialProps={initialProps}
+                nextProps={nextProps}
+              >
+                {props => <AttractionCard {...props} />}
+              </RerenderHarness>
+            </SortableContext>
+          </DndContext>,
+        );
+        const rendersBefore = vi.mocked(ClampedTextSection).mock.calls.length;
+
+        fireEvent.click(screen.getByText('rerender-harness'));
+
+        expect(
+          vi.mocked(ClampedTextSection).mock.calls.length > rendersBefore,
+        ).toBe(rerenders);
       },
     );
   });

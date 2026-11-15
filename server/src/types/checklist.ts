@@ -55,14 +55,6 @@ export interface TripChecklistResponse {
 
 // --- Request body shapes ---
 
-export interface CreateCategoryBody {
-  name: string;
-}
-
-export interface UpdateCategoryBody {
-  name: string;
-}
-
 export interface CreateItemBody {
   name: string;
   quantity?: number | null;
@@ -89,18 +81,6 @@ export interface UpdateTripItemBody {
   quantity?: number | null;
   notes?: string | null;
   storage_location?: string | null;
-}
-
-export interface CreateOccasionBody {
-  name: string;
-}
-
-export interface UpdateOccasionBody {
-  name: string;
-}
-
-export interface SetCheckBody {
-  checked: boolean;
 }
 
 export interface CreateSpecBody {

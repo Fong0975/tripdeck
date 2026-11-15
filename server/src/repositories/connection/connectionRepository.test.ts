@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { db, routeSql } from '../test-utils/dbMocks';
+import { db, routeSql } from '../../test-utils/dbMocks';
 
 import {
   attractionsBelongToDay,
@@ -11,20 +11,20 @@ import {
   verifyBelongsToTrip,
 } from './connectionRepository';
 
-vi.mock('../config/database', async () => {
-  const { db } = await import('../test-utils/dbMocks');
+vi.mock('../../config/database', async () => {
+  const { db } = await import('../../test-utils/dbMocks');
   return db.module;
 });
 
 const mockPoolExecute = db.pool.execute;
 
 const mockGetConnectionImages = vi.fn().mockResolvedValue([]);
-vi.mock('./imageRepository', () => ({
+vi.mock('../image', () => ({
   getConnectionImages: (...args: unknown[]) => mockGetConnectionImages(...args),
 }));
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 

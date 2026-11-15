@@ -20,8 +20,8 @@ mkdir "%DEST_DIR%"
 :: /XF  : Excludes files matching these names/patterns.
 :: /R:1 /W:1 : Retries once on failure with a 1-second wait.
 robocopy "./" "%DEST_DIR%" /E ^
-    /XD .git .github node_modules .vscode .idea .claude coverage .cache "%DEST_DIR%" server\dist server\uploads server\backups client\dist client\dist-ssr raw ^
-    /XF .gitignore README.md *.bat *.log .env .env.local .env.*.local .env.example .env.production ^
+    /XD .git .github node_modules .vscode .idea .claude coverage .cache "%DEST_DIR%" server\dist server\uploads server\backups server\logs .uploads .backups .logs client\dist client\dist-ssr raw ^
+    /XF .gitignore README.md node.md *.bat *.log .env .env.local .env.*.local .env.example .env.production ^
     .eslintrc* .eslintcache .prettierrc* .prettierignore ^
     *.tsbuildinfo *.code-workspace npm-debug.log* yarn-debug.log* yarn-error.log*
 

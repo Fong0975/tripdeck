@@ -5,7 +5,8 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  type MockReqOverrides,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -122,12 +123,7 @@ describe('deleteTemplateCategory', () => {
 });
 
 describe('unexpected repository errors', () => {
-  const tests: Array<{
-    name: string;
-    handler: typeof getTemplate;
-    req?: MockReqOverrides;
-    arrange: (error: Error) => void;
-  }> = [
+  const tests: RejectCase[] = [
     {
       name: 'getTemplate',
       handler: getTemplate,
@@ -157,16 +153,5 @@ describe('unexpected repository errors', () => {
     },
   ];
 
-  it.each(tests)(
-    '$name rejects with the repository error and sends nothing',
-    async ({ handler, req, arrange }) => {
-      const error = new Error('unexpected failure');
-      arrange(error);
-      const { req: mockReq, res } = createMockReqRes(req);
-
-      await expect(handler(mockReq, res)).rejects.toBe(error);
-      expect(res.status).not.toHaveBeenCalled();
-      expect(res.json).not.toHaveBeenCalled();
-    },
-  );
+  itRejects(tests);
 });

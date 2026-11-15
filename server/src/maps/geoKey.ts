@@ -3,11 +3,7 @@ import { createHash } from 'crypto';
 /** How an attraction's stored coordinates were obtained. */
 export type GeoSource = 'url' | 'geocode' | 'not_found';
 
-export const GEO_SOURCES: readonly GeoSource[] = [
-  'url',
-  'geocode',
-  'not_found',
-];
+const GEO_SOURCES: readonly GeoSource[] = ['url', 'geocode', 'not_found'];
 
 /**
  * Fingerprint of the inputs that determine an attraction's coordinates.

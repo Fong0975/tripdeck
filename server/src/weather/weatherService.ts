@@ -1,5 +1,5 @@
 import { createLogger } from '../logger';
-import { TtlCache } from '../maps/ttlCache';
+import { TtlCache } from '../utils/ttlCache';
 
 import { getWeatherKeys } from './config';
 import { fetchOwmWeather, geocode, type GeoResult } from './openWeatherMap';

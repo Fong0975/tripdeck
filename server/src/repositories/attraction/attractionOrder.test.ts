@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../test-utils/dbMocks';
 import type { ImageResponse } from '../../types/trip';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { moveToDay, updateOrder } from './attractionOrder';
 
@@ -17,11 +17,11 @@ const mockConnCommit = db.conn.commit;
 const mockConnRollback = db.conn.rollback;
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getConnectionImagesBatch: vi.fn(),
 }));
 

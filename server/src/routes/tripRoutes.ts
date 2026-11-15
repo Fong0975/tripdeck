@@ -1,12 +1,12 @@
 import { Router } from 'express';
 
-import * as imageController from '../controllers/imageController';
 // Import each controller directly from its source file rather than the
 // `controllers/trip` barrel: swagger-autogen cannot trace a handler through
 // an `export * from` re-export, so it would silently drop that endpoint's
 // #swagger.* documentation.
+import * as backupTransferController from '../controllers/backup/backupTransferController';
+import * as imageController from '../controllers/imageController';
 import * as attractionController from '../controllers/trip/attractionController';
-import * as backupController from '../controllers/trip/backupController';
 import * as connectionController from '../controllers/trip/connectionController';
 import * as dayLocationController from '../controllers/trip/dayLocationController';
 import * as dayNoteController from '../controllers/trip/dayNoteController';
@@ -40,11 +40,11 @@ router.delete('/:tripId', tripCrudController.deleteTrip);
 router.get('/:tripId/content', tripCrudController.getTripContent);
 
 // Backup export/import
-router.post('/export', backupController.exportTrips);
+router.post('/export', backupTransferController.exportTrips);
 router.post(
   '/import',
   backupUpload.single('file'),
-  backupController.importTrips,
+  backupTransferController.importTrips,
 );
 
 // Attractions

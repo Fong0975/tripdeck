@@ -3,8 +3,9 @@ import fs from 'fs';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('fs', async () => (await import('../test-utils/fsMock')).fsMock.module);
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'fixed-uuid'),
+vi.mock('crypto', async importOriginal => ({
+  ...(await importOriginal<typeof import('crypto')>()),
+  randomUUID: vi.fn(() => 'fixed-uuid'),
 }));
 
 vi.mock('../logger', async () => {
@@ -19,7 +20,7 @@ import {
   deleteImageFromDisk,
   saveImageToDisk,
   saveImportedImageBuffer,
-} from './upload';
+} from './imageFiles';
 
 const GARBAGE_BUFFER = Buffer.from(new Array(20).fill(0x00));
 

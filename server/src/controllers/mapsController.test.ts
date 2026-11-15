@@ -35,7 +35,8 @@ vi.mock('../repositories/trip', () => ({
 import {
   createMockReqRes,
   expectJsonStatus,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../test-utils/httpMocks';
 
 import {
@@ -46,8 +47,6 @@ import {
 } from './mapsController';
 
 const RESET_AT = '2026-10-25T07:00:00.000Z';
-
-type RejectCase = Omit<Returns500Case, 'expectedError'>;
 
 describe('mapsController', () => {
   beforeEach(() => {
@@ -238,16 +237,6 @@ describe('mapsController', () => {
       },
     ];
 
-    it.each(cases)(
-      '$name rejects with the underlying error for the error handler',
-      async ({ handler, req, arrange }) => {
-        const error = new Error('unexpected failure');
-        arrange(error);
-        const { req: mockReq, res } = createMockReqRes(req);
-
-        await expect(handler(mockReq, res)).rejects.toBe(error);
-        expect(res.status).not.toHaveBeenCalled();
-      },
-    );
+    itRejects(cases);
   });
 });

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { expect, it, type Mock, vi } from 'vitest';
 
-export interface MockReqOverrides {
+interface MockReqOverrides {
   params?: Record<string, string>;
   query?: Record<string, string | undefined>;
   body?: unknown;
@@ -54,8 +54,8 @@ export function expectJsonStatus(
   }
 }
 
-/** One handler whose unexpected failure must surface as a 500 response. */
-export interface Returns500Case {
+/** One handler whose dependency failure must propagate to the error handler. */
+export interface RejectCase {
   /** Handler name, used in the test title. */
   name: string;
   // Method syntax keeps the parameter check bivariant, so handlers typed
@@ -64,26 +64,27 @@ export interface Returns500Case {
   req?: MockReqOverrides;
   /** Makes the dependency the handler reaches for first reject with `error`. */
   arrange: (error: Error) => void;
-  expectedError: string;
 }
 
 /**
- * Registers one table-driven test asserting that each handler responds with
- * `500 { error: expectedError }` when a dependency rejects unexpectedly.
- * Call it inside a `describe` block.
+ * Registers one table-driven test asserting that each handler rejects with
+ * the dependency's error, untouched, and sends no response of its own, so
+ * the central error handler is the one that answers. Call it inside a
+ * `describe` block.
  *
  * @param cases - Handlers with their request and failure setup.
  */
-export function itReturns500(cases: Returns500Case[]): void {
+export function itRejects(cases: RejectCase[]): void {
   it.each(cases)(
-    '$name returns 500 with its error message on an unexpected error',
-    async ({ handler, req, arrange, expectedError }) => {
-      arrange(new Error('unexpected failure'));
+    '$name rejects with the underlying error for the error handler',
+    async ({ handler, req, arrange }) => {
+      const error = new Error('unexpected failure');
+      arrange(error);
       const { req: mockReq, res } = createMockReqRes(req);
 
-      await handler(mockReq, res);
-
-      expectJsonStatus(res, 500, { error: expectedError });
+      await expect(handler(mockReq, res)).rejects.toBe(error);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
     },
   );
 }

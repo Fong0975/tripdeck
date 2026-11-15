@@ -1,17 +1,17 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../middleware/upload', () => ({
+vi.mock('../storage/imageFiles', () => ({
   deleteImageFromDisk: vi.fn(),
   saveImageToDisk: vi.fn(),
 }));
 vi.mock('../repositories/attraction', () => ({
   verifyBelongsToTrip: vi.fn(),
 }));
-vi.mock('../repositories/connectionRepository', () => ({
+vi.mock('../repositories/connection', () => ({
   verifyBelongsToTrip: vi.fn(),
 }));
-vi.mock('../repositories/imageRepository', () => ({
+vi.mock('../repositories/image', () => ({
   addAttractionImage: vi.fn(),
   addConnectionImage: vi.fn(),
   addDayImage: vi.fn(),
@@ -26,11 +26,11 @@ vi.mock('../repositories/trip', () => ({
   findDayByIdAndTripId: vi.fn(),
 }));
 
-import { deleteImageFromDisk, saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
-import * as connectionRepo from '../repositories/connectionRepository';
-import * as imageRepo from '../repositories/imageRepository';
+import * as connectionRepo from '../repositories/connection';
+import * as imageRepo from '../repositories/image';
 import * as tripRepo from '../repositories/trip';
+import { deleteImageFromDisk, saveImageToDisk } from '../storage/imageFiles';
 import { makeTrip } from '../test-utils/fixtures';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 import type { ImageResponse } from '../types/trip';

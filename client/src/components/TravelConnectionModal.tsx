@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
 import { TRANSPORT_MODE_OPTIONS } from '@/constants/transportModes';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';

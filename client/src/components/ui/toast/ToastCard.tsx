@@ -2,7 +2,8 @@ import { AlertCircle, CheckCircle2, Info, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 
-import type { ToastVariant } from './toast';
+/** Visual severity of a toast, selecting its icon and accent color. */
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
 const VARIANTS = {
   success: { Icon: CheckCircle2, className: 'text-primary border-l-primary' },

@@ -3,21 +3,21 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { getFileInput, selectFile, submitForm } from '@/test-utils/queries';
 import type { ImportBackupErrorDetails } from '@/types';
+import { importTripsBackup } from '@/utils/storage';
 
 import ImportTab from './ImportTab';
 
-vi.mock('@/api/backup', () => ({
+vi.mock('@/utils/storage', () => ({
   importTripsBackup: vi.fn(),
 }));
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
-vi.mock('@/lib/ToastList', () => ({
+vi.mock('@/components/ui/toast/ToastList', () => ({
   ToastList: ({ children }: { children: ReactNode }) => <ul>{children}</ul>,
 }));
 

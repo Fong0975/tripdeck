@@ -5,7 +5,7 @@ vi.mock('../../config/database', async () => {
   return db.module;
 });
 
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   saveImportedImageBuffer: vi.fn(),
   deleteImageFromDisk: vi.fn(),
 }));

@@ -65,6 +65,9 @@ server/logs/*
 # Docker logs volume
 .logs/
 
+# Raw working files
+raw/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

@@ -1,11 +1,11 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale/zh-TW';
 
-import { LABEL_CLS } from '@/components/formStyles';
+import { LABEL_CLS } from '@/components/ui/formStyles';
+import { showToast } from '@/components/ui/toast';
 import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { useSubmitting } from '@/hooks/useSubmitting';
-import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
   deleteTripImage,

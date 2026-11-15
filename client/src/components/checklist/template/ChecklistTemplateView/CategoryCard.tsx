@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import StorageBadges from '@/components/checklist/shared/StorageBadges';
+import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistCategory } from '@/types';
 
 interface CategoryCardProps {

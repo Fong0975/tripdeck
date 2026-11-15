@@ -4,21 +4,21 @@ import { describe, expect, it, vi } from 'vitest';
 const mockListAutoBackupFiles = vi.fn();
 const mockResolveAutoBackupPath = vi.fn();
 
-vi.mock('../repositories/backup', () => ({
+vi.mock('../../repositories/backup', () => ({
   listAutoBackupFiles: (...args: unknown[]) => mockListAutoBackupFiles(...args),
   resolveAutoBackupPath: (...args: unknown[]) =>
     mockResolveAutoBackupPath(...args),
 }));
 
-vi.mock('../logger', async () => {
-  const { mockLogger } = await import('../test-utils/loggerMock');
+vi.mock('../../logger', async () => {
+  const { mockLogger } = await import('../../test-utils/loggerMock');
   return { createLogger: () => mockLogger };
 });
 
-import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import { mockLogger } from '../test-utils/loggerMock';
+import { createMockReqRes, expectJsonStatus } from '../../test-utils/httpMocks';
+import { mockLogger } from '../../test-utils/loggerMock';
 
-import { downloadAutoBackup, listAutoBackups } from './backupController';
+import { downloadAutoBackup, listAutoBackups } from './autoBackupController';
 
 type DownloadCallback = (err?: Error) => void;
 
@@ -86,7 +86,7 @@ describe('downloadAutoBackup', () => {
   it('returns 404 when the filename is invalid or the file does not exist', () => {
     mockResolveAutoBackupPath.mockReturnValue(null);
     const { req, res, next } = createMockReqRes({
-      params: { filename: '../../etc/passwd' },
+      params: { filename: '../../../etc/passwd' },
     });
     const download = withDownload(res);
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Trip, TripContent } from '@/types';
 
 /**

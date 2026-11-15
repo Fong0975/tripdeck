@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
-import { createLogger } from '../logger';
-import * as backupRepo from '../repositories/backup';
+import { createLogger } from '../../logger';
+import * as backupRepo from '../../repositories/backup';
 
 const logger = createLogger('backup');
 

@@ -1,15 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import ClampedTextSection from '@/components/ClampedTextSection';
 import { makeConnection, makeImage } from '@/test-utils/fixtures';
 import type { TransportMode } from '@/types';
 
 import TravelConnectionItem from './TravelConnectionItem';
 
 vi.mock('@/components/ClampedTextSection', async () => ({
-  default: (await import('@/test-utils/stubs')).ClampedTextSectionStub,
+  default: vi.fn((await import('@/test-utils/stubs')).ClampedTextSectionStub),
 }));
+
+type ItemProps = ComponentProps<typeof TravelConnectionItem>;
 
 describe('TravelConnectionItem', () => {
   it.each([
@@ -243,5 +247,45 @@ describe('TravelConnectionItem', () => {
         screen.queryByText('確定要刪除這筆交通方式嗎？'),
       ).not.toBeInTheDocument();
     });
+  });
+
+  describe('memoization', () => {
+    it.each([
+      {
+        description: 'identical props',
+        nextProps: (props: ItemProps) => props,
+        rerenders: false,
+      },
+      {
+        description: 'a new connection object',
+        nextProps: (props: ItemProps) => ({
+          ...props,
+          connection: { ...props.connection },
+        }),
+        rerenders: true,
+      },
+      {
+        description: 'a new onDelete callback',
+        nextProps: (props: ItemProps) => ({ ...props, onDelete: vi.fn() }),
+        rerenders: true,
+      },
+    ])(
+      're-renders: $rerenders when re-rendered with $description',
+      ({ nextProps, rerenders }) => {
+        const props: ItemProps = {
+          connection: makeConnection({ route: 'memo route' }),
+          onEdit: vi.fn(),
+          onDelete: vi.fn(),
+        };
+        const { rerender } = render(<TravelConnectionItem {...props} />);
+        const rendersBefore = vi.mocked(ClampedTextSection).mock.calls.length;
+
+        rerender(<TravelConnectionItem {...nextProps(props)} />);
+
+        expect(
+          vi.mocked(ClampedTextSection).mock.calls.length > rendersBefore,
+        ).toBe(rerenders);
+      },
+    );
   });
 });

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 
 import { runMutation } from './runMutation';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('runMutation', () => {
   it.each([

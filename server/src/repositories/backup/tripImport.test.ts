@@ -7,7 +7,7 @@ vi.mock('../../config/database', async () => {
 
 const mockSaveImportedImageBuffer = vi.fn();
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   saveImportedImageBuffer: (...args: unknown[]) =>
     mockSaveImportedImageBuffer(...args),
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
@@ -17,7 +17,7 @@ const mockAddTripImage = vi.fn();
 const mockAddDayImage = vi.fn();
 const mockAddAttractionImage = vi.fn();
 const mockAddConnectionImage = vi.fn();
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   addTripImage: (...args: unknown[]) => mockAddTripImage(...args),
   addDayImage: (...args: unknown[]) => mockAddDayImage(...args),
   addAttractionImage: (...args: unknown[]) => mockAddAttractionImage(...args),

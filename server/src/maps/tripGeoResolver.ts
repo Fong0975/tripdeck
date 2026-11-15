@@ -5,13 +5,13 @@ import {
   type GeoUpdate,
   saveGeo,
 } from '../repositories/attraction/attractionGeo';
+import { mapWithConcurrency } from '../utils/mapWithConcurrency';
+import { createSerialQueue } from '../utils/serialQueue';
 
 import { getMapsConfig, isGeocodingEnabled } from './config';
 import { geocodeByName, MapsQuotaError } from './geocodeClient';
 import { computeGeoKey, type GeoSource } from './geoKey';
 import { resolveCoordinatesFromLink } from './linkResolver';
-import { mapWithConcurrency } from './mapWithConcurrency';
-import { createSerialQueue } from './serialQueue';
 import { getUsage, markExhausted, tryConsume } from './usageTracker';
 
 const logger = createLogger('maps');
