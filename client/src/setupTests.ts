@@ -5,6 +5,12 @@ import { afterEach, vi } from 'vitest';
 
 import { createMatchMedia } from './test-utils/dom';
 
+// The dom project shares one environment (and module cache) across test files
+// in a worker. Dropping cached source modules before each file keeps a module
+// that an earlier file loaded with real dependencies from bypassing this
+// file's vi.mock calls.
+vi.resetModules();
+
 afterEach(() => {
   cleanup();
 });

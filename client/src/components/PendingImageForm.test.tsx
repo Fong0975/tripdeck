@@ -84,20 +84,21 @@ describe('PendingImageForm', () => {
   it.each([
     {
       name: 'resets the form after onConfirm resolves',
-      onConfirm: vi.fn().mockResolvedValue(undefined),
+      makeOnConfirm: () => vi.fn().mockResolvedValue(undefined),
       expectFormKept: false,
     },
     {
       name: 'resets the form after a synchronous onConfirm',
-      onConfirm: vi.fn(),
+      makeOnConfirm: () => vi.fn(),
       expectFormKept: false,
     },
     {
       name: 'keeps the form when onConfirm rejects',
-      onConfirm: vi.fn().mockRejectedValue(new Error('failed')),
+      makeOnConfirm: () => vi.fn().mockRejectedValue(new Error('failed')),
       expectFormKept: true,
     },
-  ])('$name', async ({ onConfirm, expectFormKept }) => {
+  ])('$name', async ({ makeOnConfirm, expectFormKept }) => {
+    const onConfirm = makeOnConfirm();
     const user = setupUser();
     const { file } = renderWithPendingFile({ onConfirm });
     await user.type(screen.getByPlaceholderText(TITLE_PLACEHOLDER), ' Sun ');

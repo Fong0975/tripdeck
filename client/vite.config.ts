@@ -66,6 +66,12 @@ export default defineConfig(({ mode }) => {
           test: {
             name: 'dom',
             environment: 'jsdom',
+            // Building a jsdom environment per file dominated the run time, so
+            // files share one per worker. mockReset restores every mock's
+            // original implementation between tests so a mockResolvedValue /
+            // mockRejectedValue cannot leak into the next test or file.
+            isolate: false,
+            mockReset: true,
             setupFiles: ['./src/setupTests.ts'],
             include: ['src/**/*.test.{ts,tsx}'],
             exclude: NODE_TEST_FILES,
