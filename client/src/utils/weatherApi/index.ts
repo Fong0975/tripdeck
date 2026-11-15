@@ -8,6 +8,7 @@ export type {
   WeatherIconCode,
   WeatherResult,
   WeatherSource,
+  WeatherState,
 } from './types';
 
 let _enabled: Promise<boolean> | null = null;
@@ -23,7 +24,12 @@ export function getWeatherEnabled(): Promise<boolean> {
   return _enabled;
 }
 
-const _cache = new Map<string, WeatherResult>();
+/**
+ * Session cache of lookups keyed by place + date. It stores the promise rather
+ * than the settled result so concurrent callers (e.g. several day columns
+ * asking for the same place and date) share a single in-flight request.
+ */
+const _cache = new Map<string, Promise<WeatherResult>>();
 
 function cacheKey(locationName: string, date: string): string {
   return `${locationName}::${date}`;
@@ -31,9 +37,10 @@ function cacheKey(locationName: string, date: string): string {
 
 /**
  * Fetches one place's weather for one date via the backend, memoized for the
- * rest of the page session. Errors aren't memoized so a later render retries.
+ * rest of the page session. Concurrent calls for the same place and date share
+ * one request. Error results are evicted once settled so a later call retries.
  */
-export async function fetchDailyWeather(
+export function fetchDailyWeather(
   locationName: string,
   dateStr: string,
 ): Promise<WeatherResult> {
@@ -43,16 +50,17 @@ export async function fetchDailyWeather(
     return hit;
   }
 
-  const result = await getWeather(
-    locationName,
-    dateStr,
-    daysFromToday(dateStr),
-  ).catch((): WeatherResult => ({ status: 'error' }));
+  const pending = getWeather(locationName, dateStr, daysFromToday(dateStr))
+    .catch((): WeatherResult => ({ status: 'error' }))
+    .then(result => {
+      if (result.status === 'error' && _cache.get(key) === pending) {
+        _cache.delete(key);
+      }
+      return result;
+    });
 
-  if (result.status !== 'error') {
-    _cache.set(key, result);
-  }
-  return result;
+  _cache.set(key, pending);
+  return pending;
 }
 
 /**

@@ -1,79 +1,56 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
-import pool from '../../../config/database';
-import type {
-  CreateSpecBody,
-  ItemSpecResponse,
-  UpdateSpecBody,
-} from '../../../types/checklist';
+import { tripSpecRepository } from './shared';
 
-import { toSpecResponse, TripItemSpecRow } from './shared';
-
-export async function createTripItemSpec(
+/**
+ * Adds a spec to a trip checklist item.
+ *
+ * @param itemId - Parent trip checklist item id.
+ * @param data - Spec name and optional storage location.
+ * @returns The created spec, or null when the item does not exist.
+ */
+export function createTripItemSpec(
   itemId: number,
-  data: CreateSpecBody,
-): Promise<ItemSpecResponse | null> {
-  const [itemRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT id FROM checklist_trip_items WHERE id = ?',
-    [itemId],
-  );
-  if (itemRows.length === 0) {
-    return null;
-  }
-
-  const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-    [itemId, data.name, data.storage_location ?? null],
-  );
-
-  return {
-    id: result.insertId,
-    name: data.name,
-    storage_location: data.storage_location ?? null,
-  };
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
+  return tripSpecRepository.create(itemId, data);
 }
 
-export async function updateTripItemSpec(
+/**
+ * Renames a trip checklist item spec; `storage_location` is only changed
+ * when the key is present in `data`.
+ *
+ * @param specId - Spec id.
+ * @param data - New name and optional storage location.
+ * @returns The updated spec, or null when the spec does not exist.
+ */
+export function updateTripItemSpec(
   specId: number,
-  data: UpdateSpecBody,
-): Promise<ItemSpecResponse | null> {
-  const [rows] = await pool.execute<TripItemSpecRow[]>(
-    'SELECT * FROM checklist_trip_item_specs WHERE id = ?',
-    [specId],
-  );
-  if (rows.length === 0) {
-    return null;
-  }
-
-  const cur = rows[0];
-  const storage_location =
-    'storage_location' in data
-      ? (data.storage_location ?? null)
-      : cur.storage_location;
-
-  await pool.execute(
-    'UPDATE checklist_trip_item_specs SET name = ?, storage_location = ? WHERE id = ?',
-    [data.name, storage_location, specId],
-  );
-
-  return toSpecResponse({ ...cur, name: data.name, storage_location });
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
+  return tripSpecRepository.update(specId, data);
 }
 
-export async function deleteTripItemSpec(specId: number): Promise<boolean> {
-  const [result] = await pool.execute<ResultSetHeader>(
-    'DELETE FROM checklist_trip_item_specs WHERE id = ?',
-    [specId],
-  );
-  return result.affectedRows > 0;
+/**
+ * Deletes a trip checklist item spec.
+ *
+ * @param specId - Spec id.
+ * @returns True when a spec was deleted.
+ */
+export function deleteTripItemSpec(specId: number): Promise<boolean> {
+  return tripSpecRepository.remove(specId);
 }
 
-export async function verifyTripSpecBelongsToItem(
+/**
+ * Checks that a trip spec belongs to the given trip checklist item.
+ *
+ * @param specId - Spec id.
+ * @param itemId - Expected parent trip checklist item id.
+ * @returns True when the spec exists under that item.
+ */
+export function verifyTripSpecBelongsToItem(
   specId: number,
   itemId: number,
 ): Promise<boolean> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    'SELECT id FROM checklist_trip_item_specs WHERE id = ? AND checklist_trip_item_id = ?',
-    [specId, itemId],
-  );
-  return rows.length > 0;
+  return tripSpecRepository.belongsToItem(specId, itemId);
 }

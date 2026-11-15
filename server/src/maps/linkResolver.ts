@@ -1,5 +1,6 @@
+import { TtlCache } from '../utils/ttlCache';
+
 import { expandShortUrl, isShortLink } from './shortUrlExpander';
-import { TtlCache } from './ttlCache';
 import { type Coordinates, parseCoordinatesFromUrl } from './urlParser';
 
 const CACHE_TTL_MS = 60 * 60 * 1000;

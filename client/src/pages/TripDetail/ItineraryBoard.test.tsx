@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { makeAttraction, makeBoardDays } from '@/test-utils/fixtures';
+import {
+  makeAttraction,
+  makeBoardDays,
+  makeConnection,
+} from '@/test-utils/fixtures';
 
 import ItineraryBoard from './ItineraryBoard';
 
@@ -84,21 +88,19 @@ describe('ItineraryBoard', () => {
     expect(props.onEditDayNote).toHaveBeenCalledWith(1);
     expect(props.onOpenDayMap).toHaveBeenCalledWith(1);
     expect(props.onAddAttraction).toHaveBeenCalledWith(1);
-    expect(props.onEditAttraction).toHaveBeenCalledWith(0, {
-      id: 10,
-      name: 'Attraction A',
-    });
+    expect(props.onEditAttraction).toHaveBeenCalledWith(
+      0,
+      makeAttraction({ id: 10, name: 'Attraction A' }),
+    );
     expect(props.onDeleteAttraction).toHaveBeenCalledWith(0, 10);
-    expect(props.onDuplicateAttraction).toHaveBeenCalledWith(0, {
-      id: 10,
-      name: 'Attraction A',
-    });
-    expect(props.onEditConnection).toHaveBeenCalledWith(0, {
-      id: 100,
-      fromAttractionId: 10,
-      toAttractionId: 11,
-      transportMode: 'walk',
-    });
+    expect(props.onDuplicateAttraction).toHaveBeenCalledWith(
+      0,
+      makeAttraction({ id: 10, name: 'Attraction A' }),
+    );
+    expect(props.onEditConnection).toHaveBeenCalledWith(
+      0,
+      makeConnection({ id: 100, fromAttractionId: 10, toAttractionId: 11 }),
+    );
     expect(props.onDeleteConnection).toHaveBeenCalledWith(0, 100);
     expect(props.onAddConnection).toHaveBeenCalledWith(0, 10, 11);
     expect(props.onAddLocation).toHaveBeenCalledWith(0, 'New Location');
@@ -110,29 +112,39 @@ describe('ItineraryBoard', () => {
     expect(props.onDeleteLocation).toHaveBeenCalledWith(0, 50);
   });
 
-  it('does not render the drag overlay attraction card when no drag is active', () => {
-    renderBoard();
-
-    expect(screen.queryByText('attraction-card')).not.toBeInTheDocument();
-  });
-
-  it('renders the drag overlay attraction card when a drag is active', () => {
-    renderBoard({
+  it.each([
+    {
+      description: 'no drag is active',
+      activeAttractionId: null,
+      found: false,
+      expectLookups: 0,
+      expectCard: false,
+    },
+    {
+      description: 'the active attraction is found',
       activeAttractionId: 10,
-      getActiveAttraction: vi.fn(() =>
-        makeAttraction({ id: 10, name: 'Attraction A' }),
-      ),
-    });
-
-    expect(screen.getByText('attraction-card')).toBeInTheDocument();
-  });
-
-  it('does not render the drag overlay when the active attraction cannot be found', () => {
-    renderBoard({
+      found: true,
+      expectLookups: 1,
+      expectCard: true,
+    },
+    {
+      description: 'the active attraction cannot be found',
       activeAttractionId: 999,
-      getActiveAttraction: vi.fn(() => undefined),
-    });
+      found: false,
+      expectLookups: 1,
+      expectCard: false,
+    },
+  ])(
+    'renders the drag overlay card only when $description yields an attraction',
+    ({ activeAttractionId, found, expectLookups, expectCard }) => {
+      const getActiveAttraction = vi.fn(() =>
+        found ? makeAttraction({ id: 10, name: 'Attraction A' }) : undefined,
+      );
 
-    expect(screen.queryByText('attraction-card')).not.toBeInTheDocument();
-  });
+      renderBoard({ activeAttractionId, getActiveAttraction });
+
+      expect(getActiveAttraction).toHaveBeenCalledTimes(expectLookups);
+      expect(screen.queryByText('attraction-card') !== null).toBe(expectCard);
+    },
+  );
 });

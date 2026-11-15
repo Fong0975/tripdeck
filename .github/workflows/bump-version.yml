@@ -32,4 +32,4 @@ jobs:
     with:
       bump-level: ${{ inputs.bump_type }}
       notes: ${{ inputs.notes }}
-      npm-workspaces: '["client", "server"]'
+      npm-workspaces: '["client", "server", "shared"]'

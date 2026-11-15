@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeAttraction,
   makeConnection,
@@ -24,7 +24,7 @@ import EditTripModal from './EditTripModal';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const trip = makeTrip({
   id: 5,
@@ -66,8 +66,9 @@ const impactedDays: DayPlan[] = [
 const allDays = [...untouchedDays, ...impactedDays];
 
 describe('EditTripModal', () => {
-  it('deletes an existing trip image and uploads a new one via the image section', async () => {
+  it('deletes an existing trip image and uploads a new one via the image section, notifying onImagesChanged each time', async () => {
     vi.mocked(deleteTripImage).mockResolvedValue(undefined);
+    const onImagesChanged = vi.fn();
     const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
     vi.mocked(uploadTripImage).mockResolvedValue(newImage);
     const user = userEvent.setup();
@@ -79,6 +80,7 @@ describe('EditTripModal', () => {
         }}
         onClose={vi.fn()}
         onUpdated={vi.fn()}
+        onImagesChanged={onImagesChanged}
       />,
     );
     expect(screen.getByAltText('Cover')).toBeInTheDocument();
@@ -87,8 +89,9 @@ describe('EditTripModal', () => {
 
     await waitFor(() => expect(deleteTripImage).toHaveBeenCalledWith(5, 1));
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
+    expect(onImagesChanged).toHaveBeenCalledTimes(1);
 
-    const file = new File(['a'], 'b.jpg');
+    const file = new File(['a'], 'b.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
     await user.click(screen.getByText('確認上傳'));
@@ -97,6 +100,7 @@ describe('EditTripModal', () => {
       expect(uploadTripImage).toHaveBeenCalledWith(5, file, 'New'),
     );
     expect(await screen.findByAltText('New')).toBeInTheDocument();
+    expect(onImagesChanged).toHaveBeenCalledTimes(2);
   });
 
   it('pre-fills the form with the trip current values', () => {
@@ -317,6 +321,32 @@ describe('EditTripModal', () => {
       ),
     );
     expect(onUpdated).not.toHaveBeenCalled();
+  });
+
+  it('ignores repeated submits while the update is in flight', async () => {
+    let resolveUpdate!: (value: typeof trip) => void;
+    vi.mocked(updateTrip).mockReturnValue(
+      new Promise(resolve => {
+        resolveUpdate = resolve;
+      }),
+    );
+    const onUpdated = vi.fn();
+    const { container } = render(
+      <EditTripModal trip={trip} onClose={vi.fn()} onUpdated={onUpdated} />,
+    );
+
+    fillDateField(container, 'endDate', '2026-01-10');
+    submitForm(container);
+    submitForm(container);
+
+    expect(
+      await screen.findByRole('button', { name: '儲存中…' }),
+    ).toBeDisabled();
+    expect(updateTrip).toHaveBeenCalledTimes(1);
+
+    resolveUpdate({ ...trip, endDate: '2026-01-10' });
+    await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(1));
+    expect(updateTrip).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when cancel is clicked', async () => {

@@ -1,10 +1,9 @@
+import type { WeatherIconCode, WeatherResult } from '@tripdeck/shared';
+
 import { createLogger } from '../logger';
 
-import {
-  WEATHER_FETCH_TIMEOUT_MS,
-  type WeatherIconCode,
-  type WeatherResult,
-} from './types';
+import { fetchJson, WEATHER_FETCH_TIMEOUT_MS } from './http';
+import { selectLocalDay } from './localForecastDay';
 
 const logger = createLogger('weather');
 
@@ -56,9 +55,15 @@ export async function geocode(
   name: string,
   apiKey: string,
 ): Promise<GeoResult | null> {
-  const res = await fetch(
+  interface GeoRow {
+    lat: number;
+    lon: number;
+    name: string;
+    local_names?: Record<string, string>;
+  }
+  const res = await fetchJson<GeoRow[]>(
     `${OWM_BASE}/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${apiKey}`,
-    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
+    { timeoutMs: WEATHER_FETCH_TIMEOUT_MS },
   );
   if (!res.ok) {
     // The request URL carries the API key, so only the status is logged.
@@ -66,13 +71,7 @@ export async function geocode(
     return null;
   }
 
-  interface GeoRow {
-    lat: number;
-    lon: number;
-    name: string;
-    local_names?: Record<string, string>;
-  }
-  const data = (await res.json()) as GeoRow[];
+  const data = res.data;
   if (!data.length) {
     return null;
   }
@@ -87,8 +86,12 @@ export async function geocode(
 /**
  * Summarizes the OWM 5-day / 3-hour forecast entries for a single date.
  *
+ * Entries are grouped by the destination's local calendar day (using the
+ * response's `city.timezone`), so the summary covers local midnight to
+ * midnight and its icon/description come from the entry nearest local noon.
+ *
  * @param geo - Coordinates and display name of the place.
- * @param dateStr - Target date as `YYYY-MM-DD`.
+ * @param dateStr - Target date as `YYYY-MM-DD` in the destination's local time.
  * @param apiKey - OpenWeatherMap API key.
  * @returns `out_of_range` when the forecast doesn't cover the date.
  */
@@ -97,31 +100,35 @@ export async function fetchOwmWeather(
   dateStr: string,
   apiKey: string,
 ): Promise<WeatherResult> {
-  const res = await fetch(
+  interface ForecastEntry {
+    dt: number;
+    main: { temp: number; humidity: number };
+    weather: [{ icon: string; description: string }];
+    pop?: number;
+  }
+  interface ForecastResponse {
+    list: ForecastEntry[];
+    city?: { timezone?: number };
+  }
+  const res = await fetchJson<ForecastResponse>(
     `${OWM_BASE}/data/2.5/forecast?lat=${geo.lat}&lon=${geo.lon}&appid=${apiKey}&units=metric&lang=zh_tw&cnt=40`,
-    { signal: AbortSignal.timeout(WEATHER_FETCH_TIMEOUT_MS) },
+    { timeoutMs: WEATHER_FETCH_TIMEOUT_MS },
   );
   if (!res.ok) {
     logger.warn('OWM forecast request failed', { status: res.status });
     return { status: 'error' };
   }
 
-  interface ForecastEntry {
-    dt_txt: string;
-    main: { temp: number; humidity: number };
-    weather: [{ icon: string; description: string }];
-    pop?: number;
-  }
-  const json = (await res.json()) as { list: ForecastEntry[] };
-  const entries = json.list.filter(e => e.dt_txt.startsWith(dateStr));
-
-  if (!entries.length) {
+  const selection = selectLocalDay(
+    res.data.list,
+    dateStr,
+    res.data.city?.timezone ?? 0,
+  );
+  if (!selection) {
     return { status: 'out_of_range' };
   }
 
-  const midday =
-    entries.find(e => e.dt_txt.includes('12:00')) ??
-    entries[Math.floor(entries.length / 2)];
+  const { dayEntries: entries, midday } = selection;
   const temps = entries.map(e => e.main.temp);
   const maxPop = Math.max(...entries.map(e => e.pop ?? 0));
 

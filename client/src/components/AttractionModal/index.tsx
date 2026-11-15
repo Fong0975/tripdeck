@@ -1,9 +1,12 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
-import type { Attraction } from '@/types';
+import { useSubmitting } from '@/hooks/useSubmitting';
+import type { Attraction, AttractionDraft } from '@/types';
+import type { StagedImage } from '@/utils/stagedImages';
 import { deleteAttractionImage, uploadAttractionImage } from '@/utils/storage';
 
 import ImageUploadSection from '../ImageUploadSection';
@@ -19,13 +22,16 @@ interface Props {
   tripId?: number;
   attraction?: Attraction;
   onClose: () => void;
+  /** Return the save promise so the modal can block repeat submits until it settles. */
   onSave: (
-    attraction: Attraction,
-    stagedImages?: { file: File; title: string }[],
-  ) => void;
+    attraction: AttractionDraft,
+    stagedImages?: StagedImage[],
+  ) => Promise<void> | void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
-const empty: Attraction = {
+const empty: AttractionDraft = {
   id: 0,
   name: '',
   googleMapUrl: '',
@@ -42,11 +48,13 @@ export default function AttractionModal({
   attraction,
   onClose,
   onSave,
+  onImagesChanged,
 }: Props) {
-  const [form, setForm] = useState<Attraction>(
+  const [form, setForm] = useState<AttractionDraft>(
     attraction ? { ...attraction } : { ...empty },
   );
   const attractionId = attraction?.id;
+  const isEditing = Boolean(attractionId);
   const {
     images,
     handleUpload: handleUploadImage,
@@ -62,25 +70,26 @@ export default function AttractionModal({
       tripId && attractionId
         ? imageId => deleteAttractionImage(tripId, attractionId, imageId)
         : undefined,
+    onImagesChanged,
   });
-  const [stagedImages, setStagedImages] = useState<
-    { file: File; title: string }[]
-  >([]);
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
   const [error, setError] = useState('');
   const [hasWebsiteDraft, setHasWebsiteDraft] = useState(false);
   const [pendingAction, setPendingAction] = useState<'close' | 'save' | null>(
     null,
   );
+  const { submitting, run } = useSubmitting();
 
-  const set = (key: keyof Attraction, value: unknown) =>
+  const set = (key: keyof AttractionDraft, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
-  const doSave = () => {
-    onSave(
-      { ...form, name: form.name.trim(), images },
-      isEditing ? undefined : stagedImages,
+  const doSave = () =>
+    run(() =>
+      onSave(
+        { ...form, name: form.name.trim(), images },
+        isEditing ? undefined : stagedImages,
+      ),
     );
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +99,7 @@ export default function AttractionModal({
     if (hasWebsiteDraft) {
       return setPendingAction('save');
     }
-    doSave();
+    void doSave();
   };
 
   const handleClose = () => {
@@ -99,8 +108,6 @@ export default function AttractionModal({
     }
     onClose();
   };
-
-  const isEditing = Boolean(attraction?.id);
 
   return (
     <>
@@ -122,6 +129,7 @@ export default function AttractionModal({
                 setError('');
               }}
               placeholder='例：淺草寺'
+              maxLength={FIELD_LIMITS.name}
               className={INPUT_CLS}
             />
           </div>
@@ -221,7 +229,7 @@ export default function AttractionModal({
 
           {error && <p className='text-sm text-destructive'>{error}</p>}
 
-          <ModalFooterActions onCancel={handleClose} />
+          <ModalFooterActions onCancel={handleClose} submitting={submitting} />
         </form>
       </Modal>
 
@@ -239,7 +247,7 @@ export default function AttractionModal({
           onConfirm={() => {
             setPendingAction(null);
             if (pendingAction === 'save') {
-              doSave();
+              void doSave();
             } else {
               onClose();
             }

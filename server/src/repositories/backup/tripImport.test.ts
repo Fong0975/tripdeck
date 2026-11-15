@@ -7,7 +7,7 @@ vi.mock('../../config/database', async () => {
 
 const mockSaveImportedImageBuffer = vi.fn();
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   saveImportedImageBuffer: (...args: unknown[]) =>
     mockSaveImportedImageBuffer(...args),
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
@@ -17,7 +17,7 @@ const mockAddTripImage = vi.fn();
 const mockAddDayImage = vi.fn();
 const mockAddAttractionImage = vi.fn();
 const mockAddConnectionImage = vi.fn();
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   addTripImage: (...args: unknown[]) => mockAddTripImage(...args),
   addDayImage: (...args: unknown[]) => mockAddDayImage(...args),
   addAttractionImage: (...args: unknown[]) => mockAddAttractionImage(...args),
@@ -34,11 +34,13 @@ import { db, routeSql } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
 import type { TripBackupData } from '../../types/backup';
 
-import { generateUniqueTripTitle, importSingleTrip } from './tripImport';
+import { TripImportDataError } from './errors';
+import { importSingleTrip } from './tripImport';
 
 const mockPoolExecute = db.pool.execute;
 const {
   execute: mockConnExecute,
+  query: mockConnQuery,
   commit: mockConnCommit,
   rollback: mockConnRollback,
   release: mockConnRelease,
@@ -81,10 +83,11 @@ function mockSequentialInserts() {
     if (sql.startsWith('INSERT INTO checklist_occasions')) {
       return Promise.resolve([{ insertId: 6000 }]);
     }
-    // trip_day_locations, trip_attraction_websites, checklist_trip_item_specs,
-    // checklist_checks: fire-and-forget inserts, no insertId consumed.
     return Promise.resolve([{ affectedRows: 1 }]);
   });
+  // trip_day_locations, trip_attraction_websites, checklist_trip_item_specs,
+  // checklist_checks: batched leaf inserts, no insertId consumed.
+  mockConnQuery.mockResolvedValue([{ affectedRows: 1 }]);
 }
 
 const sampleData: TripBackupData = {
@@ -191,42 +194,6 @@ beforeEach(() => {
   );
 });
 
-describe('generateUniqueTripTitle', () => {
-  it('returns the title unchanged when no trip uses it', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: 'Other Trip' }]]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip',
-    );
-  });
-
-  it('appends " (2)" when the title is already used', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: 'Kyoto Trip' }]]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip (2)',
-    );
-  });
-
-  it('finds the next available suffix when earlier ones are taken', async () => {
-    mockPoolExecute.mockResolvedValue([
-      [{ title: 'Kyoto Trip' }, { title: 'Kyoto Trip (2)' }],
-    ]);
-
-    await expect(generateUniqueTripTitle('Kyoto Trip')).resolves.toBe(
-      'Kyoto Trip (3)',
-    );
-  });
-
-  it('de-duplicates titles containing emoji/CJK characters correctly', async () => {
-    mockPoolExecute.mockResolvedValue([[{ title: '東京 🗼 五日遊' }]]);
-
-    await expect(generateUniqueTripTitle('東京 🗼 五日遊')).resolves.toBe(
-      '東京 🗼 五日遊 (2)',
-    );
-  });
-});
-
 describe('importSingleTrip', () => {
   it('imports the full trip tree with every ID remapped, then copies images', async () => {
     mockNoTitleConflicts();
@@ -262,9 +229,9 @@ describe('importSingleTrip', () => {
     );
 
     // Locations reindexed under the new day id.
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      'INSERT INTO trip_day_locations (trip_day_id, name, sort_order) VALUES (?, ?, ?)',
-      [1001, 'Kyoto Station', 0],
+    expect(mockConnQuery).toHaveBeenCalledWith(
+      'INSERT INTO trip_day_locations (trip_day_id, name, sort_order) VALUES ?',
+      [[[1001, 'Kyoto Station', 0]]],
     );
 
     // Both attractions under the new day id, original sortOrder preserved.
@@ -304,9 +271,9 @@ describe('importSingleTrip', () => {
     );
 
     // Reference website under the new attraction id.
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
-      [2000, 'https://inari.jp', 'Official'],
+    expect(mockConnQuery).toHaveBeenCalledWith(
+      'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES ?',
+      [[[2000, 'https://inari.jp', 'Official']]],
     );
 
     // The connection uses the *new* attraction ids, not the original 100/101.
@@ -324,18 +291,18 @@ describe('importSingleTrip', () => {
       expect.stringContaining('INSERT INTO checklist_trip_items'),
       [4000, 'Jacket', 1, null, null],
     );
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO checklist_trip_item_specs'),
-      [5000, 'Size M', null],
+    expect(mockConnQuery).toHaveBeenCalledWith(
+      'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES ?',
+      [[[5000, 'Size M', null]]],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
       [1000, 'Packing'],
     );
     // The checked item references the new item id (5000), not the original 400.
-    expect(mockConnExecute).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO checklist_checks'),
-      [6000, 5000],
+    expect(mockConnQuery).toHaveBeenCalledWith(
+      'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked) VALUES ?',
+      [[[6000, 5000, 1]]],
     );
 
     // Every image copied under its new parent id, with a freshly-generated filename.
@@ -377,9 +344,10 @@ describe('importSingleTrip', () => {
       expect.stringContaining('INSERT INTO trips'),
       expect.arrayContaining(['Kyoto Trip (2)']),
     );
-    const checklistCalls = mockConnExecute.mock.calls.filter(([sql]) =>
-      String(sql).includes('checklist'),
-    );
+    const checklistCalls = [
+      ...mockConnExecute.mock.calls,
+      ...mockConnQuery.mock.calls,
+    ].filter(([sql]) => String(sql).includes('checklist'));
     expect(checklistCalls).toHaveLength(0);
   });
 
@@ -436,7 +404,7 @@ describe('importSingleTrip', () => {
 
     await expect(
       importSingleTrip(corrupted, sampleImageBuffers()),
-    ).rejects.toThrow(/references an attraction that was not imported/);
+    ).rejects.toBeInstanceOf(TripImportDataError);
 
     expect(mockConnRollback).toHaveBeenCalled();
     expect(mockConnCommit).not.toHaveBeenCalled();
@@ -484,11 +452,135 @@ describe('importSingleTrip', () => {
 
     await importSingleTrip(data, sampleImageBuffers());
 
-    expect(mockConnExecute).not.toHaveBeenCalledWith(
+    expect(mockConnQuery).not.toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO checklist_checks'),
       expect.anything(),
     );
   });
+
+  it.each([
+    {
+      name: 'locations of one day',
+      table: 'trip_day_locations',
+      expectedRows: [
+        [1001, 'Kyoto Station', 0],
+        [1001, 'Gion', 1],
+      ],
+    },
+    {
+      name: 'websites of several attractions',
+      table: 'trip_attraction_websites',
+      expectedRows: [
+        [2000, 'https://inari.jp', 'Official'],
+        [2000, 'https://inari.jp/map', 'Map'],
+        [2001, 'https://station.jp', 'Station'],
+      ],
+    },
+    {
+      name: 'specs of several items',
+      table: 'checklist_trip_item_specs',
+      expectedRows: [
+        [5000, 'Size M', null],
+        [5001, 'Pair', 'Drawer'],
+      ],
+    },
+    {
+      name: 'checks of several occasions',
+      table: 'checklist_checks',
+      expectedRows: [
+        [6000, 5000, 1],
+        [6001, 5000, 1],
+        [6001, 5001, 1],
+      ],
+    },
+  ])(
+    'sends all rows as one multi-row insert for $name',
+    async ({ table, expectedRows }) => {
+      mockNoTitleConflicts();
+      let itemId = 5000;
+      let occasionId = 6000;
+      mockSequentialInserts();
+      const baseImpl = mockConnExecute.getMockImplementation();
+      mockConnExecute.mockImplementation((sql: string, params: unknown) => {
+        if (sql.startsWith('INSERT INTO checklist_trip_items')) {
+          return Promise.resolve([{ insertId: itemId++ }]);
+        }
+        if (sql.startsWith('INSERT INTO checklist_occasions')) {
+          return Promise.resolve([{ insertId: occasionId++ }]);
+        }
+        return baseImpl?.(sql, params);
+      });
+      const day = sampleData.content.days[0];
+      const data: TripBackupData = {
+        ...sampleData,
+        content: {
+          tripId: 1,
+          days: [
+            {
+              ...day,
+              locations: [...day.locations, { id: 51, name: 'Gion' }],
+              attractions: [
+                {
+                  ...day.attractions[0],
+                  referenceWebsites: [
+                    ...day.attractions[0].referenceWebsites,
+                    { url: 'https://inari.jp/map', title: 'Map' },
+                  ],
+                },
+                {
+                  ...day.attractions[1],
+                  referenceWebsites: [
+                    { url: 'https://station.jp', title: 'Station' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        checklist: {
+          tripId: 1,
+          categories: [
+            {
+              id: 300,
+              name: 'Clothes',
+              items: [
+                {
+                  id: 400,
+                  name: 'Jacket',
+                  quantity: 1,
+                  notes: null,
+                  storage_location: null,
+                  specs: [{ id: 500, name: 'Size M', storage_location: null }],
+                },
+                {
+                  id: 401,
+                  name: 'Socks',
+                  quantity: 2,
+                  notes: null,
+                  storage_location: null,
+                  specs: [
+                    { id: 501, name: 'Pair', storage_location: 'Drawer' },
+                  ],
+                },
+              ],
+            },
+          ],
+          occasions: [
+            { id: 600, name: 'Packing', checks: { 400: true } },
+            { id: 601, name: 'Return', checks: { 400: true, 401: true } },
+          ],
+        },
+      };
+
+      await importSingleTrip(data, sampleImageBuffers());
+
+      const tableCalls = mockConnQuery.mock.calls.filter(([sql]) =>
+        String(sql).startsWith(`INSERT INTO ${table} `),
+      );
+      expect(tableCalls).toHaveLength(1);
+      expect(tableCalls[0][1]).toEqual([expectedRows]);
+    },
+  );
 
   it('deletes already-written files and the new trip when an image fails partway through', async () => {
     mockNoTitleConflicts();
@@ -532,7 +624,9 @@ describe('importSingleTrip', () => {
 
     await expect(
       importSingleTrip(sampleData, incompleteBuffers),
-    ).rejects.toThrow('Missing image data for trip1.jpg');
+    ).rejects.toThrow(
+      new TripImportDataError('Missing image data for trip1.jpg'),
+    );
 
     expect(mockSaveImportedImageBuffer).not.toHaveBeenCalled();
     expect(mockPoolExecute).toHaveBeenCalledWith(
@@ -540,65 +634,54 @@ describe('importSingleTrip', () => {
       [1000],
     );
   });
-});
 
-describe('importSingleTrip geo fields', () => {
-  const key = computeGeoKey('Fushimi Inari', null);
+  const cleanupFailureLog =
+    'Failed to delete partially imported trip during rollback';
 
   it.each([
     {
-      description: 'keeps valid url-derived coordinates',
-      geo: { latitude: 35, longitude: 135, geoSource: 'url' },
-      expected: [35, 135, 'url', key],
+      name: 'the trip delete succeeds',
+      deleteOutcome: () => Promise.resolve([{ affectedRows: 1 }]),
+      expectedCleanupLogs: [],
     },
     {
-      description: 'keeps the not_found marker without coordinates',
-      geo: { latitude: null, longitude: null, geoSource: 'not_found' },
-      expected: [null, null, 'not_found', key],
+      name: 'the trip delete itself fails',
+      deleteOutcome: () => Promise.reject(new Error('connection lost')),
+      expectedCleanupLogs: [
+        [
+          cleanupFailureLog,
+          { newTripId: 1000, title: 'Kyoto Trip' },
+          expect.objectContaining({ message: 'connection lost' }),
+        ],
+      ],
     },
-    {
-      description: 'drops fields from an old backup that predates geo support',
-      geo: {},
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops an unknown geo source',
-      geo: { latitude: 35, longitude: 135, geoSource: 'manual' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops out-of-range latitude',
-      geo: { latitude: 91, longitude: 135, geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops out-of-range longitude',
-      geo: { latitude: 35, longitude: -181, geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-    {
-      description: 'drops non-numeric coordinates',
-      geo: { latitude: '35', longitude: '135', geoSource: 'geocode' },
-      expected: [null, null, null, null],
-    },
-  ])('$description', async ({ geo, expected }) => {
-    mockNoTitleConflicts();
-    mockSequentialInserts();
-    const data = structuredClone(sampleData) as TripBackupData;
-    Object.assign(data.content.days[0].attractions[0], {
-      latitude: undefined,
-      longitude: undefined,
-      geoSource: undefined,
-      ...geo,
-    });
+  ])(
+    'rethrows the original image error when $name',
+    async ({ deleteOutcome, expectedCleanupLogs }) => {
+      mockPoolExecute.mockImplementation((sql: string) => {
+        if (sql.startsWith('DELETE FROM trips')) {
+          return deleteOutcome();
+        }
+        return Promise.resolve([[]]);
+      });
+      mockSequentialInserts();
+      const imageError = new Error('disk full');
+      mockSaveImportedImageBuffer.mockImplementation(() => {
+        throw imageError;
+      });
 
-    await importSingleTrip(data, sampleImageBuffers());
+      await expect(
+        importSingleTrip(sampleData, sampleImageBuffers()),
+      ).rejects.toBe(imageError);
 
-    const insertCall = mockConnExecute.mock.calls.find(
-      ([sql, params]) =>
-        sql.includes('INSERT INTO trip_attractions') &&
-        params[1] === 'Fushimi Inari',
-    );
-    expect(insertCall?.[1].slice(8)).toEqual(expected);
-  });
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'DELETE FROM trips WHERE id = ?',
+        [1000],
+      );
+      const cleanupLogs = mockLogger.error.mock.calls.filter(
+        ([message]) => message === cleanupFailureLog,
+      );
+      expect(cleanupLogs).toEqual(expectedCleanupLogs);
+    },
+  );
 });

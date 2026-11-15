@@ -1,14 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { imageUrl } from '@/api/images';
+import { showToast } from '@/components/ui/toast';
 import { makeImage } from '@/test-utils/fixtures';
 import { getFileInput, selectFile } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 
 import ImageUploadSection from './ImageUploadSection';
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 const images = [
   makeImage({ id: 1, filename: 'a.jpg', title: 'Photo A' }),
@@ -41,7 +42,10 @@ describe('ImageUploadSection', () => {
       />,
     );
 
-    expect(screen.getByAltText('Photo A')).toBeInTheDocument();
+    expect(screen.getByAltText('Photo A')).toHaveAttribute(
+      'src',
+      imageUrl('a.jpg'),
+    );
     expect(screen.getByAltText('Photo B')).toBeInTheDocument();
   });
 
@@ -50,7 +54,7 @@ describe('ImageUploadSection', () => {
       <ImageUploadSection images={[]} onUpload={vi.fn()} onDelete={vi.fn()} />,
     );
 
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     expect(screen.getByPlaceholderText('圖片標題（必填）')).toBeInTheDocument();
     expect(screen.getByText('確認上傳')).toBeInTheDocument();
@@ -63,7 +67,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
 
     await user.click(screen.getByText('確認上傳'));
 
@@ -77,7 +81,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    const file = new File(['a'], 'a.jpg');
+    const file = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
@@ -97,7 +101,7 @@ describe('ImageUploadSection', () => {
     const { container } = render(
       <ImageUploadSection images={[]} onUpload={onUpload} onDelete={vi.fn()} />,
     );
-    selectFile(container, new File(['a'], 'a.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     await user.type(
       screen.getByPlaceholderText('圖片標題（必填）'),
       'My Photo',
@@ -183,8 +187,8 @@ describe('ImageUploadSection', () => {
       <ImageUploadSection images={[]} onUpload={vi.fn()} onDelete={vi.fn()} />,
     );
 
-    selectFile(container, new File(['a'], 'a.jpg'));
-    selectFile(container, new File(['b'], 'b.jpg'));
+    selectFile(container, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
+    selectFile(container, new File(['b'], 'b.jpg', { type: 'image/jpeg' }));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
   });

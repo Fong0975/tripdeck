@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { makeConnection } from '@/test-utils/fixtures';
+import { submitForm } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 import type { TravelConnection } from '@/types';
 
@@ -62,7 +63,7 @@ const TRANSPORT_LABELS = [
   { value: 'transit', label: '大眾運輸' },
   { value: 'drive', label: '開車' },
   { value: 'bike', label: '騎車' },
-  { value: 'taxi', label: '計程車' },
+  { value: 'taxi', label: '計程車／Uber' },
   { value: 'flight', label: '飛機' },
   { value: 'other', label: '其他' },
 ] as const;
@@ -280,6 +281,25 @@ describe('TravelConnectionModal', () => {
     );
   });
 
+  it('falls back to the "other" mode when the connection has none', async () => {
+    const user = setupUser();
+    const onSave = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeFormConnection({ id: 5, transportMode: null })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '儲存' }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ transportMode: 'other' }),
+      undefined,
+    );
+  });
+
   it.each([
     {
       field: 'route',
@@ -338,5 +358,50 @@ describe('TravelConnectionModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'delete image' }));
     expect(handleDelete).toHaveBeenCalledWith(42);
+  });
+
+  it('passes onImagesChanged through to useEntityImages', () => {
+    const onImagesChanged = vi.fn();
+    render(
+      <TravelConnectionModal
+        {...baseProps}
+        connection={makeFormConnection({ id: 5 })}
+        onImagesChanged={onImagesChanged}
+      />,
+    );
+
+    expect(useEntityImages).toHaveBeenCalledWith(
+      expect.objectContaining({ onImagesChanged }),
+    );
+  });
+
+  it('ignores repeated submits until the pending save settles', async () => {
+    let resolveSave!: () => void;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSave = resolve;
+        }),
+    );
+    const { container } = render(
+      <TravelConnectionModal
+        {...baseProps}
+        onSave={onSave}
+        connection={makeFormConnection({ id: 5 })}
+      />,
+    );
+
+    submitForm(container);
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('button', { name: '儲存中…' }),
+    ).toBeDisabled();
+
+    await act(async () => resolveSave());
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Trip } from '@/types';
 import { getTrips, deleteTrip } from '@/utils/storage';
 
@@ -21,13 +21,29 @@ function insertSortedByStartDate(trips: Trip[], trip: Trip): Trip[] {
   return [...rest.slice(0, insertAt), trip, ...rest.slice(insertAt)];
 }
 
+/**
+ * Loads the home page's trip list and keeps it in sync with local
+ * add/update/delete actions.
+ *
+ * `reloadTrips` always resolves and always clears `loading`; on failure it
+ * keeps the previously loaded trips, sets `loadError`, and shows an error
+ * toast.
+ */
 export function useHomeData() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const reloadTrips = useCallback(async () => {
-    setTrips(await getTrips());
-    setLoading(false);
+    try {
+      setTrips(await getTrips());
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+      showToast('error', '載入旅程列表失敗，請稍後再試');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -56,6 +72,7 @@ export function useHomeData() {
   return {
     trips,
     loading,
+    loadError,
     handleTripAdded,
     handleDeleteTrip,
     handleTripUpdated,

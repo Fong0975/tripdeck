@@ -1,4 +1,6 @@
-import { getMapsStatus, type MapsStatus } from '@/api/maps';
+import type { MapsStatus } from '@tripdeck/shared';
+
+import { getMapsStatus } from '@/api/maps';
 
 /**
  * What the day map button should do: hidden (`unavailable`: not configured,

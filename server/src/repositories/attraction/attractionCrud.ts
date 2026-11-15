@@ -1,125 +1,91 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type {
+  Attraction,
+  CreateAttractionBody,
+  UpdateAttractionBody,
+} from '@tripdeck/shared';
+import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
-import type {
-  AttractionResponse,
-  CreateAttractionBody,
-  UpdateAttractionBody,
-} from '../../types/trip';
-import * as connectionRepo from '../connectionRepository';
-import * as imageRepo from '../imageRepository';
-
-const logger = createLogger('attraction');
+import { deleteImageFromDisk } from '../../storage/imageFiles';
+import { withTransaction } from '../../utils/withTransaction';
+import * as connectionRepo from '../connection';
+import * as imageRepo from '../image';
+import { nextSortOrderInDay } from '../shared/daySortOrder';
 
 import {
   getWebsites,
+  insertWebsites,
   toAttractionResponse,
   TripAttractionRow,
   TripConnectionIdRow,
 } from './shared';
 
-/** Returns the trip_day_id for a given attraction. */
-export async function getDayIdForAttraction(
-  attractionId: number,
-): Promise<number> {
-  const [rows] = await pool.execute<TripAttractionRow[]>(
-    'SELECT trip_day_id FROM trip_attractions WHERE id = ?',
-    [attractionId],
-  );
-  if (rows.length === 0) {
-    logger.warn('Attraction not found', { attractionId });
-    throw new Error('Attraction not found');
-  }
-  return rows[0].trip_day_id;
-}
-
-/** Confirms an attraction is reachable through the given trip's days. */
-export async function verifyBelongsToTrip(
-  attractionId: number,
-  tripId: number,
-): Promise<boolean> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT ta.id FROM trip_attractions ta
-     JOIN trip_days td ON td.id = ta.trip_day_id
-     WHERE ta.id = ? AND td.trip_id = ?`,
-    [attractionId, tripId],
-  );
-  return rows.length > 0;
-}
+const logger = createLogger('attraction');
 
 /**
  * Appends an attraction to the given day.
- * sort_order is set to the current count of attractions in that day so the new item appears last.
+ * sort_order is one past the day's highest (computed under a lock on the
+ * day row) so the new item appears last without colliding with an existing one.
+ *
+ * @param dayId - Day to append to.
+ * @param data - New attraction fields.
+ * @returns The created attraction (without images or coordinates).
  */
 export async function create(
   dayId: number,
   data: CreateAttractionBody,
-): Promise<AttractionResponse> {
-  const conn = await pool.getConnection();
+): Promise<Attraction> {
+  const websites = data.referenceWebsites ?? [];
   try {
-    await conn.beginTransaction();
-
-    const [countRows] = await conn.execute<RowDataPacket[]>(
-      'SELECT COUNT(*) AS count FROM trip_attractions WHERE trip_day_id = ?',
-      [dayId],
-    );
-    const sortOrder = (countRows[0] as { count: number }).count;
-
-    const [result] = await conn.execute<ResultSetHeader>(
-      `INSERT INTO trip_attractions
-         (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
+    return await withTransaction(async conn => {
+      const sortOrder = await nextSortOrderInDay(
+        conn,
+        'trip_attractions',
         dayId,
-        data.name,
-        data.googleMapUrl ?? null,
-        data.notes ?? null,
-        data.nearbyAttractions ?? null,
-        data.startTime ?? null,
-        data.endTime ?? null,
-        sortOrder,
-      ],
-    );
-    const attractionId = result.insertId;
-
-    const websites = data.referenceWebsites ?? [];
-    for (const site of websites) {
-      await conn.execute(
-        'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
-        [attractionId, site.url, site.title],
       );
-    }
 
-    await conn.commit();
-    logger.info('Attraction created', { attractionId, dayId });
+      const [result] = await conn.execute<ResultSetHeader>(
+        `INSERT INTO trip_attractions
+           (trip_day_id, name, google_map_url, notes, nearby_attractions, start_time, end_time, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          dayId,
+          data.name,
+          data.googleMapUrl ?? null,
+          data.notes ?? null,
+          data.nearbyAttractions ?? null,
+          data.startTime ?? null,
+          data.endTime ?? null,
+          sortOrder,
+        ],
+      );
+      const attractionId = result.insertId;
+      await insertWebsites(conn, attractionId, websites);
 
-    return {
-      id: attractionId,
-      name: data.name,
-      googleMapUrl: data.googleMapUrl ?? null,
-      notes: data.notes ?? null,
-      nearbyAttractions: data.nearbyAttractions ?? null,
-      startTime: data.startTime ?? null,
-      endTime: data.endTime ?? null,
-      referenceWebsites: websites,
-      images: [],
-      sortOrder,
-      latitude: null,
-      longitude: null,
-      geoSource: null,
-    };
+      return {
+        id: attractionId,
+        name: data.name,
+        googleMapUrl: data.googleMapUrl ?? null,
+        notes: data.notes ?? null,
+        nearbyAttractions: data.nearbyAttractions ?? null,
+        startTime: data.startTime ?? null,
+        endTime: data.endTime ?? null,
+        referenceWebsites: websites,
+        images: [],
+        sortOrder,
+        latitude: null,
+        longitude: null,
+        geoSource: null,
+      };
+    });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to create attraction, rolled back',
       { dayId, name: data.name },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
 }
 
@@ -130,7 +96,7 @@ export async function create(
 export async function update(
   attractionId: number,
   data: UpdateAttractionBody,
-): Promise<AttractionResponse | null> {
+): Promise<Attraction | null> {
   const [rows] = await pool.execute<TripAttractionRow[]>(
     'SELECT * FROM trip_attractions WHERE id = ?',
     [attractionId],
@@ -141,65 +107,59 @@ export async function update(
   }
 
   const cur = rows[0];
-  const conn = await pool.getConnection();
   try {
-    await conn.beginTransaction();
+    await withTransaction(async conn => {
+      const nextName = data.name ?? cur.name;
+      const nextGoogleMapUrl =
+        'googleMapUrl' in data
+          ? (data.googleMapUrl ?? null)
+          : cur.google_map_url;
 
-    const nextName = data.name ?? cur.name;
-    const nextGoogleMapUrl =
-      'googleMapUrl' in data ? (data.googleMapUrl ?? null) : cur.google_map_url;
-
-    await conn.execute(
-      `UPDATE trip_attractions
-       SET name = ?, google_map_url = ?, notes = ?, nearby_attractions = ?,
-           start_time = ?, end_time = ?
-       WHERE id = ?`,
-      [
-        nextName,
-        nextGoogleMapUrl,
-        'notes' in data ? (data.notes ?? null) : cur.notes,
-        'nearbyAttractions' in data
-          ? (data.nearbyAttractions ?? null)
-          : cur.nearby_attractions,
-        'startTime' in data ? (data.startTime ?? null) : cur.start_time,
-        'endTime' in data ? (data.endTime ?? null) : cur.end_time,
-        attractionId,
-      ],
-    );
-
-    if (nextName !== cur.name || nextGoogleMapUrl !== cur.google_map_url) {
       await conn.execute(
         `UPDATE trip_attractions
-         SET latitude = NULL, longitude = NULL, geo_source = NULL, geo_key = NULL
+         SET name = ?, google_map_url = ?, notes = ?, nearby_attractions = ?,
+             start_time = ?, end_time = ?
          WHERE id = ?`,
-        [attractionId],
+        [
+          nextName,
+          nextGoogleMapUrl,
+          'notes' in data ? (data.notes ?? null) : cur.notes,
+          'nearbyAttractions' in data
+            ? (data.nearbyAttractions ?? null)
+            : cur.nearby_attractions,
+          'startTime' in data ? (data.startTime ?? null) : cur.start_time,
+          'endTime' in data ? (data.endTime ?? null) : cur.end_time,
+          attractionId,
+        ],
       );
-    }
 
-    if ('referenceWebsites' in data && Array.isArray(data.referenceWebsites)) {
-      await conn.execute(
-        'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
-        [attractionId],
-      );
-      for (const site of data.referenceWebsites) {
+      if (nextName !== cur.name || nextGoogleMapUrl !== cur.google_map_url) {
         await conn.execute(
-          'INSERT INTO trip_attraction_websites (trip_attraction_id, url, title) VALUES (?, ?, ?)',
-          [attractionId, site.url, site.title],
+          `UPDATE trip_attractions
+           SET latitude = NULL, longitude = NULL, geo_source = NULL, geo_key = NULL
+           WHERE id = ?`,
+          [attractionId],
         );
       }
-    }
 
-    await conn.commit();
+      if (
+        'referenceWebsites' in data &&
+        Array.isArray(data.referenceWebsites)
+      ) {
+        await conn.execute(
+          'DELETE FROM trip_attraction_websites WHERE trip_attraction_id = ?',
+          [attractionId],
+        );
+        await insertWebsites(conn, attractionId, data.referenceWebsites);
+      }
+    });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to update attraction, rolled back',
       { attractionId, fields: Object.keys(data) },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
 
   const [updatedRows] = await pool.execute<TripAttractionRow[]>(
@@ -237,7 +197,7 @@ export async function deleteById(attractionId: number): Promise<boolean> {
     for (const img of images) {
       deleteImageFromDisk(img.filename);
     }
-    logger.info('Attraction deleted', {
+    logger.debug('Attraction deleted', {
       attractionId,
       connectionsDeleted: connectionRows.length,
       imagesDeleted: images.length,

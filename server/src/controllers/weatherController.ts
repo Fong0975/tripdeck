@@ -1,12 +1,15 @@
 import { Request, Response } from 'express';
 
 import { createLogger } from '../logger';
+import {
+  isPlausibleDaysFromToday,
+  parseIsoDateUtc,
+} from '../weather/daysFromToday';
 import { getDailyWeather, isWeatherEnabled } from '../weather/weatherService';
 
 const logger = createLogger('weather');
 
 const MAX_LOCATION_LENGTH = 100;
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const INTEGER_PATTERN = /^-?\d+$/;
 
 export const getWeatherStatus = (_req: Request, res: Response) => {
@@ -34,7 +37,7 @@ export const getWeather = async (
      #swagger.summary = 'Daily weather for a place, proxied to OpenWeatherMap / Visual Crossing'
      #swagger.parameters['location'] = { in: 'query', required: true, schema: { type: 'string', maxLength: 100 } }
      #swagger.parameters['date'] = { in: 'query', required: true, schema: { type: 'string', format: 'date' } }
-     #swagger.parameters['days'] = { in: 'query', required: true, description: 'Days between the client\'s local today and date', schema: { type: 'integer' } }
+     #swagger.parameters['days'] = { in: 'query', required: true, description: 'Days between the client\'s local today and date; must be within one day of the UTC difference', schema: { type: 'integer' } }
      #swagger.responses[200] = {
        description: 'Weather lookup result',
        content: {
@@ -73,12 +76,18 @@ export const getWeather = async (
     res.status(400).json({ error: 'Invalid location parameter' });
     return;
   }
-  if (!date || !DATE_PATTERN.test(date)) {
+  if (!date || parseIsoDateUtc(date) === null) {
     logger.warn('Rejected weather request with an invalid date', { date });
     res.status(400).json({ error: 'Invalid date parameter' });
     return;
   }
-  if (!days || !INTEGER_PATTERN.test(days)) {
+  // `days` picks the provider and is part of the cache key, so a value that
+  // contradicts `date` could poison the shared cache for other clients.
+  if (
+    !days ||
+    !INTEGER_PATTERN.test(days) ||
+    !isPlausibleDaysFromToday(date, Number(days), new Date())
+  ) {
     logger.warn('Rejected weather request with an invalid days value', {
       days,
     });

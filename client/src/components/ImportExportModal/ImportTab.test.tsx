@@ -1,23 +1,24 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MAX_BACKUP_UPLOAD_BYTES } from '@tripdeck/shared';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { getFileInput, selectFile, submitForm } from '@/test-utils/queries';
 import type { ImportBackupErrorDetails } from '@/types';
+import { importTripsBackup } from '@/utils/storage';
 
 import ImportTab from './ImportTab';
 
-vi.mock('@/api/backup', () => ({
+vi.mock('@/utils/storage', () => ({
   importTripsBackup: vi.fn(),
 }));
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
-vi.mock('@/lib/ToastList', () => ({
+vi.mock('@/components/ui/toast/ToastList', () => ({
   ToastList: ({ children }: { children: ReactNode }) => <ul>{children}</ul>,
 }));
 
@@ -63,6 +64,21 @@ describe('ImportTab', () => {
     fireEvent.change(getFileInput(container), { target: { files: [] } });
 
     expect(screen.getByText('選擇備份檔案')).toBeInTheDocument();
+    expect(screen.getByText('匯入')).toBeDisabled();
+  });
+
+  it('rejects a backup over the size limit with an error toast', () => {
+    const { container } = render(<ImportTab onClose={vi.fn()} />);
+    const file = new File(['zip-bytes'], 'huge.zip');
+    Object.defineProperty(file, 'size', { value: MAX_BACKUP_UPLOAD_BYTES + 1 });
+
+    selectFile(container, file);
+
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '備份檔大小不可超過 300 MB',
+    );
+    expect(screen.queryByText('huge.zip')).not.toBeInTheDocument();
     expect(screen.getByText('匯入')).toBeDisabled();
   });
 

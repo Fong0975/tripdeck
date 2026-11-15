@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type { ResolveGeoResult } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ResolveGeoResult } from '@/api/maps';
 import { makeAttraction, makeDay } from '@/test-utils/fixtures';
 import {
   needsGeoResolution,

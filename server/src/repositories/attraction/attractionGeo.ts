@@ -1,7 +1,7 @@
+import type { GeoSource } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
-import type { GeoSource } from '../../maps/geoKey';
 
 export interface AttractionGeoRow extends RowDataPacket {
   id: number;

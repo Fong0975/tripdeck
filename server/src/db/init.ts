@@ -1,92 +1,12 @@
-import type { RowDataPacket } from 'mysql2';
-
 import pool from '../config/database';
 import { createLogger } from '../logger';
 
-import { tableDefinitions, type ColumnDef, type TableDef } from './schema';
+import { alignExistingTable } from './alignTable';
+import { getDbName, tableExists } from './introspect';
+import { tableDefinitions, type TableDef } from './schema';
+import { buildCreateTableSql } from './sqlBuilders';
 
 const logger = createLogger('db');
-
-// --- SQL builders ---
-
-/**
- * Builds the column fragment used in both CREATE TABLE and ALTER TABLE ADD COLUMN.
- * Example: "sort_order INT NOT NULL DEFAULT 0"
- */
-export function buildColumnSql(col: ColumnDef): string {
-  const parts: string[] = [col.name, col.type];
-  if (col.notNull) {
-    parts.push('NOT NULL');
-  }
-  if (col.default !== undefined) {
-    const val =
-      typeof col.default === 'string' ? `'${col.default}'` : col.default;
-    parts.push(`DEFAULT ${val}`);
-  }
-  if (col.autoIncrement) {
-    parts.push('AUTO_INCREMENT');
-  }
-  if (col.primaryKey) {
-    parts.push('PRIMARY KEY');
-  }
-  return parts.join(' ');
-}
-
-/**
- * Builds the full CREATE TABLE statement for a TableDef.
- */
-export function buildCreateTableSql(def: TableDef): string {
-  const parts: string[] = def.columns.map(buildColumnSql);
-
-  for (const uk of def.uniqueKeys ?? []) {
-    parts.push(`UNIQUE KEY ${uk.name} (${uk.columns.join(', ')})`);
-  }
-
-  for (const fk of def.foreignKeys ?? []) {
-    let clause = `CONSTRAINT ${fk.name} FOREIGN KEY (${fk.column}) REFERENCES ${fk.references.table}(${fk.references.column})`;
-    if (fk.onDelete) {
-      clause += ` ON DELETE ${fk.onDelete}`;
-    }
-    parts.push(clause);
-  }
-
-  return `CREATE TABLE IF NOT EXISTS ${def.name} (\n  ${parts.join(',\n  ')}\n)`;
-}
-
-// --- information_schema helpers ---
-
-async function getDbName(): Promise<string> {
-  const [rows] = await pool.execute<RowDataPacket[]>('SELECT DATABASE() AS db');
-  return (rows[0] as { db: string }).db;
-}
-
-async function tableExists(
-  dbName: string,
-  tableName: string,
-): Promise<boolean> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT TABLE_NAME
-     FROM information_schema.TABLES
-     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
-    [dbName, tableName],
-  );
-  return rows.length > 0;
-}
-
-async function getExistingColumns(
-  dbName: string,
-  tableName: string,
-): Promise<Set<string>> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT COLUMN_NAME
-     FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
-    [dbName, tableName],
-  );
-  return new Set(rows.map(r => (r as { COLUMN_NAME: string }).COLUMN_NAME));
-}
-
-// --- Per-table handlers ---
 
 async function createTable(def: TableDef): Promise<void> {
   const sql = buildCreateTableSql(def);
@@ -96,37 +16,16 @@ async function createTable(def: TableDef): Promise<void> {
 }
 
 /**
- * Adds any columns present in the definition but absent from the live table.
- * Only the column itself is added; table-level constraints (FK, UNIQUE) are
- * not altered on existing tables.
- */
-async function addMissingColumns(
-  def: TableDef,
-  existingColumns: Set<string>,
-): Promise<void> {
-  const missing = def.columns.filter(col => !existingColumns.has(col.name));
-
-  for (const col of missing) {
-    const sql = `ALTER TABLE ${def.name} ADD COLUMN ${buildColumnSql(col)}`;
-    logger.debug('Running ALTER TABLE', {
-      table: def.name,
-      column: col.name,
-      sql,
-    });
-    await pool.execute(sql);
-    logger.info('Added column', { table: def.name, column: col.name });
-  }
-}
-
-// --- Entry point ---
-
-/**
- * Ensures all tables exist and contain the expected columns.
+ * Ensures all tables exist and match their definitions.
  *
- * - Missing tables are created with all columns and constraints.
- * - Existing tables are diffed against the definition; any absent columns
- *   are appended via ALTER TABLE ADD COLUMN.
- * - Columns removed from the definition are intentionally left untouched.
+ * Tables are processed in definition order (parents before children), so
+ * foreign key targets always exist by the time they are referenced.
+ *
+ * - Missing tables are created with all columns, indexes and constraints.
+ * - Existing tables are aligned via {@link alignExistingTable}: missing
+ *   columns and indexes are added, and foreign keys are added or redefined
+ *   to match (with orphan cleanup for ON DELETE CASCADE constraints).
+ * - Running it again against an aligned database makes no changes.
  */
 export async function initDatabase(): Promise<void> {
   logger.info('Verifying tables', { tableCount: tableDefinitions.length });
@@ -135,13 +34,10 @@ export async function initDatabase(): Promise<void> {
     const dbName = await getDbName();
 
     for (const def of tableDefinitions) {
-      const exists = await tableExists(dbName, def.name);
-
-      if (!exists) {
-        await createTable(def);
+      if (await tableExists(dbName, def.name)) {
+        await alignExistingTable(def, dbName);
       } else {
-        const existingColumns = await getExistingColumns(dbName, def.name);
-        await addMissingColumns(def, existingColumns);
+        await createTable(def);
       }
     }
   } catch (err) {

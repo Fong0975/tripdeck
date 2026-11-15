@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeJsonResponse } from '@/test-utils/fixtures';
@@ -180,6 +181,15 @@ describe('ReferenceWebsitesEditor', () => {
         vi.mocked(fetch).mockResolvedValue(makeJsonResponse({ title: null })),
     },
     {
+      description: 'the backend rejects the URL with a 400',
+      mockFetch: () =>
+        vi.mocked(fetch).mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: 'Invalid URL' }),
+        } as Response),
+    },
+    {
       description: 'fetch rejects',
       mockFetch: () =>
         vi.mocked(fetch).mockRejectedValue(new Error('network error')),
@@ -254,28 +264,38 @@ describe('ReferenceWebsitesEditor', () => {
     expect(onDraftChange).toHaveBeenLastCalledWith(false);
   });
 
-  it('fills the title input with the suggested title on click', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeJsonResponse({ title: 'Suggested Title' }),
-    );
+  it.each([
+    {
+      description: 'the suggested title',
+      fetched: 'Suggested Title',
+      expected: 'Suggested Title',
+    },
+    {
+      description: 'an over-long title cut to the field limit',
+      fetched: '景'.repeat(FIELD_LIMITS.name + 10),
+      expected: '景'.repeat(FIELD_LIMITS.name),
+    },
+  ])(
+    'fills the title input with $description on click',
+    async ({ fetched, expected }) => {
+      vi.mocked(fetch).mockResolvedValue(makeJsonResponse({ title: fetched }));
 
-    render(<ReferenceWebsitesEditor websites={[]} onChange={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('https://...'), {
-      target: { value: 'https://c.example.com' },
-    });
+      render(<ReferenceWebsitesEditor websites={[]} onChange={vi.fn()} />);
+      fireEvent.change(screen.getByPlaceholderText('https://...'), {
+        target: { value: 'https://c.example.com' },
+      });
 
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
 
-    await vi.waitFor(() => {
-      expect(getSuggestionButton()).toBeEnabled();
-    });
+      await vi.waitFor(() => {
+        expect(getSuggestionButton()).toBeEnabled();
+      });
 
-    fireEvent.click(getSuggestionButton());
+      fireEvent.click(getSuggestionButton());
 
-    expect(screen.getByPlaceholderText('標題 *')).toHaveValue(
-      'Suggested Title',
-    );
-  });
+      expect(screen.getByPlaceholderText('標題 *')).toHaveValue(expected);
+    },
+  );
 });

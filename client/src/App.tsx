@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
-import { ThemeProvider } from '@/context/ThemeContext.tsx';
+import { ThemeProvider } from '@/context/ThemeProvider';
 
 const Home = lazy(() => import('@/pages/Home'));
 const TripDetail = lazy(() => import('@/pages/TripDetail'));

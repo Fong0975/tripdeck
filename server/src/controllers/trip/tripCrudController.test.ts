@@ -1,3 +1,4 @@
+import type { TripContent } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../repositories/trip', () => ({
@@ -14,10 +15,10 @@ import { makeTrip } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
-import type { TripContentResponse } from '../../types/trip';
+import { MAX_TRIP_DAYS } from '../../validation/tripValidation';
 
 import {
   createTrip,
@@ -30,7 +31,7 @@ import {
 
 const sampleTrip = makeTrip();
 
-const sampleTripContent: TripContentResponse = {
+const sampleTripContent: TripContent = {
   tripId: 1,
   days: [],
 };
@@ -100,11 +101,86 @@ describe('Trips', () => {
       expect(tripRepo.create).not.toHaveBeenCalled();
     });
 
-    it('creates the trip and responds with 201', async () => {
+    it.each([
+      {
+        name: 'title is whitespace only',
+        body: { title: '   ', startDate: '2024-05-10', endDate: '2024-05-12' },
+        error: 'title cannot be empty',
+      },
+      {
+        name: 'title is not a string',
+        body: { title: 42, startDate: '2024-05-10', endDate: '2024-05-12' },
+        error: 'title cannot be empty',
+      },
+      {
+        name: 'title is longer than 255 characters',
+        body: {
+          title: 'x'.repeat(256),
+          startDate: '2024-05-10',
+          endDate: '2024-05-12',
+        },
+        error: 'title must be at most 255 characters',
+      },
+      {
+        name: 'destination is longer than 255 characters',
+        body: {
+          title: 'Kyoto',
+          destination: 'x'.repeat(256),
+          startDate: '2024-05-10',
+          endDate: '2024-05-12',
+        },
+        error: 'destination must be at most 255 characters',
+      },
+      {
+        name: 'startDate is not YYYY-MM-DD',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024/05/10',
+          endDate: '2024-05-12',
+        },
+        error: 'startDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'endDate is not a real calendar date',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024-05-10',
+          endDate: '2024-02-30',
+        },
+        error: 'endDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'endDate is before startDate',
+        body: {
+          title: 'Kyoto',
+          startDate: '2024-05-12',
+          endDate: '2024-05-10',
+        },
+        error: 'endDate cannot be before startDate',
+      },
+      {
+        name: 'the trip is longer than MAX_TRIP_DAYS',
+        body: {
+          title: 'Kyoto',
+          startDate: '2026-01-01',
+          endDate: '2027-01-01',
+        },
+        error: `A trip cannot span more than ${MAX_TRIP_DAYS} days`,
+      },
+    ])('returns 400 when $name', async ({ body, error }) => {
+      const { req, res } = createMockReqRes({ body });
+
+      await createTrip(req, res);
+
+      expectJsonStatus(res, 400, { error });
+      expect(tripRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the trip with a trimmed title and responds with 201', async () => {
       vi.mocked(tripRepo.create).mockResolvedValue(sampleTrip);
       const { req, res } = createMockReqRes({
         body: {
-          title: 'Kyoto Trip',
+          title: '  Kyoto Trip  ',
           startDate: '2024-05-10',
           endDate: '2024-05-12',
         },
@@ -112,6 +188,11 @@ describe('Trips', () => {
 
       await createTrip(req, res);
 
+      expect(tripRepo.create).toHaveBeenCalledWith({
+        title: 'Kyoto Trip',
+        startDate: '2024-05-10',
+        endDate: '2024-05-12',
+      });
       expectJsonStatus(res, 201, sampleTrip);
     });
   });
@@ -170,6 +251,42 @@ describe('Trips', () => {
       expectJsonStatus(res, 400, {
         error: 'endDate cannot be before startDate',
       });
+      expect(tripRepo.update).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        name: 'the new title is longer than 255 characters',
+        body: { title: 'x'.repeat(256) },
+        error: 'title must be at most 255 characters',
+      },
+      {
+        name: 'the new destination is longer than 255 characters',
+        body: { destination: 'x'.repeat(256) },
+        error: 'destination must be at most 255 characters',
+      },
+      {
+        name: 'the new startDate is not YYYY-MM-DD',
+        body: { startDate: '10-05-2024' },
+        error: 'startDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'the new endDate is not a real calendar date',
+        body: { endDate: '2024-05-32' },
+        error: 'endDate must be a valid date in YYYY-MM-DD format',
+      },
+      {
+        name: 'the new range is longer than MAX_TRIP_DAYS',
+        body: { endDate: '2025-05-10' },
+        error: `A trip cannot span more than ${MAX_TRIP_DAYS} days`,
+      },
+    ])('returns 400 when $name', async ({ body, error }) => {
+      vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
+      const { req, res } = createMockReqRes({ params: { tripId: '1' }, body });
+
+      await updateTrip(req, res);
+
+      expectJsonStatus(res, 400, { error });
       expect(tripRepo.update).not.toHaveBeenCalled();
     });
 
@@ -233,21 +350,19 @@ describe('Trip content', () => {
   });
 });
 
-describe('500 error handling', () => {
-  const cases: Returns500Case[] = [
+describe('unexpected errors', () => {
+  const cases: RejectCase[] = [
     {
       name: 'getTrips',
       handler: getTrips,
       req: {},
       arrange: error => vi.mocked(tripRepo.findAll).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trips',
     },
     {
       name: 'getTrip',
       handler: getTrip,
       req: { params: { tripId: '1' } },
       arrange: error => vi.mocked(tripRepo.findById).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trip',
     },
     {
       name: 'createTrip',
@@ -260,7 +375,6 @@ describe('500 error handling', () => {
         },
       },
       arrange: error => vi.mocked(tripRepo.create).mockRejectedValue(error),
-      expectedError: 'Failed to create trip',
     },
     {
       name: 'updateTrip',
@@ -270,14 +384,12 @@ describe('500 error handling', () => {
         vi.mocked(tripRepo.findById).mockResolvedValue(sampleTrip);
         vi.mocked(tripRepo.update).mockRejectedValue(error);
       },
-      expectedError: 'Failed to update trip',
     },
     {
       name: 'deleteTrip',
       handler: deleteTrip,
       req: { params: { tripId: '1' } },
       arrange: error => vi.mocked(tripRepo.deleteById).mockRejectedValue(error),
-      expectedError: 'Failed to delete trip',
     },
     {
       name: 'getTripContent',
@@ -285,9 +397,8 @@ describe('500 error handling', () => {
       req: { params: { tripId: '1' } },
       arrange: error =>
         vi.mocked(tripRepo.findContent).mockRejectedValue(error),
-      expectedError: 'Failed to fetch trip content',
     },
   ];
 
-  itReturns500(cases);
+  itRejects(cases);
 });

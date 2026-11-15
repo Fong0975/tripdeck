@@ -1,100 +1,43 @@
-import { format, parseISO } from 'date-fns';
-import { zhTW } from 'date-fns/locale/zh-TW';
-import { Document, Packer, Paragraph, Table, TextRun } from 'docx';
+import { Document, Packer } from 'docx';
 
-import type { Trip, TripContent, TravelConnection } from '@/types';
-import { daysFromToday } from '@/utils/date';
+import type { Trip, TripContent } from '@/types';
 import { downloadBlob } from '@/utils/download';
-import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
+import { getWeatherEnabled } from '@/utils/weatherApi';
 
-import { makeAttractionTable } from './attractionTable';
+import { mapWithConcurrency } from './concurrency';
 import { FONT } from './constants';
-import { makeDayNotesSection } from './dayNotesSection';
+import { makeDaySectionTasks, type DocTask } from './daySection';
 import { makeHeaderSection } from './headerSection';
-import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
+/**
+ * Maximum number of content tasks (each typically fetching images or weather)
+ * run at once while building the document.
+ */
+const EXPORT_CONCURRENCY = 4;
+
+/**
+ * Builds a Word document for the trip (header, then one section per day) and
+ * downloads it as `<trip title>.docx`. Image and weather fetches run with
+ * bounded concurrency; the document order always follows the itinerary.
+ *
+ * @param trip - The trip whose metadata forms the header section.
+ * @param content - The trip's day plans.
+ */
 export async function exportToDocx(
   trip: Trip,
   content: TripContent,
 ): Promise<void> {
-  type DocChild = Paragraph | Table;
-  const children: DocChild[] = [];
-
-  children.push(...(await makeHeaderSection(trip, content.days.length)));
-
   const isWeatherEnabled = await getWeatherEnabled();
 
-  // === Day sections ========================================================
-
-  for (let dayIdx = 0; dayIdx < content.days.length; dayIdx++) {
-    const day = content.days[dayIdx];
-    const isFirstDay = dayIdx === 0;
-
-    const dayLabel = format(parseISO(day.date), 'M月d日 (EEEE)', {
-      locale: zhTW,
-    });
-    children.push(
-      makeDayHeaderTable(`第 ${day.day} 天 · ${dayLabel}`, isFirstDay),
-    );
-
-    children.push(...(await makeDayNotesSection(day)));
-
-    if (
-      isWeatherEnabled &&
-      day.locations.length > 0 &&
-      daysFromToday(day.date) >= 0
-    ) {
-      for (const loc of day.locations) {
-        const weather = await fetchDailyWeather(loc.name, day.date);
-        if (weather.status === 'success') {
-          const d = weather.data;
-          let text = `${loc.name}：${d.description} | ${d.tempMin}° / ${d.tempMax}°C | 💧 ${d.humidity}%`;
-          if (d.pop > 0) {
-            text += ` | ☂ ${d.pop}%`;
-          }
-          children.push(
-            new Paragraph({
-              children: [
-                new TextRun({ text, color: '445566', size: 20, font: FONT }),
-              ],
-              spacing: { before: 100, after: 0 },
-            }),
-          );
-        }
-      }
-    }
-
-    children.push(
-      new Paragraph({ children: [], spacing: { before: 0, after: 200 } }),
-    );
-
-    const connsByFrom = new Map<number, TravelConnection[]>();
-    for (const c of day.connections) {
-      const list = connsByFrom.get(c.fromAttractionId) ?? [];
-      list.push(c);
-      connsByFrom.set(c.fromAttractionId, list);
-    }
-
-    for (const attraction of day.attractions) {
-      children.push(await makeAttractionTable(attraction));
-
-      const outgoing = connsByFrom.get(attraction.id) ?? [];
-      for (const conn of outgoing) {
-        const toName =
-          day.attractions.find(a => a.id === conn.toAttractionId)?.name ?? '';
-        children.push(
-          new Paragraph({ children: [], spacing: { before: 0, after: 120 } }),
-        );
-        children.push(await makeTransportTable(conn, toName));
-      }
-
-      children.push(
-        new Paragraph({ children: [], spacing: { before: 0, after: 200 } }),
-      );
-    }
-  }
-
-  // === Build & download ====================================================
+  const tasks: DocTask[] = [
+    () => makeHeaderSection(trip, content.days.length),
+    ...content.days.flatMap((day, dayIdx) =>
+      makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled),
+    ),
+  ];
+  const children = (
+    await mapWithConcurrency(tasks, EXPORT_CONCURRENCY, task => task())
+  ).flat();
 
   const doc = new Document({
     styles: {

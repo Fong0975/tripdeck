@@ -38,7 +38,7 @@ describe('readLoggerConfig', () => {
 
     expect(config.level).toBe('info');
     expect(config.dir).toBe(path.join(__dirname, '../../logs'));
-    expect(config.filename).toBe('app.log');
+    expect(config.filename).toBe('tripdeck.log');
     expect(config.maxSizeBytes).toBe(10 * 1024 * 1024);
     expect(config.maxFiles).toBe(5);
   });

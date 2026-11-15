@@ -1,3 +1,9 @@
+import type {
+  GeoSource,
+  ResolvedAttractionGeo,
+  ResolveGeoResult,
+} from '@tripdeck/shared';
+
 import { createLogger } from '../logger';
 import {
   type AttractionGeoRow,
@@ -5,13 +11,13 @@ import {
   type GeoUpdate,
   saveGeo,
 } from '../repositories/attraction/attractionGeo';
+import { mapWithConcurrency } from '../utils/mapWithConcurrency';
+import { createSerialQueue } from '../utils/serialQueue';
 
 import { getMapsConfig, isGeocodingEnabled } from './config';
 import { geocodeByName, MapsQuotaError } from './geocodeClient';
-import { computeGeoKey, type GeoSource } from './geoKey';
+import { computeGeoKey } from './geoKey';
 import { resolveCoordinatesFromLink } from './linkResolver';
-import { mapWithConcurrency } from './mapWithConcurrency';
-import { createSerialQueue } from './serialQueue';
 import { getUsage, markExhausted, tryConsume } from './usageTracker';
 
 const logger = createLogger('maps');
@@ -26,18 +32,6 @@ const geocodeQueue = createSerialQueue({
 });
 
 type ResolvedGeo = Omit<GeoUpdate, 'geoKey'>;
-
-export interface ResolvedAttractionGeo {
-  id: number;
-  latitude: number | null;
-  longitude: number | null;
-  geoSource: GeoSource | null;
-}
-
-export interface TripGeoResult {
-  attractions: ResolvedAttractionGeo[];
-  geocodeExhausted: boolean;
-}
 
 function currentKey(row: AttractionGeoRow): string {
   return computeGeoKey(row.name, row.google_map_url);
@@ -95,7 +89,7 @@ function toResult(row: AttractionGeoRow): ResolvedAttractionGeo {
 export async function resolveTripGeo(
   tripId: number,
   dayId: number,
-): Promise<TripGeoResult> {
+): Promise<ResolveGeoResult> {
   const rows = await findGeoRowsForTrip(tripId);
   const unresolved = () => rows.filter(row => !isResolved(row));
 

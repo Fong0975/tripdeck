@@ -2,19 +2,19 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { listAutoBackups } from '@/api/backup';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
+import { listAutoBackups } from '@/utils/storage';
 
 import AutoBackupsTab from './AutoBackupsTab';
 
-vi.mock('@/api/backup', () => ({
+vi.mock('@/utils/storage', () => ({
   listAutoBackups: vi.fn(),
   getAutoBackupDownloadUrl: vi.fn(
     (filename: string) => `/api/backups/${filename}`,
   ),
 }));
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('AutoBackupsTab', () => {
   it('loads and renders the automatic backup list on mount', async () => {

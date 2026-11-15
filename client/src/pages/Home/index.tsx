@@ -15,6 +15,7 @@ export default function Home() {
   const {
     trips,
     loading,
+    loadError,
     handleTripAdded,
     handleDeleteTrip,
     handleTripUpdated,
@@ -31,6 +32,8 @@ export default function Home() {
       <TripList
         trips={trips}
         loading={loading}
+        loadError={loadError}
+        onRetry={() => void reloadTrips()}
         onAdd={() => setShowModal(true)}
         onDelete={id => void handleDeleteTrip(id)}
         onEdit={setEditingTrip}
@@ -57,6 +60,7 @@ export default function Home() {
             handleTripUpdated(trip);
             setEditingTrip(null);
           }}
+          onImagesChanged={() => void reloadTrips()}
         />
       )}
 

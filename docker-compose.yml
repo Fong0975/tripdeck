@@ -24,7 +24,7 @@ services:
       AUTO_BACKUP_RETENTION_COUNT: ${AUTO_BACKUP_RETENTION_COUNT:-6}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_DIR: ${LOG_DIR:-/app/logs}
-      LOG_FILENAME: ${LOG_FILENAME:-app.log}
+      LOG_FILENAME: ${LOG_FILENAME:-tripdeck.log}
       LOG_MAX_SIZE_MB: ${LOG_MAX_SIZE_MB:-10}
       LOG_MAX_FILES: ${LOG_MAX_FILES:-5}
       OWM_API_KEY_FILE: /run/secrets/owm_api_key
@@ -54,8 +54,9 @@ services:
 
   frontend:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      # Root context so the build can reach the shared/ workspace package.
+      context: .
+      dockerfile: client/Dockerfile
       network: host
       args:
         FRONTEND_PORT: ${FRONTEND_PORT:-3000}

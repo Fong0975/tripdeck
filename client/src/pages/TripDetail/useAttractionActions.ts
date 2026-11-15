@@ -1,5 +1,15 @@
-import { showToast } from '@/lib/toast';
-import type { Attraction, Trip, TripContent } from '@/types';
+import type {
+  Attraction,
+  AttractionDraft,
+  DayPlan,
+  Trip,
+  TripContent,
+} from '@/types';
+import {
+  showSavedToast,
+  uploadStagedImages,
+  type StagedImage,
+} from '@/utils/stagedImages';
 import {
   addAttraction,
   deleteAttraction,
@@ -7,6 +17,44 @@ import {
   updateAttraction,
   uploadAttractionImage,
 } from '@/utils/storage';
+
+import { toAttractionPayload } from './attractionPayload';
+import { runMutation } from './runMutation';
+
+/**
+ * Creates (id 0, then uploads the staged images) or updates an attraction.
+ *
+ * @param tripId - Owning trip.
+ * @param day - Day the attraction is created in (unused when updating).
+ * @param attraction - The attraction as edited in the modal.
+ * @param stagedImages - Images to upload after a create.
+ * @returns The number of staged images that failed to upload.
+ */
+async function persistAttraction(
+  tripId: number,
+  day: DayPlan,
+  attraction: AttractionDraft,
+  stagedImages?: StagedImage[],
+): Promise<number> {
+  if (attraction.id !== 0) {
+    await updateAttraction(
+      tripId,
+      attraction.id,
+      toAttractionPayload(attraction, null),
+    );
+    return 0;
+  }
+  const created = await addAttraction(
+    tripId,
+    day.id,
+    toAttractionPayload(attraction, undefined),
+  );
+  const { failedCount } = await uploadStagedImages(
+    stagedImages,
+    (file, title) => uploadAttractionImage(tripId, created.id, file, title),
+  );
+  return failedCount;
+}
 
 /**
  * Attraction CRUD handlers for the trip board, bound to the current
@@ -20,78 +68,46 @@ export function useAttractionActions(
 ) {
   const handleSaveAttraction = async (
     dayIndex: number,
-    attraction: Attraction,
-    stagedImages?: { file: File; title: string }[],
+    attraction: AttractionDraft,
+    stagedImages?: StagedImage[],
   ) => {
     if (!trip || !content) {
       return;
     }
     const day = content.days[dayIndex];
-    try {
-      if (attraction.id === 0) {
-        const created = await addAttraction(trip.id, day.id, {
-          name: attraction.name,
-          googleMapUrl: attraction.googleMapUrl ?? undefined,
-          notes: attraction.notes ?? undefined,
-          nearbyAttractions: attraction.nearbyAttractions ?? undefined,
-          startTime: attraction.startTime ?? undefined,
-          endTime: attraction.endTime ?? undefined,
-          referenceWebsites: attraction.referenceWebsites,
-        });
-        if (stagedImages?.length) {
-          for (const { file, title } of stagedImages) {
-            await uploadAttractionImage(trip.id, created.id, file, title);
-          }
-        }
-      } else {
-        await updateAttraction(trip.id, attraction.id, {
-          name: attraction.name,
-          googleMapUrl: attraction.googleMapUrl ?? null,
-          notes: attraction.notes ?? null,
-          nearbyAttractions: attraction.nearbyAttractions ?? null,
-          startTime: attraction.startTime ?? null,
-          endTime: attraction.endTime ?? null,
-          referenceWebsites: attraction.referenceWebsites,
-        });
-      }
-      await reloadContent();
-      closeModal();
-      showToast('success', '已儲存景點。');
-    } catch {
-      showToast('error', '儲存景點失敗，請稍後再試');
-    }
+    await runMutation(
+      () => persistAttraction(trip.id, day, attraction, stagedImages),
+      {
+        reload: reloadContent,
+        onSuccess: failedUploads => {
+          closeModal();
+          showSavedToast('已儲存景點。', failedUploads);
+        },
+        error: '儲存景點失敗，請稍後再試',
+      },
+    );
   };
 
-  const handleDeleteAttraction = async (
-    _dayIndex: number,
-    attractionId: number,
-  ) => {
+  const handleDeleteAttraction = async (attractionId: number) => {
     if (!trip) {
       return;
     }
-    try {
-      await deleteAttraction(trip.id, attractionId);
-      await reloadContent();
-      showToast('success', '已刪除景點。');
-    } catch {
-      showToast('error', '刪除景點失敗，請稍後再試');
-    }
+    await runMutation(() => deleteAttraction(trip.id, attractionId), {
+      reload: reloadContent,
+      success: '已刪除景點。',
+      error: '刪除景點失敗，請稍後再試',
+    });
   };
 
-  const handleDuplicateAttraction = async (
-    _dayIndex: number,
-    attraction: Attraction,
-  ) => {
+  const handleDuplicateAttraction = async (attraction: Attraction) => {
     if (!trip) {
       return;
     }
-    try {
-      await duplicateAttraction(trip.id, attraction.id);
-      await reloadContent();
-      showToast('success', '已複製景點。');
-    } catch {
-      showToast('error', '複製景點失敗，請稍後再試');
-    }
+    await runMutation(() => duplicateAttraction(trip.id, attraction.id), {
+      reload: reloadContent,
+      success: '已複製景點。',
+      error: '複製景點失敗，請稍後再試',
+    });
   };
 
   return {

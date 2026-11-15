@@ -1,6 +1,6 @@
 import { type Mock, vi } from 'vitest';
 
-export interface FsMock<K extends string> {
+interface FsMock<K extends string> {
   fns: Record<K, Mock>;
   /** Module shape to return from a `vi.mock('fs')` factory. */
   module: { default: Record<K, Mock> } & Record<K, Mock>;
@@ -12,7 +12,7 @@ export interface FsMock<K extends string> {
  *
  * @param keys - Names of the `fs` functions to mock.
  */
-export function createFsMock<K extends string>(keys: K[]): FsMock<K> {
+function createFsMock<K extends string>(keys: K[]): FsMock<K> {
   const fns = Object.fromEntries(keys.map(key => [key, vi.fn()])) as Record<
     K,
     Mock

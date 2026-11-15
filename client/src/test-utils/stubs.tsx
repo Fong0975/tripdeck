@@ -1,4 +1,4 @@
-import type { EditItem, EditSpec } from '@/components/checklist/shared/types';
+import type { EditItem, EditSpec } from '@/components/Checklist/shared/types';
 import type { Attraction, DayPlan, TravelConnection } from '@/types';
 
 /**

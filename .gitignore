@@ -5,6 +5,7 @@ node_modules/
 client/dist/
 client/dist-ssr/
 server/dist/
+shared/dist/
 
 # Test coverage reports
 client/coverage/
@@ -64,6 +65,9 @@ server/logs/*
 
 # Docker logs volume
 .logs/
+
+# Raw working files
+raw/
 
 # Editor
 .vscode/*

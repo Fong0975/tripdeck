@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeConnection, makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addConnection,
@@ -13,7 +13,7 @@ import { useConnectionActions } from './useConnectionActions';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useConnectionActions', () => {
   describe('handleAddConnection', () => {
@@ -34,6 +34,10 @@ describe('useConnectionActions', () => {
         fromAttractionId: 100,
         toAttractionId: 200,
         transportMode: 'transit',
+        duration: null,
+        route: null,
+        notes: null,
+        images: [],
       });
     });
   });
@@ -109,6 +113,36 @@ describe('useConnectionActions', () => {
       });
     });
 
+    it.each([
+      {
+        description: 'creates with the "other" mode',
+        connection: makeConnection({ id: 0, transportMode: null }),
+        api: addConnection,
+        expected: expect.objectContaining({ transportMode: 'other' }),
+      },
+      {
+        description: 'updates without changing the mode',
+        connection: makeConnection({ id: 7, transportMode: null }),
+        api: updateConnection,
+        expected: expect.objectContaining({ transportMode: undefined }),
+      },
+    ])(
+      'with a null transport mode, $description',
+      async ({ connection, api, expected }) => {
+        const { handleSaveConnection } = useConnectionActions(
+          makeTrip(),
+          makeContent(),
+          vi.fn(),
+          vi.fn(),
+          vi.fn(),
+        );
+
+        await handleSaveConnection(0, connection);
+
+        expect(api).toHaveBeenCalledWith(1, expect.any(Number), expected);
+      },
+    );
+
     it('shows an error toast and does not reload or close the modal when saving fails', async () => {
       vi.mocked(updateConnection).mockRejectedValue(new Error('network error'));
       const reloadContent = vi.fn();
@@ -164,6 +198,50 @@ describe('useConnectionActions', () => {
       );
     });
 
+    it.each([
+      {
+        description: 'every staged image uploads',
+        uploadFails: false,
+        variant: 'success' as const,
+        message: '已儲存交通方式。',
+      },
+      {
+        description: 'a staged image upload fails',
+        uploadFails: true,
+        variant: 'warning' as const,
+        message: '已儲存，但部分圖片上傳失敗',
+      },
+    ])(
+      'still reloads and closes the modal after creating when $description',
+      async ({ uploadFails, variant, message }) => {
+        vi.mocked(addConnection).mockResolvedValue(makeConnection({ id: 99 }));
+        if (uploadFails) {
+          vi.mocked(uploadConnectionImage).mockRejectedValueOnce(
+            new Error('upload failed'),
+          );
+        }
+        const reloadContent = vi.fn();
+        const closeModal = vi.fn();
+        const { handleSaveConnection } = useConnectionActions(
+          makeTrip(),
+          makeContent(),
+          reloadContent,
+          closeModal,
+          vi.fn(),
+        );
+
+        await handleSaveConnection(0, makeConnection({ id: 0 }), [
+          { file: new File(['a'], 'a.jpg'), title: 'First' },
+          { file: new File(['b'], 'b.jpg'), title: 'Second' },
+        ]);
+
+        expect(uploadConnectionImage).toHaveBeenCalledTimes(2);
+        expect(reloadContent).toHaveBeenCalledTimes(1);
+        expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith(variant, message);
+      },
+    );
+
     it('does not upload images when updating an existing connection', async () => {
       const { handleSaveConnection } = useConnectionActions(
         makeTrip(),
@@ -192,7 +270,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(deleteConnection).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -208,7 +286,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(deleteConnection).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -226,7 +304,7 @@ describe('useConnectionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteConnection(0, 5);
+      await handleDeleteConnection(5);
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(

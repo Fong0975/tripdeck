@@ -1,3 +1,8 @@
+import type {
+  CreateConnectionBody,
+  UpdateConnectionBody,
+} from '@tripdeck/shared';
+
 import type { TravelConnection } from '@/types';
 
 import { api, json } from './client';
@@ -5,14 +10,7 @@ import { api, json } from './client';
 export async function addConnection(
   tripId: number,
   dayId: number,
-  data: {
-    fromAttractionId: number;
-    toAttractionId: number;
-    transportMode: string;
-    duration?: string;
-    route?: string;
-    notes?: string;
-  },
+  data: CreateConnectionBody,
 ): Promise<TravelConnection> {
   return api<TravelConnection>(
     `/api/trips/${tripId}/days/${dayId}/connections`,
@@ -26,12 +24,7 @@ export async function addConnection(
 export async function updateConnection(
   tripId: number,
   connectionId: number,
-  data: {
-    transportMode?: string;
-    duration?: string | null;
-    route?: string | null;
-    notes?: string | null;
-  },
+  data: UpdateConnectionBody,
 ): Promise<TravelConnection> {
   return api<TravelConnection>(
     `/api/trips/${tripId}/connections/${connectionId}`,

@@ -1,9 +1,10 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useEntityImages } from '@/hooks/useEntityImages';
 import { makeAttraction } from '@/test-utils/fixtures';
+import { submitForm } from '@/test-utils/queries';
 import { makeMounter, setupUser } from '@/test-utils/render';
 
 import AttractionModal from './index';
@@ -272,7 +273,7 @@ describe('AttractionModal', () => {
     { field: 'endTime', index: 1 },
   ])(
     'sets $field to the typed time, and to null when cleared',
-    ({ field, index }) => {
+    async ({ field, index }) => {
       const onSave = vi.fn();
       const { container } = renderModal({
         attraction: editingAttraction,
@@ -296,7 +297,9 @@ describe('AttractionModal', () => {
       );
 
       fireEvent.change(timeInput, { target: { value: '' } });
-      fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+      // The first save puts the footer into its "儲存中…" state until the
+      // submit settles, so wait for the save button to come back.
+      fireEvent.click(await screen.findByRole('button', { name: '儲存' }));
 
       expect(onSave).toHaveBeenLastCalledWith(
         expect.objectContaining({ [field]: null }),
@@ -414,5 +417,41 @@ describe('AttractionModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'delete image' }));
     expect(handleDelete).toHaveBeenCalledWith(42);
+  });
+
+  it('passes onImagesChanged through to useEntityImages', () => {
+    const onImagesChanged = vi.fn();
+    renderModal({ attraction: editingAttraction, onImagesChanged });
+
+    expect(useEntityImages).toHaveBeenCalledWith(
+      expect.objectContaining({ onImagesChanged }),
+    );
+  });
+
+  it('ignores repeated submits until the pending save settles', async () => {
+    let resolveSave!: () => void;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSave = resolve;
+        }),
+    );
+    const { container } = renderModal({
+      attraction: editingAttraction,
+      onSave,
+    });
+
+    submitForm(container);
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('button', { name: '儲存中…' }),
+    ).toBeDisabled();
+
+    await act(async () => resolveSave());
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(2);
   });
 });

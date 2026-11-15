@@ -122,4 +122,56 @@ describe('fetchDailyWeather', () => {
 
     expect(getWeather).toHaveBeenCalledTimes(expectedCalls);
   });
+
+  it.each<{
+    description: string;
+    outcome: WeatherResult | Error;
+    expected: WeatherResult;
+  }>([
+    {
+      description: 'shares one request for a successful lookup',
+      outcome: SUCCESS,
+      expected: SUCCESS,
+    },
+    {
+      description: 'shares one request for a failed lookup',
+      outcome: new Error('API error 500'),
+      expected: { status: 'error' },
+    },
+  ])(
+    'concurrent calls for the same place and date $description',
+    async ({ outcome, expected }) => {
+      let resolve!: (r: WeatherResult) => void;
+      let reject!: (e: Error) => void;
+      vi.mocked(getWeather).mockReturnValueOnce(
+        new Promise<WeatherResult>((res, rej) => {
+          resolve = res;
+          reject = rej;
+        }),
+      );
+
+      const first = fetchDailyWeather('Tokyo', '2026-08-20');
+      const second = fetchDailyWeather('Tokyo', '2026-08-20');
+      if (outcome instanceof Error) {
+        reject(outcome);
+      } else {
+        resolve(outcome);
+      }
+
+      expect(await Promise.all([first, second])).toEqual([expected, expected]);
+      expect(getWeather).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('retries after a rejected request has settled', async () => {
+    vi.mocked(getWeather)
+      .mockRejectedValueOnce(new Error('API error 500'))
+      .mockResolvedValueOnce(SUCCESS);
+
+    expect(await fetchDailyWeather('Tokyo', '2026-08-20')).toEqual({
+      status: 'error',
+    });
+    expect(await fetchDailyWeather('Tokyo', '2026-08-20')).toEqual(SUCCESS);
+    expect(getWeather).toHaveBeenCalledTimes(2);
+  });
 });

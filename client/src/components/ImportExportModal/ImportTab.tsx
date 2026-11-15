@@ -1,11 +1,12 @@
 import { FileUp } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-import { importTripsBackup } from '@/api/backup';
 import { ApiError } from '@/api/client';
-import { showToast } from '@/lib/toast';
-import { ToastList } from '@/lib/ToastList';
+import { showToast } from '@/components/ui/toast';
+import { ToastList } from '@/components/ui/toast/ToastList';
 import type { ImportBackupErrorDetails } from '@/types';
+import { importTripsBackup } from '@/utils/storage';
+import { validateBackupFile } from '@/utils/uploadLimits';
 
 import ModalFooterActions from '../ui/ModalFooterActions';
 
@@ -21,15 +22,22 @@ export default function ImportTab({ onClose, onImported }: Props) {
   const [importing, setImporting] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setImportFile(e.target.files?.[0] ?? null);
-  };
-
   const clearImportFile = () => {
     setImportFile(null);
     if (importFileInputRef.current) {
       importFileInputRef.current.value = '';
     }
+  };
+
+  const handleImportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    const invalidReason = file && validateBackupFile(file);
+    if (invalidReason) {
+      showToast('error', invalidReason);
+      clearImportFile();
+      return;
+    }
+    setImportFile(file);
   };
 
   const handleImportSubmit = async (e: React.FormEvent) => {

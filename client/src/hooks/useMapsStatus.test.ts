@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type { MapsStatus } from '@tripdeck/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { MapsStatus } from '@/api/maps';
 import {
   __resetMapsApiForTests,
   getMapsStatusOnce,

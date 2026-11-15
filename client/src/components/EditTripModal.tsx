@@ -1,10 +1,11 @@
 import { format, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale/zh-TW';
-import { useState } from 'react';
 
+import { LABEL_CLS } from '@/components/ui/formStyles';
+import { showToast } from '@/components/ui/toast';
 import { imageCountOf, useDateShrinkImpact } from '@/hooks/useDateShrinkImpact';
 import { useEntityImages } from '@/hooks/useEntityImages';
-import { showToast } from '@/lib/toast';
+import { useSubmitting } from '@/hooks/useSubmitting';
 import type { Trip, TripContent } from '@/types';
 import {
   deleteTripImage,
@@ -14,6 +15,8 @@ import {
 } from '@/utils/storage';
 
 import ImageUploadSection from './ImageUploadSection';
+import TripFormFields from './TripForm/TripFormFields';
+import { useTripForm } from './TripForm/useTripForm';
 import ConfirmDialog from './ui/ConfirmDialog';
 import Modal from './ui/Modal';
 import ModalFooterActions from './ui/ModalFooterActions';
@@ -26,6 +29,8 @@ interface Props {
   onUpdated: (trip: Trip) => void;
   /** Called after a successful update that removed day lanes, so the caller can reload its content. */
   onContentChanged?: () => void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
 export default function EditTripModal({
@@ -34,8 +39,14 @@ export default function EditTripModal({
   onClose,
   onUpdated,
   onContentChanged,
+  onImagesChanged,
 }: Props) {
-  const [form, setForm] = useState({
+  const {
+    values: form,
+    error,
+    handleChange,
+    validate,
+  } = useTripForm({
     title: trip.title,
     destination: trip.destination ?? '',
     startDate: trip.startDate,
@@ -50,21 +61,14 @@ export default function EditTripModal({
     initialImages: trip.images ?? [],
     upload: (file, title) => uploadTripImage(trip.id, file, title),
     remove: imageId => deleteTripImage(trip.id, imageId),
+    onImagesChanged,
   });
-  const [error, setError] = useState('');
+  const { submitting, run } = useSubmitting();
   const { pendingImpact, checkImpact, dismissImpact } = useDateShrinkImpact({
     tripStartDate: trip.startDate,
     tripEndDate: trip.endDate,
     getContent: async () => initialContent ?? (await getTripContent(trip.id)),
   });
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    setError('');
-  };
 
   const submitUpdate = async () => {
     try {
@@ -83,100 +87,30 @@ export default function EditTripModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim()) {
-      return setError('請輸入旅程名稱');
-    }
-    if (!form.startDate || !form.endDate) {
-      return setError('請選擇旅遊期間');
-    }
-    if (form.endDate < form.startDate) {
-      return setError('結束日期不能早於開始日期');
+  const validateAndSubmit = async () => {
+    if (!validate()) {
+      return;
     }
 
     const canProceed = await checkImpact(form.startDate, form.endDate);
     if (canProceed) {
-      return submitUpdate();
+      await submitUpdate();
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run(validateAndSubmit);
   };
 
   return (
     <>
       <Modal title='編輯旅程' onClose={onClose}>
-        <form onSubmit={e => void handleSubmit(e)} className='space-y-4'>
-          <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
-              旅程名稱 *
-            </label>
-            <input
-              name='title'
-              value={form.title}
-              onChange={handleChange}
-              placeholder='例：東京五日遊'
-              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-            />
-          </div>
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          <TripFormFields values={form} onChange={handleChange} />
 
           <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
-              目的地
-            </label>
-            <input
-              name='destination'
-              value={form.destination}
-              onChange={handleChange}
-              placeholder='例：日本東京'
-              className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-            />
-          </div>
-
-          <div className='grid grid-cols-2 gap-3'>
-            <div>
-              <label className='mb-1.5 block text-sm font-medium text-foreground'>
-                開始日期 *
-              </label>
-              <input
-                type='date'
-                name='startDate'
-                value={form.startDate}
-                onChange={handleChange}
-                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-              />
-            </div>
-            <div>
-              <label className='mb-1.5 block text-sm font-medium text-foreground'>
-                結束日期 *
-              </label>
-              <input
-                type='date'
-                name='endDate'
-                value={form.endDate}
-                onChange={handleChange}
-                min={form.startDate}
-                className='w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
-              備註
-            </label>
-            <textarea
-              name='description'
-              value={form.description}
-              onChange={handleChange}
-              placeholder='旅程相關備註...'
-              rows={3}
-              className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-            />
-          </div>
-
-          <div>
-            <label className='mb-1.5 block text-sm font-medium text-foreground'>
-              圖片
-            </label>
+            <label className={LABEL_CLS}>圖片</label>
             <ImageUploadSection
               images={images}
               onUpload={handleUploadImage}
@@ -186,7 +120,7 @@ export default function EditTripModal({
 
           {error && <p className='text-sm text-destructive'>{error}</p>}
 
-          <ModalFooterActions onCancel={onClose} />
+          <ModalFooterActions onCancel={onClose} submitting={submitting} />
         </form>
       </Modal>
 
@@ -213,7 +147,7 @@ export default function EditTripModal({
           onCancel={dismissImpact}
           onConfirm={() => {
             dismissImpact();
-            void submitUpdate();
+            void run(submitUpdate);
           }}
         />
       )}

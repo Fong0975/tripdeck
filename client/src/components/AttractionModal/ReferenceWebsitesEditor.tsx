@@ -1,7 +1,9 @@
+import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Plus, Trash2, Wand2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { fetchPageTitle } from '@/api/pageTitle';
+import { INPUT_CLS, LABEL_CLS } from '@/components/ui/formStyles';
 import type { ReferenceWebsite } from '@/types';
 
 interface Props {
@@ -16,6 +18,10 @@ const decodeHtmlEntities = (str: string): string => {
   el.innerHTML = str;
   return el.value.replace(/\s+/g, ' ').trim();
 };
+
+/** Cuts `str` to at most `max` code points, the unit the server limits by. */
+const truncateCodePoints = (str: string, max: number): string =>
+  Array.from(str).slice(0, max).join('');
 
 /**
  * List editor for an attraction's reference websites, including a debounced
@@ -52,13 +58,11 @@ export default function ReferenceWebsitesEditor({
     /* eslint-enable react-hooks/set-state-in-effect */
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `/api/fetch-title?url=${encodeURIComponent(url)}`,
-          { signal: AbortSignal.timeout(10000) },
-        );
-        const data = (await res.json()) as { title: string | null };
-        if (data.title) {
-          setSuggestedTitle(decodeHtmlEntities(data.title));
+        const title = await fetchPageTitle(url, AbortSignal.timeout(10000));
+        if (title) {
+          setSuggestedTitle(
+            truncateCodePoints(decodeHtmlEntities(title), FIELD_LIMITS.name),
+          );
           setTitleFetchStatus('found');
         } else {
           setTitleFetchStatus('not-found');
@@ -87,9 +91,7 @@ export default function ReferenceWebsitesEditor({
 
   return (
     <div>
-      <label className='mb-1.5 block text-sm font-medium text-foreground'>
-        參考網站
-      </label>
+      <label className={LABEL_CLS}>參考網站</label>
       <div className='space-y-2'>
         {websites.map((site, idx) => (
           <div key={idx} className='flex items-center gap-2'>
@@ -136,6 +138,7 @@ export default function ReferenceWebsitesEditor({
                 }
               }}
               placeholder='標題 *'
+              maxLength={FIELD_LIMITS.name}
               className={`${INPUT_CLS} flex-1 text-sm`}
             />
             {titleFetchStatus !== 'idle' && (

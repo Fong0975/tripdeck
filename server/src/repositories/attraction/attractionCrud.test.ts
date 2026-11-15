@@ -1,16 +1,10 @@
+import type { UpdateAttractionBody } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '../../test-utils/dbMocks';
-import type { UpdateAttractionBody } from '../../types/trip';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
-import {
-  create,
-  deleteById,
-  getDayIdForAttraction,
-  update,
-  verifyBelongsToTrip,
-} from './attractionCrud';
+import { create, deleteById, update } from './attractionCrud';
 
 vi.mock('../../config/database', async () => {
   const { db } = await import('../../test-utils/dbMocks');
@@ -24,16 +18,16 @@ const mockConnRollback = db.conn.rollback;
 const mockGetConnection = db.pool.getConnection;
 
 const mockConnectionDeleteById = vi.fn().mockResolvedValue(true);
-vi.mock('../connectionRepository', () => ({
+vi.mock('../connection', () => ({
   deleteById: (...args: unknown[]) => mockConnectionDeleteById(...args),
 }));
 
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getAttractionImages: vi.fn().mockResolvedValue([]),
   addAttractionImage: vi.fn(),
 }));
 
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: vi.fn(),
   copyImageFile: vi.fn(),
 }));
@@ -74,43 +68,11 @@ describe('attractionCrud', () => {
     });
   });
 
-  describe('getDayIdForAttraction', () => {
-    it.each([
-      {
-        description: 'rows found',
-        rows: [{ trip_day_id: 42 }],
-        expectThrow: false,
-      },
-      { description: 'rows empty', rows: [], expectThrow: true },
-    ])('$description', async ({ rows, expectThrow }) => {
-      mockPoolExecute.mockResolvedValue([rows]);
-
-      if (expectThrow) {
-        await expect(getDayIdForAttraction(1)).rejects.toThrow(
-          'Attraction not found',
-        );
-      } else {
-        await expect(getDayIdForAttraction(1)).resolves.toBe(42);
-      }
-    });
-  });
-
-  describe('verifyBelongsToTrip', () => {
-    it.each([
-      { description: 'rows.length > 0', rows: [{ id: 1 }], expected: true },
-      { description: 'rows.length === 0', rows: [], expected: false },
-    ])('$description', async ({ rows, expected }) => {
-      mockPoolExecute.mockResolvedValue([rows]);
-
-      await expect(verifyBelongsToTrip(1, 2)).resolves.toBe(expected);
-    });
-  });
-
   describe('create', () => {
-    it('computes sortOrder from the existing count and defaults optional fields to null', async () => {
+    it('computes sortOrder as one past the day highest sort_order and defaults optional fields to null', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 3 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 3 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 1 }]);
@@ -144,8 +106,8 @@ describe('attractionCrud', () => {
 
     it('inserts a row for each provided reference website', async () => {
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 0 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 0 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 1 }]);

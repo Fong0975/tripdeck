@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeAttraction, makeContent, makeTrip } from '@/test-utils/fixtures';
 import {
   addAttraction,
@@ -14,7 +14,7 @@ import { useAttractionActions } from './useAttractionActions';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('useAttractionActions', () => {
   describe('handleSaveAttraction', () => {
@@ -70,7 +70,7 @@ describe('useAttractionActions', () => {
             nearbyAttractions: undefined,
             startTime: undefined,
             endTime: undefined,
-            referenceWebsites: undefined,
+            referenceWebsites: [],
           });
           expect(updateAttraction).not.toHaveBeenCalled();
         } else {
@@ -81,7 +81,7 @@ describe('useAttractionActions', () => {
             nearbyAttractions: null,
             startTime: null,
             endTime: null,
-            referenceWebsites: undefined,
+            referenceWebsites: [],
           });
           expect(addAttraction).not.toHaveBeenCalled();
         }
@@ -146,6 +146,49 @@ describe('useAttractionActions', () => {
       );
     });
 
+    it.each([
+      {
+        description: 'every staged image uploads',
+        uploadFails: false,
+        variant: 'success' as const,
+        message: '已儲存景點。',
+      },
+      {
+        description: 'a staged image upload fails',
+        uploadFails: true,
+        variant: 'warning' as const,
+        message: '已儲存，但部分圖片上傳失敗',
+      },
+    ])(
+      'still reloads and closes the modal after creating when $description',
+      async ({ uploadFails, variant, message }) => {
+        vi.mocked(addAttraction).mockResolvedValue(makeAttraction({ id: 99 }));
+        if (uploadFails) {
+          vi.mocked(uploadAttractionImage).mockRejectedValueOnce(
+            new Error('upload failed'),
+          );
+        }
+        const reloadContent = vi.fn();
+        const closeModal = vi.fn();
+        const { handleSaveAttraction } = useAttractionActions(
+          makeTrip(),
+          makeContent(),
+          reloadContent,
+          closeModal,
+        );
+
+        await handleSaveAttraction(0, makeAttraction({ id: 0 }), [
+          { file: new File(['a'], 'a.jpg'), title: 'First' },
+          { file: new File(['b'], 'b.jpg'), title: 'Second' },
+        ]);
+
+        expect(uploadAttractionImage).toHaveBeenCalledTimes(2);
+        expect(reloadContent).toHaveBeenCalledTimes(1);
+        expect(closeModal).toHaveBeenCalledTimes(1);
+        expect(showToast).toHaveBeenCalledWith(variant, message);
+      },
+    );
+
     it('does not upload images when updating an existing attraction', async () => {
       const { handleSaveAttraction } = useAttractionActions(
         makeTrip(),
@@ -172,7 +215,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(deleteAttraction).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -187,7 +230,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(deleteAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -204,7 +247,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDeleteAttraction(0, 5);
+      await handleDeleteAttraction(5);
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(
@@ -224,7 +267,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(duplicateAttraction).not.toHaveBeenCalled();
       expect(reloadContent).not.toHaveBeenCalled();
@@ -239,7 +282,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(duplicateAttraction).toHaveBeenCalledWith(1, 5);
       expect(reloadContent).toHaveBeenCalledTimes(1);
@@ -258,7 +301,7 @@ describe('useAttractionActions', () => {
         vi.fn(),
       );
 
-      await handleDuplicateAttraction(0, makeAttraction({ id: 5 }));
+      await handleDuplicateAttraction(makeAttraction({ id: 5 }));
 
       expect(reloadContent).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(

@@ -1,29 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../attraction/attractionCrud');
-vi.mock('../connectionRepository');
-
 import { db } from '../../test-utils/dbMocks';
 import { mockLogger } from '../../test-utils/loggerMock';
-import * as attractionCrud from '../attraction/attractionCrud';
-import * as connectionRepo from '../connectionRepository';
 
-import { create, deleteById, findAll, findById, update } from './tripCrud';
+import { create, findAll, findById, tripExists, update } from './tripCrud';
 
 const mockGetTripImages = vi.fn().mockResolvedValue([]);
 const mockGetTripImagesBatch = vi.fn().mockResolvedValue(new Map());
-const mockGetDayImagesBatch = vi.fn().mockResolvedValue(new Map());
-const mockGetAttractionImagesBatch = vi.fn().mockResolvedValue(new Map());
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getTripImages: (...args: unknown[]) => mockGetTripImages(...args),
   getTripImagesBatch: (...args: unknown[]) => mockGetTripImagesBatch(...args),
-  getDayImagesBatch: (...args: unknown[]) => mockGetDayImagesBatch(...args),
-  getAttractionImagesBatch: (...args: unknown[]) =>
-    mockGetAttractionImagesBatch(...args),
+}));
+
+const mockDeleteTripDaysWithContents = vi.fn();
+vi.mock('./tripDayCleanup', () => ({
+  deleteTripDaysWithContents: (...args: unknown[]) =>
+    mockDeleteTripDaysWithContents(...args),
 }));
 
 const mockDeleteImageFromDisk = vi.fn();
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: (...args: unknown[]) => mockDeleteImageFromDisk(...args),
 }));
 
@@ -50,8 +46,6 @@ describe('tripCrud', () => {
   beforeEach(() => {
     mockGetTripImages.mockResolvedValue([]);
     mockGetTripImagesBatch.mockResolvedValue(new Map());
-    mockGetDayImagesBatch.mockResolvedValue(new Map());
-    mockGetAttractionImagesBatch.mockResolvedValue(new Map());
   });
 
   // Shared date-field fixtures exercising both branches of the private
@@ -84,6 +78,26 @@ describe('tripCrud', () => {
       },
     },
   ];
+
+  describe('tripExists', () => {
+    it.each([
+      { rows: [{ id: 5 }], expected: true },
+      { rows: [], expected: false },
+    ])(
+      'returns $expected without loading images when $rows.length rows match',
+      async ({ rows, expected }) => {
+        mockPoolExecute.mockResolvedValueOnce([rows]);
+
+        await expect(tripExists(5)).resolves.toBe(expected);
+
+        expect(mockPoolExecute).toHaveBeenCalledWith(
+          'SELECT id FROM trips WHERE id = ?',
+          [5],
+        );
+        expect(mockGetTripImages).not.toHaveBeenCalled();
+      },
+    );
+  });
 
   describe('findAll', () => {
     it.each(dateFieldCases)(
@@ -289,6 +303,7 @@ describe('tripCrud', () => {
         images: [],
       });
       expect(mockConnRelease).toHaveBeenCalled();
+      expect(mockLogger.info).not.toHaveBeenCalled();
     });
 
     it('rolls back the transaction and rethrows when a query fails mid-transaction', async () => {
@@ -336,8 +351,44 @@ describe('tripCrud', () => {
       return { id, trip_id: 10, day, date };
     }
 
+    /**
+     * Queues a five-day trip (Oct 1-5) being shrunk to Oct 1-3, which removes
+     * days 404/405. Only queues the reads that will actually run, so no
+     * unconsumed once-values leak into later tests.
+     *
+     * @param reaches - How far the update gets: 'renumber' stops inside the
+     *   transaction after the renumbering read, 'cleanup' fails before it.
+     */
+    function arrangeShrinkToThreeDays(
+      reaches: 'success' | 'renumber' | 'cleanup' = 'success',
+    ) {
+      mockPoolExecute
+        .mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-05' })],
+        ])
+        .mockResolvedValueOnce([
+          [
+            dayRow(401, 1, '2026-10-01'),
+            dayRow(402, 2, '2026-10-02'),
+            dayRow(403, 3, '2026-10-03'),
+            dayRow(404, 4, '2026-10-04'),
+            dayRow(405, 5, '2026-10-05'),
+          ],
+        ]);
+      if (reaches !== 'cleanup') {
+        mockConnQuery.mockResolvedValueOnce([
+          [{ id: 401 }, { id: 402 }, { id: 403 }],
+        ]);
+      }
+      if (reaches === 'success') {
+        mockPoolExecute.mockResolvedValueOnce([
+          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-03' })],
+        ]);
+      }
+    }
+
     beforeEach(() => {
-      vi.mocked(attractionCrud.deleteById).mockResolvedValue(true);
+      mockDeleteTripDaysWithContents.mockResolvedValue([]);
       mockConnExecute.mockImplementation(() =>
         Promise.resolve([{ affectedRows: 1 }]),
       );
@@ -350,7 +401,7 @@ describe('tripCrud', () => {
 
       expect(result).toBeNull();
       expect(mockGetConnection).not.toHaveBeenCalled();
-      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
+      expect(mockDeleteTripDaysWithContents).not.toHaveBeenCalled();
     });
 
     it('updates non-date fields without touching trip_days when dates are unchanged', async () => {
@@ -377,11 +428,7 @@ describe('tripCrud', () => {
         destination: 'Kyoto',
       });
 
-      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
-      const dayDeletes = mockConnExecute.mock.calls.filter(([sql]) =>
-        (sql as string).includes('DELETE FROM trip_days'),
-      );
-      expect(dayDeletes).toHaveLength(0);
+      expect(mockDeleteTripDaysWithContents).toHaveBeenCalledWith(db.conn, []);
       const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('INSERT INTO trip_days'),
       );
@@ -410,6 +457,7 @@ describe('tripCrud', () => {
 
       expect(mockConnCommit).toHaveBeenCalled();
       expect(mockConnRollback).not.toHaveBeenCalled();
+      expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
       expect(result?.title).toBe('New Title');
       expect(mockGetTripImages).toHaveBeenCalledWith(10);
       expect(result?.images).toEqual(images);
@@ -436,7 +484,7 @@ describe('tripCrud', () => {
 
       await update(10, { endDate: '2026-09-05' });
 
-      expect(attractionCrud.deleteById).not.toHaveBeenCalled();
+      expect(mockDeleteTripDaysWithContents).toHaveBeenCalledWith(db.conn, []);
       const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('INSERT INTO trip_days'),
       );
@@ -445,92 +493,63 @@ describe('tripCrud', () => {
       expect(dayInserts[1][1]).toEqual([10, -2, '2026-09-05']);
     });
 
-    it('shrinks the date range, deleting attractions/connections/images for removed days before removing them', async () => {
-      mockPoolExecute
-        .mockResolvedValueOnce([
-          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-05' })],
-        ])
-        .mockResolvedValueOnce([
-          [
-            dayRow(401, 1, '2026-10-01'),
-            dayRow(402, 2, '2026-10-02'),
-            dayRow(403, 3, '2026-10-03'),
-            dayRow(404, 4, '2026-10-04'),
-            dayRow(405, 5, '2026-10-05'),
-          ],
-        ])
-        .mockResolvedValueOnce([[{ id: 9001 }, { id: 9002 }]]) // attractions for day 404
-        .mockResolvedValueOnce([[{ id: 9003 }]]) // attractions for day 405
-        .mockResolvedValueOnce([
-          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-03' })],
-        ]);
-      mockConnQuery.mockResolvedValueOnce([
-        [{ id: 401 }, { id: 402 }, { id: 403 }],
-      ]);
+    it('shrinks the date range, deleting removed days and their contents on the transaction connection', async () => {
+      arrangeShrinkToThreeDays();
 
       await update(10, { endDate: '2026-10-03' });
 
-      expect(vi.mocked(attractionCrud.deleteById).mock.calls).toEqual([
-        [9001],
-        [9002],
-        [9003],
-      ]);
-      const dayDeletes = mockConnExecute.mock.calls
-        .filter(([sql]) => (sql as string).includes('DELETE FROM trip_days'))
-        .map(([, params]) => params);
-      expect(dayDeletes).toEqual([[404], [405]]);
+      expect(mockDeleteTripDaysWithContents).toHaveBeenCalledWith(
+        db.conn,
+        [404, 405],
+      );
+      const cleanupOrder =
+        mockDeleteTripDaysWithContents.mock.invocationCallOrder[0];
+      expect(cleanupOrder).toBeGreaterThan(
+        mockConnBeginTransaction.mock.invocationCallOrder[0],
+      );
+      expect(cleanupOrder).toBeLessThan(
+        mockConnCommit.mock.invocationCallOrder[0],
+      );
+      expect(mockPoolExecute).not.toHaveBeenCalledWith(
+        expect.stringContaining('DELETE'),
+        expect.anything(),
+      );
     });
 
-    it("deletes removed days' own images from disk only after the transaction commits", async () => {
-      mockPoolExecute
-        .mockResolvedValueOnce([
-          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-05' })],
-        ])
-        .mockResolvedValueOnce([
-          [
-            dayRow(401, 1, '2026-10-01'),
-            dayRow(402, 2, '2026-10-02'),
-            dayRow(403, 3, '2026-10-03'),
-            dayRow(404, 4, '2026-10-04'),
-            dayRow(405, 5, '2026-10-05'),
-          ],
-        ])
-        .mockResolvedValueOnce([[]]) // attractions for day 404
-        .mockResolvedValueOnce([[]]) // attractions for day 405
-        .mockResolvedValueOnce([
-          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-03' })],
-        ]);
-      mockConnQuery.mockResolvedValueOnce([
-        [{ id: 401 }, { id: 402 }, { id: 403 }],
+    it('unlinks image files of removed rows only after the transaction commits', async () => {
+      arrangeShrinkToThreeDays();
+      mockDeleteTripDaysWithContents.mockResolvedValueOnce([
+        'day404.jpg',
+        'attr9001.jpg',
+        'conn77.jpg',
       ]);
-      mockGetDayImagesBatch.mockResolvedValueOnce(
-        new Map([
-          [404, [{ id: 1, filename: 'day404.jpg', title: '' }]],
-          [405, [{ id: 2, filename: 'day405-a.jpg', title: '' }]],
-        ]),
-      );
 
-      const commitOrder: string[] = [];
+      const order: string[] = [];
       mockConnCommit.mockImplementationOnce(() => {
-        commitOrder.push('commit');
+        order.push('commit');
         return Promise.resolve();
       });
       mockDeleteImageFromDisk.mockImplementation(() => {
-        commitOrder.push('deleteFromDisk');
+        order.push('deleteFromDisk');
       });
 
       await update(10, { endDate: '2026-10-03' });
 
-      expect(mockGetDayImagesBatch).toHaveBeenCalledWith([404, 405]);
       expect(mockDeleteImageFromDisk.mock.calls).toEqual([
         ['day404.jpg'],
-        ['day405-a.jpg'],
+        ['attr9001.jpg'],
+        ['conn77.jpg'],
       ]);
-      expect(commitOrder).toEqual([
+      expect(order).toEqual([
         'commit',
         'deleteFromDisk',
         'deleteFromDisk',
+        'deleteFromDisk',
       ]);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Trip updated',
+        expect.objectContaining({ daysRemoved: 2, imagesRemoved: 3 }),
+      );
     });
 
     it('moves the start date forward, removing leading days and renumbering the rest starting at 1', async () => {
@@ -547,8 +566,6 @@ describe('tripCrud', () => {
             dayRow(505, 5, '2026-11-05'),
           ],
         ])
-        .mockResolvedValueOnce([[{ id: 8001 }]]) // attractions for day 501
-        .mockResolvedValueOnce([[]]) // no attractions for day 502
         .mockResolvedValueOnce([
           [tripRow({ start_date: '2026-11-03', end_date: '2026-11-05' })],
         ]);
@@ -558,7 +575,10 @@ describe('tripCrud', () => {
 
       await update(10, { startDate: '2026-11-03' });
 
-      expect(vi.mocked(attractionCrud.deleteById).mock.calls).toEqual([[8001]]);
+      expect(mockDeleteTripDaysWithContents).toHaveBeenCalledWith(
+        db.conn,
+        [501, 502],
+      );
       const renumbers = mockConnExecute.mock.calls
         .filter(([sql]) =>
           (sql as string).includes('UPDATE trip_days SET day = ? WHERE id'),
@@ -585,8 +605,6 @@ describe('tripCrud', () => {
             dayRow(605, 5, '2026-12-05'),
           ],
         ])
-        .mockResolvedValueOnce([[]]) // attractions for day 601
-        .mockResolvedValueOnce([[]]) // attractions for day 602
         .mockResolvedValueOnce([
           [
             tripRow({
@@ -601,11 +619,10 @@ describe('tripCrud', () => {
 
       await update(10, { startDate: '2026-12-03', endDate: '2026-12-07' });
 
-      const dayDeletes = mockConnExecute.mock.calls
-        .filter(([sql]) => (sql as string).includes('DELETE FROM trip_days'))
-        .map(([, params]) => params);
-      expect(dayDeletes).toEqual([[601], [602]]);
-
+      expect(mockDeleteTripDaysWithContents).toHaveBeenCalledWith(
+        db.conn,
+        [601, 602],
+      );
       const dayInserts = mockConnExecute.mock.calls.filter(([sql]) =>
         (sql as string).includes('INSERT INTO trip_days'),
       );
@@ -614,191 +631,54 @@ describe('tripCrud', () => {
       expect(dayInserts[1][1]).toEqual([10, -2, '2026-12-07']);
     });
 
-    it('rolls back the transaction and rethrows when a query fails mid-transaction', async () => {
-      mockPoolExecute
-        .mockResolvedValueOnce([[tripRow()]])
-        .mockResolvedValueOnce([
-          [
-            dayRow(101, 1, '2026-08-01'),
-            dayRow(102, 2, '2026-08-02'),
-            dayRow(103, 3, '2026-08-03'),
-          ],
-        ]);
-      mockConnQuery.mockResolvedValueOnce([
-        [{ id: 101 }, { id: 102 }, { id: 103 }],
-      ]);
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('UPDATE trips SET')) {
-          return Promise.reject(new Error('db error'));
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+    const rollbackCases = [
+      {
+        name: 'the removed-day cleanup fails',
+        reaches: 'cleanup' as const,
+        arrange: () => {
+          mockDeleteTripDaysWithContents.mockRejectedValueOnce(
+            new Error('db error'),
+          );
+        },
+      },
+      {
+        name: 'a later statement fails after cleanup collected image files',
+        reaches: 'renumber' as const,
+        arrange: () => {
+          mockDeleteTripDaysWithContents.mockResolvedValueOnce([
+            'day404.jpg',
+            'attr9001.jpg',
+          ]);
+          mockConnExecute.mockImplementation((sql: string) => {
+            if (sql.includes('UPDATE trips SET')) {
+              return Promise.reject(new Error('db error'));
+            }
+            return Promise.resolve([{ affectedRows: 1 }]);
+          });
+        },
+      },
+    ];
 
-      await expect(update(10, { title: 'Broken' })).rejects.toThrow('db error');
+    it.each(rollbackCases)(
+      'rolls back, rethrows and leaves files untouched when $name',
+      async ({ reaches, arrange }) => {
+        arrangeShrinkToThreeDays(reaches);
+        arrange();
 
-      expect(mockConnRollback).toHaveBeenCalled();
-      expect(mockConnCommit).not.toHaveBeenCalled();
-      expect(mockConnRelease).toHaveBeenCalled();
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to update trip, rolled back',
-        expect.objectContaining({ tripId: 10 }),
-        expect.any(Error),
-      );
-    });
+        await expect(update(10, { endDate: '2026-10-03' })).rejects.toThrow(
+          'db error',
+        );
 
-    it('does not open a transaction if deleting an attraction for a removed day fails', async () => {
-      mockPoolExecute
-        .mockResolvedValueOnce([
-          [tripRow({ start_date: '2026-10-01', end_date: '2026-10-04' })],
-        ])
-        .mockResolvedValueOnce([
-          [
-            dayRow(401, 1, '2026-10-01'),
-            dayRow(402, 2, '2026-10-02'),
-            dayRow(403, 3, '2026-10-03'),
-            dayRow(404, 4, '2026-10-04'),
-          ],
-        ])
-        .mockResolvedValueOnce([[{ id: 9001 }]]); // attractions for day 404
-      vi.mocked(attractionCrud.deleteById).mockRejectedValueOnce(
-        new Error('delete failed'),
-      );
-
-      await expect(update(10, { endDate: '2026-10-03' })).rejects.toThrow(
-        'delete failed',
-      );
-
-      expect(mockGetConnection).not.toHaveBeenCalled();
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Partial failure while clearing attractions for a removed day',
-        { tripId: 10, dayId: 404 },
-        expect.any(Error),
-      );
-    });
-  });
-
-  describe('deleteById', () => {
-    /**
-     * Queues the three lookup queries deleteById always issues before the
-     * final `DELETE FROM trips` (day ids, attraction ids, connection ids, in
-     * that order), then the delete's own result.
-     */
-    function queueDeleteLookups({
-      dayRows = [],
-      attractionRows = [],
-      connectionRows = [],
-      affectedRows,
-    }: {
-      dayRows?: { id: number }[];
-      attractionRows?: { id: number }[];
-      connectionRows?: { id: number }[];
-      affectedRows: number;
-    }) {
-      mockPoolExecute
-        .mockResolvedValueOnce([dayRows]) // trip_days lookup
-        .mockResolvedValueOnce([attractionRows]) // trip_attractions lookup
-        .mockResolvedValueOnce([connectionRows]) // trip_connections lookup
-        .mockResolvedValueOnce([{ affectedRows }]);
-    }
-
-    beforeEach(() => {
-      vi.mocked(connectionRepo.deleteById).mockResolvedValue(true);
-    });
-
-    it('returns false when no trip row was deleted', async () => {
-      queueDeleteLookups({ affectedRows: 0 });
-
-      const result = await deleteById(5);
-
-      expect(result).toBe(false);
-      expect(mockPoolExecute).toHaveBeenCalledWith(
-        'DELETE FROM trips WHERE id = ?',
-        [5],
-      );
-    });
-
-    it("deletes the trip's own images on disk when the trip is deleted", async () => {
-      mockGetTripImages.mockResolvedValueOnce([
-        { id: 1, filename: 'a.jpg', title: 'A' },
-        { id: 2, filename: 'b.jpg', title: 'B' },
-      ]);
-      queueDeleteLookups({ affectedRows: 1 });
-
-      const result = await deleteById(5);
-
-      expect(result).toBe(true);
-      expect(mockPoolExecute).toHaveBeenCalledWith(
-        'DELETE FROM trips WHERE id = ?',
-        [5],
-      );
-      expect(connectionRepo.deleteById).not.toHaveBeenCalled();
-      expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('a.jpg');
-      expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('b.jpg');
-    });
-
-    it("deletes every day's and attraction's images on disk when the trip is deleted", async () => {
-      queueDeleteLookups({
-        dayRows: [{ id: 401 }, { id: 402 }],
-        attractionRows: [{ id: 9001 }, { id: 9002 }],
-        affectedRows: 1,
-      });
-      mockGetDayImagesBatch.mockResolvedValueOnce(
-        new Map([[401, [{ id: 1, filename: 'day401.jpg', title: '' }]]]),
-      );
-      mockGetAttractionImagesBatch.mockResolvedValueOnce(
-        new Map([[9001, [{ id: 2, filename: 'attr9001.jpg', title: '' }]]]),
-      );
-
-      const result = await deleteById(5);
-
-      expect(result).toBe(true);
-      expect(mockGetDayImagesBatch).toHaveBeenCalledWith([401, 402]);
-      expect(mockGetAttractionImagesBatch).toHaveBeenCalledWith([9001, 9002]);
-      expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('day401.jpg');
-      expect(mockDeleteImageFromDisk).toHaveBeenCalledWith('attr9001.jpg');
-    });
-
-    it('does not touch disk when the trip does not exist', async () => {
-      mockGetTripImages.mockResolvedValueOnce([
-        { id: 1, filename: 'a.jpg', title: 'A' },
-      ]);
-      mockGetDayImagesBatch.mockResolvedValueOnce(
-        new Map([[401, [{ id: 2, filename: 'day401.jpg', title: '' }]]]),
-      );
-      queueDeleteLookups({ dayRows: [{ id: 401 }], affectedRows: 0 });
-
-      const result = await deleteById(999);
-
-      expect(result).toBe(false);
-      expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
-    });
-
-    it('deletes every trip_connections row under the trip before deleting the trip itself', async () => {
-      queueDeleteLookups({
-        connectionRows: [{ id: 701 }, { id: 702 }],
-        affectedRows: 1,
-      });
-
-      const result = await deleteById(5);
-
-      expect(result).toBe(true);
-      expect(mockPoolExecute).toHaveBeenNthCalledWith(
-        3,
-        expect.stringContaining('SELECT tc.id FROM trip_connections tc'),
-        [5],
-      );
-      expect(vi.mocked(connectionRepo.deleteById).mock.calls).toEqual([
-        [701],
-        [702],
-      ]);
-      const connectionDeleteOrder = vi.mocked(connectionRepo.deleteById).mock
-        .invocationCallOrder[0];
-      const tripDeleteCallIndex = mockPoolExecute.mock.calls.findIndex(
-        ([sql]) => (sql as string) === 'DELETE FROM trips WHERE id = ?',
-      );
-      const tripDeleteOrder =
-        mockPoolExecute.mock.invocationCallOrder[tripDeleteCallIndex];
-      expect(connectionDeleteOrder).toBeLessThan(tripDeleteOrder);
-    });
+        expect(mockConnRollback).toHaveBeenCalled();
+        expect(mockConnCommit).not.toHaveBeenCalled();
+        expect(mockConnRelease).toHaveBeenCalled();
+        expect(mockDeleteImageFromDisk).not.toHaveBeenCalled();
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          'Failed to update trip, rolled back',
+          expect.objectContaining({ tripId: 10, daysToRemove: 2 }),
+          expect.any(Error),
+        );
+      },
+    );
   });
 });

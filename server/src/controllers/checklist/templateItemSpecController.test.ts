@@ -5,8 +5,8 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
@@ -23,8 +23,13 @@ vi.mock('../../repositories/checklist/template', () => ({
   verifySpecBelongsToItem: vi.fn(),
 }));
 
+const blankNameCases = [
+  ...invalidNameCases,
+  { label: 'name is whitespace only', body: { name: '   ' } },
+];
+
 describe('addTemplateItemSpec', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({
       params: { catId: '1', itemId: '2' },
       body,
@@ -84,7 +89,7 @@ describe('addTemplateItemSpec', () => {
 });
 
 describe('updateTemplateItemSpec', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({
       params: { catId: '1', itemId: '2', specId: '3' },
       body,
@@ -151,6 +156,12 @@ describe('updateTemplateItemSpec', () => {
 
     await updateTemplateItemSpec(req, res);
 
+    expect(templateRepo.verifyItemBelongsToCategory).toHaveBeenCalledWith(2, 1);
+    expect(templateRepo.verifySpecBelongsToItem).toHaveBeenCalledWith(3, 2);
+    expect(templateRepo.updateItemSpec).toHaveBeenCalledWith(3, {
+      name: 'Type-C charger',
+      storage_location: undefined,
+    });
     expect(res.json).toHaveBeenCalledWith(spec);
   });
 });
@@ -211,8 +222,8 @@ describe('deleteTemplateItemSpec', () => {
   });
 });
 
-describe('500 responses', () => {
-  const failureCases: Returns500Case[] = [
+describe('unexpected repository errors', () => {
+  const tests: RejectCase[] = [
     {
       name: 'addTemplateItemSpec',
       handler: addTemplateItemSpec,
@@ -224,7 +235,6 @@ describe('500 responses', () => {
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
-      expectedError: 'Failed to add spec',
     },
     {
       name: 'updateTemplateItemSpec',
@@ -237,7 +247,6 @@ describe('500 responses', () => {
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
-      expectedError: 'Failed to update spec',
     },
     {
       name: 'deleteTemplateItemSpec',
@@ -247,9 +256,8 @@ describe('500 responses', () => {
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
-      expectedError: 'Failed to delete spec',
     },
   ];
 
-  itReturns500(failureCases);
+  itRejects(tests);
 });

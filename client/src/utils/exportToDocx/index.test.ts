@@ -131,28 +131,76 @@ describe('exportToDocx', () => {
 
   it.each([
     {
-      description: 'the destination attraction exists',
+      description: 'to the next attraction, with its name',
+      fromAttractionId: 1,
       toAttractionId: 2,
-      expectedToName: '淺草寺',
+      expectedToName: '淺草寺' as string | null,
     },
     {
-      description: 'the destination attraction is not found',
+      description: 'that skips an attraction as not',
+      fromAttractionId: 1,
+      toAttractionId: 3,
+      expectedToName: null,
+    },
+    {
+      description: 'that points backwards as not',
+      fromAttractionId: 2,
+      toAttractionId: 1,
+      expectedToName: null,
+    },
+    {
+      description: 'to a missing attraction as not',
+      fromAttractionId: 1,
       toAttractionId: 999,
-      expectedToName: '',
+      expectedToName: null,
     },
   ])(
-    'resolves toName when $description',
-    async ({ toAttractionId, expectedToName }) => {
+    'exports a connection $description',
+    async ({ fromAttractionId, toAttractionId, expectedToName }) => {
       const a1 = makeAttraction({ id: 1, name: '晴空塔' });
       const a2 = makeAttraction({ id: 2, name: '淺草寺' });
-      const conn = makeConnection({ fromAttractionId: 1, toAttractionId });
-      const day = makeDay({ attractions: [a1, a2], connections: [conn] });
+      const a3 = makeAttraction({ id: 3, name: '上野公園' });
+      const conn = makeConnection({ fromAttractionId, toAttractionId });
+      const day = makeDay({ attractions: [a1, a2, a3], connections: [conn] });
 
       await exportToDocx(makeTrip(), makeContent([day]));
 
-      expect(makeTransportTable).toHaveBeenCalledWith(conn, expectedToName);
+      if (expectedToName === null) {
+        expect(makeTransportTable).not.toHaveBeenCalled();
+      } else {
+        expect(makeTransportTable).toHaveBeenCalledTimes(1);
+        expect(makeTransportTable).toHaveBeenCalledWith(conn, expectedToName);
+      }
     },
   );
+
+  it('keeps each transport table right after its origin attraction', async () => {
+    const tables = ['a1', 'conn', 'a2'].map(id => ({
+      type: 'Table',
+      options: { id },
+    }));
+    vi.mocked(makeAttractionTable)
+      .mockResolvedValueOnce(tables[0] as unknown as Table)
+      .mockResolvedValueOnce(tables[2] as unknown as Table);
+    vi.mocked(makeTransportTable).mockResolvedValueOnce(
+      tables[1] as unknown as Table,
+    );
+    const day = makeDay({
+      attractions: [makeAttraction({ id: 1 }), makeAttraction({ id: 2 })],
+      connections: [makeConnection({ fromAttractionId: 1, toAttractionId: 2 })],
+    });
+
+    await exportToDocx(makeTrip(), makeContent([day]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    const order = tables.map(t =>
+      documentOptions.sections[0].children.indexOf(t),
+    );
+    expect(order[0]).toBeLessThan(order[1]);
+    expect(order[1]).toBeLessThan(order[2]);
+  });
 
   it.each([
     {

@@ -1,4 +1,4 @@
-import type { RowDataPacket } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../config/database';
 
@@ -48,21 +48,27 @@ export async function getUsage(
 /**
  * Reserves one request for today.
  *
+ * The check and the increment happen in a single conditional UPDATE so that
+ * concurrent requests cannot both pass when only one slot is left.
+ *
+ * @param kind - Which quota to consume.
+ * @param now - Clock used to pick today's Pacific-time row.
  * @returns false (without counting) when the kind is already exhausted.
  */
 export async function tryConsume(
   kind: UsageKind,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const usage = await getUsage(kind, now);
-  if (usage.exhausted) {
-    return false;
-  }
+  const day = getPacificDay(now);
   await pool.execute(
-    'INSERT INTO maps_usage (day, kind, count) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE count = count + 1',
-    [getPacificDay(now), kind],
+    'INSERT INTO maps_usage (day, kind, count) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE count = count',
+    [day, kind],
   );
-  return true;
+  const [result] = await pool.execute<ResultSetHeader>(
+    'UPDATE maps_usage SET count = count + 1 WHERE day = ? AND kind = ? AND exhausted = 0 AND count < ?',
+    [day, kind, limitFor(kind)],
+  );
+  return result.affectedRows === 1;
 }
 
 /** Flags today's quota for a kind as used up, e.g. after Google rejected a call. */

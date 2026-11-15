@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { copyImageFile } from '../../middleware/upload';
+import { copyImageFile } from '../../storage/imageFiles';
 import { db } from '../../test-utils/dbMocks';
-import * as imageRepo from '../imageRepository';
+import * as imageRepo from '../image';
 
 import { duplicate } from './attractionDuplicate';
 
@@ -17,12 +17,12 @@ const mockConnCommit = db.conn.commit;
 const mockConnRollback = db.conn.rollback;
 const mockGetConnection = db.pool.getConnection;
 
-vi.mock('../imageRepository', () => ({
+vi.mock('../image', () => ({
   getAttractionImages: vi.fn().mockResolvedValue([]),
   addAttractionImage: vi.fn(),
 }));
 
-vi.mock('../../middleware/upload', () => ({
+vi.mock('../../storage/imageFiles', () => ({
   deleteImageFromDisk: vi.fn(),
   copyImageFile: vi.fn(),
 }));
@@ -52,7 +52,7 @@ describe('attractionDuplicate', () => {
       expect(mockGetConnection).not.toHaveBeenCalled();
     });
 
-    it('duplicates the attraction with sortOrder from the count query, copied fields, and re-inserted reference websites', async () => {
+    it('duplicates the attraction with sortOrder one past the day highest sort_order, copied fields, and re-inserted reference websites', async () => {
       const websiteRows = [
         {
           id: 1,
@@ -71,8 +71,8 @@ describe('attractionDuplicate', () => {
         return Promise.resolve([[]]);
       });
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 4 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 4 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 99 }]);
@@ -148,8 +148,8 @@ describe('attractionDuplicate', () => {
         return Promise.resolve([[]]);
       });
       mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('COUNT(*)')) {
-          return Promise.resolve([[{ count: 0 }]]);
+        if (sql.includes('MAX(sort_order)')) {
+          return Promise.resolve([[{ next_order: 0 }]]);
         }
         if (sql.trim().startsWith('INSERT INTO trip_attractions')) {
           return Promise.resolve([{ insertId: 99 }]);

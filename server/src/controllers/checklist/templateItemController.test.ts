@@ -5,11 +5,15 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
-import { addItem, deleteItem, updateItem } from './templateItemController';
+import {
+  addTemplateItem,
+  deleteTemplateItem,
+  updateTemplateItem,
+} from './templateItemController';
 
 vi.mock('../../repositories/checklist/template', () => ({
   createItem: vi.fn(),
@@ -18,11 +22,16 @@ vi.mock('../../repositories/checklist/template', () => ({
   verifyItemBelongsToCategory: vi.fn(),
 }));
 
-describe('addItem', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+const blankNameCases = [
+  ...invalidNameCases,
+  { label: 'name is whitespace only', body: { name: '   ' } },
+];
+
+describe('addTemplateItem', () => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({ params: { catId: '1' }, body });
 
-    await addItem(req, res);
+    await addTemplateItem(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
     expect(templateRepo.createItem).not.toHaveBeenCalled();
@@ -35,7 +44,7 @@ describe('addItem', () => {
       body: { name: 'e-Visa' },
     });
 
-    await addItem(req, res);
+    await addTemplateItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
   });
@@ -55,7 +64,7 @@ describe('addItem', () => {
       body: { name: 'e-Visa' },
     });
 
-    await addItem(req, res);
+    await addTemplateItem(req, res);
 
     expect(templateRepo.createItem).toHaveBeenCalledWith(1, {
       name: 'e-Visa',
@@ -67,14 +76,14 @@ describe('addItem', () => {
   });
 });
 
-describe('updateItem', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+describe('updateTemplateItem', () => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({
       params: { catId: '1', itemId: '2' },
       body,
     });
 
-    await updateItem(req, res);
+    await updateTemplateItem(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
     expect(templateRepo.verifyItemBelongsToCategory).not.toHaveBeenCalled();
@@ -89,8 +98,9 @@ describe('updateItem', () => {
       body: { name: 'Charger' },
     });
 
-    await updateItem(req, res);
+    await updateTemplateItem(req, res);
 
+    expect(templateRepo.verifyItemBelongsToCategory).toHaveBeenCalledWith(2, 1);
     expectJsonStatus(res, 404, { error: 'Item not found' });
     expect(templateRepo.updateItem).not.toHaveBeenCalled();
   });
@@ -103,7 +113,7 @@ describe('updateItem', () => {
       body: { name: 'Charger' },
     });
 
-    await updateItem(req, res);
+    await updateTemplateItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
   });
@@ -121,16 +131,22 @@ describe('updateItem', () => {
     vi.mocked(templateRepo.updateItem).mockResolvedValue(item);
     const { req, res } = createMockReqRes({
       params: { catId: '1', itemId: '2' },
-      body: { name: 'Charger' },
+      body: { name: 'Charger', quantity: 2 },
     });
 
-    await updateItem(req, res);
+    await updateTemplateItem(req, res);
 
+    expect(templateRepo.updateItem).toHaveBeenCalledWith(2, {
+      name: 'Charger',
+      quantity: 2,
+      notes: undefined,
+      storage_location: undefined,
+    });
     expect(res.json).toHaveBeenCalledWith(item);
   });
 });
 
-describe('deleteItem', () => {
+describe('deleteTemplateItem', () => {
   it('returns 404 when the item does not belong to the category', async () => {
     vi.mocked(templateRepo.verifyItemBelongsToCategory).mockResolvedValue(
       false,
@@ -139,7 +155,7 @@ describe('deleteItem', () => {
       params: { catId: '1', itemId: '2' },
     });
 
-    await deleteItem(req, res);
+    await deleteTemplateItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
     expect(templateRepo.deleteItem).not.toHaveBeenCalled();
@@ -152,7 +168,7 @@ describe('deleteItem', () => {
       params: { catId: '1', itemId: '2' },
     });
 
-    await deleteItem(req, res);
+    await deleteTemplateItem(req, res);
 
     expectJsonStatus(res, 404, { error: 'Item not found' });
   });
@@ -164,44 +180,42 @@ describe('deleteItem', () => {
       params: { catId: '1', itemId: '2' },
     });
 
-    await deleteItem(req, res);
+    await deleteTemplateItem(req, res);
 
+    expect(templateRepo.deleteItem).toHaveBeenCalledWith(2);
     expect(res.status).toHaveBeenCalledWith(204);
     expect(res.send).toHaveBeenCalled();
   });
 });
 
-describe('500 responses', () => {
-  const failureCases: Returns500Case[] = [
+describe('unexpected repository errors', () => {
+  const tests: RejectCase[] = [
     {
-      name: 'addItem',
-      handler: addItem,
+      name: 'addTemplateItem',
+      handler: addTemplateItem,
       req: { params: { catId: '1' }, body: { name: 'Tent' } },
       arrange: error =>
         vi.mocked(templateRepo.createItem).mockRejectedValue(error),
-      expectedError: 'Failed to add item',
     },
     {
-      name: 'updateItem',
-      handler: updateItem,
+      name: 'updateTemplateItem',
+      handler: updateTemplateItem,
       req: { params: { catId: '1', itemId: '2' }, body: { name: 'Tent' } },
       arrange: error =>
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
-      expectedError: 'Failed to update item',
     },
     {
-      name: 'deleteItem',
-      handler: deleteItem,
+      name: 'deleteTemplateItem',
+      handler: deleteTemplateItem,
       req: { params: { catId: '1', itemId: '2' } },
       arrange: error =>
         vi
           .mocked(templateRepo.verifyItemBelongsToCategory)
           .mockRejectedValue(error),
-      expectedError: 'Failed to delete item',
     },
   ];
 
-  itReturns500(failureCases);
+  itRejects(tests);
 });

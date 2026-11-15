@@ -56,6 +56,40 @@ describe('TripList', () => {
     expect(screen.queryByText('載入中…')).not.toBeInTheDocument();
   });
 
+  it.each([
+    {
+      name: 'shows the retry state when loading failed with no trips',
+      trips: [] as Trip[],
+      expectRetry: true,
+    },
+    {
+      name: 'keeps showing previously loaded trips when a reload failed',
+      trips: [makeTrip({ id: 1, title: 'Trip A' })],
+      expectRetry: false,
+    },
+  ])('$name', async ({ trips, expectRetry }) => {
+    const onRetry = vi.fn();
+    renderTripList({ trips, loadError: true, onRetry });
+
+    if (expectRetry) {
+      expect(
+        screen.getByText('載入旅程列表失敗，請稍後再試'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('還沒有旅程，點擊「新增旅程」開始規劃吧！'),
+      ).not.toBeInTheDocument();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: '重試' }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    } else {
+      expect(screen.getByText('Trip A')).toBeInTheDocument();
+      expect(
+        screen.queryByText('載入旅程列表失敗，請稍後再試'),
+      ).not.toBeInTheDocument();
+    }
+  });
+
   it('renders one trip card per trip when not loading', () => {
     const trips = [
       makeTrip({ id: 1, title: 'Trip A' }),

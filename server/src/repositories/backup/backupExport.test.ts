@@ -1,11 +1,11 @@
+import path from 'path';
+
+import type { Trip, TripChecklist, TripContent } from '@tripdeck/shared';
 import AdmZip from 'adm-zip';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeTemplate, makeTrip } from '../../test-utils/fixtures';
-import { fsMock } from '../../test-utils/fsMock';
 import { mockLogger } from '../../test-utils/loggerMock';
-import type { TripChecklistResponse } from '../../types/checklist';
-import type { TripContentResponse, TripResponse } from '../../types/trip';
 
 import { buildBackupZip, buildTripBackupData } from './backupExport';
 import { TripNotFoundError } from './errors';
@@ -28,11 +28,12 @@ vi.mock('../checklist/trip', () => ({
   findChecklist: (...args: unknown[]) => mockFindChecklist(...args),
 }));
 
-vi.mock('../../middleware/upload', () => ({ UPLOADS_DIR: '/uploads' }));
+vi.mock('../../storage/imageFiles', () => ({ UPLOADS_DIR: '/uploads' }));
 
-vi.mock('fs', async () => {
-  const { fsMock } = await import('../../test-utils/fsMock');
-  return fsMock.module;
+const mockReadFile = vi.fn();
+vi.mock('fs/promises', () => {
+  const readFile = (...args: unknown[]) => mockReadFile(...args);
+  return { readFile, default: { readFile } };
 });
 
 vi.mock('../../logger', async () => {
@@ -40,15 +41,13 @@ vi.mock('../../logger', async () => {
   return { createLogger: () => mockLogger };
 });
 
-const mockReadFileSync = fsMock.fns.readFileSync;
-
-const sampleTrip: TripResponse = makeTrip({
+const sampleTrip: Trip = makeTrip({
   title: '東京 🗼 五日遊',
   destination: 'Tokyo',
   images: [{ id: 1, filename: 'trip1.jpg', title: '封面' }],
 });
 
-const sampleContent: TripContentResponse = {
+const sampleContent: TripContent = {
   tripId: 1,
   days: [
     {
@@ -91,7 +90,7 @@ const sampleContent: TripContentResponse = {
   ],
 };
 
-const sampleChecklist: TripChecklistResponse = {
+const sampleChecklist: TripChecklist = {
   tripId: 1,
   categories: [],
   occasions: [],
@@ -100,7 +99,7 @@ const sampleChecklist: TripChecklistResponse = {
 const sampleTemplate = makeTemplate();
 
 beforeEach(() => {
-  mockReadFileSync.mockReturnValue(Buffer.from('fake-image-bytes'));
+  mockReadFile.mockResolvedValue(Buffer.from('fake-image-bytes'));
   mockFindTemplate.mockResolvedValue(sampleTemplate);
 });
 
@@ -201,11 +200,11 @@ describe('buildBackupZip', () => {
   });
 
   it('skips an image that is missing on disk instead of failing the export', async () => {
-    mockReadFileSync.mockImplementation((filePath: string) => {
+    mockReadFile.mockImplementation((filePath: string) => {
       if (filePath.includes('attr1.jpg')) {
-        throw new Error('ENOENT');
+        return Promise.reject(new Error('ENOENT'));
       }
-      return Buffer.from('fake-image-bytes');
+      return Promise.resolve(Buffer.from('fake-image-bytes'));
     });
 
     const buffer = await buildBackupZip([1]);
@@ -217,6 +216,45 @@ describe('buildBackupZip', () => {
       'Missing image file on disk, skipped from export',
       expect.objectContaining({ filename: 'attr1.jpg', tripId: 1 }),
     );
+  });
+
+  it('reads images asynchronously and pairs each file with its own bytes even when reads finish out of order', async () => {
+    const delays: Record<string, number> = {
+      'trip1.jpg': 30,
+      'day1.jpg': 0,
+      'attr1.jpg': 20,
+      'conn1.jpg': 10,
+    };
+    mockReadFile.mockImplementation((filePath: string) => {
+      const filename = path.basename(filePath);
+      return new Promise(resolve =>
+        setTimeout(
+          () => resolve(Buffer.from(`bytes-${filename}`)),
+          delays[filename],
+        ),
+      );
+    });
+
+    const buffer = await buildBackupZip([1]);
+    const zip = new AdmZip(buffer);
+
+    // adm-zip sorts entries by name when it writes the archive, so the
+    // order entries were added in is not observable here; what matters is
+    // that every image ends up paired with its own bytes.
+    const imageEntries = zip
+      .getEntries()
+      .filter(entry => entry.entryName.startsWith('trips/trip_1/images/'))
+      .map(entry => ({
+        name: path.basename(entry.entryName),
+        data: entry.getData().toString(),
+      }));
+    expect(imageEntries).toHaveLength(Object.keys(delays).length);
+    expect(imageEntries).toEqual(
+      expect.arrayContaining(
+        Object.keys(delays).map(name => ({ name, data: `bytes-${name}` })),
+      ),
+    );
+    expect(mockReadFile).toHaveBeenCalledTimes(4);
   });
 
   it('omits template.json and includesTemplate by default', async () => {

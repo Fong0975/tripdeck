@@ -174,6 +174,8 @@ describe('runAutoBackupIfDue', () => {
 });
 
 describe('startAutoBackupScheduler', () => {
+  const SKIP_LOG = 'Previous automatic backup still running, skipping check';
+
   beforeEach(() => {
     vi.useFakeTimers();
     mockListAutoBackupFiles.mockReturnValue([]);
@@ -209,6 +211,52 @@ describe('startAutoBackupScheduler', () => {
     expect(mockListAutoBackupFiles).toHaveBeenCalledTimes(1);
     expect(mockBuildSystemBackupZip).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    {
+      name: 'skips a tick while the previous backup is still running',
+      finishBeforeSecondTick: false,
+      expectedBuilds: 1,
+      expectSkipLog: true,
+    },
+    {
+      name: 'runs the next tick normally once the previous backup finished',
+      finishBeforeSecondTick: true,
+      expectedBuilds: 2,
+      expectSkipLog: false,
+    },
+  ])(
+    '$name',
+    async ({ finishBeforeSecondTick, expectedBuilds, expectSkipLog }) => {
+      process.env.AUTO_BACKUP_CHECK_INTERVAL_HOURS = '1';
+      const hourMs = 60 * 60 * 1000;
+      let finishBuild: (buffer: Buffer) => void = () => undefined;
+      mockBuildSystemBackupZip.mockImplementationOnce(
+        () =>
+          new Promise<Buffer>(resolve => {
+            finishBuild = resolve;
+          }),
+      );
+
+      startAutoBackupScheduler();
+      await vi.advanceTimersByTimeAsync(hourMs);
+      expect(mockBuildSystemBackupZip).toHaveBeenCalledTimes(1);
+
+      if (finishBeforeSecondTick) {
+        finishBuild(Buffer.from('zip'));
+      }
+      await vi.advanceTimersByTimeAsync(hourMs);
+
+      expect(mockBuildSystemBackupZip).toHaveBeenCalledTimes(expectedBuilds);
+      const skipLogged = mockLogger.warn.mock.calls.some(
+        ([message]) => message === SKIP_LOG,
+      );
+      expect(skipLogged).toBe(expectSkipLog);
+
+      finishBuild(Buffer.from('zip'));
+      await vi.advanceTimersByTimeAsync(0);
+    },
+  );
 
   it('clamps a too-small check interval to the one-minute minimum', async () => {
     process.env.AUTO_BACKUP_CHECK_INTERVAL_HOURS = '0';

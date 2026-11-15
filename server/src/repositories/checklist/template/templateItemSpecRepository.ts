@@ -1,79 +1,56 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
-import pool from '../../../config/database';
-import type {
-  CreateSpecBody,
-  ItemSpecResponse,
-  UpdateSpecBody,
-} from '../../../types/checklist';
+import { templateSpecRepository } from './shared';
 
-import { TemplateItemSpecRow, toSpecResponse } from './shared';
-
-export async function createItemSpec(
+/**
+ * Adds a spec to a template item.
+ *
+ * @param itemId - Parent template item id.
+ * @param data - Spec name and optional storage location.
+ * @returns The created spec, or null when the item does not exist.
+ */
+export function createItemSpec(
   itemId: number,
-  data: CreateSpecBody,
-): Promise<ItemSpecResponse | null> {
-  const [itemRows] = await pool.execute<RowDataPacket[]>(
-    'SELECT id FROM checklist_template_items WHERE id = ?',
-    [itemId],
-  );
-  if (itemRows.length === 0) {
-    return null;
-  }
-
-  const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_item_specs (checklist_template_item_id, name, storage_location) VALUES (?, ?, ?)',
-    [itemId, data.name, data.storage_location ?? null],
-  );
-
-  return {
-    id: result.insertId,
-    name: data.name,
-    storage_location: data.storage_location ?? null,
-  };
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
+  return templateSpecRepository.create(itemId, data);
 }
 
-export async function updateItemSpec(
+/**
+ * Renames a template item spec; `storage_location` is only changed when the
+ * key is present in `data`.
+ *
+ * @param specId - Spec id.
+ * @param data - New name and optional storage location.
+ * @returns The updated spec, or null when the spec does not exist.
+ */
+export function updateItemSpec(
   specId: number,
-  data: UpdateSpecBody,
-): Promise<ItemSpecResponse | null> {
-  const [rows] = await pool.execute<TemplateItemSpecRow[]>(
-    'SELECT * FROM checklist_template_item_specs WHERE id = ?',
-    [specId],
-  );
-  if (rows.length === 0) {
-    return null;
-  }
-
-  const cur = rows[0];
-  const storage_location =
-    'storage_location' in data
-      ? (data.storage_location ?? null)
-      : cur.storage_location;
-
-  await pool.execute(
-    'UPDATE checklist_template_item_specs SET name = ?, storage_location = ? WHERE id = ?',
-    [data.name, storage_location, specId],
-  );
-
-  return toSpecResponse({ ...cur, name: data.name, storage_location });
+  data: ChecklistSpecBody,
+): Promise<ItemSpec | null> {
+  return templateSpecRepository.update(specId, data);
 }
 
-export async function deleteItemSpec(specId: number): Promise<boolean> {
-  const [result] = await pool.execute<ResultSetHeader>(
-    'DELETE FROM checklist_template_item_specs WHERE id = ?',
-    [specId],
-  );
-  return result.affectedRows > 0;
+/**
+ * Deletes a template item spec.
+ *
+ * @param specId - Spec id.
+ * @returns True when a spec was deleted.
+ */
+export function deleteItemSpec(specId: number): Promise<boolean> {
+  return templateSpecRepository.remove(specId);
 }
 
-export async function verifySpecBelongsToItem(
+/**
+ * Checks that a template spec belongs to the given template item.
+ *
+ * @param specId - Spec id.
+ * @param itemId - Expected parent template item id.
+ * @returns True when the spec exists under that item.
+ */
+export function verifySpecBelongsToItem(
   specId: number,
   itemId: number,
 ): Promise<boolean> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    'SELECT id FROM checklist_template_item_specs WHERE id = ? AND checklist_template_item_id = ?',
-    [specId, itemId],
-  );
-  return rows.length > 0;
+  return templateSpecRepository.belongsToItem(specId, itemId);
 }

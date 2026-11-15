@@ -2,11 +2,15 @@ import { FolderInput, Plus } from 'lucide-react';
 
 import TripCard from '@/components/TripCard';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
+import RetryableError from '@/components/ui/RetryableError';
 import type { Trip } from '@/types';
 
 interface Props {
   trips: Trip[];
   loading: boolean;
+  /** Whether the last load failed; shown instead of the empty state. */
+  loadError?: boolean;
+  onRetry?: () => void;
   onAdd: () => void;
   onDelete: (id: number) => void;
   onEdit: (trip: Trip) => void;
@@ -16,6 +20,8 @@ interface Props {
 export default function TripList({
   trips,
   loading,
+  loadError = false,
+  onRetry,
   onAdd,
   onDelete,
   onEdit,
@@ -47,6 +53,12 @@ export default function TripList({
         <div className='py-24 text-center'>
           <LoadingIndicator />
         </div>
+      ) : loadError && trips.length === 0 && onRetry ? (
+        <RetryableError
+          message='載入旅程列表失敗，請稍後再試'
+          onRetry={onRetry}
+          className='py-24'
+        />
       ) : trips.length === 0 ? (
         <div className='py-24 text-center'>
           <p className='mb-4 text-5xl'>✈️</p>

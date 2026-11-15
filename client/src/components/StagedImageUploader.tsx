@@ -1,5 +1,9 @@
-import { ImagePlus, Trash2, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+import { useObjectUrls } from '@/hooks/useObjectUrls';
+
+import PendingImageForm from './PendingImageForm';
 
 interface StagedImage {
   localId: string;
@@ -22,11 +26,7 @@ const generateId = (): string =>
  */
 export default function StagedImageUploader({ onImagesChange }: Props) {
   const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [pendingTitle, setPendingTitle] = useState('');
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-  const [stagingError, setStagingError] = useState('');
-  const stageFileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrls = useObjectUrls();
 
   useEffect(() => {
     onImagesChange(stagedImages.map(({ file, title }) => ({ file, title })));
@@ -34,76 +34,21 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedImages]);
 
-  useEffect(() => {
-    return () => {
-      stagedImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
-      if (pendingPreview) {
-        URL.revokeObjectURL(pendingPreview);
-      }
-    };
-    // Only run on unmount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleStageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    if (!file) {
-      return;
-    }
-    if (pendingPreview) {
-      URL.revokeObjectURL(pendingPreview);
-    }
-    setPendingFile(file);
-    setPendingPreview(URL.createObjectURL(file));
-    setPendingTitle('');
-    setStagingError('');
-    if (stageFileInputRef.current) {
-      stageFileInputRef.current.value = '';
-    }
-  };
-
-  const clearPendingStage = () => {
-    setPendingFile(null);
-    setPendingTitle('');
-    setStagingError('');
-    if (pendingPreview) {
-      URL.revokeObjectURL(pendingPreview);
-      setPendingPreview(null);
-    }
-  };
-
-  const confirmStage = () => {
-    if (!pendingFile || !pendingPreview) {
-      return;
-    }
-    const title = pendingTitle.trim();
-    if (!title) {
-      setStagingError('請輸入圖片標題');
-      return;
-    }
+  const stageImage = (file: File, title: string) => {
     setStagedImages(prev => [
       ...prev,
       {
         localId: generateId(),
-        file: pendingFile,
+        file,
         title,
-        previewUrl: pendingPreview,
+        previewUrl: objectUrls.create(file),
       },
     ]);
-    setPendingFile(null);
-    setPendingTitle('');
-    setPendingPreview(null);
-    setStagingError('');
   };
 
-  const removeStagedImage = (localId: string) => {
-    setStagedImages(prev => {
-      const target = prev.find(i => i.localId === localId);
-      if (target) {
-        URL.revokeObjectURL(target.previewUrl);
-      }
-      return prev.filter(i => i.localId !== localId);
-    });
+  const removeStagedImage = (target: StagedImage) => {
+    objectUrls.revoke(target.previewUrl);
+    setStagedImages(prev => prev.filter(i => i.localId !== target.localId));
   };
 
   return (
@@ -128,7 +73,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
               <button
                 type='button'
                 tabIndex={-1}
-                onClick={() => removeStagedImage(img.localId)}
+                onClick={() => removeStagedImage(img)}
                 className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white transition-opacity group-hover:opacity-100 hover:bg-destructive can-hover:opacity-0'
                 title='移除圖片'
               >
@@ -138,62 +83,7 @@ export default function StagedImageUploader({ onImagesChange }: Props) {
           ))}
         </div>
       )}
-      {pendingFile ? (
-        <div className='space-y-2 rounded-lg border border-dashed border-border p-3'>
-          {pendingPreview && (
-            <div className='relative'>
-              <img
-                src={pendingPreview}
-                alt='預覽'
-                className='h-32 w-full rounded-lg object-cover'
-              />
-              <button
-                type='button'
-                tabIndex={-1}
-                onClick={clearPendingStage}
-                className='absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white hover:bg-black/70'
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-          <input
-            value={pendingTitle}
-            onChange={e => {
-              setPendingTitle(e.target.value);
-              setStagingError('');
-            }}
-            placeholder='圖片標題（必填）'
-            className='w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
-          />
-          {stagingError && (
-            <p className='text-xs text-destructive'>{stagingError}</p>
-          )}
-          <button
-            type='button'
-            onClick={confirmStage}
-            className='w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90'
-          >
-            加入圖片
-          </button>
-        </div>
-      ) : (
-        <button
-          type='button'
-          onClick={() => stageFileInputRef.current?.click()}
-          className='flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary'
-        >
-          <ImagePlus size={16} />
-          新增圖片
-        </button>
-      )}
-      <input
-        ref={stageFileInputRef}
-        type='file'
-        accept='image/jpeg,image/png,image/gif,image/webp'
-        onChange={handleStageFileSelect}
-        className='hidden'
-      />
+      <PendingImageForm confirmLabel='加入圖片' onConfirm={stageImage} />
     </div>
   );
 }

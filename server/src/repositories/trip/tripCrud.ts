@@ -1,35 +1,52 @@
+import type { CreateTripBody, Trip, UpdateTripBody } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import { deleteImageFromDisk } from '../../middleware/upload';
-import type {
-  CreateTripBody,
-  TripResponse,
-  UpdateTripBody,
-} from '../../types/trip';
-import * as attractionCrud from '../attraction/attractionCrud';
-import * as connectionRepo from '../connectionRepository';
-import * as imageRepo from '../imageRepository';
+import { deleteImageFromDisk } from '../../storage/imageFiles';
+import { withTransaction } from '../../utils/withTransaction';
+import * as imageRepo from '../image';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
-import { TripDayRow, TripRow } from './types';
+import { planTripDayChanges, reconcileTripDays } from './tripDayReconcile';
+import type { TripDayRow, TripRow } from './types';
 
 const logger = createLogger('trip');
 
-interface TripDayIdRow extends RowDataPacket {
-  id: number;
+/**
+ * Selects a single trip row by id.
+ *
+ * @param id - Trip id.
+ * @returns The row, or undefined when the trip does not exist.
+ */
+async function selectTripRow(id: number): Promise<TripRow | undefined> {
+  const [rows] = await pool.execute<TripRow[]>(
+    'SELECT * FROM trips WHERE id = ?',
+    [id],
+  );
+  return rows[0];
 }
 
-interface TripAttractionIdRow extends RowDataPacket {
-  id: number;
+/**
+ * Checks whether a trip exists without loading its row or images.
+ *
+ * @param id - Trip id.
+ * @returns True when the trip exists.
+ */
+export async function tripExists(id: number): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM trips WHERE id = ?',
+    [id],
+  );
+  return rows.length > 0;
 }
 
-interface TripConnectionIdRow extends RowDataPacket {
-  id: number;
-}
-
-export async function findAll(): Promise<TripResponse[]> {
+/**
+ * Lists every trip, newest start date first, with its images.
+ *
+ * @returns All trips.
+ */
+export async function findAll(): Promise<Trip[]> {
   const [rows] = await pool.execute<TripRow[]>(
     'SELECT * FROM trips ORDER BY start_date DESC, created_at DESC',
   );
@@ -37,103 +54,91 @@ export async function findAll(): Promise<TripResponse[]> {
   return rows.map(row => toTripResponse(row, imagesByTrip.get(row.id) ?? []));
 }
 
-export async function findById(id: number): Promise<TripResponse | null> {
-  const [rows] = await pool.execute<TripRow[]>(
-    'SELECT * FROM trips WHERE id = ?',
-    [id],
-  );
-  if (rows.length === 0) {
+/**
+ * Looks up a trip with its images.
+ *
+ * @param id - Trip id.
+ * @returns The trip, or null when it does not exist.
+ */
+export async function findById(id: number): Promise<Trip | null> {
+  const row = await selectTripRow(id);
+  if (!row) {
     return null;
   }
   const images = await imageRepo.getTripImages(id);
-  return toTripResponse(rows[0], images);
+  return toTripResponse(row, images);
 }
 
 /**
  * Creates a trip and auto-generates one trip_days row per calendar day
  * between startDate and endDate (inclusive).
+ *
+ * @param data - New trip fields.
+ * @returns The created trip (without images).
  */
-export async function create(data: CreateTripBody): Promise<TripResponse> {
-  const conn = await pool.getConnection();
+export async function create(data: CreateTripBody): Promise<Trip> {
+  let tripId: number;
   try {
-    await conn.beginTransaction();
-
-    const [result] = await conn.execute<ResultSetHeader>(
-      `INSERT INTO trips (title, destination, start_date, end_date, description, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        data.title,
-        data.destination ?? null,
-        data.startDate,
-        data.endDate,
-        data.description ?? null,
-        new Date(),
-      ],
-    );
-    const tripId = result.insertId;
-
-    const dates = getDatesInRange(data.startDate, data.endDate);
-    for (let i = 0; i < dates.length; i++) {
-      await conn.execute(
-        'INSERT INTO trip_days (trip_id, day, date) VALUES (?, ?, ?)',
-        [tripId, i + 1, dates[i]],
+    tripId = await withTransaction(async conn => {
+      const [result] = await conn.execute<ResultSetHeader>(
+        `INSERT INTO trips (title, destination, start_date, end_date, description, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          data.title,
+          data.destination ?? null,
+          data.startDate,
+          data.endDate,
+          data.description ?? null,
+          new Date(),
+        ],
       );
-    }
+      const insertedId = result.insertId;
 
-    await conn.commit();
-    logger.info('Trip created', { tripId, daysCreated: dates.length });
-
-    const [rows] = await pool.execute<TripRow[]>(
-      'SELECT * FROM trips WHERE id = ?',
-      [tripId],
-    );
-    return toTripResponse(rows[0]);
+      const dates = getDatesInRange(data.startDate, data.endDate);
+      for (let i = 0; i < dates.length; i++) {
+        await conn.execute(
+          'INSERT INTO trip_days (trip_id, day, date) VALUES (?, ?, ?)',
+          [insertedId, i + 1, dates[i]],
+        );
+      }
+      return insertedId;
+    });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to create trip, rolled back',
       { title: data.title, startDate: data.startDate, endDate: data.endDate },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
+
+  return toTripResponse((await selectTripRow(tripId))!);
 }
 
 /**
  * Updates a trip's fields, reconciling `trip_days` with the new date range
  * if `startDate`/`endDate` change:
  *  - dates no longer within the new range are removed, along with all of
- *    their attractions, connections, and images (cascading through
- *    attractionCrud.deleteById, which also cleans up image files on disk),
- *    plus the day's own images (their trip_day_images rows cascade via
- *    ON DELETE CASCADE when the trip_days row is removed, but the files on
- *    disk are cleaned up explicitly below, once that removal has committed);
+ *    their attractions, connections, websites, locations and images;
  *  - dates newly within range that don't already have a trip_day get one;
  *  - all remaining days are renumbered sequentially by date.
  *
- * The attraction/connection/image cleanup for removed days happens *before*
- * this function's own transaction, because attractionCrud.deleteById() uses
- * its own top-level pool.execute calls and cannot participate in a shared
- * connection transaction. If that cleanup partially fails, the affected
- * day(s) are left with no attractions but the trip_days/trips rows are
- * unchanged; retrying the update recovers cleanly since the recomputed diff
- * will find those days already empty. This mirrors the same non-atomic,
- * best-effort tradeoff already accepted by attractionCrud.deleteById itself.
+ * Every row change runs in a single transaction, so a failure leaves the
+ * trip exactly as it was. Image files belonging to removed rows are only
+ * unlinked from disk after that transaction commits.
+ *
+ * @param id - Trip to update.
+ * @param data - Fields to change; absent fields keep their current value.
+ * @returns The updated trip, or null when it does not exist.
  */
 export async function update(
   id: number,
   data: UpdateTripBody,
-): Promise<TripResponse | null> {
-  const [rows] = await pool.execute<TripRow[]>(
-    'SELECT * FROM trips WHERE id = ?',
-    [id],
-  );
-  if (rows.length === 0) {
+): Promise<Trip | null> {
+  const cur = await selectTripRow(id);
+  if (!cur) {
     return null;
   }
-  const cur = rows[0];
 
   const newStart = data.startDate ?? toDateString(cur.start_date);
   const newEnd = data.endDate ?? toDateString(cur.end_date);
@@ -142,209 +147,52 @@ export async function update(
     'SELECT * FROM trip_days WHERE trip_id = ? ORDER BY date',
     [id],
   );
+  const plan = planTripDayChanges(dayRows, newStart, newEnd);
 
-  const newDateSet = new Set(getDatesInRange(newStart, newEnd));
-  const existingDateSet = new Set(dayRows.map(d => toDateString(d.date)));
-  const daysToRemove = dayRows.filter(
-    d => !newDateSet.has(toDateString(d.date)),
-  );
-  const datesToAdd = [...newDateSet].filter(d => !existingDateSet.has(d));
-
-  // trip_connections always belong to the same trip_day as both of their
-  // endpoint attractions (the UI only ever creates connections between
-  // adjacent attractions within one day, see attractionOrder.ts), so
-  // deleting every attraction on a removed day is guaranteed to also remove
-  // every connection on that day; no cross-day orphans are possible.
-  for (const day of daysToRemove) {
-    const [attrRows] = await pool.execute<TripAttractionIdRow[]>(
-      'SELECT id FROM trip_attractions WHERE trip_day_id = ?',
-      [day.id],
-    );
-    try {
-      for (const attr of attrRows) {
-        await attractionCrud.deleteById(attr.id);
-      }
-    } catch (err) {
-      // Non-atomic by design (see function doc comment above): this throws
-      // before the transaction below even starts, so trips/trip_days are
-      // untouched, but any attraction already deleted on this day stays
-      // deleted. Logging exactly which day/attraction failed is the only
-      // way to tell which parts of this best-effort cleanup actually ran.
-      logger.error(
-        'Partial failure while clearing attractions for a removed day',
-        { tripId: id, dayId: day.id },
-        err,
-      );
-      throw err;
-    }
-  }
-
-  const dayImagesByDayId = await imageRepo.getDayImagesBatch(
-    daysToRemove.map(d => d.id),
-  );
-
-  const conn = await pool.getConnection();
+  let removedImageFilenames: string[];
   try {
-    await conn.beginTransaction();
+    removedImageFilenames = await withTransaction(async conn => {
+      const filenames = await reconcileTripDays(conn, id, plan);
 
-    for (const day of daysToRemove) {
-      await conn.execute('DELETE FROM trip_days WHERE id = ?', [day.id]);
-    }
-
-    // Placeholder `day` values are negative so they can never collide with
-    // the existing positive values while both are briefly present.
-    for (let i = 0; i < datesToAdd.length; i++) {
       await conn.execute(
-        'INSERT INTO trip_days (trip_id, day, date) VALUES (?, ?, ?)',
-        [id, -(i + 1), datesToAdd[i]],
+        `UPDATE trips SET title = ?, destination = ?, start_date = ?, end_date = ?, description = ? WHERE id = ?`,
+        [
+          data.title?.trim() ?? cur.title,
+          'destination' in data ? (data.destination ?? null) : cur.destination,
+          newStart,
+          newEnd,
+          'description' in data ? (data.description ?? null) : cur.description,
+          id,
+        ],
       );
-    }
 
-    // Renumber every remaining day sequentially by date. Bumping everything
-    // out of range first avoids collisions with the unique (trip_id, day)
-    // key while days shift (e.g. removing the first day requires every
-    // later day to move down by one).
-    await conn.execute(
-      'UPDATE trip_days SET day = day + 100000 WHERE trip_id = ?',
-      [id],
-    );
-    const [finalRows] = await conn.query<TripDayRow[]>(
-      'SELECT id FROM trip_days WHERE trip_id = ? ORDER BY date',
-      [id],
-    );
-    for (let i = 0; i < finalRows.length; i++) {
-      await conn.execute('UPDATE trip_days SET day = ? WHERE id = ?', [
-        i + 1,
-        finalRows[i].id,
-      ]);
-    }
-
-    await conn.execute(
-      `UPDATE trips SET title = ?, destination = ?, start_date = ?, end_date = ?, description = ? WHERE id = ?`,
-      [
-        data.title?.trim() ?? cur.title,
-        'destination' in data ? (data.destination ?? null) : cur.destination,
-        newStart,
-        newEnd,
-        'description' in data ? (data.description ?? null) : cur.description,
-        id,
-      ],
-    );
-
-    await conn.commit();
-
-    let imagesRemoved = 0;
-    for (const day of daysToRemove) {
-      const dayImages = dayImagesByDayId.get(day.id) ?? [];
-      for (const img of dayImages) {
-        deleteImageFromDisk(img.filename);
-        imagesRemoved++;
-      }
-    }
-
-    logger.info('Trip updated', {
-      tripId: id,
-      daysRemoved: daysToRemove.length,
-      daysAdded: datesToAdd.length,
-      imagesRemoved,
+      return filenames;
     });
   } catch (err) {
-    await conn.rollback();
     logger.error(
       'Failed to update trip, rolled back',
       {
         tripId: id,
-        daysToRemove: daysToRemove.length,
-        datesToAdd: datesToAdd.length,
+        daysToRemove: plan.dayIdsToRemove.length,
+        datesToAdd: plan.datesToAdd.length,
       },
       err,
     );
     throw err;
-  } finally {
-    conn.release();
   }
 
-  const [freshRows] = await pool.execute<TripRow[]>(
-    'SELECT * FROM trips WHERE id = ?',
-    [id],
-  );
+  for (const filename of removedImageFilenames) {
+    deleteImageFromDisk(filename);
+  }
+
+  logger.info('Trip updated', {
+    tripId: id,
+    daysRemoved: plan.dayIdsToRemove.length,
+    daysAdded: plan.datesToAdd.length,
+    imagesRemoved: removedImageFilenames.length,
+  });
+
+  const freshRow = await selectTripRow(id);
   const images = await imageRepo.getTripImages(id);
-  return toTripResponse(freshRows[0], images);
-}
-
-/**
- * Deletes a trip and every image file it owns — its own, plus every day's,
- * attraction's, and connection's — from disk. `ON DELETE CASCADE` removes
- * all the corresponding DB rows automatically, but the uploaded files
- * themselves are never touched by that cascade and must be cleaned up
- * explicitly (same tradeoff as connectionRepository.deleteById).
- *
- * Every trip_connections row under this trip is deleted explicitly first
- * (via connectionRepo.deleteById, which also cleans up its own images) since
- * the trip_attraction_id_from/to foreign keys have no ON DELETE clause;
- * without this, MySQL's cascade from trips -> trip_days -> trip_attractions
- * would hit those constraints and reject the whole delete (same issue
- * attractionCrud.deleteById works around for a single attraction).
- */
-export async function deleteById(id: number): Promise<boolean> {
-  const [dayRows] = await pool.execute<TripDayIdRow[]>(
-    'SELECT id FROM trip_days WHERE trip_id = ?',
-    [id],
-  );
-  const dayIds = dayRows.map(row => row.id);
-
-  const [attractionRows] = await pool.execute<TripAttractionIdRow[]>(
-    `SELECT ta.id FROM trip_attractions ta
-     JOIN trip_days td ON td.id = ta.trip_day_id
-     WHERE td.trip_id = ?`,
-    [id],
-  );
-  const attractionIds = attractionRows.map(row => row.id);
-
-  const [connectionRows] = await pool.execute<TripConnectionIdRow[]>(
-    `SELECT tc.id FROM trip_connections tc
-     JOIN trip_days td ON td.id = tc.trip_day_id
-     WHERE td.trip_id = ?`,
-    [id],
-  );
-  for (const row of connectionRows) {
-    await connectionRepo.deleteById(row.id);
-  }
-
-  const [images, dayImagesByDay, attractionImagesByAttraction] =
-    await Promise.all([
-      imageRepo.getTripImages(id),
-      imageRepo.getDayImagesBatch(dayIds),
-      imageRepo.getAttractionImagesBatch(attractionIds),
-    ]);
-
-  const [result] = await pool.execute<ResultSetHeader>(
-    'DELETE FROM trips WHERE id = ?',
-    [id],
-  );
-  if (result.affectedRows > 0) {
-    let imagesDeleted = 0;
-    for (const img of images) {
-      deleteImageFromDisk(img.filename);
-      imagesDeleted++;
-    }
-    for (const dayImages of dayImagesByDay.values()) {
-      for (const img of dayImages) {
-        deleteImageFromDisk(img.filename);
-        imagesDeleted++;
-      }
-    }
-    for (const attractionImages of attractionImagesByAttraction.values()) {
-      for (const img of attractionImages) {
-        deleteImageFromDisk(img.filename);
-        imagesDeleted++;
-      }
-    }
-    logger.info('Trip deleted', {
-      tripId: id,
-      connectionsDeleted: connectionRows.length,
-      imagesDeleted,
-    });
-  }
-  return result.affectedRows > 0;
+  return toTripResponse(freshRow!, images);
 }

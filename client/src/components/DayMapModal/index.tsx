@@ -1,7 +1,8 @@
 import { X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useEscapeToClose } from '@/hooks/useEscapeToClose';
 import { useTripGeo } from '@/hooks/useTripGeo';
 import type { DayPlan } from '@/types';
 import { buildMapPoints, hasCoordinates } from '@/utils/googleMaps/mapPoints';
@@ -44,15 +45,7 @@ export default function DayMapModal({
     [allPoints, showOtherDays, activeDayId],
   );
 
-  useEffect(() => {
-    const handle = (e: WindowEventMap['keydown']) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handle);
-    return () => window.removeEventListener('keydown', handle);
-  }, [onClose]);
+  useEscapeToClose(onClose);
 
   const activeDay = days[activeIndex];
   if (!activeDay) {

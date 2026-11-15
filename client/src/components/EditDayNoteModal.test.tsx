@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeDay, makeImage } from '@/test-utils/fixtures';
-import { selectFile } from '@/test-utils/queries';
+import { selectFile, submitForm } from '@/test-utils/queries';
 import { setupUser } from '@/test-utils/render';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
 
@@ -71,8 +71,9 @@ describe('EditDayNoteModal', () => {
     expect(onSave).toHaveBeenCalledWith(null);
   });
 
-  it('deletes an existing image and uploads a new one via the image section', async () => {
+  it('deletes an existing image and uploads a new one via the image section, notifying onImagesChanged each time', async () => {
     vi.mocked(deleteDayImage).mockResolvedValue(undefined);
+    const onImagesChanged = vi.fn();
     const newImage = makeImage({ id: 2, filename: 'b.jpg', title: 'New' });
     vi.mocked(uploadDayImage).mockResolvedValue(newImage);
     const user = setupUser();
@@ -85,6 +86,7 @@ describe('EditDayNoteModal', () => {
         }}
         onClose={vi.fn()}
         onSave={vi.fn()}
+        onImagesChanged={onImagesChanged}
       />,
     );
     expect(screen.getByAltText('Cover')).toBeInTheDocument();
@@ -93,8 +95,9 @@ describe('EditDayNoteModal', () => {
 
     await waitFor(() => expect(deleteDayImage).toHaveBeenCalledWith(1, 10, 1));
     expect(screen.queryByAltText('Cover')).not.toBeInTheDocument();
+    expect(onImagesChanged).toHaveBeenCalledTimes(1);
 
-    const file = new File(['a'], 'b.jpg');
+    const file = new File(['a'], 'b.jpg', { type: 'image/jpeg' });
     selectFile(container, file);
     await user.type(screen.getByPlaceholderText('圖片標題（必填）'), 'New');
     await user.click(screen.getByText('確認上傳'));
@@ -103,6 +106,38 @@ describe('EditDayNoteModal', () => {
       expect(uploadDayImage).toHaveBeenCalledWith(1, 10, file, 'New'),
     );
     expect(await screen.findByAltText('New')).toBeInTheDocument();
+    expect(onImagesChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores repeated submits until the pending save settles', async () => {
+    let resolveSave!: () => void;
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSave = resolve;
+        }),
+    );
+    const { container } = render(
+      <EditDayNoteModal
+        tripId={1}
+        day={day}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    submitForm(container);
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('button', { name: '儲存中…' }),
+    ).toBeDisabled();
+
+    await act(async () => resolveSave());
+    submitForm(container);
+
+    expect(onSave).toHaveBeenCalledTimes(2);
   });
 
   it('calls onClose when cancel is clicked', async () => {

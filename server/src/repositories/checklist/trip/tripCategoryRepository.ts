@@ -1,13 +1,13 @@
+import type { ChecklistCategory } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type { TripChecklistCategoryResponse } from '../../../types/checklist';
 
 /** Appends a new category to a trip checklist. */
 export async function createTripCategory(
   tripId: number,
   name: string,
-): Promise<TripChecklistCategoryResponse> {
+): Promise<ChecklistCategory> {
   const [result] = await pool.execute<ResultSetHeader>(
     'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
     [tripId, name],

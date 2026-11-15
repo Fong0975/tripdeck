@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { exportTripsBackup } from '@/api/backup';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import { makeTrip } from '@/test-utils/fixtures';
 import { downloadBlob } from '@/utils/download';
+import { exportTripsBackup } from '@/utils/storage';
 
 import ExportTab from './ExportTab';
 
-vi.mock('@/api/backup', () => ({
+vi.mock('@/utils/storage', () => ({
   exportTripsBackup: vi.fn(),
 }));
 
@@ -17,7 +17,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
 }));
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 describe('ExportTab', () => {
   it('shows an empty state with the submit button disabled when there are no trips', () => {

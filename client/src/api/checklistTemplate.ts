@@ -1,3 +1,5 @@
+import type { ChecklistItemBody, ChecklistSpecBody } from '@tripdeck/shared';
+
 import type {
   ChecklistCategory,
   ChecklistItem,
@@ -38,12 +40,7 @@ export async function deleteTemplateCategory(catId: number): Promise<void> {
 
 export async function addTemplateItem(
   catId: number,
-  data: {
-    name: string;
-    quantity?: number | null;
-    notes?: string | null;
-    storage_location?: string | null;
-  },
+  data: ChecklistItemBody,
 ): Promise<ChecklistItem> {
   return api<ChecklistItem>(
     `/api/checklist-template/categories/${catId}/items`,
@@ -54,12 +51,7 @@ export async function addTemplateItem(
 export async function updateTemplateItem(
   catId: number,
   itemId: number,
-  data: {
-    name: string;
-    quantity?: number | null;
-    notes?: string | null;
-    storage_location?: string | null;
-  },
+  data: ChecklistItemBody,
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}`,
@@ -80,7 +72,7 @@ export async function deleteTemplateItem(
 export async function addTemplateItemSpec(
   catId: number,
   itemId: number,
-  data: { name: string; storage_location?: string | null },
+  data: ChecklistSpecBody,
 ): Promise<ItemSpec> {
   return api<ItemSpec>(
     `/api/checklist-template/categories/${catId}/items/${itemId}/specs`,
@@ -92,7 +84,7 @@ export async function updateTemplateItemSpec(
   catId: number,
   itemId: number,
   specId: number,
-  data: { name: string; storage_location?: string | null },
+  data: ChecklistSpecBody,
 ): Promise<void> {
   await api<void>(
     `/api/checklist-template/categories/${catId}/items/${itemId}/specs/${specId}`,

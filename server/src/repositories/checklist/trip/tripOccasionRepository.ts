@@ -1,9 +1,10 @@
+import type { ChecklistOccasion } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
-import type { OccasionResponse } from '../../../types/checklist';
+import { withTransaction } from '../../../utils/withTransaction';
 
-import { CheckRow, OccasionRow } from './shared';
+import { CheckRow, lockTrip, OccasionRow } from './shared';
 
 /** Confirms an occasion belongs to the given trip. */
 export async function verifyOccasionBelongsToTrip(
@@ -20,7 +21,7 @@ export async function verifyOccasionBelongsToTrip(
 export async function createOccasion(
   tripId: number,
   name: string,
-): Promise<OccasionResponse> {
+): Promise<ChecklistOccasion> {
   const [result] = await pool.execute<ResultSetHeader>(
     'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
     [tripId, name],
@@ -31,7 +32,7 @@ export async function createOccasion(
 export async function updateOccasion(
   occId: number,
   name: string,
-): Promise<OccasionResponse | null> {
+): Promise<ChecklistOccasion | null> {
   const [rows] = await pool.execute<OccasionRow[]>(
     'SELECT * FROM checklist_occasions WHERE id = ?',
     [occId],
@@ -57,18 +58,41 @@ export async function updateOccasion(
   return { id: occId, name, checks };
 }
 
-export async function getOccasionCount(tripId: number): Promise<number> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    'SELECT COUNT(*) AS count FROM checklist_occasions WHERE trip_id = ?',
-    [tripId],
-  );
-  return (rows[0] as { count: number }).count;
-}
+/** Outcome of {@link deleteOccasionIfNotLast}. */
+export type DeleteOccasionResult = 'deleted' | 'not_found' | 'last_occasion';
 
-export async function deleteOccasion(occId: number): Promise<boolean> {
-  const [result] = await pool.execute<ResultSetHeader>(
-    'DELETE FROM checklist_occasions WHERE id = ?',
-    [occId],
-  );
-  return result.affectedRows > 0;
+/**
+ * Deletes an occasion unless it is the trip's last remaining one.
+ *
+ * The count and the delete run in one transaction that first locks the parent
+ * trip row, so two concurrent deletes cannot both pass the count check and
+ * leave the trip with zero occasions.
+ *
+ * @param tripId - Trip the occasion must belong to.
+ * @param occId - Occasion to delete.
+ * @returns `'deleted'` on success, `'not_found'` when the trip or the occasion
+ *   (within that trip) does not exist, `'last_occasion'` when it is the only
+ *   occasion left.
+ */
+export async function deleteOccasionIfNotLast(
+  tripId: number,
+  occId: number,
+): Promise<DeleteOccasionResult> {
+  return withTransaction(async conn => {
+    if (!(await lockTrip(conn, tripId))) {
+      return 'not_found';
+    }
+    const [rows] = await conn.execute<RowDataPacket[]>(
+      'SELECT id FROM checklist_occasions WHERE trip_id = ?',
+      [tripId],
+    );
+    if (!rows.some(row => row.id === occId)) {
+      return 'not_found';
+    }
+    if (rows.length <= 1) {
+      return 'last_occasion';
+    }
+    await conn.execute('DELETE FROM checklist_occasions WHERE id = ?', [occId]);
+    return 'deleted';
+  });
 }

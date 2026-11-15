@@ -1,13 +1,6 @@
 import { createHash } from 'crypto';
 
-/** How an attraction's stored coordinates were obtained. */
-export type GeoSource = 'url' | 'geocode' | 'not_found';
-
-export const GEO_SOURCES: readonly GeoSource[] = [
-  'url',
-  'geocode',
-  'not_found',
-];
+import { GEO_SOURCES, type GeoSource } from '@tripdeck/shared';
 
 /**
  * Fingerprint of the inputs that determine an attraction's coordinates.
@@ -31,5 +24,5 @@ export function computeGeoKey(
 
 /** Narrows an untrusted value (e.g. imported backup data) to a GeoSource. */
 export function isGeoSource(value: unknown): value is GeoSource {
-  return GEO_SOURCES.includes(value as GeoSource);
+  return (GEO_SOURCES as readonly unknown[]).includes(value);
 }

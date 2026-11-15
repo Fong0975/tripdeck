@@ -1,14 +1,14 @@
+import type { ChecklistTemplate, Trip } from '@tripdeck/shared';
+
 import type { TripBackupData } from '../types/backup';
-import type { ChecklistTemplateResponse } from '../types/checklist';
-import type { TripResponse } from '../types/trip';
 
 /**
- * Builds a `TripResponse` with sensible defaults (a Kyoto trip with no
+ * Builds a `Trip` with sensible defaults (a Kyoto trip with no
  * images). Pass explicit overrides for any field a test asserts on.
  *
  * @param overrides - Fields to replace on the default trip.
  */
-export function makeTrip(overrides: Partial<TripResponse> = {}): TripResponse {
+export function makeTrip(overrides: Partial<Trip> = {}): Trip {
   return {
     ...baseTripFields(),
     createdAt: '2024-01-01T00:00:00.000Z',
@@ -35,8 +35,8 @@ function baseTripFields(): TripBackupData['trip'] {
  * @param overrides - Fields to replace on the default template.
  */
 export function makeTemplate(
-  overrides: Partial<ChecklistTemplateResponse> = {},
-): ChecklistTemplateResponse {
+  overrides: Partial<ChecklistTemplate> = {},
+): ChecklistTemplate {
   return {
     categories: [
       {
@@ -59,7 +59,7 @@ export function makeTemplate(
 }
 
 /** Overrides for `makeTripBackupData`; `trip` is merged field by field. */
-export interface TripBackupDataOverrides {
+interface TripBackupDataOverrides {
   trip?: Partial<TripBackupData['trip']>;
   content?: TripBackupData['content'];
   checklist?: TripBackupData['checklist'];

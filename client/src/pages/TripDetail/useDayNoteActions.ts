@@ -1,6 +1,7 @@
-import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import { updateDayNotes } from '@/utils/storage';
+
+import { runMutation } from './runMutation';
 
 /**
  * Save handler for a day's notes, bound to the current trip/content and
@@ -16,14 +17,15 @@ export function useDayNoteActions(
     if (!trip || !content) {
       return;
     }
-    try {
-      await updateDayNotes(trip.id, content.days[dayIndex].id, notes);
-      await reloadContent();
-      closeModal();
-      showToast('success', '已儲存每日備註。');
-    } catch {
-      showToast('error', '儲存每日備註失敗，請稍後再試');
-    }
+    await runMutation(
+      () => updateDayNotes(trip.id, content.days[dayIndex].id, notes),
+      {
+        reload: reloadContent,
+        onSuccess: closeModal,
+        success: '已儲存每日備註。',
+        error: '儲存每日備註失敗，請稍後再試',
+      },
+    );
   };
 
   return { handleSaveDayNotes };

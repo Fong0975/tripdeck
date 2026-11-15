@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Clock, GripVertical } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 import type { Attraction } from '@/types';
 
@@ -19,12 +19,11 @@ interface Props {
   onDuplicate?: (attraction: Attraction) => void;
 }
 
-export default function AttractionCard({
-  attraction,
-  onEdit,
-  onDelete,
-  onDuplicate,
-}: Props) {
+/**
+ * Sortable card for one attraction on a day column. Memoized so it only
+ * re-renders when its own props or the drag-and-drop state change.
+ */
+function AttractionCard({ attraction, onEdit, onDelete, onDuplicate }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const hasImages = (attraction.images ?? []).length > 0;
@@ -125,3 +124,5 @@ export default function AttractionCard({
     </div>
   );
 }
+
+export default memo(AttractionCard);

@@ -16,7 +16,8 @@ function makeResponse(ok: boolean, body: unknown, status = 200): Response {
 }
 
 interface ForecastEntryOverrides {
-  dt_txt?: string;
+  /** Entry time as a UTC ISO string. */
+  utc?: string;
   temp?: number;
   humidity?: number;
   icon?: string;
@@ -26,7 +27,7 @@ interface ForecastEntryOverrides {
 
 function makeForecastEntry(overrides: ForecastEntryOverrides = {}) {
   return {
-    dt_txt: overrides.dt_txt ?? '2026-01-01 12:00:00',
+    dt: Date.parse(overrides.utc ?? '2026-01-01T12:00:00Z') / 1000,
     main: {
       temp: overrides.temp ?? 20,
       humidity: overrides.humidity ?? 50,
@@ -130,7 +131,7 @@ describe('fetchOwmWeather', () => {
   it('returns out_of_range status when no entries match the date', async () => {
     vi.mocked(fetch).mockResolvedValue(
       makeResponse(true, {
-        list: [makeForecastEntry({ dt_txt: '2026-02-01 12:00:00' })],
+        list: [makeForecastEntry({ utc: '2026-02-01T12:00:00Z' })],
       }),
     );
 
@@ -144,22 +145,23 @@ describe('fetchOwmWeather', () => {
       makeResponse(true, {
         list: [
           makeForecastEntry({
-            dt_txt: '2026-01-01 09:00:00',
+            utc: '2026-01-01T09:00:00Z',
             temp: 18,
             pop: 0.2,
           }),
           makeForecastEntry({
-            dt_txt: '2026-01-01 12:00:00',
+            utc: '2026-01-01T12:00:00Z',
             temp: 25,
             humidity: 60,
             pop: 0.5,
           }),
           makeForecastEntry({
-            dt_txt: '2026-01-01 15:00:00',
+            utc: '2026-01-01T15:00:00Z',
             temp: 22,
             pop: 0.1,
           }),
         ],
+        city: { timezone: 0 },
       }),
     );
 
@@ -178,41 +180,67 @@ describe('fetchOwmWeather', () => {
     });
   });
 
-  it('falls back to the middle entry when no 12:00 entry exists', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeResponse(true, {
-        list: [
-          makeForecastEntry({
-            dt_txt: '2026-01-01 09:00:00',
-            humidity: 40,
-            description: 'clear sky',
-          }),
-          makeForecastEntry({
-            dt_txt: '2026-01-01 15:00:00',
-            humidity: 70,
-            description: 'light rain',
-          }),
-          makeForecastEntry({
-            dt_txt: '2026-01-01 18:00:00',
-            humidity: 90,
-            description: 'overcast clouds',
-          }),
-        ],
-      }),
-    );
+  it.each([
+    {
+      description: 'UTC+9 destination',
+      timezone: 9 * 3600,
+      // Local 2026-01-01 spans 2025-12-31T15:00Z to 2026-01-01T15:00Z.
+      expected: { tempMin: 10, tempMax: 30, midday: 'local noon (03:00Z)' },
+    },
+    {
+      description: 'UTC-5 destination',
+      timezone: -5 * 3600,
+      // Local 2026-01-01 spans 2026-01-01T05:00Z to 2026-01-02T05:00Z.
+      expected: { tempMin: 15, tempMax: 40, midday: 'local 13:00 (18:00Z)' },
+    },
+    {
+      description: 'response without a timezone (treated as UTC)',
+      timezone: undefined,
+      expected: { tempMin: 15, tempMax: 30, midday: 'utc noon (12:00Z)' },
+    },
+  ])(
+    'groups entries by the local day of a $description',
+    async ({ timezone, expected }) => {
+      vi.mocked(fetch).mockResolvedValue(
+        makeResponse(true, {
+          list: [
+            makeForecastEntry({ utc: '2025-12-31T18:00:00Z', temp: 10 }),
+            makeForecastEntry({
+              utc: '2026-01-01T03:00:00Z',
+              temp: 20,
+              description: 'local noon (03:00Z)',
+            }),
+            makeForecastEntry({
+              utc: '2026-01-01T12:00:00Z',
+              temp: 30,
+              description: 'utc noon (12:00Z)',
+            }),
+            makeForecastEntry({ utc: '2026-01-01T15:00:00Z', temp: 15 }),
+            makeForecastEntry({
+              utc: '2026-01-01T18:00:00Z',
+              temp: 25,
+              description: 'local 13:00 (18:00Z)',
+            }),
+            makeForecastEntry({ utc: '2026-01-02T03:00:00Z', temp: 40 }),
+          ],
+          ...(timezone === undefined ? {} : { city: { timezone } }),
+        }),
+      );
 
-    const result = await fetchOwmWeather(geo, '2026-01-01', API_KEY);
+      const result = await fetchOwmWeather(geo, '2026-01-01', API_KEY);
 
-    expect(result.status).toBe('success');
-    if (result.status === 'success') {
-      expect(result.data.humidity).toBe(70);
-      expect(result.data.description).toBe('light rain');
-    }
-  });
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.data.tempMin).toBe(expected.tempMin);
+        expect(result.data.tempMax).toBe(expected.tempMax);
+        expect(result.data.description).toBe(expected.midday);
+      }
+    },
+  );
 
   it('defaults pop to 0 when an entry omits the pop field', async () => {
     const entryWithoutPop = {
-      dt_txt: '2026-01-01 12:00:00',
+      dt: Date.parse('2026-01-01T12:00:00Z') / 1000,
       main: { temp: 20, humidity: 50 },
       weather: [{ icon: '01d', description: 'clear sky' }],
     };

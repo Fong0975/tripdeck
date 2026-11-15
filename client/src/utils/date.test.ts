@@ -1,6 +1,66 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { daysFromToday, getTripTotalDays, isPastDate } from './date';
+import {
+  addDaysToDateString,
+  daysFromToday,
+  getTripTotalDays,
+  isPastDate,
+} from './date';
+
+describe('addDaysToDateString', () => {
+  it.each([
+    {
+      description: 'a plain shift',
+      date: '2026-08-20',
+      days: 3,
+      expected: '2026-08-23',
+    },
+    {
+      description: 'a zero shift',
+      date: '2026-08-20',
+      days: 0,
+      expected: '2026-08-20',
+    },
+    {
+      description: 'a negative shift',
+      date: '2026-08-20',
+      days: -1,
+      expected: '2026-08-19',
+    },
+    {
+      description: 'a month boundary',
+      date: '2026-08-30',
+      days: 3,
+      expected: '2026-09-02',
+    },
+    {
+      description: 'a year boundary',
+      date: '2026-12-30',
+      days: 3,
+      expected: '2027-01-02',
+    },
+    {
+      description: 'a leap year February',
+      date: '2028-02-27',
+      days: 3,
+      expected: '2028-03-01',
+    },
+    {
+      description: 'the US spring DST change',
+      date: '2026-03-07',
+      days: 3,
+      expected: '2026-03-10',
+    },
+    {
+      description: 'the US autumn DST change',
+      date: '2026-10-31',
+      days: 3,
+      expected: '2026-11-03',
+    },
+  ])('returns $expected for $description', ({ date, days, expected }) => {
+    expect(addDaysToDateString(date, days)).toBe(expected);
+  });
+});
 
 describe('daysFromToday', () => {
   beforeEach(() => {

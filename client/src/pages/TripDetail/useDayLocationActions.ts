@@ -1,10 +1,11 @@
-import { showToast } from '@/lib/toast';
 import type { Trip, TripContent } from '@/types';
 import {
   addDayLocation,
   deleteDayLocation,
   updateDayLocation,
 } from '@/utils/storage';
+
+import { runMutation } from './runMutation';
 
 /**
  * Per-day location tag CRUD handlers for the trip board, bound to the
@@ -19,44 +20,31 @@ export function useDayLocationActions(
     if (!trip || !content) {
       return;
     }
-    try {
-      await addDayLocation(trip.id, content.days[dayIndex].id, name);
-      await reloadContent();
-    } catch {
-      showToast('error', '新增地點失敗，請稍後再試');
-    }
+    await runMutation(
+      () => addDayLocation(trip.id, content.days[dayIndex].id, name),
+      { reload: reloadContent, error: '新增地點失敗，請稍後再試' },
+    );
   };
 
-  const handleUpdateLocation = async (
-    _dayIndex: number,
-    locationId: number,
-    name: string,
-  ) => {
+  const handleUpdateLocation = async (locationId: number, name: string) => {
     if (!trip) {
       return;
     }
-    try {
-      await updateDayLocation(trip.id, locationId, name);
-      await reloadContent();
-    } catch {
-      showToast('error', '更新地點失敗，請稍後再試');
-    }
+    await runMutation(() => updateDayLocation(trip.id, locationId, name), {
+      reload: reloadContent,
+      error: '更新地點失敗，請稍後再試',
+    });
   };
 
-  const handleDeleteLocation = async (
-    _dayIndex: number,
-    locationId: number,
-  ) => {
+  const handleDeleteLocation = async (locationId: number) => {
     if (!trip) {
       return;
     }
-    try {
-      await deleteDayLocation(trip.id, locationId);
-      await reloadContent();
-      showToast('success', '已刪除地點。');
-    } catch {
-      showToast('error', '刪除地點失敗，請稍後再試');
-    }
+    await runMutation(() => deleteDayLocation(trip.id, locationId), {
+      reload: reloadContent,
+      success: '已刪除地點。',
+      error: '刪除地點失敗，請稍後再試',
+    });
   };
 
   return { handleAddLocation, handleUpdateLocation, handleDeleteLocation };

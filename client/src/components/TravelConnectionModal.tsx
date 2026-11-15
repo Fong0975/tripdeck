@@ -1,11 +1,15 @@
 import { useState } from 'react';
 
-import { INPUT_CLS } from '@/components/formStyles';
+import { INPUT_CLS } from '@/components/ui/formStyles';
+import { TRANSPORT_MODE_OPTIONS } from '@/constants/transportModes';
 import { useEntityImages } from '@/hooks/useEntityImages';
-import type { TravelConnection, TransportMode } from '@/types';
+import { useSubmitting } from '@/hooks/useSubmitting';
+import type { TravelConnection } from '@/types';
 import { parseDurationMinutes } from '@/utils/duration';
+import type { StagedImage } from '@/utils/stagedImages';
 import { deleteConnectionImage, uploadConnectionImage } from '@/utils/storage';
 
+import DurationInput from './DurationInput';
 import ImageUploadSection from './ImageUploadSection';
 import MarkdownField from './MarkdownField';
 import StagedImageUploader from './StagedImageUploader';
@@ -18,25 +22,14 @@ interface Props {
   fromName: string;
   toName: string;
   onClose: () => void;
+  /** Return the save promise so the modal can block repeat submits until it settles. */
   onSave: (
     connection: TravelConnection,
-    stagedImages?: { file: File; title: string }[],
-  ) => void;
+    stagedImages?: StagedImage[],
+  ) => Promise<void> | void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
-
-const TRANSPORT_OPTIONS: {
-  value: TransportMode;
-  label: string;
-  icon: string;
-}[] = [
-  { value: 'walk', label: '步行', icon: '🚶' },
-  { value: 'transit', label: '大眾運輸', icon: '🚇' },
-  { value: 'drive', label: '開車', icon: '🚗' },
-  { value: 'bike', label: '騎車', icon: '🚲' },
-  { value: 'taxi', label: '計程車', icon: '🚕' },
-  { value: 'flight', label: '飛機', icon: '✈️' },
-  { value: 'other', label: '其他', icon: '🗺️' },
-];
 
 export default function TravelConnectionModal({
   tripId,
@@ -45,8 +38,12 @@ export default function TravelConnectionModal({
   toName,
   onClose,
   onSave,
+  onImagesChanged,
 }: Props) {
-  const [form, setForm] = useState<TravelConnection>({ ...connection });
+  const [form, setForm] = useState<TravelConnection>(() => ({
+    ...connection,
+    transportMode: connection.transportMode ?? 'other',
+  }));
   const connectionId = connection.id;
   const {
     images,
@@ -63,13 +60,13 @@ export default function TravelConnectionModal({
       tripId && connectionId
         ? imageId => deleteConnectionImage(tripId, connectionId, imageId)
         : undefined,
+    onImagesChanged,
   });
-  const initialDurationMinutes = parseDurationMinutes(connection.duration) ?? 0;
-  const [hours, setHours] = useState(Math.floor(initialDurationMinutes / 60));
-  const [minutes, setMinutes] = useState(initialDurationMinutes % 60);
-  const [stagedImages, setStagedImages] = useState<
-    { file: File; title: string }[]
-  >([]);
+  const [durationMinutes, setDurationMinutes] = useState(
+    () => parseDurationMinutes(connection.duration) ?? 0,
+  );
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+  const { submitting, run } = useSubmitting();
 
   const set = (key: keyof TravelConnection, value: unknown) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -78,14 +75,15 @@ export default function TravelConnectionModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const totalMinutes = hours * 60 + minutes;
-    onSave(
-      {
-        ...form,
-        duration: totalMinutes > 0 ? String(totalMinutes) : null,
-        images,
-      },
-      isEditing ? undefined : stagedImages,
+    void run(() =>
+      onSave(
+        {
+          ...form,
+          duration: durationMinutes > 0 ? String(durationMinutes) : null,
+          images,
+        },
+        isEditing ? undefined : stagedImages,
+      ),
     );
   };
 
@@ -107,7 +105,7 @@ export default function TravelConnectionModal({
             交通方式
           </label>
           <div className='grid grid-cols-3 gap-2'>
-            {TRANSPORT_OPTIONS.map(opt => (
+            {TRANSPORT_MODE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 type='button'
@@ -125,36 +123,7 @@ export default function TravelConnectionModal({
           </div>
         </div>
 
-        <div>
-          <label className='mb-1.5 block text-sm font-medium text-foreground'>
-            所需時間
-          </label>
-          <div className='flex items-center gap-2'>
-            <input
-              type='number'
-              inputMode='numeric'
-              min={0}
-              value={hours}
-              onChange={e => setHours(Math.max(0, Number(e.target.value) || 0))}
-              className={INPUT_CLS}
-            />
-            <span className='shrink-0 text-sm text-muted-foreground'>小時</span>
-            <input
-              type='number'
-              inputMode='numeric'
-              min={0}
-              max={59}
-              value={minutes}
-              onChange={e =>
-                setMinutes(
-                  Math.min(59, Math.max(0, Number(e.target.value) || 0)),
-                )
-              }
-              className={INPUT_CLS}
-            />
-            <span className='shrink-0 text-sm text-muted-foreground'>分鐘</span>
-          </div>
-        </div>
+        <DurationInput value={durationMinutes} onChange={setDurationMinutes} />
 
         <MarkdownField
           label='路線說明'
@@ -193,7 +162,7 @@ export default function TravelConnectionModal({
           )}
         </div>
 
-        <ModalFooterActions onCancel={onClose} />
+        <ModalFooterActions onCancel={onClose} submitting={submitting} />
       </form>
     </Modal>
   );

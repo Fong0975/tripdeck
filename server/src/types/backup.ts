@@ -1,5 +1,8 @@
-import type { TripChecklistResponse } from './checklist';
-import type { ImageResponse, TripContentResponse } from './trip';
+import type {
+  TripChecklist,
+  TripContent,
+  UploadedImage,
+} from '@tripdeck/shared';
 
 /** Currently the only supported backup format version. */
 export const BACKUP_FORMAT_VERSION = 1;
@@ -39,47 +42,9 @@ export interface TripBackupData {
     startDate: string;
     endDate: string;
     description: string | null;
-    images: ImageResponse[];
+    images: UploadedImage[];
   };
-  content: TripContentResponse;
+  content: TripContent;
   /** Null when the trip's checklist was never initialized. */
-  checklist: TripChecklistResponse | null;
-}
-
-/** One trip that was successfully imported as a new trip. */
-export interface ImportedTripResult {
-  originalTripId: number;
-  newTripId: number;
-  /** The (possibly de-duplicated) title the new trip was created with. */
-  title: string;
-}
-
-/** One trip from the backup that failed to import. */
-export interface FailedTripResult {
-  originalTripId: number;
-  title: string;
-  error: string;
-}
-
-/**
- * Each trip in a backup is imported independently, so one trip failing
- * (e.g. a data inconsistency not caught by validation) does not prevent
- * the others from being imported.
- */
-export interface ImportBackupResult {
-  imported: ImportedTripResult[];
-  failed: FailedTripResult[];
-  /**
-   * True only when template restoration was requested and the backup
-   * actually contained a template snapshot to restore.
-   */
-  templateRestored: boolean;
-}
-
-/** One automatic backup file, as listed/downloaded via `/api/backups`. */
-export interface AutoBackupFileInfo {
-  filename: string;
-  sizeBytes: number;
-  /** The file's last-modified time, as an ISO string. */
-  createdAt: string;
+  checklist: TripChecklist | null;
 }

@@ -15,12 +15,7 @@ describe('hasCoordinates', () => {
     { description: 'zero values', lat: 0, lng: 0, expected: true },
     { description: 'null latitude', lat: null, lng: 121, expected: false },
     { description: 'null longitude', lat: 25, lng: null, expected: false },
-    {
-      description: 'both missing',
-      lat: undefined,
-      lng: undefined,
-      expected: false,
-    },
+    { description: 'both null', lat: null, lng: null, expected: false },
   ])('returns $expected for $description', ({ lat, lng, expected }) => {
     expect(hasCoordinates({ latitude: lat, longitude: lng })).toBe(expected);
   });

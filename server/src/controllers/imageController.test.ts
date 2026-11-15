@@ -1,14 +1,18 @@
+import type { UploadedImage } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../middleware/upload', () => ({ saveImageToDisk: vi.fn() }));
+vi.mock('../storage/imageFiles', () => ({
+  deleteImageFromDisk: vi.fn(),
+  saveImageToDisk: vi.fn(),
+}));
 vi.mock('../repositories/attraction', () => ({
   verifyBelongsToTrip: vi.fn(),
 }));
-vi.mock('../repositories/connectionRepository', () => ({
+vi.mock('../repositories/connection', () => ({
   verifyBelongsToTrip: vi.fn(),
 }));
-vi.mock('../repositories/imageRepository', () => ({
+vi.mock('../repositories/image', () => ({
   addAttractionImage: vi.fn(),
   addConnectionImage: vi.fn(),
   addDayImage: vi.fn(),
@@ -23,14 +27,13 @@ vi.mock('../repositories/trip', () => ({
   findDayByIdAndTripId: vi.fn(),
 }));
 
-import { saveImageToDisk } from '../middleware/upload';
 import * as attractionRepo from '../repositories/attraction';
-import * as connectionRepo from '../repositories/connectionRepository';
-import * as imageRepo from '../repositories/imageRepository';
+import * as connectionRepo from '../repositories/connection';
+import * as imageRepo from '../repositories/image';
 import * as tripRepo from '../repositories/trip';
+import { deleteImageFromDisk, saveImageToDisk } from '../storage/imageFiles';
 import { makeTrip } from '../test-utils/fixtures';
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
-import type { ImageResponse } from '../types/trip';
 
 import {
   deleteAttractionImage,
@@ -176,7 +179,7 @@ describe.each(variants)(
       });
 
       it('returns 201 with the created image on success', async () => {
-        const image: ImageResponse = {
+        const image: UploadedImage = {
           id: 42,
           filename: 'generated.jpg',
           title: 'Title',
@@ -197,7 +200,24 @@ describe.each(variants)(
           'generated.jpg',
           'Title',
         );
+        expect(deleteImageFromDisk).not.toHaveBeenCalled();
         expectJsonStatus(res, 201, image);
+      });
+
+      it('deletes the saved file and rethrows when the DB insert fails', async () => {
+        const error = new Error('insert failed');
+        mockParentFound(true);
+        vi.mocked(saveImageToDisk).mockReturnValue('generated.jpg');
+        vi.mocked(addImage).mockRejectedValue(error);
+        const { req, res } = createMockReqRes({
+          params: uploadParams,
+          body: { title: 'Title' },
+          file: mockFile,
+        });
+
+        await expect(uploadHandler(req, res)).rejects.toBe(error);
+        expect(deleteImageFromDisk).toHaveBeenCalledWith('generated.jpg');
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
 
@@ -245,10 +265,20 @@ describe.each(variants.slice(0, 1))(
         expect(addImage).not.toHaveBeenCalled();
       });
 
-      it.each([
-        { name: 'missing', body: {} },
-        { name: 'blank', body: { title: '   ' } },
-      ])('returns 400 when title is $name', async ({ body }) => {
+      it.each<{ name: string; body: Record<string, unknown>; error: string }>([
+        { name: 'missing', body: {}, error: 'title is required' },
+        { name: 'blank', body: { title: '   ' }, error: 'title is required' },
+        {
+          name: 'not a string',
+          body: { title: ['a', 'b'] },
+          error: 'title must be a string',
+        },
+        {
+          name: 'longer than 255 characters',
+          body: { title: 'x'.repeat(256) },
+          error: 'title must be at most 255 characters',
+        },
+      ])('returns 400 when title is $name', async ({ body, error }) => {
         mockParentFound(true);
         const { req, res } = createMockReqRes({
           params: uploadParams,
@@ -258,7 +288,7 @@ describe.each(variants.slice(0, 1))(
 
         await uploadHandler(req, res);
 
-        expectJsonStatus(res, 400, { error: 'title is required' });
+        expectJsonStatus(res, 400, { error });
         expect(saveImageToDisk).not.toHaveBeenCalled();
         expect(addImage).not.toHaveBeenCalled();
       });
@@ -280,17 +310,17 @@ describe.each(variants.slice(0, 1))(
         expect(addImage).not.toHaveBeenCalled();
       });
 
-      it('returns 500 when an unexpected error occurs', async () => {
-        mockParentRejects(new Error('db error'));
+      it('rejects with the underlying error for the error handler', async () => {
+        const error = new Error('db error');
+        mockParentRejects(error);
         const { req, res } = createMockReqRes({
           params: uploadParams,
           body: { title: 'Title' },
           file: mockFile,
         });
 
-        await uploadHandler(req, res);
-
-        expectJsonStatus(res, 500, { error: 'Failed to upload image' });
+        await expect(uploadHandler(req, res)).rejects.toBe(error);
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
 
@@ -315,13 +345,13 @@ describe.each(variants.slice(0, 1))(
         expectJsonStatus(res, 404, { error: 'Image not found' });
       });
 
-      it('returns 500 when an unexpected error occurs', async () => {
-        mockParentRejects(new Error('db error'));
+      it('rejects with the underlying error for the error handler', async () => {
+        const error = new Error('db error');
+        mockParentRejects(error);
         const { req, res } = createMockReqRes({ params: deleteParams });
 
-        await deleteHandler(req, res);
-
-        expectJsonStatus(res, 500, { error: 'Failed to delete image' });
+        await expect(deleteHandler(req, res)).rejects.toBe(error);
+        expect(res.status).not.toHaveBeenCalled();
       });
     });
   },

@@ -4,6 +4,7 @@ import {
   addAttraction,
   deleteAttraction,
   duplicateAttraction,
+  moveAttraction,
   reorderAttractions,
   updateAttraction,
 } from './attractions';
@@ -19,7 +20,7 @@ import {
   updateTemplateItem,
   updateTemplateItemSpec,
 } from './checklistTemplate';
-import { api, json } from './client';
+import { api, ApiError, json } from './client';
 import {
   addConnection,
   deleteConnection,
@@ -142,6 +143,12 @@ describe('attractions API', () => {
       call: () => reorderAttractions(1, 10, [3, 1, 2]),
       url: '/api/trips/1/days/10/attractions/order',
       init: { method: 'PATCH', ...json({ orderedIds: [3, 1, 2] }) },
+    },
+    {
+      name: 'moveAttraction PATCHes the move endpoint',
+      call: () => moveAttraction(1, 5, 20, 2),
+      url: '/api/trips/1/attractions/5/move',
+      init: { method: 'PATCH', ...json({ dayId: 20, index: 2 }) },
     },
   ]);
 });
@@ -496,21 +503,61 @@ describe('trips API', () => {
 });
 
 describe('trips API failure handling', () => {
-  it.each([
+  const tests = [
     {
-      name: 'getTrip',
+      name: 'getTrip returns null on 404',
       call: () => getTrip(1),
-      error: new Error('API error 404: /api/trips/1'),
+      error: new ApiError('API error 404: /api/trips/1', undefined, 404),
+      rejects: false,
     },
     {
-      name: 'getTripContent',
+      name: 'getTripContent returns null on 404',
       call: () => getTripContent(1),
-      error: new Error('API error 404'),
+      error: new ApiError(
+        'API error 404: /api/trips/1/content',
+        undefined,
+        404,
+      ),
+      rejects: false,
     },
-  ])('$name returns null when the request fails', async ({ call, error }) => {
+    {
+      name: 'getTrip throws on a server error',
+      call: () => getTrip(1),
+      error: new ApiError('API error 500: /api/trips/1', undefined, 500),
+      rejects: true,
+    },
+    {
+      name: 'getTripContent throws on a server error',
+      call: () => getTripContent(1),
+      error: new ApiError(
+        'API error 503: /api/trips/1/content',
+        undefined,
+        503,
+      ),
+      rejects: true,
+    },
+    {
+      name: 'getTrip throws on a network error',
+      call: () => getTrip(1),
+      error: new TypeError('Failed to fetch'),
+      rejects: true,
+    },
+    {
+      name: 'getTripContent throws on a plain error whose message mentions 404',
+      call: () => getTripContent(1),
+      error: new Error('API error 404: /api/trips/1/content'),
+      rejects: true,
+    },
+  ];
+
+  it.each(tests)('$name', async ({ call, error, rejects }) => {
     vi.mocked(api).mockRejectedValue(error);
 
-    expect(await call()).toBeNull();
+    if (rejects) {
+      await expect(call()).rejects.toBe(error);
+    } else {
+      expect(await call()).toBeNull();
+    }
   });
 });
 

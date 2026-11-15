@@ -1,7 +1,7 @@
 import { type Mock, vi } from 'vitest';
 
 /** Mocked `Logger` whose methods are all `vi.fn()`s. */
-export interface LoggerMock {
+interface LoggerMock {
   debug: Mock;
   info: Mock;
   warn: Mock;

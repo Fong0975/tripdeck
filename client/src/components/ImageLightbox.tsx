@@ -2,10 +2,12 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import type { AttractionImage } from '@/types';
+import { imageUrl } from '@/api/images';
+import { useEscapeToClose } from '@/hooks/useEscapeToClose';
+import type { UploadedImage } from '@/types';
 
 interface Props {
-  images: AttractionImage[];
+  images: UploadedImage[];
   initialIndex: number;
   onClose: () => void;
 }
@@ -23,11 +25,10 @@ export default function ImageLightbox({
   const prev = () => setIndex(i => i - 1);
   const next = () => setIndex(i => i + 1);
 
+  useEscapeToClose(onClose);
+
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
       if (e.key === 'ArrowLeft' && hasPrev) {
         prev();
       }
@@ -37,7 +38,7 @@ export default function ImageLightbox({
     };
     window.addEventListener('keydown', handle);
     return () => window.removeEventListener('keydown', handle);
-  }, [hasPrev, hasNext, onClose]);
+  }, [hasPrev, hasNext]);
 
   const current = images[index];
 
@@ -77,7 +78,7 @@ export default function ImageLightbox({
       >
         <img
           key={current.id}
-          src={`/uploads/${current.filename}`}
+          src={imageUrl(current.filename)}
           alt={current.title}
           className='max-h-[78vh] max-w-[90vw] rounded-xl object-contain shadow-2xl'
         />

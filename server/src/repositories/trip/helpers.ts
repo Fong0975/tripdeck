@@ -1,4 +1,4 @@
-import type { ImageResponse, TripResponse } from '../../types/trip';
+import type { Trip, UploadedImage } from '@tripdeck/shared';
 
 import { TripRow } from './types';
 
@@ -21,8 +21,8 @@ export function toISOString(d: Date | string): string {
 
 export function toTripResponse(
   row: TripRow,
-  images: ImageResponse[] = [],
-): TripResponse {
+  images: UploadedImage[] = [],
+): Trip {
   return {
     id: row.id,
     title: row.title,
@@ -38,6 +38,14 @@ export function toTripResponse(
 /**
  * Returns all dates between startDate and endDate inclusive, as YYYY-MM-DD strings.
  * Used to auto-generate trip days on creation.
+ *
+ * Date-only strings are parsed as UTC midnight, so stepping must also use the
+ * UTC accessors; local `setDate` would shift by the host's DST offset and can
+ * skip or repeat a date.
+ *
+ * @param startDate - First date, `YYYY-MM-DD`.
+ * @param endDate - Last date, `YYYY-MM-DD`.
+ * @returns Every date in the range, or an empty array when end < start.
  */
 export function getDatesInRange(startDate: string, endDate: string): string[] {
   const dates: string[] = [];
@@ -45,11 +53,7 @@ export function getDatesInRange(startDate: string, endDate: string): string[] {
   const end = new Date(endDate);
   while (current <= end) {
     dates.push(current.toISOString().slice(0, 10));
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return dates;
-}
-
-export function placeholders(count: number): string {
-  return Array.from({ length: count }, () => '?').join(', ');
 }

@@ -3,6 +3,10 @@ import type { Request, Response } from 'express';
 import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
 
+import { idParam } from './params';
+import { rejectInvalidBody, rejectNotFound } from './shared/responses';
+import { requireName } from './shared/validation';
+
 const logger = createLogger('checklist-template');
 
 export async function getTemplate(_req: Request, res: Response): Promise<void> {
@@ -54,15 +58,13 @@ export async function getTemplate(_req: Request, res: Response): Promise<void> {
          }
        }
      } */
-  try {
-    res.json(await templateRepo.findTemplate());
-  } catch (err) {
-    logger.error('Failed to fetch template', undefined, err);
-    res.status(500).json({ error: 'Failed to fetch template' });
-  }
+  res.json(await templateRepo.findTemplate());
 }
 
-export async function addCategory(req: Request, res: Response): Promise<void> {
+export async function addTemplateCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Add a category to the template'
      #swagger.responses[201] = {
@@ -79,24 +81,22 @@ export async function addCategory(req: Request, res: Response): Promise<void> {
            }
          }
        }
-     } */
-  try {
-    const { name } = req.body;
-    if (!name || typeof name !== 'string') {
-      logger.warn('Rejected add-category request with an invalid name');
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-    const category = await templateRepo.createCategory(name);
-    logger.info('Template category created', { catId: category.id, name });
-    res.status(201).json(category);
-  } catch (err) {
-    logger.error('Failed to add category', undefined, err);
-    res.status(500).json({ error: 'Failed to add category' });
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
+  const name = requireName(req.body);
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'add-category', name.error);
+    return;
   }
+  const category = await templateRepo.createCategory(name.value);
+  logger.info('Template category created', {
+    catId: category.id,
+    name: name.value,
+  });
+  res.status(201).json(category);
 }
 
-export async function updateCategory(
+export async function updateTemplateCategory(
   req: Request,
   res: Response,
 ): Promise<void> {
@@ -129,48 +129,35 @@ export async function updateCategory(
            }
          }
        }
-     } */
-  try {
-    const catId = Number(req.params.catId);
-    const { name } = req.body;
-    if (!name || typeof name !== 'string') {
-      logger.warn('Rejected update-category request with an invalid name', {
-        catId,
-      });
-      res.status(400).json({ error: 'name is required' });
-      return;
-    }
-    const category = await templateRepo.updateCategory(catId, name);
-    if (!category) {
-      logger.warn('Update-category rejected: category not found', { catId });
-      res.status(404).json({ error: 'Category not found' });
-      return;
-    }
-    res.json(category);
-  } catch (err) {
-    logger.error('Failed to update category', { catId: req.params.catId }, err);
-    res.status(500).json({ error: 'Failed to update category' });
+     }
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name' } */
+  const catId = idParam(req, 'catId');
+  const name = requireName(req.body);
+  if (!name.ok) {
+    rejectInvalidBody(res, logger, 'update-category', name.error, { catId });
+    return;
   }
+  const category = await templateRepo.updateCategory(catId, name.value);
+  if (!category) {
+    const message = 'Update-category rejected: category not found';
+    rejectNotFound(res, logger, 'Category', message, { catId });
+    return;
+  }
+  res.json(category);
 }
 
-export async function deleteCategory(
+export async function deleteTemplateCategory(
   req: Request,
   res: Response,
 ): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Delete a template category and all its items' */
-  try {
-    const catId = Number(req.params.catId);
-    const deleted = await templateRepo.deleteCategory(catId);
-    if (!deleted) {
-      logger.warn('Delete-category rejected: category not found', { catId });
-      res.status(404).json({ error: 'Category not found' });
-      return;
-    }
-    logger.info('Template category deleted', { catId });
-    res.status(204).send();
-  } catch (err) {
-    logger.error('Failed to delete category', { catId: req.params.catId }, err);
-    res.status(500).json({ error: 'Failed to delete category' });
+  const catId = idParam(req, 'catId');
+  if (!(await templateRepo.deleteCategory(catId))) {
+    const message = 'Delete-category rejected: category not found';
+    rejectNotFound(res, logger, 'Category', message, { catId });
+    return;
   }
+  logger.info('Template category deleted', { catId });
+  res.status(204).send();
 }

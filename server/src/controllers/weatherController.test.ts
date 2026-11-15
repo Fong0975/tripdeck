@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMockReqRes, expectJsonStatus } from '../test-utils/httpMocks';
 import { getDailyWeather, isWeatherEnabled } from '../weather/weatherService';
@@ -13,7 +13,13 @@ vi.mock('../weather/weatherService', () => ({
 const VALID_QUERY = { location: 'Tokyo', date: '2026-08-20', days: '3' };
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-08-17T10:00:00Z'));
   vi.mocked(isWeatherEnabled).mockReturnValue(true);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('weatherController', () => {
@@ -56,6 +62,11 @@ describe('weatherController', () => {
         error: 'Invalid date parameter',
       },
       {
+        name: 'date does not exist',
+        query: { ...VALID_QUERY, date: '2026-02-30' },
+        error: 'Invalid date parameter',
+      },
+      {
         name: 'days is missing',
         query: { ...VALID_QUERY, days: undefined },
         error: 'Invalid days parameter',
@@ -63,6 +74,11 @@ describe('weatherController', () => {
       {
         name: 'days is not an integer',
         query: { ...VALID_QUERY, days: '1.5' },
+        error: 'Invalid days parameter',
+      },
+      {
+        name: 'days contradicts the date',
+        query: { ...VALID_QUERY, days: '30' },
         error: 'Invalid days parameter',
       },
     ])('returns 400 when $name', async ({ query, error }) => {
@@ -85,22 +101,32 @@ describe('weatherController', () => {
     });
 
     it.each([
-      { name: 'a future date', days: '3', expectedDays: 3 },
-      { name: 'a past date', days: '-2', expectedDays: -2 },
+      {
+        name: 'a future date',
+        date: '2026-08-20',
+        days: '3',
+        expectedDays: 3,
+      },
+      {
+        name: 'a past date',
+        date: '2026-08-15',
+        days: '-2',
+        expectedDays: -2,
+      },
     ])(
       'responds with the lookup result for $name',
-      async ({ days, expectedDays }) => {
+      async ({ date, days, expectedDays }) => {
         const result = { status: 'out_of_range' as const };
         vi.mocked(getDailyWeather).mockResolvedValue(result);
         const { req, res } = createMockReqRes({
-          query: { ...VALID_QUERY, location: '  東京 ', days },
+          query: { ...VALID_QUERY, location: '  東京 ', date, days },
         });
 
         await getWeather(req, res);
 
         expect(getDailyWeather).toHaveBeenCalledWith(
           '東京',
-          '2026-08-20',
+          date,
           expectedDays,
         );
         expect(res.json).toHaveBeenCalledWith(result);

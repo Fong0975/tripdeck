@@ -1,3 +1,5 @@
+# Unused: server/Dockerfile builds from the repository root context
+# (see docker-compose.yml), so Docker reads the root .dockerignore instead.
 node_modules
 dist
 uploads

@@ -5,6 +5,12 @@ import { Router } from 'express';
 // through an `export * from` re-export, so it would silently drop that
 // endpoint's #swagger.* documentation.
 import {
+  addTripCategory,
+  deleteTripCategory,
+  updateTripCategory,
+} from '../controllers/checklist/tripCategoryController';
+import { getTripChecklist } from '../controllers/checklist/tripChecklistController';
+import {
   addTripItem,
   deleteTripItem,
   setCheck,
@@ -17,16 +23,16 @@ import {
 } from '../controllers/checklist/tripItemSpecController';
 import {
   addOccasion,
-  addTripCategory,
   deleteOccasion,
-  deleteTripCategory,
-  getTripChecklist,
   updateOccasion,
-  updateTripCategory,
-} from '../controllers/checklist/tripStructureController';
+} from '../controllers/checklist/tripOccasionController';
+import { validateIdParams } from '../middleware/validateIdParam';
 
-// mergeParams: true allows access to :tripId from the parent trip router
+// mergeParams: true allows access to :tripId from the parent trip router,
+// which also validates it.
 const router = Router({ mergeParams: true });
+
+validateIdParams(router, ['occId', 'catId', 'itemId', 'specId']);
 
 router.get('/', getTripChecklist);
 router.post('/occasions', addOccasion);

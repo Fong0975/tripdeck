@@ -65,6 +65,7 @@ npm run build
 ```
 
 Outputs:
+- `shared/dist/` — compiled shared types and constants (`@tripdeck/shared`)
 - `client/dist/` — static frontend bundle
 - `server/dist/` — compiled Node.js server
 
@@ -80,8 +81,8 @@ npm run start
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start both frontend and backend in watch mode |
-| `npm run build` | Build client and server for production |
+| `npm run dev` | Build `shared`, then start it, the frontend and the backend in watch mode |
+| `npm run build` | Build shared, client and server for production |
 | `npm run start` | Start the production server |
 | `npm run swagger` | Generate / update `server/swagger/output.json` from route annotations |
 | `npm run lint` | Run ESLint across client and server |

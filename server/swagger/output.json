@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Tripdeck API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "REST API for the Tripdeck travel planning application."
   },
   "servers": [
@@ -104,7 +104,20 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing or invalid url, disallowed protocol, or a target (or redirect target) that is not publicly routable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "URL not allowed"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -162,9 +175,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -219,10 +229,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Missing or empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days"
           }
         },
         "requestBody": {
@@ -238,6 +245,9 @@
                     "example": "any"
                   },
                   "endDate": {
+                    "example": "any"
+                  },
+                  "destination": {
                     "example": "any"
                   }
                 }
@@ -308,11 +318,11 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -377,13 +387,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid tripId, empty title, title or destination longer than 255 characters, invalid date format, endDate before startDate, or trip longer than 365 days"
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -393,6 +400,9 @@
                 "type": "object",
                 "properties": {
                   "title": {
+                    "example": "any"
+                  },
+                  "destination": {
                     "example": "any"
                   },
                   "startDate": {
@@ -425,11 +435,11 @@
           "204": {
             "description": "No Content"
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -595,11 +605,11 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid tripId"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -621,9 +631,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -717,9 +724,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {}
@@ -806,13 +810,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Missing name, malformed referenceWebsites, or a field exceeding its maximum length"
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -911,11 +912,11 @@
               }
             }
           },
+          "400": {
+            "description": "Malformed referenceWebsites, or a field exceeding its maximum length"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -947,9 +948,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -983,9 +981,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -994,7 +989,7 @@
       "patch": {
         "tags": ["Attractions"],
         "summary": "Reorder attractions within a day",
-        "description": "",
+        "description": "orderedIds must list every attraction of the day exactly once.",
         "parameters": [
           {
             "name": "tripId",
@@ -1015,16 +1010,13 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "Attractions reordered"
           },
           "400": {
-            "description": "Bad Request"
+            "description": "orderedIds is not an array of positive integers, or does not list every attraction of the day exactly once"
           },
           "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Day not found"
           }
         },
         "requestBody": {
@@ -1035,6 +1027,64 @@
                 "properties": {
                   "orderedIds": {
                     "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/attractions/{attractionId}/move": {
+      "patch": {
+        "tags": ["Attractions"],
+        "summary": "Move an attraction to a position in another (or the same) day",
+        "description": "Keeps the attraction id, so images, websites, times and geo stay attached. Connections whose endpoints are no longer adjacent in the source or target day are deleted. A same-day target behaves as a reorder. index is 0-based and clamped to the end of the day.",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attractionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Attraction moved"
+          },
+          "400": {
+            "description": "Invalid tripId, attractionId, dayId or index"
+          },
+          "404": {
+            "description": "Attraction or day not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["dayId", "index"],
+                "properties": {
+                  "dayId": {
+                    "type": "integer",
+                    "example": 2
+                  },
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 0
                   }
                 }
               }
@@ -1073,9 +1123,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1124,9 +1171,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1170,9 +1214,6 @@
           },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -1204,11 +1245,11 @@
           "200": {
             "description": "OK"
           },
+          "400": {
+            "description": "notes is neither a string nor null"
+          },
           "404": {
             "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -1296,13 +1337,10 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Invalid ids, missing fields, unknown transportMode, duration longer than 100 characters, or attractions not in this day"
           },
           "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+            "description": "Day not found"
           }
         },
         "requestBody": {
@@ -1395,11 +1433,31 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
+          "400": {
+            "description": "Invalid ids, unknown transportMode, duration longer than 100 characters, or attractions not in the connection's day"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "404": {
+            "description": "Connection not found"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "transportMode": {
+                    "example": "any"
+                  },
+                  "fromAttractionId": {
+                    "example": "any"
+                  },
+                  "toAttractionId": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -1429,11 +1487,11 @@
           "204": {
             "description": "No Content"
           },
-          "404": {
-            "description": "Not Found"
+          "400": {
+            "description": "Invalid tripId or connectionId"
           },
-          "500": {
-            "description": "Internal Server Error"
+          "404": {
+            "description": "Connection not found"
           }
         }
       }
@@ -1462,8 +1520,8 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
@@ -1530,8 +1588,8 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
@@ -1590,8 +1648,8 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
@@ -1650,8 +1708,8 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "400": {
+            "description": "Missing or invalid image file, or missing, non-string, blank, or too long (over 255 characters) title"
           }
         }
       }
@@ -1819,9 +1877,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -1870,36 +1925,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "checks": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
@@ -1959,39 +1985,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "checks": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
@@ -2021,14 +2015,8 @@
           "204": {
             "description": "No Content"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "409": {
             "description": "Conflict"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -2070,12 +2058,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         },
         "requestBody": {
@@ -2114,24 +2096,7 @@
             "description": "Created"
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
@@ -2164,27 +2129,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
@@ -2213,12 +2158,6 @@
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -2288,48 +2227,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       }
@@ -2414,11 +2312,8 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "400": {
+            "description": "Blank or too long name, too long storage_location, or quantity not a non-negative integer"
           }
         }
       },
@@ -2445,14 +2340,8 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
@@ -2481,34 +2370,8 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       }
@@ -2545,34 +2408,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       },
@@ -2607,14 +2444,8 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
@@ -2704,9 +2535,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -2743,36 +2571,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "items": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       }
@@ -2850,51 +2649,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "items": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name"
           }
         }
       },
@@ -2915,12 +2670,6 @@
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
@@ -2982,48 +2731,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  },
-                  "example": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       }
@@ -3109,45 +2817,7 @@
             }
           },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "example": "any"
-                  },
-                  "content": {
-                    "example": "any"
-                  },
-                  "name": {
-                    "example": "any"
-                  },
-                  "quantity": {
-                    "example": "any"
-                  },
-                  "notes": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  },
-                  "specs": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
           }
         }
       },
@@ -3174,14 +2844,8 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
@@ -3210,34 +2874,8 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       }
@@ -3274,34 +2912,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "400": {
-            "description": "Bad Request"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "example": "any"
-                  },
-                  "storage_location": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
+            "description": "Missing, blank, or too long name, or too long storage_location"
           }
         }
       },
@@ -3336,14 +2948,8 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }
@@ -3381,17 +2987,12 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       }
     },
     "/api/backups/{filename}": {
       "get": {
-        "tags": ["Backup"],
-        "summary": "Download one automatic backup file",
         "description": "",
         "parameters": [
           {
@@ -3404,17 +3005,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Backup zip file",
-            "content": {
-              "application/zip": {}
-            }
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
+          "default": {
+            "description": ""
           }
         }
       }

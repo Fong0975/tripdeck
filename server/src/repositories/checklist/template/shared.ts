@@ -1,11 +1,14 @@
+import type {
+  ChecklistCategory,
+  ChecklistItem,
+  ItemSpec,
+} from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 
-import pool from '../../../config/database';
-import type {
-  ItemSpecResponse,
-  TemplateCategoryResponse,
-  TemplateItemResponse,
-} from '../../../types/checklist';
+import {
+  createSpecRepository,
+  type ItemSpecRow,
+} from '../shared/specRepository';
 
 // --- Row types ---
 
@@ -23,34 +26,30 @@ export interface TemplateItemRow extends RowDataPacket {
   storage_location: string | null;
 }
 
-export interface TemplateItemSpecRow extends RowDataPacket {
-  id: number;
+export interface TemplateItemSpecRow extends ItemSpecRow {
   checklist_template_item_id: number;
-  name: string;
-  storage_location: string | null;
 }
 
 // --- Helpers ---
 
-export function toSpecResponse(row: TemplateItemSpecRow): ItemSpecResponse {
-  return {
-    id: row.id,
-    name: row.name,
-    storage_location: row.storage_location,
-  };
-}
+/** Spec operations bound to the checklist template spec table. */
+export const templateSpecRepository = createSpecRepository({
+  specTable: 'checklist_template_item_specs',
+  itemTable: 'checklist_template_items',
+  parentColumn: 'checklist_template_item_id',
+});
 
 export function toCategoryResponse(
   row: TemplateCategoryRow,
-  items: TemplateItemResponse[],
-): TemplateCategoryResponse {
+  items: ChecklistItem[],
+): ChecklistCategory {
   return { id: row.id, name: row.name, items };
 }
 
 export function toItemResponse(
   row: TemplateItemRow,
-  specs: ItemSpecResponse[],
-): TemplateItemResponse {
+  specs: ItemSpec[],
+): ChecklistItem {
   return {
     id: row.id,
     name: row.name,
@@ -61,27 +60,14 @@ export function toItemResponse(
   };
 }
 
-export function placeholders(count: number): string {
-  return Array.from({ length: count }, () => '?').join(', ');
-}
-
-export async function fetchSpecsByItemIds(
+/**
+ * Loads the specs of the given template items, grouped by item id.
+ *
+ * @param itemIds - Template item ids.
+ * @returns Map of item id to its specs, ordered by spec id.
+ */
+export function fetchSpecsByItemIds(
   itemIds: number[],
-): Promise<Map<number, ItemSpecResponse[]>> {
-  const map = new Map<number, ItemSpecResponse[]>();
-  if (itemIds.length === 0) {
-    return map;
-  }
-  const [rows] = await pool.execute<TemplateItemSpecRow[]>(
-    `SELECT * FROM checklist_template_item_specs
-     WHERE checklist_template_item_id IN (${placeholders(itemIds.length)})
-     ORDER BY checklist_template_item_id, id`,
-    itemIds,
-  );
-  for (const row of rows) {
-    const list = map.get(row.checklist_template_item_id) ?? [];
-    list.push(toSpecResponse(row));
-    map.set(row.checklist_template_item_id, list);
-  }
-  return map;
+): Promise<Map<number, ItemSpec[]>> {
+  return templateSpecRepository.fetchByItemIds(itemIds);
 }

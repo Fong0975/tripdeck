@@ -57,6 +57,26 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('calls the latest onClose on Escape after a rerender', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(
+      <Modal title='Title' onClose={first}>
+        <p>content</p>
+      </Modal>,
+    );
+    rerender(
+      <Modal title='Title' onClose={second}>
+        <p>content</p>
+      </Modal>,
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     {
       description: 'no maxWidth is given',

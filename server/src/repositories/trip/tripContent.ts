@@ -1,44 +1,78 @@
+import type {
+  Attraction,
+  DayLocation,
+  DayPlan,
+  ReferenceWebsite,
+  TravelConnection,
+  TripContent,
+} from '@tripdeck/shared';
+
 import pool from '../../config/database';
 import { createLogger } from '../../logger';
-import type {
-  AttractionResponse,
-  ConnectionResponse,
-  DayLocation,
-  DayResponse,
-  ReferenceWebsite,
-  TripContentResponse,
-} from '../../types/trip';
-import * as imageRepo from '../imageRepository';
-
-import { placeholders, toDateString } from './helpers';
-import { findById } from './tripCrud';
+import { placeholders } from '../../utils/sql';
 import {
+  toAttractionResponse,
   TripAttractionRow,
   TripAttractionWebsiteRow,
-  TripConnectionRow,
-  TripDayLocationRow,
-  TripDayRow,
-} from './types';
+} from '../attraction/shared';
+import { toConnectionResponse, TripConnectionRow } from '../connection';
+import * as imageRepo from '../image';
+
+import { toDateString } from './helpers';
+import { tripExists } from './tripCrud';
+import { TripDayLocationRow, TripDayRow } from './types';
 
 const logger = createLogger('trip');
 
 /**
- * Fetches the full trip content: all days with their attractions
- * (including reference websites) and connections.
- * Executes three batched queries to avoid N+1.
+ * Batch-fetches the reference websites of the given attractions, grouped by
+ * attraction id in insertion order. Skips the query when there are none.
+ *
+ * @param attractionIds - Attractions to look up.
+ * @returns Websites keyed by attraction id.
  */
-export async function findContent(
-  tripId: number,
-): Promise<TripContentResponse | null> {
-  const trip = await findById(tripId);
-  if (!trip) {
+async function getWebsitesByAttractionId(
+  attractionIds: number[],
+): Promise<Map<number, ReferenceWebsite[]>> {
+  const websitesByAttractionId = new Map<number, ReferenceWebsite[]>();
+  if (attractionIds.length === 0) {
+    return websitesByAttractionId;
+  }
+  const [websiteRows] = await pool.execute<TripAttractionWebsiteRow[]>(
+    `SELECT * FROM trip_attraction_websites
+     WHERE trip_attraction_id IN (${placeholders(attractionIds.length)})
+     ORDER BY trip_attraction_id, id`,
+    attractionIds,
+  );
+  for (const row of websiteRows) {
+    const sites = websitesByAttractionId.get(row.trip_attraction_id) ?? [];
+    sites.push({ url: row.url, title: row.title });
+    websitesByAttractionId.set(row.trip_attraction_id, sites);
+  }
+  return websitesByAttractionId;
+}
+
+/**
+ * Fetches the full trip content: all days with their locations, attractions
+ * (including reference websites), connections and images.
+ *
+ * Uses batched queries to avoid N+1, and runs the ones that do not depend
+ * on each other concurrently.
+ *
+ * @param tripId - Trip to load.
+ * @returns The trip's content, or null when the trip does not exist.
+ */
+export async function findContent(tripId: number): Promise<TripContent | null> {
+  const [exists, [dayRows]] = await Promise.all([
+    tripExists(tripId),
+    pool.execute<TripDayRow[]>(
+      'SELECT * FROM trip_days WHERE trip_id = ? ORDER BY day',
+      [tripId],
+    ),
+  ]);
+  if (!exists) {
     return null;
   }
-
-  const [dayRows] = await pool.execute<TripDayRow[]>(
-    'SELECT * FROM trip_days WHERE trip_id = ? ORDER BY day',
-    [tripId],
-  );
 
   if (dayRows.length === 0) {
     return { tripId, days: [] };
@@ -47,50 +81,37 @@ export async function findContent(
   const dayIds = dayRows.map(r => r.id);
   const dayPh = placeholders(dayIds.length);
 
-  const [attractionRows] = await pool.execute<TripAttractionRow[]>(
-    `SELECT * FROM trip_attractions
-     WHERE trip_day_id IN (${dayPh})
-     ORDER BY trip_day_id, sort_order`,
-    dayIds,
-  );
+  const [[attractionRows], [connectionRows], [locationRows]] =
+    await Promise.all([
+      pool.execute<TripAttractionRow[]>(
+        `SELECT * FROM trip_attractions
+         WHERE trip_day_id IN (${dayPh})
+         ORDER BY trip_day_id, sort_order`,
+        dayIds,
+      ),
+      pool.execute<TripConnectionRow[]>(
+        `SELECT * FROM trip_connections WHERE trip_day_id IN (${dayPh})`,
+        dayIds,
+      ),
+      pool.execute<TripDayLocationRow[]>(
+        `SELECT * FROM trip_day_locations WHERE trip_day_id IN (${dayPh}) ORDER BY trip_day_id, sort_order`,
+        dayIds,
+      ),
+    ]);
 
-  // Batch-fetch websites only when there are attractions to look up.
-  const websitesByAttractionId = new Map<number, ReferenceWebsite[]>();
-  if (attractionRows.length > 0) {
-    const attrIds = attractionRows.map(r => r.id);
-    const attrPh = placeholders(attrIds.length);
-    const [websiteRows] = await pool.execute<TripAttractionWebsiteRow[]>(
-      `SELECT * FROM trip_attraction_websites
-       WHERE trip_attraction_id IN (${attrPh})
-       ORDER BY trip_attraction_id, id`,
-      attrIds,
-    );
-    for (const row of websiteRows) {
-      const sites = websitesByAttractionId.get(row.trip_attraction_id) ?? [];
-      sites.push({ url: row.url, title: row.title });
-      websitesByAttractionId.set(row.trip_attraction_id, sites);
-    }
-  }
-
-  const [connectionRows] = await pool.execute<TripConnectionRow[]>(
-    `SELECT * FROM trip_connections WHERE trip_day_id IN (${dayPh})`,
-    dayIds,
-  );
-
-  const [locationRows] = await pool.execute<TripDayLocationRow[]>(
-    `SELECT * FROM trip_day_locations WHERE trip_day_id IN (${dayPh}) ORDER BY trip_day_id, sort_order`,
-    dayIds,
-  );
-
-  // Batch-fetch images for attractions, connections, and days.
   const attrIds = attractionRows.map(r => r.id);
   const connIds = connectionRows.map(r => r.id);
-  const [imagesByAttractionId, imagesByConnectionId, imagesByDayId] =
-    await Promise.all([
-      imageRepo.getAttractionImagesBatch(attrIds),
-      imageRepo.getConnectionImagesBatch(connIds),
-      imageRepo.getDayImagesBatch(dayIds),
-    ]);
+  const [
+    websitesByAttractionId,
+    imagesByAttractionId,
+    imagesByConnectionId,
+    imagesByDayId,
+  ] = await Promise.all([
+    getWebsitesByAttractionId(attrIds),
+    imageRepo.getAttractionImagesBatch(attrIds),
+    imageRepo.getConnectionImagesBatch(connIds),
+    imageRepo.getDayImagesBatch(dayIds),
+  ]);
 
   // Group locations, attractions, and connections by their parent day ID.
   const locationsByDayId = new Map<number, DayLocation[]>();
@@ -100,44 +121,29 @@ export async function findContent(
     locationsByDayId.set(row.trip_day_id, list);
   }
 
-  const attractionsByDayId = new Map<number, AttractionResponse[]>();
+  const attractionsByDayId = new Map<number, Attraction[]>();
   for (const row of attractionRows) {
     const list = attractionsByDayId.get(row.trip_day_id) ?? [];
-    list.push({
-      id: row.id,
-      name: row.name,
-      googleMapUrl: row.google_map_url,
-      notes: row.notes,
-      nearbyAttractions: row.nearby_attractions,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      referenceWebsites: websitesByAttractionId.get(row.id) ?? [],
-      images: imagesByAttractionId.get(row.id) ?? [],
-      sortOrder: row.sort_order,
-      latitude: row.latitude ?? null,
-      longitude: row.longitude ?? null,
-      geoSource: row.geo_source ?? null,
-    });
+    list.push(
+      toAttractionResponse(
+        row,
+        websitesByAttractionId.get(row.id) ?? [],
+        imagesByAttractionId.get(row.id) ?? [],
+      ),
+    );
     attractionsByDayId.set(row.trip_day_id, list);
   }
 
-  const connectionsByDayId = new Map<number, ConnectionResponse[]>();
+  const connectionsByDayId = new Map<number, TravelConnection[]>();
   for (const row of connectionRows) {
     const list = connectionsByDayId.get(row.trip_day_id) ?? [];
-    list.push({
-      id: row.id,
-      fromAttractionId: row.trip_attraction_id_from,
-      toAttractionId: row.trip_attraction_id_to,
-      transportMode: row.transport_mode,
-      duration: row.duration,
-      route: row.route,
-      notes: row.notes,
-      images: imagesByConnectionId.get(row.id) ?? [],
-    });
+    list.push(
+      toConnectionResponse(row, imagesByConnectionId.get(row.id) ?? []),
+    );
     connectionsByDayId.set(row.trip_day_id, list);
   }
 
-  const days: DayResponse[] = dayRows.map(row => ({
+  const days: DayPlan[] = dayRows.map(row => ({
     id: row.id,
     day: row.day,
     date: toDateString(row.date),

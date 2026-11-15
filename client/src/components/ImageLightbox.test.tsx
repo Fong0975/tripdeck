@@ -1,12 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { imageUrl } from '@/api/images';
 import { makeImage } from '@/test-utils/fixtures';
-import type { AttractionImage } from '@/types';
+import type { UploadedImage } from '@/types';
 
 import ImageLightbox from './ImageLightbox';
 
-function makeImages(count: number): AttractionImage[] {
+function makeImages(count: number): UploadedImage[] {
   return Array.from({ length: count }, (_, i) =>
     makeImage({
       id: i + 1,
@@ -16,7 +17,7 @@ function makeImages(count: number): AttractionImage[] {
   );
 }
 
-function renderLightbox(images: AttractionImage[], initialIndex: number) {
+function renderLightbox(images: UploadedImage[], initialIndex: number) {
   const onClose = vi.fn();
   const parentOnClick = vi.fn();
   render(
@@ -42,7 +43,10 @@ describe('ImageLightbox', () => {
   it('renders the image at the initial index', () => {
     renderLightbox(makeImages(3), 1);
 
-    expect(screen.getByAltText('Image 2')).toBeInTheDocument();
+    expect(screen.getByAltText('Image 2')).toHaveAttribute(
+      'src',
+      imageUrl('img-2.jpg'),
+    );
   });
 
   it.each([

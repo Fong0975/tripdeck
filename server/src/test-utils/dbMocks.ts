@@ -1,7 +1,7 @@
 import { type Mock, vi } from 'vitest';
 
 /** Mocked `PoolConnection` returned by `pool.getConnection()`. */
-export interface DbConnectionMock {
+interface DbConnectionMock {
   beginTransaction: Mock;
   execute: Mock;
   query: Mock;
@@ -11,13 +11,13 @@ export interface DbConnectionMock {
 }
 
 /** Mocked mysql2 `Pool` (the default export of `config/database`). */
-export interface DbPoolMock {
+interface DbPoolMock {
   execute: Mock;
   query: Mock;
   getConnection: Mock;
 }
 
-export interface DbMock {
+interface DbMock {
   pool: DbPoolMock;
   conn: DbConnectionMock;
   /** Module shape to return from a `vi.mock('…/config/database')` factory. */
@@ -62,7 +62,7 @@ export function createDbMock(): DbMock {
 export const db = createDbMock();
 
 /** Matches a SQL string by substring, regular expression or predicate. */
-export type SqlMatcher = string | RegExp | ((sql: string) => boolean);
+type SqlMatcher = string | RegExp | ((sql: string) => boolean);
 
 function matchesSql(matcher: SqlMatcher, sql: string): boolean {
   if (typeof matcher === 'string') {

@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import type { Trip, TripContent } from '@/types';
 import { getTrip, getTripContent } from '@/utils/storage';
 
+/**
+ * Loads a trip and its itinerary content for the trip detail page.
+ *
+ * A missing trip (404) redirects home; any other load failure sets
+ * `loadError` so the page can offer `retryLoad`. `reloadContent` refetches
+ * only the content and, on failure, keeps the previously loaded content and
+ * shows an error toast instead of blanking the page.
+ *
+ * @param id The raw `:id` route param.
+ */
 export function useTripData(id: string | undefined) {
   const navigate = useNavigate();
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -26,7 +36,7 @@ export function useTripData(id: string | undefined) {
         getTrip(tripId),
         getTripContent(tripId),
       ]);
-      if (!fetchedTrip) {
+      if (!fetchedTrip || !fetchedContent) {
         navigate('/');
         return;
       }
@@ -43,13 +53,46 @@ export function useTripData(id: string | undefined) {
     void load();
   }, [load]);
 
-  const reloadContent = async () => {
+  /**
+   * Refetches the trip content. Always resolves: on failure (including a
+   * 404) the previous content is kept and an error toast is shown.
+   */
+  const reloadContent = async (): Promise<void> => {
     if (!id) {
       return;
     }
-    const fresh = await getTripContent(Number(id));
+    const fresh = await getTripContent(Number(id)).catch(() => null);
+    if (!fresh) {
+      showToast('error', '重新載入行程內容失敗，請稍後再試');
+      return;
+    }
     setContent(fresh);
   };
 
-  return { trip, content, reloadContent, setTrip, loadError, retryLoad: load };
+  /**
+   * Refetches the trip itself (e.g. after its images changed). Always
+   * resolves: on failure the previous trip is kept and an error toast is
+   * shown.
+   */
+  const reloadTrip = async (): Promise<void> => {
+    if (!id) {
+      return;
+    }
+    const fresh = await getTrip(Number(id)).catch(() => null);
+    if (!fresh) {
+      showToast('error', '重新載入旅程資料失敗，請稍後再試');
+      return;
+    }
+    setTrip(fresh);
+  };
+
+  return {
+    trip,
+    content,
+    reloadContent,
+    reloadTrip,
+    setTrip,
+    loadError,
+    retryLoad: load,
+  };
 }

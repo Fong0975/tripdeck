@@ -1,6 +1,5 @@
 import type {
   Attraction,
-  AttractionImage,
   ChecklistCategory,
   ChecklistItem,
   DayLocation,
@@ -10,6 +9,7 @@ import type {
   Trip,
   TripChecklist,
   TripContent,
+  UploadedImage,
 } from '@/types';
 import type { DailyWeatherData, WeatherResult } from '@/utils/weatherApi';
 
@@ -19,7 +19,7 @@ import type { DailyWeatherData, WeatherResult } from '@/utils/weatherApi';
  * on the default.
  */
 
-/** Builds a trip with only the required fields populated. */
+/** Builds a trip with every optional field empty. */
 export function makeTrip(overrides: Partial<Trip> = {}): Trip {
   return {
     id: 1,
@@ -27,7 +27,9 @@ export function makeTrip(overrides: Partial<Trip> = {}): Trip {
     destination: null,
     startDate: '2026-01-01',
     endDate: '2026-01-05',
+    description: null,
     createdAt: '2026-01-01',
+    images: [],
     ...overrides,
   };
 }
@@ -38,9 +40,11 @@ export function makeDay(overrides: Partial<DayPlan> = {}): DayPlan {
     id: 1,
     day: 1,
     date: '2026-01-01',
+    notes: null,
     locations: [],
     attractions: [],
     connections: [],
+    images: [],
     ...overrides,
   };
 }
@@ -84,11 +88,26 @@ export function makeBoardDays(overrides: Partial<DayPlan>[] = []): DayPlan[] {
   return base.map((day, i) => ({ ...day, ...overrides[i] }));
 }
 
-/** Builds an attraction with only the required fields populated. */
+/** Builds an attraction with every optional field empty. */
 export function makeAttraction(
   overrides: Partial<Attraction> = {},
 ): Attraction {
-  return { id: 1, name: 'Attraction', ...overrides };
+  return {
+    id: 1,
+    name: 'Attraction',
+    googleMapUrl: null,
+    notes: null,
+    nearbyAttractions: null,
+    startTime: null,
+    endTime: null,
+    referenceWebsites: [],
+    images: [],
+    sortOrder: 0,
+    latitude: null,
+    longitude: null,
+    geoSource: null,
+    ...overrides,
+  };
 }
 
 /** Builds a walking connection from attraction 1 to attraction 2. */
@@ -100,6 +119,10 @@ export function makeConnection(
     fromAttractionId: 1,
     toAttractionId: 2,
     transportMode: 'walk',
+    duration: null,
+    route: null,
+    notes: null,
+    images: [],
     ...overrides,
   };
 }
@@ -113,8 +136,8 @@ export function makeLocation(
 
 /** Builds an uploaded image record. */
 export function makeImage(
-  overrides: Partial<AttractionImage> = {},
-): AttractionImage {
+  overrides: Partial<UploadedImage> = {},
+): UploadedImage {
   return { id: 1, filename: 'photo.jpg', title: '', ...overrides };
 }
 
@@ -123,11 +146,19 @@ export function makeChecklistSpec(overrides: Partial<ItemSpec> = {}): ItemSpec {
   return { id: 1, name: 'Spec', storage_location: null, ...overrides };
 }
 
-/** Builds a checklist item with only the required fields populated. */
+/** Builds a checklist item with every optional field empty. */
 export function makeChecklistItem(
   overrides: Partial<ChecklistItem> = {},
 ): ChecklistItem {
-  return { id: 1, name: 'Item', ...overrides };
+  return {
+    id: 1,
+    name: 'Item',
+    quantity: null,
+    notes: null,
+    storage_location: null,
+    specs: [],
+    ...overrides,
+  };
 }
 
 /** Builds a checklist category with no items. */

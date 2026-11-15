@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
+import { LABEL_CLS, TEXTAREA_CLS } from '@/components/ui/formStyles';
 import { useEntityImages } from '@/hooks/useEntityImages';
+import { useSubmitting } from '@/hooks/useSubmitting';
 import type { DayPlan } from '@/types';
 import { deleteDayImage, uploadDayImage } from '@/utils/storage';
 
@@ -12,7 +14,10 @@ interface Props {
   tripId: number;
   day: DayPlan;
   onClose: () => void;
-  onSave: (notes: string | null) => void;
+  /** Return the save promise so the modal can block repeat submits until it settles. */
+  onSave: (notes: string | null) => Promise<void> | void;
+  /** Called after each image upload/delete, which persists immediately even if the modal is later cancelled. */
+  onImagesChanged?: () => void;
 }
 
 export default function EditDayNoteModal({
@@ -20,6 +25,7 @@ export default function EditDayNoteModal({
   day,
   onClose,
   onSave,
+  onImagesChanged,
 }: Props) {
   const [notes, setNotes] = useState(day.notes ?? '');
   const {
@@ -30,33 +36,31 @@ export default function EditDayNoteModal({
     initialImages: day.images ?? [],
     upload: (file, title) => uploadDayImage(tripId, day.id, file, title),
     remove: imageId => deleteDayImage(tripId, day.id, imageId),
+    onImagesChanged,
   });
+  const { submitting, run } = useSubmitting();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(notes.trim() || null);
+    void run(() => onSave(notes.trim() || null));
   };
 
   return (
     <Modal title={`第 ${day.day} 天備註`} onClose={onClose} scrollable>
       <form onSubmit={handleSubmit} className='space-y-4'>
         <div>
-          <label className='mb-1.5 block text-sm font-medium text-foreground'>
-            備註
-          </label>
+          <label className={LABEL_CLS}>備註</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder='這天的備註...'
             rows={4}
-            className='w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-hidden'
+            className={TEXTAREA_CLS}
           />
         </div>
 
         <div>
-          <label className='mb-1.5 block text-sm font-medium text-foreground'>
-            圖片
-          </label>
+          <label className={LABEL_CLS}>圖片</label>
           <ImageUploadSection
             images={images}
             onUpload={handleUploadImage}
@@ -64,7 +68,7 @@ export default function EditDayNoteModal({
           />
         </div>
 
-        <ModalFooterActions onCancel={onClose} />
+        <ModalFooterActions onCancel={onClose} submitting={submitting} />
       </form>
     </Modal>
   );

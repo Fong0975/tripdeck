@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { db } from '../../../test-utils/dbMocks';
+import { db, routeSql } from '../../../test-utils/dbMocks';
 
 import {
   createOccasion,
-  deleteOccasion,
-  getOccasionCount,
+  deleteOccasionIfNotLast,
   updateOccasion,
   verifyOccasionBelongsToTrip,
 } from './tripOccasionRepository';
@@ -16,6 +15,7 @@ vi.mock('../../../config/database', async () => {
 });
 
 const mockPoolExecute = db.pool.execute;
+const mockConnExecute = db.conn.execute;
 
 describe('tripOccasionRepository', () => {
   describe('verifyOccasionBelongsToTrip', () => {
@@ -76,29 +76,78 @@ describe('tripOccasionRepository', () => {
     });
   });
 
-  describe('getOccasionCount', () => {
-    it('returns the count from the query result', async () => {
-      mockPoolExecute.mockResolvedValue([[{ count: 3 }]]);
+  describe('deleteOccasionIfNotLast', () => {
+    const DELETE_SQL = 'DELETE FROM checklist_occasions WHERE id = ?';
 
-      const result = await getOccasionCount(5);
-
-      expect(result).toBe(3);
-    });
-  });
-
-  describe('deleteOccasion', () => {
     it.each([
-      { affectedRows: 1, expected: true },
-      { affectedRows: 0, expected: false },
+      {
+        label: 'the trip does not exist',
+        tripRows: [],
+        occasionRows: [{ id: 2 }, { id: 3 }],
+        expected: 'not_found',
+        deletes: false,
+      },
+      {
+        label: 'the occasion is not in the trip',
+        tripRows: [{ id: 1 }],
+        occasionRows: [{ id: 3 }, { id: 4 }],
+        expected: 'not_found',
+        deletes: false,
+      },
+      {
+        label: 'it is the last occasion',
+        tripRows: [{ id: 1 }],
+        occasionRows: [{ id: 2 }],
+        expected: 'last_occasion',
+        deletes: false,
+      },
+      {
+        label: 'other occasions remain',
+        tripRows: [{ id: 1 }],
+        occasionRows: [{ id: 2 }, { id: 3 }],
+        expected: 'deleted',
+        deletes: true,
+      },
     ])(
-      'returns $expected when affectedRows is $affectedRows',
-      async ({ affectedRows, expected }) => {
-        mockPoolExecute.mockResolvedValue([{ affectedRows }]);
+      'returns $expected when $label',
+      async ({ tripRows, occasionRows, expected, deletes }) => {
+        routeSql(
+          mockConnExecute,
+          [
+            ['FROM trips', [tripRows]],
+            ['SELECT id FROM checklist_occasions', [occasionRows]],
+          ],
+          [{ affectedRows: 1 }],
+        );
 
-        const result = await deleteOccasion(1);
+        const result = await deleteOccasionIfNotLast(1, 2);
 
         expect(result).toBe(expected);
+        expect(mockConnExecute).toHaveBeenNthCalledWith(
+          1,
+          'SELECT id FROM trips WHERE id = ? FOR UPDATE',
+          [1],
+        );
+        if (deletes) {
+          expect(mockConnExecute).toHaveBeenCalledWith(DELETE_SQL, [2]);
+        } else {
+          expect(mockConnExecute).not.toHaveBeenCalledWith(
+            DELETE_SQL,
+            expect.anything(),
+          );
+        }
+        expect(db.conn.commit).toHaveBeenCalled();
+        expect(mockPoolExecute).not.toHaveBeenCalled();
       },
     );
+
+    it('rolls back and rethrows when a query fails', async () => {
+      mockConnExecute.mockRejectedValueOnce(new Error('db error'));
+
+      await expect(deleteOccasionIfNotLast(1, 2)).rejects.toThrow('db error');
+
+      expect(db.conn.rollback).toHaveBeenCalled();
+      expect(db.conn.commit).not.toHaveBeenCalled();
+    });
   });
 });

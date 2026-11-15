@@ -1,22 +1,22 @@
+import type {
+  ChecklistCategory,
+  ChecklistItem,
+  ChecklistTemplate,
+} from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../../../config/database';
-import type {
-  ChecklistTemplateResponse,
-  TemplateCategoryResponse,
-  TemplateItemResponse,
-} from '../../../types/checklist';
+import { placeholders } from '../../../utils/sql';
 
 import {
   fetchSpecsByItemIds,
-  placeholders,
   TemplateCategoryRow,
   TemplateItemRow,
   toCategoryResponse,
   toItemResponse,
 } from './shared';
 
-export async function findTemplate(): Promise<ChecklistTemplateResponse> {
+export async function findTemplate(): Promise<ChecklistTemplate> {
   const [catRows] = await pool.execute<TemplateCategoryRow[]>(
     'SELECT * FROM checklist_template_categories ORDER BY id',
   );
@@ -35,7 +35,7 @@ export async function findTemplate(): Promise<ChecklistTemplateResponse> {
 
   const specsByItemId = await fetchSpecsByItemIds(itemRows.map(r => r.id));
 
-  const itemsByCatId = new Map<number, TemplateItemResponse[]>();
+  const itemsByCatId = new Map<number, ChecklistItem[]>();
   for (const row of itemRows) {
     const list = itemsByCatId.get(row.checklist_template_category_id) ?? [];
     list.push(toItemResponse(row, specsByItemId.get(row.id) ?? []));
@@ -49,9 +49,7 @@ export async function findTemplate(): Promise<ChecklistTemplateResponse> {
   return { categories };
 }
 
-export async function createCategory(
-  name: string,
-): Promise<TemplateCategoryResponse> {
+export async function createCategory(name: string): Promise<ChecklistCategory> {
   const [result] = await pool.execute<ResultSetHeader>(
     'INSERT INTO checklist_template_categories (name) VALUES (?)',
     [name],
@@ -63,7 +61,7 @@ export async function createCategory(
 export async function updateCategory(
   catId: number,
   name: string,
-): Promise<TemplateCategoryResponse | null> {
+): Promise<ChecklistCategory | null> {
   const [rows] = await pool.execute<TemplateCategoryRow[]>(
     'SELECT * FROM checklist_template_categories WHERE id = ?',
     [catId],

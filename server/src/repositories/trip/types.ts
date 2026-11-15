@@ -1,7 +1,5 @@
 import type { RowDataPacket } from 'mysql2';
 
-import type { GeoSource } from '../../maps/geoKey';
-
 export interface TripRow extends RowDataPacket {
   id: number;
   title: string;
@@ -17,40 +15,6 @@ export interface TripDayRow extends RowDataPacket {
   trip_id: number;
   day: number;
   date: Date | string;
-  notes: string | null;
-}
-
-export interface TripAttractionRow extends RowDataPacket {
-  id: number;
-  trip_day_id: number;
-  name: string;
-  google_map_url: string | null;
-  notes: string | null;
-  nearby_attractions: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  sort_order: number;
-  latitude: number | null;
-  longitude: number | null;
-  geo_source: GeoSource | null;
-  geo_key: string | null;
-}
-
-export interface TripAttractionWebsiteRow extends RowDataPacket {
-  id: number;
-  trip_attraction_id: number;
-  url: string;
-  title: string;
-}
-
-export interface TripConnectionRow extends RowDataPacket {
-  id: number;
-  trip_day_id: number;
-  trip_attraction_id_from: number;
-  trip_attraction_id_to: number;
-  transport_mode: string | null;
-  duration: string | null;
-  route: string | null;
   notes: string | null;
 }
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { imageUrl } from '@/api/images';
 import { textRun } from '@/test-utils/docx';
 import { makeImage } from '@/test-utils/fixtures';
 
@@ -55,6 +56,27 @@ class FakeImage {
     this.naturalHeight = FakeImage.naturalHeight;
     this.onload?.();
   }
+}
+
+/**
+ * Stubs the canvas used to re-encode WebP images as PNG.
+ *
+ * @param context - The 2D context `getContext` returns (`null` = unavailable).
+ * @param pngBytes - The encoded PNG bytes, or `null` to make `toBlob` fail.
+ */
+function stubCanvas(
+  context: Pick<CanvasRenderingContext2D, 'drawImage'> | null,
+  pngBytes: ArrayBuffer | null,
+) {
+  const blob = pngBytes
+    ? ({ arrayBuffer: () => Promise.resolve(pngBytes) } as Blob)
+    : null;
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+    context as CanvasRenderingContext2D | null,
+  );
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(callback =>
+    callback(blob),
+  );
 }
 
 beforeEach(() => {
@@ -122,6 +144,75 @@ describe('makeImageParagraphs', () => {
       });
     },
   );
+
+  it.each([
+    {
+      description: 'content-type is image/webp',
+      contentType: 'image/webp',
+      filename: 'photo.bin',
+    },
+    {
+      description: 'content-type missing, sniffed from the .webp extension',
+      contentType: null,
+      filename: 'photo.webp',
+    },
+  ])(
+    'converts webp to an embedded png when $description',
+    async ({ contentType, filename }) => {
+      const pngBuffer = new ArrayBuffer(8);
+      const drawImage = vi.fn();
+      stubCanvas({ drawImage }, pngBuffer);
+      vi.mocked(fetch).mockResolvedValue(
+        makeResponse(true, new ArrayBuffer(4), contentType),
+      );
+
+      const result = await makeImageParagraphs(makeImage({ filename }));
+
+      expect(drawImage).toHaveBeenCalledTimes(1);
+      expect(result[0]).toMatchObject({
+        options: {
+          children: [
+            { type: 'ImageRun', options: { type: 'png', data: pngBuffer } },
+          ],
+        },
+      });
+    },
+  );
+
+  it.each([
+    {
+      description: 'the canvas has no 2D context',
+      context: null,
+    },
+    {
+      description: 'the canvas fails to encode a PNG',
+      context: { drawImage: vi.fn() },
+    },
+  ])(
+    'falls back to an error paragraph when webp conversion fails: $description',
+    async ({ context }) => {
+      stubCanvas(context, null);
+      vi.mocked(fetch).mockResolvedValue(
+        makeResponse(true, new ArrayBuffer(4), 'image/webp'),
+      );
+
+      const result = await makeImageParagraphs(makeImage());
+
+      expect(result).toEqual([errorParagraph()]);
+    },
+  );
+
+  it('fetches the image from the uploads path', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeResponse(true, new ArrayBuffer(4), 'image/jpeg'),
+    );
+
+    await makeImageParagraphs(makeImage({ filename: 'x.jpg' }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      `${window.location.origin}${imageUrl('x.jpg')}`,
+    );
+  });
 
   it('returns an empty array for svg images (unsupported by docx)', async () => {
     vi.mocked(fetch).mockResolvedValue(

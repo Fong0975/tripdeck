@@ -5,15 +5,15 @@ import { invalidNameCases } from '../../test-utils/fixtures';
 import {
   createMockReqRes,
   expectJsonStatus,
-  itReturns500,
-  type Returns500Case,
+  itRejects,
+  type RejectCase,
 } from '../../test-utils/httpMocks';
 
 import {
-  addCategory,
-  deleteCategory,
+  addTemplateCategory,
+  deleteTemplateCategory,
   getTemplate,
-  updateCategory,
+  updateTemplateCategory,
 } from './templateCategoryController';
 
 vi.mock('../../repositories/checklist/template', () => ({
@@ -22,6 +22,11 @@ vi.mock('../../repositories/checklist/template', () => ({
   findTemplate: vi.fn(),
   updateCategory: vi.fn(),
 }));
+
+const blankNameCases = [
+  ...invalidNameCases,
+  { label: 'name is whitespace only', body: { name: '   ' } },
+];
 
 describe('getTemplate', () => {
   it('returns 200 with the template', async () => {
@@ -36,11 +41,11 @@ describe('getTemplate', () => {
   });
 });
 
-describe('addCategory', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+describe('addTemplateCategory', () => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({ body });
 
-    await addCategory(req, res);
+    await addTemplateCategory(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
     expect(templateRepo.createCategory).not.toHaveBeenCalled();
@@ -51,18 +56,18 @@ describe('addCategory', () => {
     vi.mocked(templateRepo.createCategory).mockResolvedValue(category);
     const { req, res } = createMockReqRes({ body: { name: 'Sports Gear' } });
 
-    await addCategory(req, res);
+    await addTemplateCategory(req, res);
 
     expect(templateRepo.createCategory).toHaveBeenCalledWith('Sports Gear');
     expectJsonStatus(res, 201, category);
   });
 });
 
-describe('updateCategory', () => {
-  it.each(invalidNameCases)('returns 400 when $label', async ({ body }) => {
+describe('updateTemplateCategory', () => {
+  it.each(blankNameCases)('returns 400 when $label', async ({ body }) => {
     const { req, res } = createMockReqRes({ params: { catId: '1' }, body });
 
-    await updateCategory(req, res);
+    await updateTemplateCategory(req, res);
 
     expectJsonStatus(res, 400, { error: 'name is required' });
     expect(templateRepo.updateCategory).not.toHaveBeenCalled();
@@ -75,7 +80,7 @@ describe('updateCategory', () => {
       body: { name: 'Documents' },
     });
 
-    await updateCategory(req, res);
+    await updateTemplateCategory(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
   });
@@ -88,19 +93,19 @@ describe('updateCategory', () => {
       body: { name: 'Documents' },
     });
 
-    await updateCategory(req, res);
+    await updateTemplateCategory(req, res);
 
     expect(templateRepo.updateCategory).toHaveBeenCalledWith(1, 'Documents');
     expect(res.json).toHaveBeenCalledWith(category);
   });
 });
 
-describe('deleteCategory', () => {
+describe('deleteTemplateCategory', () => {
   it('returns 404 when the category does not exist', async () => {
     vi.mocked(templateRepo.deleteCategory).mockResolvedValue(false);
     const { req, res } = createMockReqRes({ params: { catId: '1' } });
 
-    await deleteCategory(req, res);
+    await deleteTemplateCategory(req, res);
 
     expectJsonStatus(res, 404, { error: 'Category not found' });
   });
@@ -109,7 +114,7 @@ describe('deleteCategory', () => {
     vi.mocked(templateRepo.deleteCategory).mockResolvedValue(true);
     const { req, res } = createMockReqRes({ params: { catId: '1' } });
 
-    await deleteCategory(req, res);
+    await deleteTemplateCategory(req, res);
 
     expect(templateRepo.deleteCategory).toHaveBeenCalledWith(1);
     expect(res.status).toHaveBeenCalledWith(204);
@@ -117,40 +122,36 @@ describe('deleteCategory', () => {
   });
 });
 
-describe('500 responses', () => {
-  const failureCases: Returns500Case[] = [
+describe('unexpected repository errors', () => {
+  const tests: RejectCase[] = [
     {
       name: 'getTemplate',
       handler: getTemplate,
       arrange: error =>
         vi.mocked(templateRepo.findTemplate).mockRejectedValue(error),
-      expectedError: 'Failed to fetch template',
     },
     {
-      name: 'addCategory',
-      handler: addCategory,
+      name: 'addTemplateCategory',
+      handler: addTemplateCategory,
       req: { body: { name: 'Camping Gear' } },
       arrange: error =>
         vi.mocked(templateRepo.createCategory).mockRejectedValue(error),
-      expectedError: 'Failed to add category',
     },
     {
-      name: 'updateCategory',
-      handler: updateCategory,
+      name: 'updateTemplateCategory',
+      handler: updateTemplateCategory,
       req: { params: { catId: '1' }, body: { name: 'Camping Gear' } },
       arrange: error =>
         vi.mocked(templateRepo.updateCategory).mockRejectedValue(error),
-      expectedError: 'Failed to update category',
     },
     {
-      name: 'deleteCategory',
-      handler: deleteCategory,
+      name: 'deleteTemplateCategory',
+      handler: deleteTemplateCategory,
       req: { params: { catId: '1' } },
       arrange: error =>
         vi.mocked(templateRepo.deleteCategory).mockRejectedValue(error),
-      expectedError: 'Failed to delete category',
     },
   ];
 
-  itReturns500(failureCases);
+  itRejects(tests);
 });

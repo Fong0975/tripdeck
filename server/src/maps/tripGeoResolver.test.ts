@@ -30,7 +30,7 @@ vi.mock('./geocodeClient', async importOriginal => ({
 vi.mock('./linkResolver', () => ({
   resolveCoordinatesFromLink: mocks.resolveCoordinatesFromLink,
 }));
-vi.mock('./serialQueue', () => ({
+vi.mock('../utils/serialQueue', () => ({
   createSerialQueue: () => ({
     enqueue: (_key: string, task: () => Promise<unknown>) => task(),
   }),

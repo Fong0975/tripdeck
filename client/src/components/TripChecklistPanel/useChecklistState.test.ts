@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -14,7 +14,7 @@ import { useChecklistState } from './useChecklistState';
 
 vi.mock('@/utils/storage');
 
-vi.mock('@/lib/toast');
+vi.mock('@/components/ui/toast');
 
 function makeChecklist(): TripChecklist {
   return makeTripChecklist({
@@ -86,20 +86,6 @@ describe('useChecklistState', () => {
     act(() => result.current.handleToggleCheck(1, 10));
 
     await waitFor(() => expect(onDirtyChange).toHaveBeenCalledWith(true));
-  });
-
-  it('prevents unload only while dirty', async () => {
-    const { result } = await renderLoaded();
-
-    const cleanEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(cleanEvent);
-    expect(cleanEvent.defaultPrevented).toBe(false);
-
-    act(() => result.current.handleToggleCheck(1, 10));
-
-    const dirtyEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(dirtyEvent);
-    expect(dirtyEvent.defaultPrevented).toBe(true);
   });
 
   it('handleSaveChecks only sends entries whose local value differs from saved, then reloads', async () => {
@@ -183,14 +169,102 @@ describe('useChecklistState', () => {
     expect(setCheck).not.toHaveBeenCalled();
   });
 
-  it('handleEditSaved clears local edits and reloads', async () => {
+  it.each([
+    {
+      description: 'keeps unsaved checks for items that still exist',
+      reloaded: makeChecklist(),
+      expectedDirty: true,
+      expectedCheck: false,
+    },
+    {
+      description: 'drops unsaved checks for items that were removed',
+      reloaded: makeTripChecklist({
+        occasions: [{ id: 1, name: 'Occ A', checks: {} }],
+        categories: [
+          makeChecklistCategory({
+            name: 'Cat A',
+            items: [makeChecklistItem({ id: 20, name: 'Item B' })],
+          }),
+        ],
+      }),
+      expectedDirty: false,
+      expectedCheck: false,
+    },
+    {
+      description: 'drops unsaved checks for occasions that were removed',
+      reloaded: makeTripChecklist({
+        occasions: [{ id: 2, name: 'Occ B', checks: {} }],
+        categories: makeChecklist().categories,
+      }),
+      expectedDirty: false,
+      expectedCheck: false,
+    },
+  ])(
+    'handleEditSaved reloads and $description',
+    async ({ reloaded, expectedDirty, expectedCheck }) => {
+      const { result } = await renderLoaded();
+      act(() => result.current.handleToggleCheck(1, 10));
+      vi.mocked(getTripChecklist).mockClear();
+      vi.mocked(getTripChecklist).mockResolvedValueOnce(reloaded);
+
+      await act(() => result.current.handleEditSaved());
+
+      expect(getTripChecklist).toHaveBeenCalledTimes(1);
+      expect(result.current.checklist).toEqual(reloaded);
+      expect(result.current.isDirty).toBe(expectedDirty);
+      expect(result.current.getCheck(1, 10)).toBe(expectedCheck);
+    },
+  );
+
+  it('handleEditSaved keeps local edits and shows a toast when the reload fails', async () => {
     const { result } = await renderLoaded();
     act(() => result.current.handleToggleCheck(1, 10));
-    vi.mocked(getTripChecklist).mockClear();
+    vi.mocked(getTripChecklist).mockRejectedValueOnce(new Error('API error'));
 
     await act(() => result.current.handleEditSaved());
 
-    expect(result.current.isDirty).toBe(false);
-    expect(getTripChecklist).toHaveBeenCalledTimes(1);
+    expect(result.current.isDirty).toBe(true);
+    expect(result.current.checklist).toEqual(makeChecklist());
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      '重新載入打包清單失敗，請稍後再試',
+    );
   });
+
+  it('sets loadError when the initial load fails and recovers via retryLoad', async () => {
+    vi.mocked(getTripChecklist).mockRejectedValueOnce(new Error('API error'));
+
+    const { result } = await renderLoaded();
+
+    expect(result.current.loadError).toBe(true);
+    expect(result.current.checklist).toBeNull();
+
+    await act(() => result.current.retryLoad());
+
+    expect(result.current.loadError).toBe(false);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.checklist).toEqual(makeChecklist());
+  });
+
+  it.each([
+    { description: 'clean', dirty: false },
+    { description: 'dirty', dirty: true },
+  ])(
+    'reports not-dirty to onDirtyChange on unmount when $description',
+    async ({ dirty }) => {
+      const onDirtyChange = vi.fn();
+      const { result, unmount } = await renderLoaded(onDirtyChange);
+      if (dirty) {
+        act(() => result.current.handleToggleCheck(1, 10));
+        await waitFor(() =>
+          expect(onDirtyChange).toHaveBeenLastCalledWith(true),
+        );
+      }
+      onDirtyChange.mockClear();
+
+      unmount();
+
+      expect(onDirtyChange).toHaveBeenCalledWith(false);
+    },
+  );
 });

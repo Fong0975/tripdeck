@@ -6,16 +6,17 @@
     "node": ">=24 <25"
   },
   "workspaces": [
+    "shared",
     "client",
     "server"
   ],
   "scripts": {
-    "dev": "concurrently -k -n client,server -c blue,green \"npm run dev -w client\" \"npm run dev -w server\"",
-    "build": "npm run build -w client && npm run build -w server",
+    "dev": "npm run build -w shared && concurrently -k -n shared,client,server -c magenta,blue,green \"npm run dev -w shared\" \"npm run dev -w client\" \"npm run dev -w server\"",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
     "start": "npm run start -w server",
-    "lint": "npm run lint -w client && npm run lint -w server",
-    "lint:fix": "npm run lint:fix -w client && npm run lint:fix -w server",
-    "lint:check": "npm run lint:check -w client && npm run lint:check -w server",
+    "lint": "npm run build -w shared && npm run lint -w client && npm run lint -w server",
+    "lint:fix": "npm run build -w shared && npm run lint:fix -w client && npm run lint:fix -w server",
+    "lint:check": "npm run build -w shared && npm run lint:check -w client && npm run lint:check -w server",
     "test": "npm run test -w client && npm run test -w server",
     "test:watch": "concurrently -k -n client,server -c blue,green \"npm run test:watch -w client\" \"npm run test:watch -w server\"",
     "test:coverage": "npm run test:coverage -w client && npm run test:coverage -w server",

@@ -1,7 +1,7 @@
 node_modules
 dist
 public
-records
+raw
 docker
 client/coverage
 client/test-results.json

@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { AutoBackupFileInfo } from '@tripdeck/shared';
+
 import { createLogger } from '../../logger';
-import type { AutoBackupFileInfo } from '../../types/backup';
 
 const logger = createLogger('auto-backup');
 
