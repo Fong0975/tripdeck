@@ -20,6 +20,11 @@ const NODE_TEST_FILES = [
   'src/utils/exportToDocx/{attractionTable,constants,dayNotesSection,headerSection,index,markdownToDocx,transportTable}.test.ts',
 ];
 
+// Suites that exercise the real implementation of a module most other suites
+// replace with vi.mock. Sharing a module cache with them makes the result
+// depend on file order, so they keep a fresh environment per file.
+const ISOLATED_DOM_TEST_FILES = ['src/components/ui/toast/index.test.tsx'];
+
 const ENV_DIR = path.resolve(__dirname, '..');
 const DEFAULT_API_PORT = '3001';
 
@@ -66,9 +71,24 @@ export default defineConfig(({ mode }) => {
           test: {
             name: 'dom',
             environment: 'jsdom',
+            // Building a jsdom environment per file dominated the run time, so
+            // files share one per worker. mockReset restores every mock's
+            // original implementation between tests so a mockResolvedValue /
+            // mockRejectedValue cannot leak into the next test or file.
+            isolate: false,
+            mockReset: true,
             setupFiles: ['./src/setupTests.ts'],
             include: ['src/**/*.test.{ts,tsx}'],
-            exclude: NODE_TEST_FILES,
+            exclude: [...NODE_TEST_FILES, ...ISOLATED_DOM_TEST_FILES],
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: 'dom-isolated',
+            environment: 'jsdom',
+            setupFiles: ['./src/setupTests.ts'],
+            include: ISOLATED_DOM_TEST_FILES,
           },
         },
       ],
