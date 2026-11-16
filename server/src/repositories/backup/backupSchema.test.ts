@@ -87,7 +87,12 @@ function validTripData(): TripBackupData {
         },
       ],
       occasions: [
-        { id: 600, name: 'Packing', checks: { 400: true }, specChecks: {} },
+        {
+          id: 600,
+          name: 'Packing',
+          checks: { 400: true },
+          specChecks: { 500: true },
+        },
       ],
     },
   });
@@ -165,6 +170,8 @@ describe('assertTripBackupData', () => {
     { path: 'checklist.categories[0].items[0].specs[0].name', value: REMOVE },
     { path: 'checklist.occasions[0].checks', value: [] },
     { path: 'checklist.occasions[0].checks.400', value: 'yes' },
+    { path: 'checklist.occasions[0].specChecks', value: [] },
+    { path: 'checklist.occasions[0].specChecks.500', value: 'yes' },
   ];
 
   const tests: Array<{
@@ -190,6 +197,11 @@ describe('assertTripBackupData', () => {
           withValueAt(data, `content.days[0].attractions[0].${field}`, REMOVE),
         valid,
       ),
+      expectedError: null,
+    },
+    {
+      name: 'an occasion from a backup that predates spec checks',
+      data: withValueAt(valid, 'checklist.occasions[0].specChecks', REMOVE),
       expectedError: null,
     },
     {
