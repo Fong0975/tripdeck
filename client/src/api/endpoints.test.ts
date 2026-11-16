@@ -54,6 +54,7 @@ import {
   deleteTripItemSpec,
   getTripChecklist,
   setCheck,
+  setSpecCheck,
   updateOccasion,
   updateTripCategory,
   updateTripItem,
@@ -450,6 +451,12 @@ describe('trip checklist API', () => {
       call: () => setCheck(1, 5, 3, true),
       url: '/api/trips/1/checklist/occasions/5/items/3/check',
       init: { method: 'PUT', ...json({ checked: true }) },
+    },
+    {
+      name: 'setSpecCheck PUTs to the spec check endpoint',
+      call: () => setSpecCheck(1, 5, 3, 4, false),
+      url: '/api/trips/1/checklist/occasions/5/items/3/specs/4/check',
+      init: { method: 'PUT', ...json({ checked: false }) },
     },
   ]);
 });

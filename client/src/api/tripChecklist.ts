@@ -158,3 +158,16 @@ export async function setCheck(
     { method: 'PUT', ...json({ checked }) },
   );
 }
+
+export async function setSpecCheck(
+  tripId: number,
+  occId: number,
+  itemId: number,
+  specId: number,
+  checked: boolean,
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/checklist/occasions/${occId}/items/${itemId}/specs/${specId}/check`,
+    { method: 'PUT', ...json({ checked }) },
+  );
+}

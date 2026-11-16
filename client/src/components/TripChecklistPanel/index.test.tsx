@@ -16,8 +16,8 @@ import TripChecklistPanel from './index';
 vi.mock('./useChecklistState', () => ({ useChecklistState: vi.fn() }));
 
 vi.mock('./ChecklistTable', () => ({
-  default: ({ totalItems }: { totalItems: number }) => (
-    <div>checklist-table-{totalItems}</div>
+  default: ({ checklist }: { checklist: TripChecklist }) => (
+    <div>checklist-table-{checklist.categories.length}</div>
   ),
 }));
 
@@ -77,7 +77,9 @@ function makeState(
     saving: false,
     isDirty: false,
     getCheck: vi.fn(),
+    getSpecCheck: vi.fn(),
     handleToggleCheck: vi.fn(),
+    handleToggleSpecCheck: vi.fn(),
     handleSaveChecks: vi.fn(),
     handleDiscardChecks: vi.fn(),
     handleEditSaved: vi.fn(),

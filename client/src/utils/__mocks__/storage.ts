@@ -61,6 +61,7 @@ export const addOccasion = vi.fn();
 export const updateOccasion = vi.fn();
 export const deleteOccasion = vi.fn();
 export const setCheck = vi.fn();
+export const setSpecCheck = vi.fn();
 
 export const getTrips = vi.fn();
 export const getTrip = vi.fn();

@@ -2,9 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { showToast } from '@/components/ui/toast';
 import type { TripChecklist } from '@/types';
-import { getTripChecklist, setCheck } from '@/utils/storage';
+import { getTripChecklist, setCheck, setSpecCheck } from '@/utils/storage';
 
-import { pruneLocalChecks, type LocalChecks } from './localChecks';
+import {
+  changedChecks,
+  pruneLocalChecks,
+  pruneLocalSpecChecks,
+  type LocalChecks,
+} from './localChecks';
 
 /**
  * Loads a trip's checklist and manages local (unsaved) check-state edits,
@@ -27,6 +32,7 @@ export function useChecklistState(
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [localChecks, setLocalChecks] = useState<LocalChecks>({});
+  const [localSpecChecks, setLocalSpecChecks] = useState<LocalChecks>({});
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
@@ -54,17 +60,12 @@ export function useChecklistState(
     if (!checklist) {
       return false;
     }
-    for (const occ of checklist.occasions) {
-      const local = localChecks[occ.id] ?? {};
-      for (const [itemIdStr, localVal] of Object.entries(local)) {
-        const savedVal = !!occ.checks[Number(itemIdStr)];
-        if (localVal !== savedVal) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }, [checklist, localChecks]);
+    return checklist.occasions.some(
+      occ =>
+        changedChecks(localChecks[occ.id], occ.checks).length > 0 ||
+        changedChecks(localSpecChecks[occ.id], occ.specChecks).length > 0,
+    );
+  }, [checklist, localChecks, localSpecChecks]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -86,11 +87,31 @@ export function useChecklistState(
     [checklist, localChecks],
   );
 
+  const getSpecCheck = useCallback(
+    (occId: number, specId: number): boolean => {
+      const local = localSpecChecks[occId]?.[specId];
+      if (local !== undefined) {
+        return local;
+      }
+      const occ = checklist?.occasions.find(o => o.id === occId);
+      return !!occ?.specChecks[specId];
+    },
+    [checklist, localSpecChecks],
+  );
+
   const handleToggleCheck = (occId: number, itemId: number) => {
     const current = getCheck(occId, itemId);
     setLocalChecks(prev => ({
       ...prev,
       [occId]: { ...(prev[occId] ?? {}), [itemId]: !current },
+    }));
+  };
+
+  const handleToggleSpecCheck = (occId: number, specId: number) => {
+    const current = getSpecCheck(occId, specId);
+    setLocalSpecChecks(prev => ({
+      ...prev,
+      [occId]: { ...(prev[occId] ?? {}), [specId]: !current },
     }));
   };
 
@@ -100,18 +121,37 @@ export function useChecklistState(
     }
     setSaving(true);
     try {
+      const itemIdBySpecId = new Map(
+        checklist.categories.flatMap(c =>
+          c.items.flatMap(item =>
+            (item.specs ?? []).map((spec): [number, number] => [
+              spec.id,
+              item.id,
+            ]),
+          ),
+        ),
+      );
       const updates: Promise<void>[] = [];
       for (const occ of checklist.occasions) {
-        const local = localChecks[occ.id] ?? {};
-        for (const [itemIdStr, localVal] of Object.entries(local)) {
-          const itemId = Number(itemIdStr);
-          if (localVal !== !!occ.checks[itemId]) {
-            updates.push(setCheck(tripId, occ.id, itemId, localVal));
+        for (const [itemId, checked] of changedChecks(
+          localChecks[occ.id],
+          occ.checks,
+        )) {
+          updates.push(setCheck(tripId, occ.id, itemId, checked));
+        }
+        for (const [specId, checked] of changedChecks(
+          localSpecChecks[occ.id],
+          occ.specChecks,
+        )) {
+          const itemId = itemIdBySpecId.get(specId);
+          if (itemId !== undefined) {
+            updates.push(setSpecCheck(tripId, occ.id, itemId, specId, checked));
           }
         }
       }
       await Promise.all(updates);
       setLocalChecks({});
+      setLocalSpecChecks({});
       await reload();
       showToast('success', '已儲存打包清單勾選。');
     } catch {
@@ -123,6 +163,7 @@ export function useChecklistState(
 
   const handleDiscardChecks = () => {
     setLocalChecks({});
+    setLocalSpecChecks({});
   };
 
   /**
@@ -136,6 +177,7 @@ export function useChecklistState(
       const fresh = await getTripChecklist(tripId);
       setChecklist(fresh);
       setLocalChecks(prev => pruneLocalChecks(prev, fresh));
+      setLocalSpecChecks(prev => pruneLocalSpecChecks(prev, fresh));
     } catch {
       showToast('error', '重新載入打包清單失敗，請稍後再試');
     }
@@ -149,7 +191,9 @@ export function useChecklistState(
     saving,
     isDirty,
     getCheck,
+    getSpecCheck,
     handleToggleCheck,
+    handleToggleSpecCheck,
     handleSaveChecks,
     handleDiscardChecks,
     handleEditSaved,

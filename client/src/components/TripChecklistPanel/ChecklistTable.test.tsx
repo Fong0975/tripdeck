@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   makeChecklistCategory,
   makeChecklistItem,
+  makeChecklistSpec,
   makeTripChecklist,
 } from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
@@ -29,16 +30,24 @@ function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
   });
 }
 
+function renderTable(
+  checklist: TripChecklist,
+  getCheck: (occId: number, id: number) => boolean = () => false,
+  getSpecCheck: (occId: number, id: number) => boolean = () => false,
+) {
+  render(
+    <ChecklistTable
+      checklist={checklist}
+      getCheck={getCheck}
+      getSpecCheck={getSpecCheck}
+      onToggleCheck={vi.fn()}
+    />,
+  );
+}
+
 describe('ChecklistTable', () => {
   it('renders the "項目" header and every occasion name', () => {
-    render(
-      <ChecklistTable
-        checklist={makeChecklist()}
-        totalItems={2}
-        getCheck={() => false}
-        onToggleCheck={vi.fn()}
-      />,
-    );
+    renderTable(makeChecklist());
 
     expect(screen.getByText('項目')).toBeInTheDocument();
     expect(screen.getByText('Occ A')).toBeInTheDocument();
@@ -46,41 +55,73 @@ describe('ChecklistTable', () => {
   });
 
   it('shows the checked/total count per occasion based on getCheck', () => {
-    render(
-      <ChecklistTable
-        checklist={makeChecklist()}
-        totalItems={2}
-        getCheck={(occId, itemId) => occId === 1 && itemId === 10}
-        onToggleCheck={vi.fn()}
-      />,
+    renderTable(
+      makeChecklist(),
+      (occId, itemId) => occId === 1 && itemId === 10,
     );
 
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByText('0 / 2')).toBeInTheDocument();
   });
 
-  it('does not divide by zero when totalItems is 0', () => {
-    render(
-      <ChecklistTable
-        checklist={makeChecklist({ categories: [] })}
-        totalItems={0}
-        getCheck={() => false}
-        onToggleCheck={vi.fn()}
-      />,
-    );
+  it('does not divide by zero when there is nothing to check', () => {
+    renderTable(makeChecklist({ categories: [] }));
 
     expect(screen.getAllByText('0 / 0')).toHaveLength(2);
   });
 
-  it('renders the category name and every item within it', () => {
-    render(
-      <ChecklistTable
-        checklist={makeChecklist()}
-        totalItems={2}
-        getCheck={() => false}
-        onToggleCheck={vi.fn()}
-      />,
+  it.each([
+    {
+      name: 'counts each spec of an item as one unit',
+      checkedSpecs: [101, 102],
+      checkedItems: [],
+      occA: '2 / 5',
+    },
+    {
+      name: 'ignores the own check of an item that has specs',
+      checkedSpecs: [],
+      checkedItems: [10],
+      occA: '0 / 5',
+    },
+    {
+      name: 'mixes plain items and specs',
+      checkedSpecs: [101],
+      checkedItems: [20, 30],
+      occA: '3 / 5',
+    },
+  ])('$name', ({ checkedSpecs, checkedItems, occA }) => {
+    const checklist = makeChecklist({
+      categories: [
+        makeChecklistCategory({
+          items: [
+            makeChecklistItem({
+              id: 10,
+              name: 'With specs',
+              specs: [
+                makeChecklistSpec({ id: 101 }),
+                makeChecklistSpec({ id: 102 }),
+                makeChecklistSpec({ id: 103 }),
+              ],
+            }),
+            makeChecklistItem({ id: 20, name: 'Plain 1' }),
+            makeChecklistItem({ id: 30, name: 'Plain 2' }),
+          ],
+        }),
+      ],
+    });
+
+    renderTable(
+      checklist,
+      (occId, id) => occId === 1 && checkedItems.includes(id),
+      (occId, id) => occId === 1 && checkedSpecs.includes(id),
     );
+
+    // Occasion A is the first column, so its count is the first match.
+    expect(screen.getAllByText(/^\d+ \/ \d+$/)[0]).toHaveTextContent(occA);
+  });
+
+  it('renders the category name and every item within it', () => {
+    renderTable(makeChecklist());
 
     expect(screen.getByText('Category A')).toBeInTheDocument();
     expect(screen.getByText('Item A')).toBeInTheDocument();
@@ -97,15 +138,10 @@ describe('ChecklistTable', () => {
       const items = Array.from({ length: itemCount }, (_, i) =>
         makeChecklistItem({ id: 100 + i, name: `Item ${i}` }),
       );
-      render(
-        <ChecklistTable
-          checklist={makeChecklist({
-            categories: [makeChecklistCategory({ name: 'Cat', items })],
-          })}
-          totalItems={itemCount}
-          getCheck={() => false}
-          onToggleCheck={vi.fn()}
-        />,
+      renderTable(
+        makeChecklist({
+          categories: [makeChecklistCategory({ name: 'Cat', items })],
+        }),
       );
 
       expect(screen.getByText(expected)).toBeInTheDocument();

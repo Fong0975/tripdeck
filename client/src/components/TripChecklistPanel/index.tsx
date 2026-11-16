@@ -25,6 +25,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     saving,
     isDirty,
     getCheck,
+    getSpecCheck,
     handleToggleCheck,
     handleSaveChecks,
     handleDiscardChecks,
@@ -102,8 +103,8 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
 
       <ChecklistTable
         checklist={checklist}
-        totalItems={totalItems}
         getCheck={getCheck}
+        getSpecCheck={getSpecCheck}
         onToggleCheck={handleToggleCheck}
       />
 
