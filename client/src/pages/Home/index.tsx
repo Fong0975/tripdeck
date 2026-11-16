@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
 import AddTripModal from '@/components/AddTripModal';
+import TemplateModal from '@/components/Checklist/template/TemplateModal';
 import EditTripModal from '@/components/EditTripModal';
 import ImportExportModal from '@/components/ImportExportModal';
 import Navbar from '@/components/Navbar';
 import type { Trip } from '@/types';
 
-import ChecklistSection from './ChecklistSection';
 import HeroSection from './HeroSection';
 import TripList from './TripList';
 import { useHomeData } from './useHomeData';
@@ -24,6 +24,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
 
   return (
     <div className='min-h-screen bg-background'>
@@ -38,9 +39,8 @@ export default function Home() {
         onDelete={id => void handleDeleteTrip(id)}
         onEdit={setEditingTrip}
         onImportExport={() => setShowImportExportModal(true)}
+        onOpenTemplate={() => setShowTemplateModal(true)}
       />
-
-      <ChecklistSection />
 
       {showModal && (
         <AddTripModal
@@ -62,6 +62,10 @@ export default function Home() {
           }}
           onImagesChanged={() => void reloadTrips()}
         />
+      )}
+
+      {showTemplateModal && (
+        <TemplateModal onClose={() => setShowTemplateModal(false)} />
       )}
 
       {showImportExportModal && (

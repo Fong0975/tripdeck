@@ -8,15 +8,15 @@ import {
 } from '@/test-utils/fixtures';
 
 import type { EditItem } from '../../shared/types';
-import { useEditState } from '../CategoryEditModal/useEditState';
-import { useSaveCategoryEdit } from '../CategoryEditModal/useSaveCategoryEdit';
 
 import CategoryEditPanel from './CategoryEditPanel';
+import { useEditState } from './useEditState';
+import { useSaveCategoryEdit } from './useSaveCategoryEdit';
 
-vi.mock('../CategoryEditModal/useEditState', () => ({
+vi.mock('./useEditState', () => ({
   useEditState: vi.fn(),
 }));
-vi.mock('../CategoryEditModal/useSaveCategoryEdit', () => ({
+vi.mock('./useSaveCategoryEdit', () => ({
   useSaveCategoryEdit: vi.fn(),
 }));
 vi.mock('../../shared/EditableItemRow', async () => ({

@@ -21,8 +21,13 @@ vi.mock('./HeroSection', () => ({
   default: () => <div>hero-section</div>,
 }));
 
-vi.mock('./ChecklistSection', () => ({
-  default: () => <div>checklist-section</div>,
+vi.mock('@/components/Checklist/template/TemplateModal', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div>
+      <span>template-modal</span>
+      <button onClick={onClose}>trigger-template-close</button>
+    </div>
+  ),
 }));
 
 const sampleTrip = makeTrip({ title: 'Trip A' });
@@ -37,6 +42,7 @@ vi.mock('./TripList', () => ({
     onDelete,
     onEdit,
     onImportExport,
+    onOpenTemplate,
   }: {
     trips: Trip[];
     loading: boolean;
@@ -46,6 +52,7 @@ vi.mock('./TripList', () => ({
     onDelete: (id: number) => void;
     onEdit: (trip: Trip) => void;
     onImportExport: () => void;
+    onOpenTemplate: () => void;
   }) => (
     <div>
       <span>trip-list</span>
@@ -57,6 +64,7 @@ vi.mock('./TripList', () => ({
       <button onClick={() => onDelete(1)}>trigger-delete</button>
       <button onClick={() => onEdit(sampleTrip)}>trigger-edit</button>
       <button onClick={onImportExport}>trigger-import-export</button>
+      <button onClick={onOpenTemplate}>trigger-template</button>
     </div>
   ),
 }));
@@ -137,13 +145,13 @@ describe('Home', () => {
     vi.mocked(useHomeData).mockReturnValue(makeHomeData());
   });
 
-  it('renders the navbar, hero, trip list, and checklist sections', () => {
+  it('renders the navbar, hero and trip list with every modal closed', () => {
     render(<Home />);
 
     expect(screen.getByText('navbar')).toBeInTheDocument();
     expect(screen.getByText('hero-section')).toBeInTheDocument();
     expect(screen.getByText('trip-list')).toBeInTheDocument();
-    expect(screen.getByText('checklist-section')).toBeInTheDocument();
+    expect(screen.queryByText('template-modal')).not.toBeInTheDocument();
     expect(screen.queryByText('add-trip-modal')).not.toBeInTheDocument();
     expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
     expect(screen.queryByText('import-export-modal')).not.toBeInTheDocument();
@@ -226,6 +234,19 @@ describe('Home', () => {
       expect.objectContaining({ id: 1, title: 'Updated Trip' }),
     );
     expect(screen.queryByText('edit-trip-modal')).not.toBeInTheDocument();
+  });
+
+  it('shows the template modal after triggering it and hides it after closing', async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    await user.click(screen.getByRole('button', { name: 'trigger-template' }));
+    expect(screen.getByText('template-modal')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'trigger-template-close' }),
+    );
+    expect(screen.queryByText('template-modal')).not.toBeInTheDocument();
   });
 
   it('shows the import/export modal after triggering it and hides it after closing', async () => {

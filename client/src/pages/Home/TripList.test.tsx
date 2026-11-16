@@ -33,6 +33,7 @@ const renderTripList = makeMounter(TripList, () => ({
   onDelete: vi.fn(),
   onEdit: vi.fn(),
   onImportExport: vi.fn(),
+  onOpenTemplate: vi.fn(),
 }));
 
 describe('TripList', () => {
@@ -111,15 +112,21 @@ describe('TripList', () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onImportExport when the "匯入 / 匯出" button is clicked', async () => {
-    const user = userEvent.setup();
-    const onImportExport = vi.fn();
-    renderTripList({ onImportExport });
+  it.each([
+    { label: '匯入 / 匯出', handler: 'onImportExport' },
+    { label: '行李清單模板', handler: 'onOpenTemplate' },
+  ] as const)(
+    'calls $handler when the "$label" button is clicked',
+    async ({ label, handler }) => {
+      const user = userEvent.setup();
+      const callback = vi.fn();
+      renderTripList({ [handler]: callback });
 
-    await user.click(screen.getByRole('button', { name: /匯入 \/ 匯出/ }));
+      await user.click(screen.getByRole('button', { name: label }));
 
-    expect(onImportExport).toHaveBeenCalledTimes(1);
-  });
+      expect(callback).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('calls onDelete with the trip id when a trip card requests deletion', async () => {
     const user = userEvent.setup();

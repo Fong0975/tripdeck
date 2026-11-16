@@ -5,8 +5,9 @@ import { useEffect, useId } from 'react';
 import type { ChecklistCategory } from '@/types';
 
 import EditableItemRow from '../../shared/EditableItemRow';
-import { useEditState } from '../CategoryEditModal/useEditState';
-import { useSaveCategoryEdit } from '../CategoryEditModal/useSaveCategoryEdit';
+
+import { useEditState } from './useEditState';
+import { useSaveCategoryEdit } from './useSaveCategoryEdit';
 
 interface Props {
   category: ChecklistCategory;
