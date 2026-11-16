@@ -19,6 +19,7 @@ import {
 import {
   addTripItemSpec,
   deleteTripItemSpec,
+  setSpecCheck,
   updateTripItemSpec,
 } from '../controllers/checklist/tripItemSpecController';
 import {
@@ -39,6 +40,7 @@ router.post('/occasions', addOccasion);
 router.put('/occasions/:occId', updateOccasion);
 router.delete('/occasions/:occId', deleteOccasion);
 router.put('/occasions/:occId/items/:itemId/check', setCheck);
+router.put('/occasions/:occId/items/:itemId/specs/:specId/check', setSpecCheck);
 router.post('/categories', addTripCategory);
 router.put('/categories/:catId', updateTripCategory);
 router.delete('/categories/:catId', deleteTripCategory);

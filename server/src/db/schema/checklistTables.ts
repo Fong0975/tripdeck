@@ -150,4 +150,34 @@ export const checklistTables: TableDef[] = [
       },
     ],
   },
+
+  {
+    name: 'checklist_spec_checks',
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'checklist_occasion_id', type: 'INT', notNull: true },
+      { name: 'checklist_trip_item_spec_id', type: 'INT', notNull: true },
+      { name: 'checked', type: 'TINYINT(1)', notNull: true, default: 0 },
+    ],
+    uniqueKeys: [
+      {
+        name: 'uq_occasion_spec',
+        columns: ['checklist_occasion_id', 'checklist_trip_item_spec_id'],
+      },
+    ],
+    foreignKeys: [
+      {
+        name: 'fk_checklist_spec_checks_occasion',
+        column: 'checklist_occasion_id',
+        references: { table: 'checklist_occasions', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+      {
+        name: 'fk_checklist_spec_checks_spec',
+        column: 'checklist_trip_item_spec_id',
+        references: { table: 'checklist_trip_item_specs', column: 'id' },
+        onDelete: 'CASCADE',
+      },
+    ],
+  },
 ];

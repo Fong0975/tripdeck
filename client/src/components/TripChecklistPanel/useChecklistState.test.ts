@@ -18,7 +18,7 @@ vi.mock('@/components/ui/toast');
 
 function makeChecklist(): TripChecklist {
   return makeTripChecklist({
-    occasions: [{ id: 1, name: 'Occ A', checks: { 10: true } }],
+    occasions: [{ id: 1, name: 'Occ A', checks: { 10: true }, specChecks: {} }],
     categories: [
       makeChecklistCategory({
         name: 'Cat A',
@@ -179,7 +179,7 @@ describe('useChecklistState', () => {
     {
       description: 'drops unsaved checks for items that were removed',
       reloaded: makeTripChecklist({
-        occasions: [{ id: 1, name: 'Occ A', checks: {} }],
+        occasions: [{ id: 1, name: 'Occ A', checks: {}, specChecks: {} }],
         categories: [
           makeChecklistCategory({
             name: 'Cat A',
@@ -193,7 +193,7 @@ describe('useChecklistState', () => {
     {
       description: 'drops unsaved checks for occasions that were removed',
       reloaded: makeTripChecklist({
-        occasions: [{ id: 2, name: 'Occ B', checks: {} }],
+        occasions: [{ id: 2, name: 'Occ B', checks: {}, specChecks: {} }],
         categories: makeChecklist().categories,
       }),
       expectedDirty: false,

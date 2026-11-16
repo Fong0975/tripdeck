@@ -78,6 +78,16 @@ describe('tripChecklistCore', () => {
             ],
           ]);
         }
+        if (sql.includes('checklist_spec_checks')) {
+          return Promise.resolve([
+            [
+              {
+                checklist_occasion_id: 2,
+                checklist_trip_item_spec_id: 1000,
+              },
+            ],
+          ]);
+        }
         if (sql.includes('checklist_checks')) {
           return Promise.resolve([
             [{ checklist_occasion_id: 1, checklist_trip_item_id: 100 }],
@@ -115,8 +125,8 @@ describe('tripChecklistCore', () => {
           },
         ],
         occasions: [
-          { id: 1, name: '收拾', checks: { 100: true } },
-          { id: 2, name: '出發前', checks: {} },
+          { id: 1, name: '收拾', checks: { 100: true }, specChecks: {} },
+          { id: 2, name: '出發前', checks: {}, specChecks: { 1000: true } },
         ],
       });
       expect(result?.occasions[0].checks).not.toHaveProperty('101');
@@ -284,7 +294,7 @@ describe('tripChecklistCore', () => {
             ],
           },
         ],
-        occasions: [{ id: 900, name: '收拾', checks: {} }],
+        occasions: [{ id: 900, name: '收拾', checks: {}, specChecks: {} }],
       });
     });
 
@@ -379,7 +389,7 @@ describe('tripChecklistCore', () => {
       expect(result).toEqual({
         tripId: 5,
         categories: [],
-        occasions: [{ id: 1, name: '收拾', checks: {} }],
+        occasions: [{ id: 1, name: '收拾', checks: {}, specChecks: {} }],
       });
       expect(mockGetConnection).not.toHaveBeenCalled();
       expect(mockConnExecute).not.toHaveBeenCalled();
@@ -428,7 +438,7 @@ describe('tripChecklistCore', () => {
       expect(result).toEqual({
         tripId: 5,
         categories: [],
-        occasions: [{ id: 900, name: '收拾', checks: {} }],
+        occasions: [{ id: 900, name: '收拾', checks: {}, specChecks: {} }],
       });
     });
 

@@ -86,7 +86,9 @@ function validTripData(): TripBackupData {
           ],
         },
       ],
-      occasions: [{ id: 600, name: 'Packing', checks: { 400: true } }],
+      occasions: [
+        { id: 600, name: 'Packing', checks: { 400: true }, specChecks: {} },
+      ],
     },
   });
 }

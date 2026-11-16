@@ -37,9 +37,15 @@ export interface ChecklistOccasion {
   name: string;
   /**
    * Maps trip checklist item id to checked state. Only contains items
-   * explicitly set to true.
+   * explicitly set to true. Entries for items that have specs are not
+   * used: such an item counts as checked when all of its specs are.
    */
   checks: Record<number, boolean>;
+  /**
+   * Maps trip checklist item spec id to checked state. Only contains specs
+   * explicitly set to true.
+   */
+  specChecks: Record<number, boolean>;
 }
 
 /** Response of `GET /api/trips/:tripId/checklist`. */
@@ -77,7 +83,10 @@ export interface ChecklistSpecBody {
   storage_location?: string | null;
 }
 
-/** Request body of `PUT .../occasions/:occId/items/:itemId/check`. */
+/**
+ * Request body of `PUT .../occasions/:occId/items/:itemId/check` and
+ * `PUT .../occasions/:occId/items/:itemId/specs/:specId/check`.
+ */
 export interface SetCheckBody {
   checked: boolean;
 }

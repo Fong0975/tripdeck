@@ -14,6 +14,7 @@ import { withTransaction } from '../../../utils/withTransaction';
 
 import {
   CheckRow,
+  fetchSpecChecksByOccasionIds,
   fetchSpecsByItemIds,
   lockTrip,
   OccasionRow,
@@ -93,10 +94,13 @@ export async function findChecklist(
     }
   }
 
+  const specChecksByOccId = await fetchSpecChecksByOccasionIds(occIds);
+
   const occasions: ChecklistOccasion[] = occRows.map(row => ({
     id: row.id,
     name: row.name,
     checks: checksByOccId.get(row.id) ?? {},
+    specChecks: specChecksByOccId.get(row.id) ?? {},
   }));
 
   return { tripId, categories, occasions };

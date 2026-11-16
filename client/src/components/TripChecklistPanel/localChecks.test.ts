@@ -10,8 +10,8 @@ import { pruneLocalChecks, type LocalChecks } from './localChecks';
 
 const checklist = makeTripChecklist({
   occasions: [
-    { id: 1, name: 'Occ A', checks: {} },
-    { id: 2, name: 'Occ B', checks: {} },
+    { id: 1, name: 'Occ A', checks: {}, specChecks: {} },
+    { id: 2, name: 'Occ B', checks: {}, specChecks: {} },
   ],
   categories: [
     makeChecklistCategory({

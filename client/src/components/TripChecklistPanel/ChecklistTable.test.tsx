@@ -13,8 +13,8 @@ import ChecklistTable from './ChecklistTable';
 function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
   return makeTripChecklist({
     occasions: [
-      { id: 1, name: 'Occ A', checks: {} },
-      { id: 2, name: 'Occ B', checks: {} },
+      { id: 1, name: 'Occ A', checks: {}, specChecks: {} },
+      { id: 2, name: 'Occ B', checks: {}, specChecks: {} },
     ],
     categories: [
       makeChecklistCategory({

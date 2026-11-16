@@ -8,13 +8,13 @@ import { useOccasionEditState } from './useOccasionEditState';
 type Hook = ReturnType<typeof useOccasionEditState>;
 
 function makeOccasions(): ChecklistOccasion[] {
-  return [{ id: 1, name: 'Occasion A', checks: {} }];
+  return [{ id: 1, name: 'Occasion A', checks: {}, specChecks: {} }];
 }
 
 function makeMultiOccasions(): ChecklistOccasion[] {
   return [
-    { id: 1, name: 'Occasion A', checks: {} },
-    { id: 2, name: 'Occasion B', checks: {} },
+    { id: 1, name: 'Occasion A', checks: {}, specChecks: {} },
+    { id: 2, name: 'Occasion B', checks: {}, specChecks: {} },
   ];
 }
 

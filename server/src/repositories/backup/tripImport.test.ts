@@ -175,7 +175,9 @@ const sampleData: TripBackupData = {
         ],
       },
     ],
-    occasions: [{ id: 600, name: 'Packing', checks: { 400: true } }],
+    occasions: [
+      { id: 600, name: 'Packing', checks: { 400: true }, specChecks: {} },
+    ],
   },
 };
 
@@ -426,7 +428,9 @@ describe('importSingleTrip', () => {
       checklist: {
         tripId: 1,
         categories: [],
-        occasions: [{ id: 600, name: 'Packing', checks: { 999: true } }],
+        occasions: [
+          { id: 600, name: 'Packing', checks: { 999: true }, specChecks: {} },
+        ],
       },
     };
 
@@ -446,7 +450,9 @@ describe('importSingleTrip', () => {
       checklist: {
         tripId: 1,
         categories: [],
-        occasions: [{ id: 600, name: 'Packing', checks: { 400: false } }],
+        occasions: [
+          { id: 600, name: 'Packing', checks: { 400: false }, specChecks: {} },
+        ],
       },
     };
 
@@ -566,8 +572,13 @@ describe('importSingleTrip', () => {
             },
           ],
           occasions: [
-            { id: 600, name: 'Packing', checks: { 400: true } },
-            { id: 601, name: 'Return', checks: { 400: true, 401: true } },
+            { id: 600, name: 'Packing', checks: { 400: true }, specChecks: {} },
+            {
+              id: 601,
+              name: 'Return',
+              checks: { 400: true, 401: true },
+              specChecks: {},
+            },
           ],
         },
       };
