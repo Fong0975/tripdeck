@@ -174,26 +174,14 @@ function drawMarker(
   marker: MarkerShape,
   text: string,
 ): void {
+  const left = marker.x - marker.width / 2;
+  const top = marker.y - MARKER_RADIUS;
   const height = MARKER_RADIUS * 2;
   ctx.fillStyle = marker.color;
-  fillRoundRect(
-    ctx,
-    marker.x - marker.width / 2,
-    marker.y - MARKER_RADIUS,
-    marker.width,
-    height,
-    MARKER_RADIUS,
-  );
+  fillRoundRect(ctx, left, top, marker.width, height, MARKER_RADIUS);
   ctx.strokeStyle = COLORS.markerBorder;
   ctx.lineWidth = 2;
-  strokeRoundRect(
-    ctx,
-    marker.x - marker.width / 2,
-    marker.y - MARKER_RADIUS,
-    marker.width,
-    height,
-    MARKER_RADIUS,
-  );
+  strokeRoundRect(ctx, left, top, marker.width, height, MARKER_RADIUS);
   ctx.fillStyle = COLORS.markerText;
   ctx.font = canvasFont(12, 'bold');
   ctx.textAlign = 'center';

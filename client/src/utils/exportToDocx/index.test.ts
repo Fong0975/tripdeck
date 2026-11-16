@@ -13,6 +13,7 @@ import {
 import type { DayLocation } from '@/types';
 import { daysFromToday } from '@/utils/date';
 import { downloadBlob } from '@/utils/download';
+import { withResolvedGeo } from '@/utils/mapsApi/geoCache';
 import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
@@ -38,6 +39,7 @@ vi.mock('docx');
 
 vi.mock('@/utils/date', () => ({ daysFromToday: vi.fn() }));
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }));
+vi.mock('@/utils/mapsApi/geoCache', () => ({ withResolvedGeo: vi.fn() }));
 vi.mock('@/utils/weatherApi', () => ({
   fetchDailyWeather: vi.fn(),
   getWeatherEnabled: vi.fn(),
@@ -77,6 +79,7 @@ const dayNotesSentinel = {
 };
 
 beforeEach(() => {
+  vi.mocked(withResolvedGeo).mockImplementation(days => days);
   vi.mocked(Packer.toBlob).mockResolvedValue(new Blob(['docx']));
   vi.mocked(makeHeaderSection).mockResolvedValue([
     headerSentinel as unknown as Paragraph,
@@ -166,6 +169,21 @@ describe('exportToDocx', () => {
       [days[0], options.dayMap],
       [days[1], options.dayMap],
     ]);
+  });
+
+  it('draws day maps from days overlaid with the session-resolved locations', async () => {
+    const day = makeDay({
+      attractions: [makeAttraction({ id: 1, latitude: null })],
+    });
+    const located = makeDay({
+      attractions: [makeAttraction({ id: 1, latitude: 25, longitude: 121 })],
+    });
+    vi.mocked(withResolvedGeo).mockReturnValue([located]);
+
+    await exportToDocx(makeTrip(), makeContent([day]));
+
+    expect(withResolvedGeo).toHaveBeenCalledWith([day]);
+    expect(makeDayMapSection).toHaveBeenCalledWith(located, expect.anything());
   });
 
   it("places a day's map picture between its header and its notes", async () => {
