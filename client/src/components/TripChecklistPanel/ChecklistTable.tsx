@@ -29,8 +29,8 @@ export default function ChecklistTable({
 }: Props) {
   return (
     <div className='flex-1 overflow-auto'>
-      <div className='mx-auto w-fit'>
-        <table className='border-collapse text-base'>
+      <div className='mx-auto w-full sm:w-fit'>
+        <table className='w-full border-collapse text-base sm:w-auto'>
           <ChecklistTableHeader
             checklist={checklist}
             getCheck={getCheck}

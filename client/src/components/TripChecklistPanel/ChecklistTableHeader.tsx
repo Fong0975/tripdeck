@@ -23,7 +23,7 @@ export default function ChecklistTableHeader({
   return (
     <thead>
       <tr className='border-b border-border'>
-        <th className='sticky left-0 z-20 min-w-80 bg-background px-4 py-3 text-left font-semibold text-foreground'>
+        <th className='sticky left-0 z-20 w-full min-w-40 bg-background px-2 py-3 text-left font-semibold text-foreground sm:w-auto sm:min-w-80 sm:px-4'>
           項目
         </th>
         {checklist.occasions.map(occ => {
@@ -37,7 +37,7 @@ export default function ChecklistTableHeader({
           return (
             <th
               key={occ.id}
-              className='min-w-28 px-4 py-2 text-center align-top'
+              className='min-w-20 p-2 text-center align-top sm:min-w-28 sm:px-4'
             >
               <div className='flex flex-col items-center gap-1'>
                 <span className='text-base font-semibold text-foreground'>

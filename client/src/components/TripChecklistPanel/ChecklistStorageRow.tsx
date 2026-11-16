@@ -36,8 +36,8 @@ export default function ChecklistStorageRow({
         index % 2 === 0 ? '' : 'bg-muted/10'
       }`}
     >
-      <td className='sticky left-0 z-10 bg-background px-4 py-3 transition-colors group-hover:bg-accent'>
-        <div className='flex w-72 flex-col gap-1 wrap-break-word'>
+      <td className='sticky left-0 z-10 bg-background px-2 py-3 transition-colors group-hover:bg-accent sm:px-4'>
+        <div className='flex w-full flex-col gap-1 wrap-break-word sm:w-72'>
           <div className='flex items-baseline gap-2'>
             {unit.kind === 'item' ? (
               <>

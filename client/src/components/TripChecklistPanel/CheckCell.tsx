@@ -27,7 +27,7 @@ export default function CheckCell({ state, label, onToggle }: Props) {
 
   return (
     <td
-      className={`px-4 py-2.5 text-center ${readOnly ? '' : 'cursor-pointer'}`}
+      className={`px-2 py-2.5 text-center sm:px-4 ${readOnly ? '' : 'cursor-pointer'}`}
       onClick={onToggle}
     >
       <label
