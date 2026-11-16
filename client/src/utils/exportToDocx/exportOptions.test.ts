@@ -16,4 +16,8 @@ describe('exportOptions', () => {
       DEFAULT_EXPORT_OPTIONS.timeline.daysPerImage,
     );
   });
+
+  it('starts with the day map pictures included', () => {
+    expect(DEFAULT_EXPORT_OPTIONS.dayMap).toEqual({ enabled: true });
+  });
 });

@@ -19,7 +19,8 @@ const EXPORT_CONCURRENCY = 4;
 
 /**
  * Builds a Word document for the trip (header, timeline picture, then one
- * section per day) and downloads it as `<trip title>.docx`. Image and weather fetches run with
+ * section per day, each opening with its date heading and map picture) and
+ * downloads it as `<trip title>.docx`. Image and weather fetches run with
  * bounded concurrency; the document order always follows the itinerary.
  *
  * @param trip - The trip whose metadata forms the header section.
@@ -37,7 +38,7 @@ export async function exportToDocx(
     () => makeHeaderSection(trip, content.days.length),
     () => makeTimelineSection(content.days, options.timeline),
     ...content.days.flatMap((day, dayIdx) =>
-      makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled),
+      makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled, options.dayMap),
     ),
   ];
   const children = (

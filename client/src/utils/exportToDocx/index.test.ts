@@ -16,6 +16,7 @@ import { downloadBlob } from '@/utils/download';
 import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
+import { makeDayMapSection } from './dayMapSection';
 import { makeDayNotesSection } from './dayNotesSection';
 import { DEFAULT_EXPORT_OPTIONS, type ExportOptions } from './exportOptions';
 import { makeHeaderSection } from './headerSection';
@@ -50,6 +51,9 @@ vi.mock('./headerSection', () => ({ makeHeaderSection: vi.fn() }));
 // The timeline picture is unit-tested in timelineSection.test.ts; here it is
 // stubbed to a sentinel so only its position in the document is checked.
 vi.mock('./timelineSection', () => ({ makeTimelineSection: vi.fn() }));
+// A day's map picture is unit-tested in dayMapSection.test.ts; here it is
+// stubbed to a sentinel so only its position and options are checked.
+vi.mock('./dayMapSection', () => ({ makeDayMapSection: vi.fn() }));
 // Likewise, a day's own notes/images content is unit-tested in
 // dayNotesSection.test.ts; here it's stubbed to a single sentinel paragraph.
 vi.mock('./dayNotesSection', () => ({ makeDayNotesSection: vi.fn() }));
@@ -63,6 +67,10 @@ const timelineSentinel = {
   type: 'Paragraph',
   options: { sentinel: 'timeline' },
 };
+const dayMapSentinel = {
+  type: 'Paragraph',
+  options: { sentinel: 'day-map' },
+};
 const dayNotesSentinel = {
   type: 'Paragraph',
   options: { sentinel: 'day-notes' },
@@ -75,6 +83,9 @@ beforeEach(() => {
   ]);
   vi.mocked(makeTimelineSection).mockResolvedValue([
     timelineSentinel as unknown as Paragraph,
+  ]);
+  vi.mocked(makeDayMapSection).mockResolvedValue([
+    dayMapSentinel as unknown as Paragraph,
   ]);
   vi.mocked(makeDayNotesSection).mockResolvedValue([
     dayNotesSentinel as unknown as Paragraph,
@@ -130,11 +141,51 @@ describe('exportToDocx', () => {
     const days = [makeDay({ id: 1, day: 1, date: '2026-08-20' })];
     const options: ExportOptions = {
       timeline: { enabled: false, daysPerImage: 'all' },
+      dayMap: { enabled: true },
     };
 
     await exportToDocx(makeTrip(), makeContent(days), options);
 
     expect(makeTimelineSection).toHaveBeenCalledWith(days, options.timeline);
+  });
+
+  it('builds one day map section per day with the day map options', async () => {
+    const days = [
+      makeDay({ id: 1, day: 1, date: '2026-08-20' }),
+      makeDay({ id: 2, day: 2, date: '2026-08-21' }),
+    ];
+    const options: ExportOptions = {
+      timeline: { enabled: true, daysPerImage: 4 },
+      dayMap: { enabled: false },
+    };
+
+    await exportToDocx(makeTrip(), makeContent(days), options);
+
+    expect(makeDayMapSection).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(makeDayMapSection).mock.calls).toEqual([
+      [days[0], options.dayMap],
+      [days[1], options.dayMap],
+    ]);
+  });
+
+  it("places a day's map picture between its header and its notes", async () => {
+    const dayHeader = { type: 'Table', options: { day: 1 } };
+    vi.mocked(makeDayHeaderTable).mockReturnValueOnce(
+      dayHeader as unknown as Table,
+    );
+
+    await exportToDocx(makeTrip(), makeContent([makeDay()]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    const children = documentOptions.sections[0].children;
+    expect(children.indexOf(dayHeader)).toBeLessThan(
+      children.indexOf(dayMapSentinel),
+    );
+    expect(children.indexOf(dayMapSentinel)).toBeLessThan(
+      children.indexOf(dayNotesSentinel),
+    );
   });
 
   it('places the timeline between the header section and the first day', async () => {
