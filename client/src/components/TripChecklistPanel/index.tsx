@@ -85,17 +85,19 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       {/* Toolbar */}
-      <div className='flex shrink-0 items-center justify-between border-b border-border px-4 py-2'>
-        <span className='text-sm text-muted-foreground'>
-          共 {totalItems} 項
-        </span>
-        <button
-          onClick={() => setShowEditModal(true)}
-          className='flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-        >
-          <Pencil size={14} />
-          編輯清單
-        </button>
+      <div className='shrink-0 border-b border-border px-4 py-2'>
+        <div className='mx-auto flex max-w-5xl items-center justify-between'>
+          <span className='text-sm text-muted-foreground'>
+            共 {totalItems} 項
+          </span>
+          <button
+            onClick={() => setShowEditModal(true)}
+            className='flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+          >
+            <Pencil size={14} />
+            編輯清單
+          </button>
+        </div>
       </div>
 
       <ChecklistTable

@@ -23,7 +23,7 @@ export default function ChecklistItemRow({
       }`}
     >
       <td className='sticky left-0 z-10 bg-background px-4 py-3 transition-colors group-hover:bg-accent'>
-        <div className='flex flex-col gap-1'>
+        <div className='flex w-72 flex-col gap-1 wrap-break-word'>
           <div className='flex items-baseline gap-2'>
             <span className='text-base font-medium text-foreground'>
               {item.name}

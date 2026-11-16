@@ -19,11 +19,11 @@ export default function ChecklistTable({
 }: Props) {
   return (
     <div className='flex-1 overflow-auto'>
-      <div className='mx-auto w-full max-w-5xl'>
-        <table className='w-full border-collapse text-base'>
+      <div className='mx-auto w-fit'>
+        <table className='border-collapse text-base'>
           <thead>
             <tr className='border-b border-border'>
-              <th className='sticky left-0 z-20 min-w-60 bg-background px-4 py-3 text-left font-semibold text-foreground'>
+              <th className='sticky left-0 z-20 min-w-80 bg-background px-4 py-3 text-left font-semibold text-foreground'>
                 項目
               </th>
               {checklist.occasions.map(occ => {
