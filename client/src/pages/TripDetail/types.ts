@@ -9,4 +9,5 @@ export type ModalState =
   | { type: 'editConnection'; dayIndex: number; connection: TravelConnection }
   | { type: 'editDayNote'; dayIndex: number }
   | { type: 'dayMap'; dayIndex: number }
-  | { type: 'timeline' };
+  | { type: 'timeline' }
+  | { type: 'export' };

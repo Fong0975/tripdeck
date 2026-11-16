@@ -120,7 +120,7 @@ export default function TripDetail() {
       <TripHeader
         trip={trip}
         onBack={guardedLeave}
-        onExport={() => void handleExport()}
+        onExport={() => setModal({ type: 'export' })}
         onOpenTimeline={() => setModal({ type: 'timeline' })}
         onEdit={() => setModal({ type: 'editTrip' })}
         exporting={exporting}
@@ -159,6 +159,10 @@ export default function TripDetail() {
         onSaveAttraction={attractionActions.handleSaveAttraction}
         onSaveConnection={connectionActions.handleSaveConnection}
         onSaveDayNotes={handleSaveDayNotes}
+        onConfirmExport={options => {
+          closeModal();
+          void handleExport(options);
+        }}
         onTripUpdated={setTrip}
         reloadContent={reloadContent}
         reloadTrip={reloadTrip}

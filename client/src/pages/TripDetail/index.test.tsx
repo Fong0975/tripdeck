@@ -11,6 +11,7 @@ import {
   makeTrip,
 } from '@/test-utils/fixtures';
 import type { Trip } from '@/types';
+import { DEFAULT_EXPORT_OPTIONS } from '@/utils/exportToDocx/exportOptions';
 
 import TripModals from './TripModals';
 import type { ModalState } from './types';
@@ -407,7 +408,13 @@ describe('TripDetail', () => {
 
     await user.click(screen.getByText('export-trigger'));
 
-    expect(handleExport).toHaveBeenCalledTimes(1);
+    expect(lastModalsProps().modal).toEqual({ type: 'export' });
+    expect(handleExport).not.toHaveBeenCalled();
+
+    act(() => lastModalsProps().onConfirmExport(DEFAULT_EXPORT_OPTIONS));
+
+    expect(handleExport).toHaveBeenCalledWith(DEFAULT_EXPORT_OPTIONS);
+    expect(lastModalsProps().modal).toEqual({ type: 'none' });
   });
 
   it.each<{ trigger: string; modal: ModalState }>([
@@ -441,6 +448,7 @@ describe('TripDetail', () => {
     },
     { trigger: 'open-day-map-1', modal: { type: 'dayMap', dayIndex: 1 } },
     { trigger: 'timeline-trigger', modal: { type: 'timeline' } },
+    { trigger: 'export-trigger', modal: { type: 'export' } },
     { trigger: 'edit-trip-trigger', modal: { type: 'editTrip' } },
   ])(
     'opens the $modal.type modal from $trigger and closes it via onClose',

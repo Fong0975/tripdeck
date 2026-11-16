@@ -2,6 +2,7 @@ import AttractionModal from '@/components/AttractionModal';
 import DayMapModal from '@/components/DayMapModal';
 import EditDayNoteModal from '@/components/EditDayNoteModal';
 import EditTripModal from '@/components/EditTripModal';
+import ExportOptionsModal from '@/components/ExportOptionsModal';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
 import TripTimelineModal from '@/components/TripTimelineModal';
 import type {
@@ -11,6 +12,7 @@ import type {
   Trip,
   TripContent,
 } from '@/types';
+import type { ExportOptions } from '@/utils/exportToDocx/exportOptions';
 import type { StagedImage } from '@/utils/stagedImages';
 
 import type { ModalState } from './types';
@@ -31,6 +33,7 @@ interface Props {
     stagedImages?: StagedImage[],
   ) => Promise<void>;
   onSaveDayNotes: (dayIndex: number, notes: string | null) => Promise<void>;
+  onConfirmExport: (options: ExportOptions) => void;
   onTripUpdated: (trip: Trip) => void;
   reloadContent: () => Promise<void>;
   reloadTrip: () => Promise<void>;
@@ -55,6 +58,7 @@ export default function TripModals({
   onSaveAttraction,
   onSaveConnection,
   onSaveDayNotes,
+  onConfirmExport,
   onTripUpdated,
   reloadContent,
   reloadTrip,
@@ -118,6 +122,10 @@ export default function TripModals({
       );
     case 'timeline':
       return <TripTimelineModal days={content.days} onClose={onClose} />;
+    case 'export':
+      return (
+        <ExportOptionsModal onClose={onClose} onConfirm={onConfirmExport} />
+      );
     case 'editTrip':
       return (
         <EditTripModal
