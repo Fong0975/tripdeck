@@ -46,7 +46,9 @@ export interface DayLayout {
 /**
  * Computes pixel geometry for a day's blocks. Bars sit exactly at their time;
  * cards start at the same offset but are pushed down when they would overlap
- * the previous card, so overlapping stops stay readable.
+ * the previous card, so overlapping stops stay readable. When nothing is
+ * interleaved, a card grows to fill its block's whole time span (up to the
+ * next card); point markers keep the standard card height.
  *
  * @param blocks - The day's blocks, sorted by start time.
  * @param range - The shared visible hour range.
@@ -72,6 +74,20 @@ export function layoutDay(
     return { block, barTop, barHeight, cardTop, cardHeight };
   });
 
+  const stretched = items.map((item, i) => {
+    if (item.block.kind === 'point') {
+      return item;
+    }
+    // Fill the block's time span, but never into the next card.
+    const next = items[i + 1];
+    const limit = next ? next.cardTop - CARD_GAP : Infinity;
+    const fillBottom = Math.min(item.barTop + item.barHeight, limit);
+    return {
+      ...item,
+      cardHeight: Math.max(item.cardHeight, fillBottom - item.cardTop),
+    };
+  });
+
   const axisHeight = (range.endHour - range.startHour) * 60 * PX_PER_MINUTE;
-  return { items, height: Math.max(axisHeight, cursor) };
+  return { items: stretched, height: Math.max(axisHeight, cursor) };
 }

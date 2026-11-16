@@ -59,6 +59,44 @@ describe('layoutDay', () => {
 
   it.each([
     {
+      description: 'fills its whole time span when nothing is interleaved',
+      times: [['10:00', '11:30']] as [string, string | null][],
+      expected: [90],
+    },
+    {
+      description: 'keeps the standard height for a short range',
+      times: [['10:00', '10:20']] as [string, string | null][],
+      expected: [CARD_HEIGHT],
+    },
+    {
+      description: 'keeps the standard height for a point marker',
+      times: [['10:00', null]] as [string, string | null][],
+      expected: [CARD_HEIGHT],
+    },
+    {
+      description: 'stops short of the next card when one is interleaved',
+      times: [
+        ['09:00', '12:00'],
+        ['10:00', '10:30'],
+      ] as [string, string | null][],
+      expected: [60 - CARD_GAP, CARD_HEIGHT],
+    },
+    {
+      description: 'fills up to the next card in a back-to-back sequence',
+      times: [
+        ['09:00', '10:00'],
+        ['10:00', '11:00'],
+      ] as [string, string | null][],
+      expected: [60 - CARD_GAP, 60],
+    },
+  ])('a card $description', ({ times, expected }) => {
+    const { items } = layout(times);
+
+    expect(items.map(item => item.cardHeight)).toEqual(expected);
+  });
+
+  it.each([
+    {
       description: 'the axis height when cards fit',
       times: [['09:00', '10:00']] as [string, string][],
       expected: 240,
