@@ -12,10 +12,10 @@ vi.mock('@/hooks/useTheme', () => ({
   useTheme: vi.fn(),
 }));
 
-function renderNavbar() {
+function renderNavbar(onImportExport?: () => void) {
   return render(
     <MemoryRouter>
-      <Navbar />
+      <Navbar onImportExport={onImportExport} />
     </MemoryRouter>,
   );
 }
@@ -71,6 +71,30 @@ describe('Navbar', () => {
     await user.click(screen.getByLabelText('切換主題'));
 
     expect(toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the settings menu when no onImportExport is given', async () => {
+    renderNavbar();
+    await screen.findByText('Tripdeck');
+
+    expect(screen.queryByLabelText('設定')).not.toBeInTheDocument();
+  });
+
+  it('places the settings button between the theme and info buttons and wires import/export', async () => {
+    const user = userEvent.setup();
+    const onImportExport = vi.fn();
+    renderNavbar(onImportExport);
+    await screen.findByText('Tripdeck');
+
+    const labels = screen
+      .getAllByRole('button')
+      .map(button => button.getAttribute('aria-label'));
+    expect(labels).toEqual(['切換主題', '設定', '關於']);
+
+    await user.click(screen.getByLabelText('設定'));
+    await user.click(screen.getByRole('menuitem', { name: '匯入 / 匯出' }));
+
+    expect(onImportExport).toHaveBeenCalledTimes(1);
   });
 
   it('shows the fetched API version once it resolves', async () => {

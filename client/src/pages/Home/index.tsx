@@ -28,7 +28,7 @@ export default function Home() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <Navbar />
+      <Navbar onImportExport={() => setShowImportExportModal(true)} />
       <HeroSection />
       <TripList
         trips={trips}
@@ -38,7 +38,6 @@ export default function Home() {
         onAdd={() => setShowModal(true)}
         onDelete={id => void handleDeleteTrip(id)}
         onEdit={setEditingTrip}
-        onImportExport={() => setShowImportExportModal(true)}
         onOpenTemplate={() => setShowTemplateModal(true)}
       />
 

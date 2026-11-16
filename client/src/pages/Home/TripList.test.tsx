@@ -32,7 +32,6 @@ const renderTripList = makeMounter(TripList, () => ({
   onAdd: vi.fn(),
   onDelete: vi.fn(),
   onEdit: vi.fn(),
-  onImportExport: vi.fn(),
   onOpenTemplate: vi.fn(),
 }));
 
@@ -112,21 +111,23 @@ describe('TripList', () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    { label: '匯入 / 匯出', handler: 'onImportExport' },
-    { label: '行李清單模板', handler: 'onOpenTemplate' },
-  ] as const)(
-    'calls $handler when the "$label" button is clicked',
-    async ({ label, handler }) => {
-      const user = userEvent.setup();
-      const callback = vi.fn();
-      renderTripList({ [handler]: callback });
+  it('calls onOpenTemplate when the "行李清單模板" button is clicked', async () => {
+    const user = userEvent.setup();
+    const onOpenTemplate = vi.fn();
+    renderTripList({ onOpenTemplate });
 
-      await user.click(screen.getByRole('button', { name: label }));
+    await user.click(screen.getByRole('button', { name: '行李清單模板' }));
 
-      expect(callback).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(onOpenTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it('no longer renders an import/export button', () => {
+    renderTripList();
+
+    expect(
+      screen.queryByRole('button', { name: '匯入 / 匯出' }),
+    ).not.toBeInTheDocument();
+  });
 
   it('calls onDelete with the trip id when a trip card requests deletion', async () => {
     const user = userEvent.setup();

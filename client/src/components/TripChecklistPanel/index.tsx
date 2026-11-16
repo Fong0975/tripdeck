@@ -9,6 +9,8 @@ import TripChecklistEditModal from '../Checklist/trip/TripChecklistEditModal';
 
 import ChecklistTable from './ChecklistTable';
 import { useChecklistState } from './useChecklistState';
+import type { ViewMode } from './viewMode';
+import ViewModeToggle from './ViewModeToggle';
 
 interface Props {
   tripId: number;
@@ -17,6 +19,7 @@ interface Props {
 
 export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('category');
   const {
     checklist,
     loading,
@@ -89,16 +92,19 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
       {/* Toolbar */}
       <div className='shrink-0 border-b border-border px-4 py-2'>
         <div className='mx-auto flex max-w-5xl items-center justify-between'>
-          <span className='text-sm text-muted-foreground'>
-            共 {totalItems} 項
-          </span>
-          <button
-            onClick={() => setShowEditModal(true)}
-            className='flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-          >
-            <Pencil size={14} />
-            編輯清單
-          </button>
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+          <div className='flex items-center gap-3'>
+            <span className='text-sm text-muted-foreground'>
+              共 {totalItems} 項
+            </span>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className='flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+            >
+              <Pencil size={14} />
+              編輯清單
+            </button>
+          </div>
         </div>
       </div>
 
@@ -108,6 +114,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
         getSpecCheck={getSpecCheck}
         onToggleCheck={handleToggleCheck}
         onToggleSpecCheck={handleToggleSpecCheck}
+        viewMode={viewMode}
       />
 
       {/* Floating save/discard bar */}

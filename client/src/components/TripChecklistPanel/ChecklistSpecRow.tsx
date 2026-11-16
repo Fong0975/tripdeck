@@ -32,8 +32,8 @@ export default function ChecklistSpecRow({
         isLast ? 'border-border' : 'border-border/40'
       } ${itemIndex % 2 === 0 ? '' : 'bg-muted/10'}`}
     >
-      <td className='sticky left-0 z-10 bg-background py-2 pr-4 pl-8 transition-colors group-hover:bg-accent'>
-        <div className='flex w-64 flex-wrap items-center gap-x-1.5 gap-y-0.5 border-l-4 border-primary/40 pl-3 wrap-break-word'>
+      <td className='sticky left-0 z-10 bg-background py-2 pr-2 pl-3 transition-colors group-hover:bg-accent sm:pr-4 sm:pl-8'>
+        <div className='flex w-full flex-wrap items-center gap-x-1.5 gap-y-0.5 border-l-4 border-primary/40 pl-3 wrap-break-word sm:w-64'>
           <span className='text-sm text-muted-foreground'>
             {specIndex + 1}.
           </span>

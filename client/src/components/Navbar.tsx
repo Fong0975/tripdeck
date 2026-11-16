@@ -4,9 +4,16 @@ import { Link } from 'react-router-dom';
 
 import { useTheme } from '@/hooks/useTheme';
 
+import SettingsMenu from './SettingsMenu';
+
 const GITHUB_URL = 'https://github.com/Fong0975/tripdeck';
 
-export default function Navbar() {
+interface Props {
+  /** When provided, a settings menu with an import/export entry is shown. */
+  onImportExport?: () => void;
+}
+
+export default function Navbar({ onImportExport }: Props) {
   const { theme, toggle } = useTheme();
   const [apiVersion, setApiVersion] = useState<string | null>(null);
 
@@ -60,6 +67,8 @@ export default function Navbar() {
               />
             )}
           </button>
+
+          {onImportExport && <SettingsMenu onImportExport={onImportExport} />}
 
           <div className='group relative'>
             <button

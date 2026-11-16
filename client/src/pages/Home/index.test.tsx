@@ -14,7 +14,12 @@ vi.mock('./useHomeData', () => ({
 }));
 
 vi.mock('@/components/Navbar', () => ({
-  default: () => <div>navbar</div>,
+  default: ({ onImportExport }: { onImportExport?: () => void }) => (
+    <div>
+      <span>navbar</span>
+      <button onClick={onImportExport}>trigger-import-export</button>
+    </div>
+  ),
 }));
 
 vi.mock('./HeroSection', () => ({
@@ -41,7 +46,6 @@ vi.mock('./TripList', () => ({
     onAdd,
     onDelete,
     onEdit,
-    onImportExport,
     onOpenTemplate,
   }: {
     trips: Trip[];
@@ -51,7 +55,6 @@ vi.mock('./TripList', () => ({
     onAdd: () => void;
     onDelete: (id: number) => void;
     onEdit: (trip: Trip) => void;
-    onImportExport: () => void;
     onOpenTemplate: () => void;
   }) => (
     <div>
@@ -63,7 +66,6 @@ vi.mock('./TripList', () => ({
       <button onClick={onAdd}>trigger-add</button>
       <button onClick={() => onDelete(1)}>trigger-delete</button>
       <button onClick={() => onEdit(sampleTrip)}>trigger-edit</button>
-      <button onClick={onImportExport}>trigger-import-export</button>
       <button onClick={onOpenTemplate}>trigger-template</button>
     </div>
   ),
