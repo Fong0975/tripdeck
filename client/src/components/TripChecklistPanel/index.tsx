@@ -27,6 +27,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     getCheck,
     getSpecCheck,
     handleToggleCheck,
+    handleToggleSpecCheck,
     handleSaveChecks,
     handleDiscardChecks,
     handleEditSaved,
@@ -106,6 +107,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
         getCheck={getCheck}
         getSpecCheck={getSpecCheck}
         onToggleCheck={handleToggleCheck}
+        onToggleSpecCheck={handleToggleSpecCheck}
       />
 
       {/* Floating save/discard bar */}

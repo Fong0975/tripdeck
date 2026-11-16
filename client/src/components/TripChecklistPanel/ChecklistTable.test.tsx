@@ -41,6 +41,7 @@ function renderTable(
       getCheck={getCheck}
       getSpecCheck={getSpecCheck}
       onToggleCheck={vi.fn()}
+      onToggleSpecCheck={vi.fn()}
     />,
   );
 }

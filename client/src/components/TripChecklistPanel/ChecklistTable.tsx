@@ -14,6 +14,7 @@ interface Props {
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number) => void;
+  onToggleSpecCheck: (occId: number, specId: number) => void;
 }
 
 export default function ChecklistTable({
@@ -21,6 +22,7 @@ export default function ChecklistTable({
   getCheck,
   getSpecCheck,
   onToggleCheck,
+  onToggleSpecCheck,
 }: Props) {
   const totalUnits = countCheckUnits(checklist.categories);
 
@@ -95,7 +97,9 @@ export default function ChecklistTable({
                     index={idx}
                     occasions={checklist.occasions}
                     getCheck={getCheck}
+                    getSpecCheck={getSpecCheck}
                     onToggleCheck={onToggleCheck}
+                    onToggleSpecCheck={onToggleSpecCheck}
                   />
                 ))}
               </Fragment>
