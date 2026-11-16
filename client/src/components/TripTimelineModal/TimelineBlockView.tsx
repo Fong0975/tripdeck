@@ -1,10 +1,10 @@
 import { blockTimeLabel, travelLabel } from './blockLabel';
-import type { PositionedBlock } from './layoutCards';
+import {
+  LANE_BAR_WIDTH,
+  LANE_WIDTH,
+  type PositionedBlock,
+} from './layoutCards';
 import { getBlockColor } from './timelinePalette';
-
-/** Pixel width of one color-bar lane, including its gutter. */
-export const LANE_WIDTH = 10;
-const BAR_WIDTH = 6;
 
 interface Props {
   item: PositionedBlock;
@@ -22,7 +22,7 @@ export default function TimelineBlockView({ item, trackWidth }: Props) {
     top: barTop,
     height: barHeight,
     left: block.lane * LANE_WIDTH,
-    width: BAR_WIDTH,
+    width: LANE_BAR_WIDTH,
   };
   const cardStyle = { top: cardTop, height: cardHeight, left: trackWidth + 4 };
 

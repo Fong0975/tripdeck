@@ -8,6 +8,7 @@ import { mapWithConcurrency } from './concurrency';
 import { FONT } from './constants';
 import { makeDaySectionTasks, type DocTask } from './daySection';
 import { makeHeaderSection } from './headerSection';
+import { makeTimelineSection } from './timelineSection';
 
 /**
  * Maximum number of content tasks (each typically fetching images or weather)
@@ -16,8 +17,8 @@ import { makeHeaderSection } from './headerSection';
 const EXPORT_CONCURRENCY = 4;
 
 /**
- * Builds a Word document for the trip (header, then one section per day) and
- * downloads it as `<trip title>.docx`. Image and weather fetches run with
+ * Builds a Word document for the trip (header, timeline picture, then one
+ * section per day) and downloads it as `<trip title>.docx`. Image and weather fetches run with
  * bounded concurrency; the document order always follows the itinerary.
  *
  * @param trip - The trip whose metadata forms the header section.
@@ -31,6 +32,7 @@ export async function exportToDocx(
 
   const tasks: DocTask[] = [
     () => makeHeaderSection(trip, content.days.length),
+    () => makeTimelineSection(content.days),
     ...content.days.flatMap((day, dayIdx) =>
       makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled),
     ),

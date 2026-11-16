@@ -13,6 +13,20 @@ export const CARD_GAP = 4;
 export const MIN_BAR_HEIGHT = 6;
 /** Height of the marker drawn for a point block. */
 export const POINT_MARKER_HEIGHT = 8;
+/** Pixel width of one color-bar lane, including its gutter. */
+export const LANE_WIDTH = 10;
+/** Pixel width of a color bar within its lane. */
+export const LANE_BAR_WIDTH = 6;
+
+/**
+ * Width of the lane track at the left of a day's time area: wide enough for
+ * the day's busiest overlap group, so every card starts at the same offset.
+ *
+ * @param blocks - The day's blocks.
+ */
+export function getTrackWidth(blocks: { laneCount: number }[]): number {
+  return Math.max(1, ...blocks.map(b => b.laneCount)) * LANE_WIDTH + 2;
+}
 
 /** A block together with its pixel geometry inside a day's time area. */
 export interface PositionedBlock {

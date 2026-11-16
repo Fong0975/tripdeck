@@ -1,6 +1,6 @@
 import type { DayTimeline } from './buildDayTimeline';
-import { PX_PER_MINUTE, layoutDay } from './layoutCards';
-import TimelineBlockView, { LANE_WIDTH } from './TimelineBlockView';
+import { PX_PER_MINUTE, getTrackWidth, layoutDay } from './layoutCards';
+import TimelineBlockView from './TimelineBlockView';
 import type { TimelineRange } from './timelineRange';
 
 interface Props {
@@ -16,8 +16,7 @@ interface Props {
  */
 export default function DayTimelineColumn({ timeline, range, column }: Props) {
   const { items, height } = layoutDay(timeline.blocks, range);
-  const laneCount = Math.max(1, ...timeline.blocks.map(b => b.laneCount));
-  const trackWidth = laneCount * LANE_WIDTH + 2;
+  const trackWidth = getTrackWidth(timeline.blocks);
   const hours = range.endHour - range.startHour;
 
   return (
