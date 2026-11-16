@@ -3,6 +3,7 @@ import DayMapModal from '@/components/DayMapModal';
 import EditDayNoteModal from '@/components/EditDayNoteModal';
 import EditTripModal from '@/components/EditTripModal';
 import TravelConnectionModal from '@/components/TravelConnectionModal';
+import TripTimelineModal from '@/components/TripTimelineModal';
 import type {
   AttractionDraft,
   DayPlan,
@@ -115,6 +116,8 @@ export default function TripModals({
           onClose={onClose}
         />
       );
+    case 'timeline':
+      return <TripTimelineModal days={content.days} onClose={onClose} />;
     case 'editTrip':
       return (
         <EditTripModal

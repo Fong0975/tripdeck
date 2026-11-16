@@ -1,6 +1,14 @@
-import { ArrowLeft, ChevronDown, Download, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChartGantt,
+  ChevronDown,
+  Download,
+  Ellipsis,
+  Loader2,
+} from 'lucide-react';
 import { useState } from 'react';
 
+import HoverMenu from '@/components/ui/HoverMenu';
 import type { Trip } from '@/types';
 
 import TripHeaderSummary from './TripHeaderSummary';
@@ -9,6 +17,7 @@ interface Props {
   trip: Trip;
   onBack: () => void;
   onExport: () => void;
+  onOpenTimeline: () => void;
   onEdit: () => void;
   exporting?: boolean;
 }
@@ -17,6 +26,7 @@ export default function TripHeader({
   trip,
   onBack,
   onExport,
+  onOpenTimeline,
   onEdit,
   exporting = false,
 }: Props) {
@@ -41,21 +51,30 @@ export default function TripHeader({
           onEdit={onEdit}
         />
 
-        <button
-          onClick={onExport}
-          disabled={exporting}
-          className='flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50'
-          title='匯出行程'
-        >
-          {exporting ? (
-            <Loader2 size={16} className='animate-spin' />
-          ) : (
-            <Download size={16} />
-          )}
-          <span className='hidden sm:inline'>
-            {exporting ? '匯出中…' : '匯出'}
-          </span>
-        </button>
+        <HoverMenu
+          ariaLabel='行程選單'
+          trigger={<Ellipsis size={20} />}
+          triggerClassName='flex size-9 shrink-0 items-center justify-center rounded-lg'
+          items={[
+            {
+              label: '時間軸',
+              icon: <ChartGantt size={16} />,
+              onSelect: onOpenTimeline,
+              title: '檢視行程時間軸',
+            },
+            {
+              label: exporting ? '匯出中…' : '匯出',
+              icon: exporting ? (
+                <Loader2 size={16} className='animate-spin' />
+              ) : (
+                <Download size={16} />
+              ),
+              onSelect: onExport,
+              disabled: exporting,
+              title: '匯出行程',
+            },
+          ]}
+        />
       </div>
 
       <button
