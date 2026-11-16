@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { showToast } from '@/components/ui/toast';
 import type { Trip, TripContent } from '@/types';
+import type { ExportOptions } from '@/utils/exportToDocx/exportOptions';
 
 /**
  * Word (.docx) export of the loaded trip. The exporter is imported lazily so
@@ -10,19 +11,20 @@ import type { Trip, TripContent } from '@/types';
  *
  * @param trip - The loaded trip, or null while loading.
  * @param content - The loaded trip content, or null while loading.
- * @returns `exporting` (true while an export runs) and `handleExport`.
+ * @returns `exporting` (true while an export runs) and `handleExport`, which
+ *   takes the user's export settings.
  */
 export function useTripExport(trip: Trip | null, content: TripContent | null) {
   const [exporting, setExporting] = useState(false);
 
-  const handleExport = async () => {
+  const handleExport = async (options: ExportOptions) => {
     if (!trip || !content || exporting) {
       return;
     }
     setExporting(true);
     try {
       const { exportToDocx } = await import('@/utils/exportToDocx');
-      await exportToDocx(trip, content);
+      await exportToDocx(trip, content, options);
       showToast('success', '已匯出 Word 文件。');
     } catch {
       showToast('error', '匯出 Word 文件失敗，請稍後再試');

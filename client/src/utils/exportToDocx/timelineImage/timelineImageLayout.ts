@@ -10,9 +10,10 @@ import {
 } from '@/utils/timeline/timelineRange';
 
 import { CONTENT_WIDTH_PX } from '../constants';
+import type { DaysPerImage } from '../exportOptions';
 
-/** Most days drawn side by side in one image. */
-export const MAX_DAYS_PER_IMAGE = 4;
+/** Days that fill the page width; the basis for the text size in the document. */
+export const FULL_WIDTH_DAYS = 4;
 /** Logical width of the hour-label column. */
 export const AXIS_WIDTH = 48;
 /** Logical width of one day column. */
@@ -28,10 +29,10 @@ export const IMAGE_SCALE = 2;
 /** Tallest an image may appear in the document, in docx pixels. */
 export const MAX_DISPLAY_HEIGHT_PX = 820;
 
-/** Logical width of a full image (the widest one), the basis for sizing. */
-const FULL_IMAGE_WIDTH = AXIS_WIDTH + MAX_DAYS_PER_IMAGE * DAY_WIDTH;
+/** Logical width of an image of {@link FULL_WIDTH_DAYS} days, the sizing basis. */
+const FULL_IMAGE_WIDTH = AXIS_WIDTH + FULL_WIDTH_DAYS * DAY_WIDTH;
 
-/** Everything needed to draw one image of up to {@link MAX_DAYS_PER_IMAGE} days. */
+/** Everything needed to draw one timeline image. */
 export interface TimelineImagePlan {
   timelines: DayTimeline[];
   layouts: DayLayout[];
@@ -47,14 +48,18 @@ export interface TimelineImagePlan {
 }
 
 /**
- * Splits days into evenly sized groups of at most {@link MAX_DAYS_PER_IMAGE},
- * e.g. 5 days become 3 + 2 rather than 4 + 1.
+ * Splits days into evenly sized groups of at most `daysPerImage`, e.g. 5 days
+ * with a limit of 4 become 3 + 2 rather than 4 + 1.
+ *
+ * @param items - The items to split, in order.
+ * @param daysPerImage - The group size limit; `'all'` keeps one group.
  */
-export function chunkDays<T>(items: T[]): T[][] {
+export function chunkDays<T>(items: T[], daysPerImage: DaysPerImage): T[][] {
   if (items.length === 0) {
     return [];
   }
-  const chunkCount = Math.ceil(items.length / MAX_DAYS_PER_IMAGE);
+  const limit = daysPerImage === 'all' ? items.length : daysPerImage;
+  const chunkCount = Math.ceil(items.length / limit);
   const size = Math.ceil(items.length / chunkCount);
   return Array.from({ length: chunkCount }, (_, i) =>
     items.slice(i * size, (i + 1) * size),
@@ -63,14 +68,14 @@ export function chunkDays<T>(items: T[]): T[][] {
 
 /**
  * Scales a logical size to fit the document: the same text size as a full
- * image, shrunk further only when it would be taller than a page.
+ * image, shrunk further only when it would be wider or taller than a page.
  */
 function toDisplaySize(
   width: number,
   height: number,
 ): { displayWidth: number; displayHeight: number } {
   const scale = Math.min(
-    CONTENT_WIDTH_PX / FULL_IMAGE_WIDTH,
+    CONTENT_WIDTH_PX / Math.max(FULL_IMAGE_WIDTH, width),
     MAX_DISPLAY_HEIGHT_PX / height,
   );
   return {
@@ -84,16 +89,20 @@ function toDisplaySize(
  * their axes line up.
  *
  * @param days - The trip's days.
+ * @param daysPerImage - How many days each image holds at most.
  * @returns One plan per image; empty when no attraction has a usable time.
  */
-export function planTimelineImages(days: DayPlan[]): TimelineImagePlan[] {
+export function planTimelineImages(
+  days: DayPlan[],
+  daysPerImage: DaysPerImage,
+): TimelineImagePlan[] {
   const timelines = days.map(buildDayTimeline);
   const range = computeTimelineRange(timelines);
   if (!range) {
     return [];
   }
 
-  return chunkDays(timelines).map(group => {
+  return chunkDays(timelines, daysPerImage).map(group => {
     const layouts = group.map(t => layoutDay(t.blocks, range));
     const maxUnscheduled = Math.max(...group.map(t => t.unscheduled.length));
     const unscheduledHeight =

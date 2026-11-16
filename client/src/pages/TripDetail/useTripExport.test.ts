@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { showToast } from '@/components/ui/toast';
 import { makeBoardDays, makeContent, makeTrip } from '@/test-utils/fixtures';
 import { exportToDocx } from '@/utils/exportToDocx';
+import {
+  DEFAULT_EXPORT_OPTIONS,
+  type ExportOptions,
+} from '@/utils/exportToDocx/exportOptions';
 
 import { useTripExport } from './useTripExport';
 
@@ -12,6 +16,9 @@ vi.mock('@/components/ui/toast');
 
 const trip = makeTrip();
 const content = makeContent(makeBoardDays());
+const options: ExportOptions = {
+  timeline: { enabled: false, daysPerImage: 2 },
+};
 
 beforeEach(() => {
   vi.mocked(exportToDocx).mockResolvedValue(undefined);
@@ -24,7 +31,7 @@ describe('useTripExport', () => {
   ])('does nothing when $description', async args => {
     const { result } = renderHook(() => useTripExport(args.trip, args.content));
 
-    await act(() => result.current.handleExport());
+    await act(() => result.current.handleExport(DEFAULT_EXPORT_OPTIONS));
 
     expect(exportToDocx).not.toHaveBeenCalled();
     expect(showToast).not.toHaveBeenCalled();
@@ -48,9 +55,9 @@ describe('useTripExport', () => {
     }
     const { result } = renderHook(() => useTripExport(trip, content));
 
-    await act(() => result.current.handleExport());
+    await act(() => result.current.handleExport(options));
 
-    expect(exportToDocx).toHaveBeenCalledWith(trip, content);
+    expect(exportToDocx).toHaveBeenCalledWith(trip, content, options);
     expect(showToast).toHaveBeenCalledWith(...toast);
     expect(result.current.exporting).toBe(false);
   });
@@ -65,12 +72,12 @@ describe('useTripExport', () => {
 
     let firstExport!: Promise<void>;
     act(() => {
-      firstExport = result.current.handleExport();
+      firstExport = result.current.handleExport(DEFAULT_EXPORT_OPTIONS);
     });
     await vi.waitFor(() => expect(exportToDocx).toHaveBeenCalledTimes(1));
     expect(result.current.exporting).toBe(true);
 
-    await act(() => result.current.handleExport());
+    await act(() => result.current.handleExport(DEFAULT_EXPORT_OPTIONS));
     expect(exportToDocx).toHaveBeenCalledTimes(1);
 
     await act(async () => {

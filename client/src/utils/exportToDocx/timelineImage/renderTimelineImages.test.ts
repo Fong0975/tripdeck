@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { makeAttraction, makeDay } from '@/test-utils/fixtures';
 
+import type { DaysPerImage } from '../exportOptions';
+
 import { renderTimelineImages } from './renderTimelineImages';
 import { IMAGE_SCALE, planTimelineImages } from './timelineImageLayout';
 
@@ -56,17 +58,41 @@ describe('renderTimelineImages', () => {
     stubCanvas(makeContext(), new ArrayBuffer(1));
 
     await expect(
-      renderTimelineImages([makeDay({ attractions: [makeAttraction()] })]),
+      renderTimelineImages([makeDay({ attractions: [makeAttraction()] })], 4),
     ).resolves.toEqual([]);
   });
+
+  it.each([
+    { perImage: 1 as DaysPerImage, expected: 3 },
+    { perImage: 2 as DaysPerImage, expected: 2 },
+    { perImage: 'all' as DaysPerImage, expected: 1 },
+  ])(
+    'renders $expected picture(s) for three days at $perImage per image',
+    async ({ perImage, expected }) => {
+      stubCanvas(makeContext(), new ArrayBuffer(1));
+      const threeDays = [1, 2, 3].map(id =>
+        makeDay({
+          id,
+          day: id,
+          attractions: [
+            makeAttraction({ id, startTime: '09:00', endTime: '10:00' }),
+          ],
+        }),
+      );
+
+      await expect(
+        renderTimelineImages(threeDays, perImage),
+      ).resolves.toHaveLength(expected);
+    },
+  );
 
   it('renders one PNG per planned image at its display size', async () => {
     const png = new ArrayBuffer(8);
     const context = makeContext();
     stubCanvas(context, png);
-    const [plan] = planTimelineImages(days);
+    const [plan] = planTimelineImages(days, 4);
 
-    await expect(renderTimelineImages(days)).resolves.toEqual([
+    await expect(renderTimelineImages(days, 4)).resolves.toEqual([
       { data: png, width: plan.displayWidth, height: plan.displayHeight },
     ]);
     expect(context.scale).toHaveBeenCalledWith(IMAGE_SCALE, IMAGE_SCALE);
@@ -88,6 +114,6 @@ describe('renderTimelineImages', () => {
   ])('throws when $description', async ({ context, png, message }) => {
     stubCanvas(context, png);
 
-    await expect(renderTimelineImages(days)).rejects.toThrow(message);
+    await expect(renderTimelineImages(days, 4)).rejects.toThrow(message);
   });
 });

@@ -17,6 +17,10 @@ import type {
   Trip,
   TravelConnection,
 } from '@/types';
+import {
+  DEFAULT_EXPORT_OPTIONS,
+  type ExportOptions,
+} from '@/utils/exportToDocx/exportOptions';
 
 import TripModals from './TripModals';
 import type { ModalState } from './types';
@@ -132,6 +136,24 @@ vi.mock('@/components/TripTimelineModal', () => ({
   ),
 }));
 
+vi.mock('@/components/ExportOptionsModal', () => ({
+  default: ({
+    onClose,
+    onConfirm,
+  }: {
+    onClose: () => void;
+    onConfirm: (options: ExportOptions) => void;
+  }) => (
+    <div>
+      <span>export-options-modal</span>
+      <button onClick={onClose}>modal-close</button>
+      <button onClick={() => onConfirm(DEFAULT_EXPORT_OPTIONS)}>
+        modal-confirm
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock('@/components/EditTripModal', () => ({
   default: ({
     trip,
@@ -182,6 +204,7 @@ function renderModals(
     onSaveAttraction: vi.fn(() => Promise.resolve()),
     onSaveConnection: vi.fn(() => Promise.resolve()),
     onSaveDayNotes: vi.fn(() => Promise.resolve()),
+    onConfirmExport: vi.fn(),
     onTripUpdated: vi.fn(),
     reloadContent: vi.fn(() => Promise.resolve()),
     reloadTrip: vi.fn(() => Promise.resolve()),
@@ -222,6 +245,10 @@ describe('TripModals', () => {
     {
       modal: { type: 'timeline' },
       texts: ['timeline-modal', 'timeline-days-2'],
+    },
+    {
+      modal: { type: 'export' },
+      texts: ['export-options-modal'],
     },
     {
       modal: { type: 'editTrip' },
@@ -299,6 +326,7 @@ describe('TripModals', () => {
     { modal: { type: 'editDayNote', dayIndex: 0 }, reloadsContent: true },
     { modal: { type: 'dayMap', dayIndex: 0 }, reloadsContent: false },
     { modal: { type: 'timeline' }, reloadsContent: false },
+    { modal: { type: 'export' }, reloadsContent: false },
     { modal: { type: 'editTrip' }, reloadsContent: false },
   ])(
     'closes the $modal.type modal (reloading content: $reloadsContent)',
@@ -358,6 +386,15 @@ describe('TripModals', () => {
       expect(props.onClose).not.toHaveBeenCalled();
     },
   );
+
+  it('passes the chosen export options on when the export modal confirms', async () => {
+    const user = userEvent.setup();
+    const { props } = renderModals({ type: 'export' });
+
+    await user.click(screen.getByText('modal-confirm'));
+
+    expect(props.onConfirmExport).toHaveBeenCalledWith(DEFAULT_EXPORT_OPTIONS);
+  });
 
   it('applies the updated trip and closes when the edit trip modal saves', async () => {
     const user = userEvent.setup();

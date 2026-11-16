@@ -17,11 +17,21 @@ import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { makeDayNotesSection } from './dayNotesSection';
+import { DEFAULT_EXPORT_OPTIONS, type ExportOptions } from './exportOptions';
 import { makeHeaderSection } from './headerSection';
 import { makeTimelineSection } from './timelineSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
-import { exportToDocx } from './index';
+import { exportToDocx as exportWithOptions } from './index';
+
+/** Runs the export with the default options unless a test overrides them. */
+function exportToDocx(
+  trip: Parameters<typeof exportWithOptions>[0],
+  content: Parameters<typeof exportWithOptions>[1],
+  options: ExportOptions = DEFAULT_EXPORT_OPTIONS,
+) {
+  return exportWithOptions(trip, content, options);
+}
 
 vi.mock('docx');
 
@@ -116,12 +126,15 @@ describe('exportToDocx', () => {
     expect(documentOptions.sections[0].children[0]).toBe(headerSentinel);
   });
 
-  it('builds the timeline section from the trip days', async () => {
+  it('builds the timeline section from the trip days and the timeline options', async () => {
     const days = [makeDay({ id: 1, day: 1, date: '2026-08-20' })];
+    const options: ExportOptions = {
+      timeline: { enabled: false, daysPerImage: 'all' },
+    };
 
-    await exportToDocx(makeTrip(), makeContent(days));
+    await exportToDocx(makeTrip(), makeContent(days), options);
 
-    expect(makeTimelineSection).toHaveBeenCalledWith(days);
+    expect(makeTimelineSection).toHaveBeenCalledWith(days, options.timeline);
   });
 
   it('places the timeline between the header section and the first day', async () => {
