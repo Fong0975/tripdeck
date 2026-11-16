@@ -10,6 +10,7 @@ import {
 import type { TripChecklist } from '@/types';
 
 import ChecklistTable from './ChecklistTable';
+import type { ViewMode } from './viewMode';
 
 function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
   return makeTripChecklist({
@@ -34,6 +35,7 @@ function renderTable(
   checklist: TripChecklist,
   getCheck: (occId: number, id: number) => boolean = () => false,
   getSpecCheck: (occId: number, id: number) => boolean = () => false,
+  viewMode?: ViewMode,
 ) {
   render(
     <ChecklistTable
@@ -42,6 +44,7 @@ function renderTable(
       getSpecCheck={getSpecCheck}
       onToggleCheck={vi.fn()}
       onToggleSpecCheck={vi.fn()}
+      viewMode={viewMode}
     />,
   );
 }
@@ -148,4 +151,81 @@ describe('ChecklistTable', () => {
       expect(screen.getByText(expected)).toBeInTheDocument();
     },
   );
+
+  describe('storage view', () => {
+    const storageChecklist = makeChecklist({
+      categories: [
+        makeChecklistCategory({
+          name: 'Clothes',
+          items: [
+            makeChecklistItem({
+              id: 10,
+              name: 'Jacket',
+              storage_location: '託運,隨身',
+            }),
+            makeChecklistItem({ id: 20, name: 'Socks' }),
+          ],
+        }),
+        makeChecklistCategory({
+          id: 2,
+          name: 'Gadgets',
+          items: [
+            makeChecklistItem({
+              id: 30,
+              name: 'Charger',
+              specs: [
+                makeChecklistSpec({
+                  id: 301,
+                  name: 'USB-C',
+                  storage_location: '隨身',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    it.each([
+      { header: '託運', count: '1 項' },
+      { header: '隨身', count: '2 項' },
+      { header: '未指定位置', count: '1 項' },
+    ])('shows the "$header" group with "$count"', ({ header, count }) => {
+      renderTable(storageChecklist, undefined, undefined, 'storage');
+
+      // eslint-disable-next-line testing-library/no-node-access
+      const row = screen.getByText(header).closest('tr') as HTMLElement;
+      expect(row).toHaveTextContent(count);
+    });
+
+    it('lists a multi-location item under each of its groups', () => {
+      renderTable(storageChecklist, undefined, undefined, 'storage');
+
+      expect(screen.getAllByText('Jacket')).toHaveLength(2);
+    });
+
+    it.each([
+      { category: 'Clothes', subheaders: 3 },
+      { category: 'Gadgets', subheaders: 1 },
+    ])(
+      'shows the "$category" subheader once per group that holds its units ($subheaders)',
+      ({ category, subheaders }) => {
+        renderTable(storageChecklist, undefined, undefined, 'storage');
+
+        expect(screen.getAllByText(category)).toHaveLength(subheaders);
+      },
+    );
+
+    it('keeps the per-occasion progress identical to the category view', () => {
+      renderTable(
+        storageChecklist,
+        (occId, id) => occId === 1 && id === 10,
+        undefined,
+        'storage',
+      );
+
+      // Jacket is listed twice but counted once: 1 of 3 units.
+      expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    });
+  });
 });

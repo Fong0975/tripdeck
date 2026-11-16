@@ -16,8 +16,16 @@ import TripChecklistPanel from './index';
 vi.mock('./useChecklistState', () => ({ useChecklistState: vi.fn() }));
 
 vi.mock('./ChecklistTable', () => ({
-  default: ({ checklist }: { checklist: TripChecklist }) => (
-    <div>checklist-table-{checklist.categories.length}</div>
+  default: ({
+    checklist,
+    viewMode,
+  }: {
+    checklist: TripChecklist;
+    viewMode: string;
+  }) => (
+    <div>
+      checklist-table-{checklist.categories.length}-{viewMode}
+    </div>
   ),
 }));
 
@@ -158,7 +166,18 @@ describe('TripChecklistPanel', () => {
     render(<TripChecklistPanel tripId={1} />);
 
     expect(screen.getByText('共 1 項')).toBeInTheDocument();
-    expect(screen.getByText('checklist-table-1')).toBeInTheDocument();
+    expect(screen.getByText('checklist-table-1-category')).toBeInTheDocument();
+  });
+
+  it('switches the table view mode through the toggle', async () => {
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+
+    await user.click(screen.getByRole('button', { name: '依存放位置' }));
+    expect(screen.getByText('checklist-table-1-storage')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '依分類' }));
+    expect(screen.getByText('checklist-table-1-category')).toBeInTheDocument();
   });
 
   it.each([
