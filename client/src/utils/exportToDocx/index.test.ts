@@ -18,6 +18,7 @@ import { fetchDailyWeather, getWeatherEnabled } from '@/utils/weatherApi';
 import { makeAttractionTable } from './attractionTable';
 import { makeDayNotesSection } from './dayNotesSection';
 import { makeHeaderSection } from './headerSection';
+import { makeTimelineSection } from './timelineSection';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 import { exportToDocx } from './index';
@@ -36,6 +37,9 @@ vi.mock('./attractionTable', () => ({ makeAttractionTable: vi.fn() }));
 // single sentinel paragraph so this file can focus on orchestration —
 // building the day sections and packing/downloading the final document.
 vi.mock('./headerSection', () => ({ makeHeaderSection: vi.fn() }));
+// The timeline picture is unit-tested in timelineSection.test.ts; here it is
+// stubbed to a sentinel so only its position in the document is checked.
+vi.mock('./timelineSection', () => ({ makeTimelineSection: vi.fn() }));
 // Likewise, a day's own notes/images content is unit-tested in
 // dayNotesSection.test.ts; here it's stubbed to a single sentinel paragraph.
 vi.mock('./dayNotesSection', () => ({ makeDayNotesSection: vi.fn() }));
@@ -45,6 +49,10 @@ vi.mock('./transportTable', () => ({
 }));
 
 const headerSentinel = { type: 'Paragraph', options: { sentinel: 'header' } };
+const timelineSentinel = {
+  type: 'Paragraph',
+  options: { sentinel: 'timeline' },
+};
 const dayNotesSentinel = {
   type: 'Paragraph',
   options: { sentinel: 'day-notes' },
@@ -54,6 +62,9 @@ beforeEach(() => {
   vi.mocked(Packer.toBlob).mockResolvedValue(new Blob(['docx']));
   vi.mocked(makeHeaderSection).mockResolvedValue([
     headerSentinel as unknown as Paragraph,
+  ]);
+  vi.mocked(makeTimelineSection).mockResolvedValue([
+    timelineSentinel as unknown as Paragraph,
   ]);
   vi.mocked(makeDayNotesSection).mockResolvedValue([
     dayNotesSentinel as unknown as Paragraph,
@@ -103,6 +114,34 @@ describe('exportToDocx', () => {
       sections: [{ children: unknown[] }];
     };
     expect(documentOptions.sections[0].children[0]).toBe(headerSentinel);
+  });
+
+  it('builds the timeline section from the trip days', async () => {
+    const days = [makeDay({ id: 1, day: 1, date: '2026-08-20' })];
+
+    await exportToDocx(makeTrip(), makeContent(days));
+
+    expect(makeTimelineSection).toHaveBeenCalledWith(days);
+  });
+
+  it('places the timeline between the header section and the first day', async () => {
+    const dayHeader = { type: 'Table', options: { day: 1 } };
+    vi.mocked(makeDayHeaderTable).mockReturnValueOnce(
+      dayHeader as unknown as Table,
+    );
+
+    await exportToDocx(makeTrip(), makeContent([makeDay()]));
+
+    const documentOptions = vi.mocked(Document).mock.calls[0][0] as {
+      sections: [{ children: unknown[] }];
+    };
+    const children = documentOptions.sections[0].children;
+    expect(children.indexOf(headerSentinel)).toBeLessThan(
+      children.indexOf(timelineSentinel),
+    );
+    expect(children.indexOf(timelineSentinel)).toBeLessThan(
+      children.indexOf(dayHeader),
+    );
   });
 
   it('calls makeDayHeaderTable once per day with isFirstDay true only for the first day', async () => {

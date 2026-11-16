@@ -122,6 +122,16 @@ vi.mock('@/components/DayMapModal', () => ({
   ),
 }));
 
+vi.mock('@/components/TripTimelineModal', () => ({
+  default: ({ days, onClose }: { days: DayPlan[]; onClose: () => void }) => (
+    <div>
+      <span>timeline-modal</span>
+      <span>timeline-days-{days.length}</span>
+      <button onClick={onClose}>modal-close</button>
+    </div>
+  ),
+}));
+
 vi.mock('@/components/EditTripModal', () => ({
   default: ({
     trip,
@@ -210,6 +220,10 @@ describe('TripModals', () => {
       texts: ['day-map-modal', 'map-trip-1', 'map-opened-on-day-2-of-2'],
     },
     {
+      modal: { type: 'timeline' },
+      texts: ['timeline-modal', 'timeline-days-2'],
+    },
+    {
       modal: { type: 'editTrip' },
       texts: ['edit-trip-modal', 'editing:Trip A'],
     },
@@ -284,6 +298,7 @@ describe('TripModals', () => {
     },
     { modal: { type: 'editDayNote', dayIndex: 0 }, reloadsContent: true },
     { modal: { type: 'dayMap', dayIndex: 0 }, reloadsContent: false },
+    { modal: { type: 'timeline' }, reloadsContent: false },
     { modal: { type: 'editTrip' }, reloadsContent: false },
   ])(
     'closes the $modal.type modal (reloading content: $reloadsContent)',

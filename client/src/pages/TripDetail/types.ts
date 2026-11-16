@@ -8,4 +8,5 @@ export type ModalState =
   | { type: 'editAttraction'; dayIndex: number; attraction: Attraction }
   | { type: 'editConnection'; dayIndex: number; connection: TravelConnection }
   | { type: 'editDayNote'; dayIndex: number }
-  | { type: 'dayMap'; dayIndex: number };
+  | { type: 'dayMap'; dayIndex: number }
+  | { type: 'timeline' };

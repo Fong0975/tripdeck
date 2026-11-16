@@ -57,12 +57,14 @@ vi.mock('./TripHeader', () => ({
     trip,
     onBack,
     onExport,
+    onOpenTimeline,
     onEdit,
     exporting,
   }: {
     trip: Trip;
     onBack: () => void;
     onExport: () => void;
+    onOpenTimeline: () => void;
     onEdit: () => void;
     exporting?: boolean;
   }) => (
@@ -71,6 +73,7 @@ vi.mock('./TripHeader', () => ({
       <span>exporting:{String(exporting)}</span>
       <button onClick={onBack}>back-trigger</button>
       <button onClick={onExport}>export-trigger</button>
+      <button onClick={onOpenTimeline}>timeline-trigger</button>
       <button onClick={onEdit}>edit-trip-trigger</button>
     </div>
   ),
@@ -437,6 +440,7 @@ describe('TripDetail', () => {
       modal: { type: 'editDayNote', dayIndex: 1 },
     },
     { trigger: 'open-day-map-1', modal: { type: 'dayMap', dayIndex: 1 } },
+    { trigger: 'timeline-trigger', modal: { type: 'timeline' } },
     { trigger: 'edit-trip-trigger', modal: { type: 'editTrip' } },
   ])(
     'opens the $modal.type modal from $trigger and closes it via onClose',

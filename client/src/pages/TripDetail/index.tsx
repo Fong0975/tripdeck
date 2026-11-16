@@ -121,6 +121,7 @@ export default function TripDetail() {
         trip={trip}
         onBack={guardedLeave}
         onExport={() => void handleExport()}
+        onOpenTimeline={() => setModal({ type: 'timeline' })}
         onEdit={() => setModal({ type: 'editTrip' })}
         exporting={exporting}
       />

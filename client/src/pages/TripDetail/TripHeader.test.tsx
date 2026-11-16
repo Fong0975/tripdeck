@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +12,7 @@ const renderHeader = makeMounter(TripHeader, () => ({
   trip: makeTrip({ title: 'Japan Trip' }),
   onBack: vi.fn(),
   onExport: vi.fn(),
+  onOpenTimeline: vi.fn(),
   onEdit: vi.fn(),
 }));
 
@@ -47,15 +48,31 @@ describe('TripHeader', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onExport when the export button is clicked', async () => {
-    const onExport = vi.fn();
-    const user = userEvent.setup();
-    renderHeader({ onExport });
+  it('lists the timeline entry before the export entry in the menu', () => {
+    renderHeader();
 
-    await user.click(screen.getByText('匯出'));
-
-    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitem')
+        .map(item => item.textContent),
+    ).toEqual(['時間軸', '匯出']);
   });
+
+  it.each([
+    { entry: '匯出', handler: 'onExport' },
+    { entry: '時間軸', handler: 'onOpenTimeline' },
+  ] as const)(
+    'calls $handler once when "$entry" is chosen',
+    async ({ entry, handler }) => {
+      const callback = vi.fn();
+      const user = userEvent.setup();
+      renderHeader({ [handler]: callback });
+
+      await user.click(screen.getByRole('menuitem', { name: entry }));
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it.each([
     { exporting: false, expectedLabel: '匯出', expectedDisabled: false },
