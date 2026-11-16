@@ -1,7 +1,7 @@
 {
   "name": "@tripdeck/shared",
   "private": true,
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "API types and constants shared by the TripDeck client and server.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
