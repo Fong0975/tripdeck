@@ -15,6 +15,31 @@ describe('Modal', () => {
     expect(screen.getByText('panel content')).toBeInTheDocument();
   });
 
+  it.each([
+    { description: 'a string title', title: 'My Title' },
+    { description: 'a node title', title: <span>Node Title</span> },
+  ])('exposes a modal dialog named by $description', ({ title }) => {
+    render(
+      <Modal title={title} onClose={vi.fn()}>
+        <p>content</p>
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName(/Title/);
+  });
+
+  it('labels the close button as 關閉', () => {
+    render(
+      <Modal title='Title' onClose={vi.fn()}>
+        <p>content</p>
+      </Modal>,
+    );
+
+    expect(screen.getByRole('button', { name: '關閉' })).toBeInTheDocument();
+  });
+
   it('calls onClose when the overlay is clicked', () => {
     const onClose = vi.fn();
     const { container } = render(

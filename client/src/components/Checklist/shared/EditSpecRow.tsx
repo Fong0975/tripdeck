@@ -21,10 +21,13 @@ export default function EditSpecRow({
   onDelete,
 }: Props) {
   return (
-    <div className='flex items-center gap-2'>
+    <div
+      /* v8 ignore next -- compact/regular are both purely cosmetic layout variants */
+      className={`flex items-center gap-2 ${compact ? '' : 'flex-wrap gap-y-1.5'}`}
+    >
       <span
         /* v8 ignore next -- compact/regular are both purely cosmetic width variants */
-        className={`shrink-0 text-xs text-muted-foreground ${compact ? 'w-4' : 'w-5'}`}
+        className={`shrink-0 text-muted-foreground ${compact ? 'w-4 text-xs' : 'w-6 text-sm'}`}
       >
         {index + 1}.
       </span>
@@ -34,19 +37,28 @@ export default function EditSpecRow({
         onFocus={e => e.target.select()}
         onChange={e => onUpdate({ name: e.target.value })}
         placeholder='規格名稱'
-        className='min-w-0 flex-1 bg-transparent text-xs text-foreground/80 focus:outline-hidden'
+        /* v8 ignore next -- compact/regular are both purely cosmetic input variants */
+        className={`min-w-0 flex-1 focus:outline-hidden ${
+          compact
+            ? 'bg-transparent text-xs text-foreground/80'
+            : 'basis-40 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:border-primary'
+        }`}
       />
-      <StorageCheckboxes
-        value={spec.storage_location}
-        onChange={loc => onUpdate({ storage_location: loc })}
-        compact
-      />
+      <div className='flex items-center gap-2'>
+        <StorageCheckboxes
+          value={spec.storage_location}
+          onChange={loc => onUpdate({ storage_location: loc })}
+          compact={compact}
+          large={!compact}
+        />
+      </div>
       <button
         onClick={onDelete}
         className='shrink-0 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-destructive'
         aria-label='刪除規格'
       >
-        <Trash2 size={11} />
+        {/* v8 ignore next -- compact/regular are both purely cosmetic icon-size variants */}
+        <Trash2 size={compact ? 11 : 15} />
       </button>
     </div>
   );
