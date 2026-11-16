@@ -14,19 +14,27 @@ import {
   type MarkerSpot,
   type Rect,
 } from './labelLayout';
-import type { MapProjection } from './mapProjection';
+import type { LoadedTile } from './loadTiles';
+import { TILE_SIZE, type MapProjection } from './mapProjection';
+import { OSM_ATTRIBUTION } from './tileLayer';
 
 const COLORS = {
   background: '#f8fafc',
   grid: '#e8edf3',
-  route: 'rgba(37, 99, 235, 0.85)',
+  route: 'rgba(37, 99, 235, 0.9)',
+  routeCasing: 'rgba(255, 255, 255, 0.9)',
   markerBorder: '#ffffff',
   markerText: '#ffffff',
   labelFill: 'rgba(255, 255, 255, 0.94)',
+  attributionFill: 'rgba(255, 255, 255, 0.8)',
+  attributionText: '#374151',
 } as const;
 
 const GRID_STEP = 48;
 const ROUTE_WIDTH = 3;
+const ROUTE_CASING_EXTRA = 3;
+const ATTRIBUTION_HEIGHT = 14;
+const ATTRIBUTION_PADDING = 4;
 const MARKER_RADIUS = 12;
 const MARKER_TEXT_PADDING = 7;
 const LABEL_MAX_TEXT_WIDTH = 150;
@@ -123,12 +131,10 @@ function measureMarker(
   };
 }
 
-function drawBackground(
+function drawGrid(
   ctx: CanvasRenderingContext2D,
   { width, height }: MapProjection,
 ): void {
-  ctx.fillStyle = COLORS.background;
-  ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = COLORS.grid;
   ctx.lineWidth = 1;
   for (let x = GRID_STEP; x < width; x += GRID_STEP) {
@@ -145,18 +151,52 @@ function drawBackground(
   }
 }
 
-function drawRoute(
+/** Draws the map tiles, or a plain grid when none could be loaded. */
+function drawBackground(
+  ctx: CanvasRenderingContext2D,
+  projection: MapProjection,
+  tiles: LoadedTile[],
+): void {
+  ctx.fillStyle = COLORS.background;
+  ctx.fillRect(0, 0, projection.width, projection.height);
+  if (tiles.length === 0) {
+    drawGrid(ctx, projection);
+    return;
+  }
+  for (const { image, dx, dy } of tiles) {
+    ctx.drawImage(image, dx, dy, TILE_SIZE, TILE_SIZE);
+  }
+}
+
+function drawAttribution(
+  ctx: CanvasRenderingContext2D,
+  { width, height }: MapProjection,
+): void {
+  ctx.font = canvasFont(10);
+  const textWidth = Math.ceil(ctx.measureText(OSM_ATTRIBUTION).width);
+  const boxWidth = textWidth + ATTRIBUTION_PADDING * 2;
+  ctx.fillStyle = COLORS.attributionFill;
+  ctx.fillRect(
+    width - boxWidth,
+    height - ATTRIBUTION_HEIGHT,
+    boxWidth,
+    ATTRIBUTION_HEIGHT,
+  );
+  ctx.fillStyle = COLORS.attributionText;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(
+    OSM_ATTRIBUTION,
+    width - ATTRIBUTION_PADDING,
+    height - ATTRIBUTION_HEIGHT / 2,
+  );
+}
+
+function traceRoute(
   ctx: CanvasRenderingContext2D,
   route: number[],
   markers: MarkerShape[],
 ): void {
-  if (route.length < 2) {
-    return;
-  }
-  ctx.strokeStyle = COLORS.route;
-  ctx.lineWidth = ROUTE_WIDTH;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
   ctx.beginPath();
   route.forEach((stopIndex, i) => {
     const { x, y } = markers[stopIndex];
@@ -167,6 +207,25 @@ function drawRoute(
     }
   });
   ctx.stroke();
+}
+
+/** Draws the route with a white casing so it stays visible over map tiles. */
+function drawRoute(
+  ctx: CanvasRenderingContext2D,
+  route: number[],
+  markers: MarkerShape[],
+): void {
+  if (route.length < 2) {
+    return;
+  }
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = COLORS.routeCasing;
+  ctx.lineWidth = ROUTE_WIDTH + ROUTE_CASING_EXTRA;
+  traceRoute(ctx, route, markers);
+  ctx.strokeStyle = COLORS.route;
+  ctx.lineWidth = ROUTE_WIDTH;
+  traceRoute(ctx, route, markers);
 }
 
 function drawMarker(
@@ -214,19 +273,27 @@ function drawLabel(
 
 /**
  * Draws one day's map picture in logical pixels (the caller applies any
- * pixel-ratio scaling beforehand): a light grid, the route, numbered markers
- * and a colored label with title and time range beside each marker.
+ * pixel-ratio scaling beforehand): OpenStreetMap tiles (a plain grid when none
+ * loaded), the route, numbered markers and a colored label with title and time
+ * range beside each marker.
  *
  * @param ctx - The 2D context to draw on.
  * @param model - The day's stops and route.
  * @param projection - Surface size and each stop's position, in stop order.
+ * @param tiles - The loaded map tiles; may be empty.
  */
 export function drawDayMapImage(
   ctx: CanvasRenderingContext2D,
   model: DayMapModel,
   projection: MapProjection,
+  tiles: LoadedTile[],
 ): void {
-  drawBackground(ctx, projection);
+  drawBackground(ctx, projection, tiles);
+  const hasTiles = tiles.length > 0;
+  const labelSurface = {
+    width: projection.width,
+    height: projection.height - (hasTiles ? ATTRIBUTION_HEIGHT : 0),
+  };
 
   const markers = model.stops.map((stop, i) =>
     measureMarker(ctx, stop, projection.points[i]),
@@ -236,11 +303,14 @@ export function drawDayMapImage(
     markerIndex,
     ...measureLabel(ctx, lines),
   }));
-  const rects = placeLabels(markers, requests, projection);
+  const rects = placeLabels(markers, requests, labelSurface);
 
   drawRoute(ctx, model.route, markers);
   markers.forEach((marker, i) => drawMarker(ctx, marker, model.stops[i].label));
   rects.forEach((rect, i) =>
     drawLabel(ctx, rect, labelLines[i], markers[i].color),
   );
+  if (hasTiles) {
+    drawAttribution(ctx, projection);
+  }
 }

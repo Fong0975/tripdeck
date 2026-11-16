@@ -12,7 +12,7 @@ export default function DayMapOptionsSection({ value, onChange }: Props) {
   return (
     <ExportOptionSection
       title='每日景點地圖'
-      description='在每天的日期標題之後加入當天景點的標記、時間與連線圖片（僅包含已有座標的景點）。'
+      description='在每天的日期標題之後加入 OpenStreetMap 底圖上的當天景點標記、時間與連線（僅包含已有座標的景點，匯出時需連線載入地圖）。'
     >
       <label className='flex cursor-pointer items-center gap-2'>
         <input

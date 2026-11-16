@@ -4,13 +4,16 @@ import { makeAttraction, makeDay } from '@/test-utils/fixtures';
 
 import { buildDayMapModel } from './dayMapModel';
 import { drawDayMapImage } from './drawDayMapImage';
-import { projectCoordinates } from './mapProjection';
+import type { LoadedTile } from './loadTiles';
+import { TILE_SIZE, projectCoordinates } from './mapProjection';
+import { OSM_ATTRIBUTION } from './tileLayer';
 
 /** Minimal 2D context: every call is a spy and text is 7px per character. */
 function makeContext() {
   return {
     fillRect: vi.fn(),
     fillText: vi.fn(),
+    drawImage: vi.fn(),
     beginPath: vi.fn(),
     roundRect: vi.fn(),
     fill: vi.fn(),
@@ -21,13 +24,17 @@ function makeContext() {
   };
 }
 
-function draw(attractions: ReturnType<typeof makeAttraction>[]) {
+function draw(
+  attractions: ReturnType<typeof makeAttraction>[],
+  tiles: LoadedTile[] = [],
+) {
   const ctx = makeContext();
   const model = buildDayMapModel(makeDay({ attractions }));
   drawDayMapImage(
     ctx as unknown as CanvasRenderingContext2D,
     model,
     projectCoordinates(model.stops),
+    tiles,
   );
   return {
     ctx,
@@ -126,5 +133,37 @@ describe('drawDayMapImage', () => {
       texts.some(text => text.startsWith('1 AAAA') && text.endsWith('…')),
     ).toBe(true);
     expect(texts).toContain('…另 1 項');
+  });
+
+  describe('map background', () => {
+    const attractions = [
+      makeAttraction({ id: 1, ...HOTEL }),
+      makeAttraction({ id: 2, ...PARK }),
+    ];
+    const tiles: LoadedTile[] = [
+      { image: {} as HTMLImageElement, dx: -20, dy: -10 },
+      { image: {} as HTMLImageElement, dx: 236, dy: -10 },
+    ];
+
+    it('draws each loaded tile at its offset and credits OpenStreetMap', () => {
+      const { ctx, texts } = draw(attractions, tiles);
+
+      expect(ctx.drawImage.mock.calls).toEqual([
+        [tiles[0].image, -20, -10, TILE_SIZE, TILE_SIZE],
+        [tiles[1].image, 236, -10, TILE_SIZE, TILE_SIZE],
+      ]);
+      expect(texts).toContain(OSM_ATTRIBUTION);
+    });
+
+    it('draws a grid and no credit when no tile loaded', () => {
+      const withTiles = draw(attractions, tiles);
+      const { ctx, texts } = draw(attractions, []);
+
+      expect(ctx.drawImage).not.toHaveBeenCalled();
+      expect(texts).not.toContain(OSM_ATTRIBUTION);
+      expect(ctx.moveTo.mock.calls.length).toBeGreaterThan(
+        withTiles.ctx.moveTo.mock.calls.length,
+      );
+    });
   });
 });
