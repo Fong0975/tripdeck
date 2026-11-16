@@ -1,5 +1,6 @@
 import type { DayPlan } from '@/types';
 
+import { renderCanvasToPng, type RenderedPicture } from '../canvasHelpers';
 import type { DaysPerImage } from '../exportOptions';
 
 import { drawTimelineImage } from './drawTimelineImage';
@@ -10,36 +11,16 @@ import {
 } from './timelineImageLayout';
 
 /** A rendered timeline picture ready to embed in the document. */
-export interface TimelineImage {
-  /** PNG bytes. */
-  data: ArrayBuffer;
-  /** Size in the document, in docx pixels. */
-  width: number;
-  height: number;
-}
+export type TimelineImage = RenderedPicture;
 
 async function renderPlan(plan: TimelineImagePlan): Promise<TimelineImage> {
-  const canvas = document.createElement('canvas');
-  canvas.width = plan.width * IMAGE_SCALE;
-  canvas.height = plan.height * IMAGE_SCALE;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Canvas 2D context unavailable');
-  }
-  ctx.scale(IMAGE_SCALE, IMAGE_SCALE);
-  drawTimelineImage(ctx, plan);
-
-  const blob = await new Promise<Blob | null>(resolve =>
-    canvas.toBlob(resolve, 'image/png'),
+  const data = await renderCanvasToPng(
+    plan.width,
+    plan.height,
+    IMAGE_SCALE,
+    ctx => drawTimelineImage(ctx, plan),
   );
-  if (!blob) {
-    throw new Error('PNG encoding failed');
-  }
-  return {
-    data: await blob.arrayBuffer(),
-    width: plan.displayWidth,
-    height: plan.displayHeight,
-  };
+  return { data, width: plan.displayWidth, height: plan.displayHeight };
 }
 
 /**

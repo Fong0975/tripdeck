@@ -32,10 +32,12 @@ describe('ExportOptionsModal', () => {
       '全部',
     );
     await user.click(screen.getByLabelText('包含時間軸圖片'));
+    await user.click(screen.getByLabelText('包含每日景點地圖圖片'));
     await user.click(screen.getByRole('button', { name: '匯出' }));
 
     expect(onConfirm).toHaveBeenCalledWith({
       timeline: { enabled: false, daysPerImage: 'all' },
+      dayMap: { enabled: false },
     });
   });
 

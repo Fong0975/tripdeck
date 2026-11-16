@@ -9,7 +9,9 @@ import { fetchDailyWeather, type WeatherResult } from '@/utils/weatherApi';
 
 import { makeAttractionTable } from './attractionTable';
 import { FONT } from './constants';
+import { makeDayMapSection } from './dayMapSection';
 import { makeDayNotesSection } from './dayNotesSection';
+import type { DayMapExportOptions } from './exportOptions';
 import { makeDayHeaderTable, makeTransportTable } from './transportTable';
 
 /** A top-level block in the exported document body. */
@@ -95,19 +97,22 @@ function makeAttractionTasks(day: DayPlan): DocTask[] {
 }
 
 /**
- * Builds the ordered content tasks for one day: its header, notes, weather
- * lines, then each attraction with its outgoing connection.
+ * Builds the ordered content tasks for one day: its header, the day map
+ * picture, notes, weather lines, then each attraction with its outgoing
+ * connection.
  *
  * @param day - The day to export.
  * @param isFirstDay - Whether this is the trip's first day (affects the
  *   header's page-break behaviour).
  * @param isWeatherEnabled - Whether the backend has a weather provider.
+ * @param dayMapOptions - The user's day map picture settings.
  * @returns Tasks whose outputs, concatenated in order, form the day section.
  */
 export function makeDaySectionTasks(
   day: DayPlan,
   isFirstDay: boolean,
   isWeatherEnabled: boolean,
+  dayMapOptions: DayMapExportOptions,
 ): DocTask[] {
   const dayLabel = format(parseISO(day.date), 'M月d日 (EEEE)', {
     locale: zhTW,
@@ -119,6 +124,7 @@ export function makeDaySectionTasks(
 
   return [
     () => Promise.resolve([header]),
+    () => makeDayMapSection(day, dayMapOptions),
     () => makeDayNotesSection(day),
     ...makeWeatherTasks(day, isWeatherEnabled),
     () => Promise.resolve([spacer(200)]),

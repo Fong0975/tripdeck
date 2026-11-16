@@ -18,6 +18,7 @@ const trip = makeTrip();
 const content = makeContent(makeBoardDays());
 const options: ExportOptions = {
   timeline: { enabled: false, daysPerImage: 2 },
+  dayMap: { enabled: false },
 };
 
 beforeEach(() => {

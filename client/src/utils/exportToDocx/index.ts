@@ -2,6 +2,7 @@ import { Document, Packer } from 'docx';
 
 import type { Trip, TripContent } from '@/types';
 import { downloadBlob } from '@/utils/download';
+import { withResolvedGeo } from '@/utils/mapsApi/geoCache';
 import { getWeatherEnabled } from '@/utils/weatherApi';
 
 import { mapWithConcurrency } from './concurrency';
@@ -19,7 +20,8 @@ const EXPORT_CONCURRENCY = 4;
 
 /**
  * Builds a Word document for the trip (header, timeline picture, then one
- * section per day) and downloads it as `<trip title>.docx`. Image and weather fetches run with
+ * section per day, each opening with its date heading and map picture) and
+ * downloads it as `<trip title>.docx`. Image and weather fetches run with
  * bounded concurrency; the document order always follows the itinerary.
  *
  * @param trip - The trip whose metadata forms the header section.
@@ -32,12 +34,15 @@ export async function exportToDocx(
   options: ExportOptions,
 ): Promise<void> {
   const isWeatherEnabled = await getWeatherEnabled();
+  // Locations resolved while browsing the trip live in a session cache, not in
+  // the loaded content, so overlay them for the day map pictures.
+  const locatedDays = withResolvedGeo(content.days);
 
   const tasks: DocTask[] = [
     () => makeHeaderSection(trip, content.days.length),
     () => makeTimelineSection(content.days, options.timeline),
-    ...content.days.flatMap((day, dayIdx) =>
-      makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled),
+    ...locatedDays.flatMap((day, dayIdx) =>
+      makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled, options.dayMap),
     ),
   ];
   const children = (

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeAttraction, makeConnection, makeDay } from '@/test-utils/fixtures';
 
-import { drawTimelineImage, fitText } from './drawTimelineImage';
+import { drawTimelineImage } from './drawTimelineImage';
 import { planTimelineImages } from './timelineImageLayout';
 
 /** Minimal 2D context: every call is a spy and text is 7px per character. */
@@ -27,22 +27,6 @@ function makeContext() {
 function drawnTexts(ctx: ReturnType<typeof makeContext>): string[] {
   return ctx.fillText.mock.calls.map(([text]) => text as string);
 }
-
-describe('fitText', () => {
-  it.each([
-    { text: 'abc', maxWidth: 100, expected: 'abc' },
-    { text: 'abcdefghij', maxWidth: 70, expected: 'abcdefghij' },
-    { text: 'abcdefghij', maxWidth: 40, expected: 'abcd…' },
-    { text: 'abcdefghij', maxWidth: 3, expected: '…' },
-  ])(
-    'fits "$text" into $maxWidth px as "$expected"',
-    ({ text, maxWidth, expected }) => {
-      const ctx = makeContext();
-
-      expect(fitText(ctx, text, maxWidth)).toBe(expected);
-    },
-  );
-});
 
 describe('drawTimelineImage', () => {
   const day = makeDay({

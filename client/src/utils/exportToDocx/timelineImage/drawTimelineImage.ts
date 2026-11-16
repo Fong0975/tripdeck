@@ -9,6 +9,8 @@ import {
 import { formatTimeMinutes } from '@/utils/timeline/parseTime';
 import { getBlockColor } from '@/utils/timeline/timelinePalette';
 
+import { canvasFont, fillRoundRect, fitText } from '../canvasHelpers';
+
 import {
   AXIS_WIDTH,
   DAY_WIDTH,
@@ -31,52 +33,11 @@ const COLORS = {
   travelText: '#374151',
 } as const;
 
-const FONT_STACK = `'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif`;
 const CARD_RADIUS = 5;
 const CARD_ACCENT_WIDTH = 4;
 const GUTTER = 4;
 
-function font(size: number, weight: 'normal' | 'bold' = 'normal'): string {
-  return `${weight} ${size}px ${FONT_STACK}`;
-}
-
-/**
- * Shortens text with an ellipsis so it fits a pixel width.
- *
- * @param ctx - The context whose current font is used to measure.
- * @param text - The text to fit.
- * @param maxWidth - Available width in logical pixels.
- */
-export function fitText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string {
-  if (ctx.measureText(text).width <= maxWidth) {
-    return text;
-  }
-  let end = text.length;
-  while (
-    end > 0 &&
-    ctx.measureText(`${text.slice(0, end)}…`).width > maxWidth
-  ) {
-    end -= 1;
-  }
-  return end > 0 ? `${text.slice(0, end)}…` : '…';
-}
-
-function fillRoundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-): void {
-  ctx.beginPath();
-  ctx.roundRect(x, y, width, height, radius);
-  ctx.fill();
-}
+const font = canvasFont;
 
 function drawHeaders(
   ctx: CanvasRenderingContext2D,

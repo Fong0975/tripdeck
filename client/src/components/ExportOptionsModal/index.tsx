@@ -7,6 +7,7 @@ import {
   type ExportOptions,
 } from '@/utils/exportToDocx/exportOptions';
 
+import DayMapOptionsSection from './DayMapOptionsSection';
 import TimelineOptionsSection from './TimelineOptionsSection';
 
 interface Props {
@@ -34,6 +35,10 @@ export default function ExportOptionsModal({ onClose, onConfirm }: Props) {
         <TimelineOptionsSection
           value={options.timeline}
           onChange={timeline => setOptions({ ...options, timeline })}
+        />
+        <DayMapOptionsSection
+          value={options.dayMap}
+          onChange={dayMap => setOptions({ ...options, dayMap })}
         />
         <ModalFooterActions onCancel={onClose} submitLabel='匯出' />
       </form>
