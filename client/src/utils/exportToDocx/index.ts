@@ -7,6 +7,7 @@ import { getWeatherEnabled } from '@/utils/weatherApi';
 import { mapWithConcurrency } from './concurrency';
 import { FONT } from './constants';
 import { makeDaySectionTasks, type DocTask } from './daySection';
+import type { ExportOptions } from './exportOptions';
 import { makeHeaderSection } from './headerSection';
 import { makeTimelineSection } from './timelineSection';
 
@@ -23,16 +24,18 @@ const EXPORT_CONCURRENCY = 4;
  *
  * @param trip - The trip whose metadata forms the header section.
  * @param content - The trip's day plans.
+ * @param options - The user's export settings.
  */
 export async function exportToDocx(
   trip: Trip,
   content: TripContent,
+  options: ExportOptions,
 ): Promise<void> {
   const isWeatherEnabled = await getWeatherEnabled();
 
   const tasks: DocTask[] = [
     () => makeHeaderSection(trip, content.days.length),
-    () => makeTimelineSection(content.days),
+    () => makeTimelineSection(content.days, options.timeline),
     ...content.days.flatMap((day, dayIdx) =>
       makeDaySectionTasks(day, dayIdx === 0, isWeatherEnabled),
     ),

@@ -75,7 +75,7 @@ describe('drawTimelineImage', () => {
   });
 
   function draw() {
-    const [plan] = planTimelineImages([day]);
+    const [plan] = planTimelineImages([day], 4);
     const ctx = makeContext();
     drawTimelineImage(ctx, plan);
     return { ctx, plan };
@@ -109,17 +109,20 @@ describe('drawTimelineImage', () => {
   });
 
   it('omits the unscheduled label when every attraction has a time', () => {
-    const [plan] = planTimelineImages([
-      makeDay({
-        attractions: [
-          makeAttraction({
-            name: 'Castle',
-            startTime: '10:00',
-            endTime: '11:00',
-          }),
-        ],
-      }),
-    ]);
+    const [plan] = planTimelineImages(
+      [
+        makeDay({
+          attractions: [
+            makeAttraction({
+              name: 'Castle',
+              startTime: '10:00',
+              endTime: '11:00',
+            }),
+          ],
+        }),
+      ],
+      4,
+    );
     const ctx = makeContext();
 
     drawTimelineImage(ctx, plan);
