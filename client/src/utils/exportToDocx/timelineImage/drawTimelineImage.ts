@@ -1,16 +1,13 @@
-import {
-  travelLabel,
-  blockTimeLabel,
-} from '@/components/TripTimelineModal/blockLabel';
+import { formatDayDate } from '@/utils/dayLabel';
+import { travelLabel, blockTimeLabel } from '@/utils/timeline/blockLabel';
 import {
   LANE_BAR_WIDTH,
   LANE_WIDTH,
   PX_PER_MINUTE,
   getTrackWidth,
-} from '@/components/TripTimelineModal/layoutCards';
-import { formatTimeMinutes } from '@/components/TripTimelineModal/parseTime';
-import { getBlockColor } from '@/components/TripTimelineModal/timelinePalette';
-import { formatDayDate } from '@/utils/dayLabel';
+} from '@/utils/timeline/layoutCards';
+import { formatTimeMinutes } from '@/utils/timeline/parseTime';
+import { getBlockColor } from '@/utils/timeline/timelinePalette';
 
 import {
   AXIS_WIDTH,

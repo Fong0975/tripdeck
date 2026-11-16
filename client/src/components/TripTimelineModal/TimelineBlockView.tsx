@@ -1,10 +1,10 @@
-import { blockTimeLabel, travelLabel } from './blockLabel';
+import { blockTimeLabel, travelLabel } from '@/utils/timeline/blockLabel';
 import {
   LANE_BAR_WIDTH,
   LANE_WIDTH,
   type PositionedBlock,
-} from './layoutCards';
-import { getBlockColor } from './timelinePalette';
+} from '@/utils/timeline/layoutCards';
+import { getBlockColor } from '@/utils/timeline/timelinePalette';
 
 interface Props {
   item: PositionedBlock;

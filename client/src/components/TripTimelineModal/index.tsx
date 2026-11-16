@@ -5,11 +5,11 @@ import { createPortal } from 'react-dom';
 import { useEscapeToClose } from '@/hooks/useEscapeToClose';
 import type { DayPlan } from '@/types';
 import { formatDayDate } from '@/utils/dayLabel';
+import { buildDayTimeline } from '@/utils/timeline/buildDayTimeline';
+import { computeTimelineRange } from '@/utils/timeline/timelineRange';
 
-import { buildDayTimeline } from './buildDayTimeline';
 import DayTimelineColumn from './DayTimelineColumn';
 import TimelineAxis from './TimelineAxis';
-import { computeTimelineRange } from './timelineRange';
 import UnscheduledSection from './UnscheduledSection';
 
 interface Props {

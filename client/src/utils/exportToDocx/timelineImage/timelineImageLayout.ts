@@ -1,16 +1,13 @@
+import type { DayPlan } from '@/types';
 import {
   buildDayTimeline,
   type DayTimeline,
-} from '@/components/TripTimelineModal/buildDayTimeline';
-import {
-  layoutDay,
-  type DayLayout,
-} from '@/components/TripTimelineModal/layoutCards';
+} from '@/utils/timeline/buildDayTimeline';
+import { layoutDay, type DayLayout } from '@/utils/timeline/layoutCards';
 import {
   computeTimelineRange,
   type TimelineRange,
-} from '@/components/TripTimelineModal/timelineRange';
-import type { DayPlan } from '@/types';
+} from '@/utils/timeline/timelineRange';
 
 import { CONTENT_WIDTH_PX } from '../constants';
 

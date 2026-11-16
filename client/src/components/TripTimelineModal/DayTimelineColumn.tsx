@@ -1,7 +1,12 @@
-import type { DayTimeline } from './buildDayTimeline';
-import { PX_PER_MINUTE, getTrackWidth, layoutDay } from './layoutCards';
+import type { DayTimeline } from '@/utils/timeline/buildDayTimeline';
+import {
+  PX_PER_MINUTE,
+  getTrackWidth,
+  layoutDay,
+} from '@/utils/timeline/layoutCards';
+import type { TimelineRange } from '@/utils/timeline/timelineRange';
+
 import TimelineBlockView from './TimelineBlockView';
-import type { TimelineRange } from './timelineRange';
 
 interface Props {
   timeline: DayTimeline;

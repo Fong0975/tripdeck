@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { makeAttraction, makeConnection, makeDay } from '@/test-utils/fixtures';
+import { buildDayTimeline } from '@/utils/timeline/buildDayTimeline';
+import { layoutDay } from '@/utils/timeline/layoutCards';
 
-import { buildDayTimeline } from './buildDayTimeline';
-import { layoutDay } from './layoutCards';
 import TimelineBlockView from './TimelineBlockView';
 
 const RANGE = { startHour: 9, endHour: 13 };

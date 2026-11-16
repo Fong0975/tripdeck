@@ -1,6 +1,6 @@
-import { PX_PER_MINUTE } from './layoutCards';
-import { formatTimeMinutes } from './parseTime';
-import type { TimelineRange } from './timelineRange';
+import { PX_PER_MINUTE } from '@/utils/timeline/layoutCards';
+import { formatTimeMinutes } from '@/utils/timeline/parseTime';
+import type { TimelineRange } from '@/utils/timeline/timelineRange';
 
 interface Props {
   range: TimelineRange;
