@@ -82,10 +82,12 @@ describe('useEditState', () => {
     expect(result.current.edit.categories).toHaveLength(2);
   });
 
-  it('exposes the category hook state (expandedCats, scrollBodyRef) unchanged', () => {
+  it('exposes the category hook state (selectedCategory, scrollBodyRef) unchanged', () => {
     const { result } = renderHook(() => useEditState(makeChecklist()));
 
-    expect(result.current.expandedCats).toEqual(new Set());
+    expect(result.current.selectedCategory).toEqual(
+      result.current.visibleCategories[0] ?? null,
+    );
     expect(result.current.scrollBodyRef.current).toBeNull();
   });
 

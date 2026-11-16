@@ -7,9 +7,10 @@ import ModalOverlay from '@/components/ui/ModalOverlay';
 import RetryableError from '@/components/ui/RetryableError';
 import type { ChecklistCategory } from '@/types';
 
+import CategorySidebar from '../../shared/CategorySidebar';
+
 import CategoryDetail from './CategoryDetail';
 import CategoryEditPanel from './CategoryEditPanel';
-import CategorySidebar from './CategorySidebar';
 import { useGuardedAction } from './useGuardedAction';
 import { useTemplateData } from './useTemplateData';
 
@@ -83,7 +84,11 @@ export default function TemplateModal({ onClose }: Props) {
     return (
       <div className='flex min-h-0 flex-1 flex-col md:flex-row'>
         <CategorySidebar
-          categories={categories}
+          categories={categories.map(c => ({
+            id: c.id,
+            name: c.name,
+            count: c.items.length,
+          }))}
           selectedId={selected?.id ?? null}
           onSelect={handleSelect}
           onAdd={handleAdd}

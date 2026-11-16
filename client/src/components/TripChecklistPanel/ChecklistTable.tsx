@@ -19,11 +19,11 @@ export default function ChecklistTable({
 }: Props) {
   return (
     <div className='flex-1 overflow-auto'>
-      <div className='min-w-max'>
-        <table className='w-full border-collapse text-sm'>
+      <div className='mx-auto w-fit'>
+        <table className='border-collapse text-base'>
           <thead>
             <tr className='border-b border-border'>
-              <th className='sticky left-0 z-20 min-w-55 bg-background px-4 py-3 text-left font-semibold text-foreground'>
+              <th className='sticky left-0 z-20 min-w-80 bg-background px-4 py-3 text-left font-semibold text-foreground'>
                 項目
               </th>
               {checklist.occasions.map(occ => {
@@ -34,13 +34,13 @@ export default function ChecklistTable({
                 return (
                   <th
                     key={occ.id}
-                    className='min-w-30 px-4 py-2 text-center align-top'
+                    className='min-w-28 px-4 py-2 text-center align-top'
                   >
                     <div className='flex flex-col items-center gap-1'>
-                      <span className='text-sm font-semibold text-foreground'>
+                      <span className='text-base font-semibold text-foreground'>
                         {occ.name}
                       </span>
-                      <span className='text-xs text-muted-foreground'>
+                      <span className='text-sm text-muted-foreground'>
                         {checked} / {totalItems}
                       </span>
                       <div className='h-1 w-full overflow-hidden rounded-full bg-muted'>
@@ -61,14 +61,19 @@ export default function ChecklistTable({
             {checklist.categories.map(cat => (
               <Fragment key={cat.id}>
                 {/* Category row */}
-                <tr className='border-b border-border bg-muted/40'>
+                <tr className='border-b border-border bg-primary/10'>
                   <td
                     colSpan={checklist.occasions.length + 2}
-                    className='sticky left-0 z-10 bg-muted/40 px-4 py-2'
+                    className='sticky left-0 z-10 border-l-4 border-primary bg-primary/10 px-4 py-2.5'
                   >
-                    <span className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
-                      {cat.name}
-                    </span>
+                    <div className='flex items-baseline gap-2'>
+                      <span className='text-base font-semibold text-foreground'>
+                        {cat.name}
+                      </span>
+                      <span className='text-sm text-muted-foreground'>
+                        {cat.items.length} 項
+                      </span>
+                    </div>
                   </td>
                 </tr>
 

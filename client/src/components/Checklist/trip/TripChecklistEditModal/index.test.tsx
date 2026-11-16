@@ -12,8 +12,33 @@ import TripChecklistEditModal from './index';
 
 vi.mock('./useEditState', () => ({ useEditState: vi.fn() }));
 vi.mock('./useSaveChecklist', () => ({ useSaveChecklist: vi.fn() }));
-vi.mock('./CategoryEditList', () => ({
-  default: () => <div>category-edit-list</div>,
+vi.mock('./CategoryEditPane', () => ({
+  default: ({ category }: { category: { name: string } }) => (
+    <div>category-edit-pane:{category.name}</div>
+  ),
+}));
+vi.mock('../../shared/CategorySidebar', () => ({
+  default: ({
+    categories,
+    selectedId,
+    onSelect,
+    onAdd,
+  }: {
+    categories: { id: number; name: string; count: number }[];
+    selectedId: number | null;
+    onSelect: (id: number) => void;
+    onAdd: () => void;
+  }) => (
+    <div>
+      <span>sidebar-selected:{String(selectedId)}</span>
+      {categories.map(c => (
+        <button key={c.id} onClick={() => onSelect(c.id)}>
+          sidebar-{c.name}-{c.count}
+        </button>
+      ))}
+      <button onClick={onAdd}>sidebar-add</button>
+    </div>
+  ),
 }));
 vi.mock('./OccasionEditList', () => ({
   default: () => <div>occasion-edit-list</div>,
@@ -27,17 +52,17 @@ function mockEditState(
   vi.mocked(useEditState).mockReturnValue({
     edit: { occasions: [], categories: [] },
     isDirty: false,
-    expandedCats: new Set(),
     scrollBodyRef: { current: null },
     visibleOccasions: [],
     visibleCategories: [],
+    selectedCategory: null,
+    selectCategory: vi.fn(),
     addOccasionLocal: vi.fn(),
     updateOccasionName: vi.fn(),
     removeOccasion: vi.fn(),
     addCategoryLocal: vi.fn(),
     updateCategoryName: vi.fn(),
     removeCategory: vi.fn(),
-    toggleCatExpanded: vi.fn(),
     addItemLocal: vi.fn(),
     updateItem: vi.fn(),
     removeItem: vi.fn(),
@@ -53,7 +78,7 @@ beforeEach(() => {
 });
 
 describe('TripChecklistEditModal', () => {
-  it('renders the header title and both edit lists', () => {
+  it('renders the header title, the occasion list and the empty hint without categories', () => {
     vi.mocked(useSaveChecklist).mockReturnValue({
       saving: false,
       handleSave: vi.fn(),
@@ -70,7 +95,56 @@ describe('TripChecklistEditModal', () => {
 
     expect(screen.getByText('編輯行李清單')).toBeInTheDocument();
     expect(screen.getByText('occasion-edit-list')).toBeInTheDocument();
-    expect(screen.getByText('category-edit-list')).toBeInTheDocument();
+    expect(
+      screen.getByText('尚無分類，請先新增一個分類。'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/category-edit-pane/)).not.toBeInTheDocument();
+  });
+
+  it('shows the selected category in the pane and wires the sidebar handlers', async () => {
+    vi.mocked(useSaveChecklist).mockReturnValue({
+      saving: false,
+      handleSave: vi.fn(),
+    });
+    const selectCategory = vi.fn();
+    const addCategoryLocal = vi.fn();
+    const visibleCategories = [
+      {
+        id: 1,
+        name: 'Clothes',
+        items: [{ id: 10, _deleted: true }, { id: 11 }],
+      },
+      { id: 2, name: 'Toiletries', items: [] },
+    ] as unknown as ReturnType<typeof useEditState>['visibleCategories'];
+    mockEditState({
+      visibleCategories,
+      selectedCategory: visibleCategories[0],
+      selectCategory,
+      addCategoryLocal,
+    });
+    const user = userEvent.setup();
+    render(
+      <TripChecklistEditModal
+        tripId={1}
+        checklist={checklist}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('category-edit-pane:Clothes')).toBeInTheDocument();
+    expect(screen.getByText('sidebar-selected:1')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'sidebar-Clothes-1' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'sidebar-Toiletries-0' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'sidebar-add' }));
+
+    expect(selectCategory).toHaveBeenCalledWith(2);
+    expect(addCategoryLocal).toHaveBeenCalledTimes(1);
   });
 
   it.each([
