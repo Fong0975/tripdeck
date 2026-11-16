@@ -1,3 +1,4 @@
+import type { ChecklistOccasion, TripChecklist } from '@tripdeck/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../config/database', async () => {
@@ -61,6 +62,7 @@ function mockNoTitleConflicts() {
  */
 function mockSequentialInserts() {
   let attractionCounter = 2000;
+  let specCounter = 7000;
   mockConnExecute.mockImplementation((sql: string) => {
     if (sql.startsWith('INSERT INTO trips')) {
       return Promise.resolve([{ insertId: 1000 }]);
@@ -83,10 +85,13 @@ function mockSequentialInserts() {
     if (sql.startsWith('INSERT INTO checklist_occasions')) {
       return Promise.resolve([{ insertId: 6000 }]);
     }
+    if (sql.startsWith('INSERT INTO checklist_trip_item_specs')) {
+      return Promise.resolve([{ insertId: specCounter++ }]);
+    }
     return Promise.resolve([{ affectedRows: 1 }]);
   });
-  // trip_day_locations, trip_attraction_websites, checklist_trip_item_specs,
-  // checklist_checks: batched leaf inserts, no insertId consumed.
+  // trip_day_locations, trip_attraction_websites, checklist_checks,
+  // checklist_spec_checks: batched leaf inserts, no insertId consumed.
   mockConnQuery.mockResolvedValue([{ affectedRows: 1 }]);
 }
 
@@ -175,7 +180,14 @@ const sampleData: TripBackupData = {
         ],
       },
     ],
-    occasions: [{ id: 600, name: 'Packing', checks: { 400: true } }],
+    occasions: [
+      {
+        id: 600,
+        name: 'Packing',
+        checks: { 400: true },
+        specChecks: { 500: true },
+      },
+    ],
   },
 };
 
@@ -291,9 +303,9 @@ describe('importSingleTrip', () => {
       expect.stringContaining('INSERT INTO checklist_trip_items'),
       [4000, 'Jacket', 1, null, null],
     );
-    expect(mockConnQuery).toHaveBeenCalledWith(
-      'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES ?',
-      [[[5000, 'Size M', null]]],
+    expect(mockConnExecute).toHaveBeenCalledWith(
+      'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
+      [5000, 'Size M', null],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
@@ -303,6 +315,11 @@ describe('importSingleTrip', () => {
     expect(mockConnQuery).toHaveBeenCalledWith(
       'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked) VALUES ?',
       [[[6000, 5000, 1]]],
+    );
+    // The checked spec references the new spec id (7000), not the original 500.
+    expect(mockConnQuery).toHaveBeenCalledWith(
+      'INSERT INTO checklist_spec_checks (checklist_occasion_id, checklist_trip_item_spec_id, checked) VALUES ?',
+      [[[6000, 7000, 1]]],
     );
 
     // Every image copied under its new parent id, with a freshly-generated filename.
@@ -426,7 +443,9 @@ describe('importSingleTrip', () => {
       checklist: {
         tripId: 1,
         categories: [],
-        occasions: [{ id: 600, name: 'Packing', checks: { 999: true } }],
+        occasions: [
+          { id: 600, name: 'Packing', checks: { 999: true }, specChecks: {} },
+        ],
       },
     };
 
@@ -446,7 +465,9 @@ describe('importSingleTrip', () => {
       checklist: {
         tripId: 1,
         categories: [],
-        occasions: [{ id: 600, name: 'Packing', checks: { 400: false } }],
+        occasions: [
+          { id: 600, name: 'Packing', checks: { 400: false }, specChecks: {} },
+        ],
       },
     };
 
@@ -457,6 +478,62 @@ describe('importSingleTrip', () => {
       expect.anything(),
     );
   });
+
+  it('rolls back when an occasion spec check references a spec that was never imported', async () => {
+    mockNoTitleConflicts();
+    mockSequentialInserts();
+    const corrupted: TripBackupData = {
+      ...sampleData,
+      checklist: {
+        tripId: 1,
+        categories: [],
+        occasions: [
+          { id: 600, name: 'Packing', checks: {}, specChecks: { 999: true } },
+        ],
+      },
+    };
+
+    await expect(
+      importSingleTrip(corrupted, sampleImageBuffers()),
+    ).rejects.toThrow(/references checklist spec 999 that was not imported/);
+
+    expect(mockConnRollback).toHaveBeenCalled();
+    expect(mockConnCommit).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'explicitly false', specChecks: { 500: false } },
+    { name: 'missing (backup predates spec checks)', specChecks: undefined },
+  ])(
+    'inserts no spec check row when specChecks is $name',
+    async ({ specChecks }) => {
+      mockNoTitleConflicts();
+      mockSequentialInserts();
+      const checklist = sampleData.checklist as TripChecklist;
+      const data: TripBackupData = {
+        ...sampleData,
+        checklist: {
+          ...checklist,
+          occasions: [
+            {
+              id: 600,
+              name: 'Packing',
+              checks: { 400: true },
+              specChecks,
+            } as ChecklistOccasion,
+          ],
+        },
+      };
+
+      await importSingleTrip(data, sampleImageBuffers());
+
+      expect(mockConnQuery).not.toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO checklist_spec_checks'),
+        expect.anything(),
+      );
+      expect(mockConnCommit).toHaveBeenCalled();
+    },
+  );
 
   it.each([
     {
@@ -477,20 +554,21 @@ describe('importSingleTrip', () => {
       ],
     },
     {
-      name: 'specs of several items',
-      table: 'checklist_trip_item_specs',
-      expectedRows: [
-        [5000, 'Size M', null],
-        [5001, 'Pair', 'Drawer'],
-      ],
-    },
-    {
       name: 'checks of several occasions',
       table: 'checklist_checks',
       expectedRows: [
         [6000, 5000, 1],
         [6001, 5000, 1],
         [6001, 5001, 1],
+      ],
+    },
+    {
+      name: 'spec checks of several occasions',
+      table: 'checklist_spec_checks',
+      expectedRows: [
+        [6000, 7000, 1],
+        [6001, 7000, 1],
+        [6001, 7001, 1],
       ],
     },
   ])(
@@ -566,8 +644,18 @@ describe('importSingleTrip', () => {
             },
           ],
           occasions: [
-            { id: 600, name: 'Packing', checks: { 400: true } },
-            { id: 601, name: 'Return', checks: { 400: true, 401: true } },
+            {
+              id: 600,
+              name: 'Packing',
+              checks: { 400: true },
+              specChecks: { 500: true },
+            },
+            {
+              id: 601,
+              name: 'Return',
+              checks: { 400: true, 401: true },
+              specChecks: { 500: true, 501: true },
+            },
           ],
         },
       };

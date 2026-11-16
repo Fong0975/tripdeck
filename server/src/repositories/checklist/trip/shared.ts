@@ -2,6 +2,8 @@ import type { ItemSpec } from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
+import pool from '../../../config/database';
+import { placeholders } from '../../../utils/sql';
 import { createSpecRepository } from '../shared/specRepository';
 
 // --- Row types ---
@@ -30,6 +32,11 @@ export interface OccasionRow extends RowDataPacket {
 export interface CheckRow extends RowDataPacket {
   checklist_occasion_id: number;
   checklist_trip_item_id: number;
+}
+
+export interface SpecCheckRow extends RowDataPacket {
+  checklist_occasion_id: number;
+  checklist_trip_item_spec_id: number;
 }
 
 // --- Helpers ---
@@ -71,4 +78,33 @@ export function fetchSpecsByItemIds(
   itemIds: number[],
 ): Promise<Map<number, ItemSpec[]>> {
   return tripSpecRepository.fetchByItemIds(itemIds);
+}
+
+/**
+ * Loads the checked specs of the given occasions, grouped by occasion id.
+ * Only checked=1 rows are read; missing entries are implicitly unchecked.
+ *
+ * @param occIds - Occasion ids.
+ * @returns Map of occasion id to its spec id -> true map. Occasions without
+ *   any checked spec have no entry.
+ */
+export async function fetchSpecChecksByOccasionIds(
+  occIds: number[],
+): Promise<Map<number, Record<number, boolean>>> {
+  const byOccId = new Map<number, Record<number, boolean>>();
+  if (occIds.length === 0) {
+    return byOccId;
+  }
+  const [rows] = await pool.execute<SpecCheckRow[]>(
+    `SELECT checklist_occasion_id, checklist_trip_item_spec_id
+     FROM checklist_spec_checks
+     WHERE checklist_occasion_id IN (${placeholders(occIds.length)}) AND checked = 1`,
+    occIds,
+  );
+  for (const row of rows) {
+    const map = byOccId.get(row.checklist_occasion_id) ?? {};
+    map[row.checklist_trip_item_spec_id] = true;
+    byOccId.set(row.checklist_occasion_id, map);
+  }
+  return byOccId;
 }

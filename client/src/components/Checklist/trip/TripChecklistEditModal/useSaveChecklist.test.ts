@@ -8,6 +8,7 @@ import {
   makeChecklistSpec,
   makeTripChecklist,
 } from '@/test-utils/fixtures';
+import type { ChecklistOccasion } from '@/types';
 import {
   addOccasion,
   addTripCategory,
@@ -32,7 +33,7 @@ vi.mock('@/utils/storage');
 vi.mock('@/components/ui/toast');
 
 const checklist = makeTripChecklist({
-  occasions: [{ id: 1, name: 'Occasion A', checks: {} }],
+  occasions: [{ id: 1, name: 'Occasion A', checks: {}, specChecks: {} }],
   categories: [
     makeChecklistCategory({
       name: 'Category A',
@@ -91,6 +92,7 @@ beforeEach(() => {
     id: 50,
     name: 'New',
     checks: {},
+    specChecks: {},
   });
   vi.mocked(addTripCategory).mockResolvedValue(
     makeChecklistCategory({ id: 60, name: 'New' }),
@@ -281,11 +283,7 @@ describe('useSaveChecklist', () => {
   });
 
   it('tracks saving as true while in flight and false once settled', async () => {
-    let resolveAdd!: (value: {
-      id: number;
-      name: string;
-      checks: Record<number, boolean>;
-    }) => void;
+    let resolveAdd!: (value: ChecklistOccasion) => void;
     vi.mocked(addOccasion).mockReturnValue(
       new Promise(resolve => {
         resolveAdd = resolve;
@@ -304,7 +302,7 @@ describe('useSaveChecklist', () => {
     expect(result.current.saving).toBe(true);
 
     await act(async () => {
-      resolveAdd({ id: 50, name: 'New', checks: {} });
+      resolveAdd({ id: 50, name: 'New', checks: {}, specChecks: {} });
       await savePromise;
     });
     expect(result.current.saving).toBe(false);

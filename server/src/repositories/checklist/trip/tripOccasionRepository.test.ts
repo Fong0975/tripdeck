@@ -40,7 +40,12 @@ describe('tripOccasionRepository', () => {
 
       const result = await createOccasion(5, '出發前');
 
-      expect(result).toEqual({ id: 900, name: '出發前', checks: {} });
+      expect(result).toEqual({
+        id: 900,
+        name: '出發前',
+        checks: {},
+        specChecks: {},
+      });
     });
   });
 
@@ -58,6 +63,16 @@ describe('tripOccasionRepository', () => {
         if (sql.trim().startsWith('SELECT * FROM checklist_occasions')) {
           return Promise.resolve([[{ id: 1, trip_id: 5, name: '舊名稱' }]]);
         }
+        if (sql.includes('checklist_spec_checks')) {
+          return Promise.resolve([
+            [
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_spec_id: 700,
+              },
+            ],
+          ]);
+        }
         if (sql.includes('checklist_checks')) {
           return Promise.resolve([
             [{ checklist_trip_item_id: 100 }, { checklist_trip_item_id: 101 }],
@@ -72,6 +87,7 @@ describe('tripOccasionRepository', () => {
         id: 1,
         name: '新名稱',
         checks: { 100: true, 101: true },
+        specChecks: { 700: true },
       });
     });
   });

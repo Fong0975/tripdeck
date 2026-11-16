@@ -1,5 +1,7 @@
 import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
+import pool from '../../../config/database';
+
 import { tripSpecRepository } from './shared';
 
 /**
@@ -53,4 +55,33 @@ export function verifyTripSpecBelongsToItem(
   itemId: number,
 ): Promise<boolean> {
   return tripSpecRepository.belongsToItem(specId, itemId);
+}
+
+/**
+ * Sets the checked state for a spec within an occasion.
+ * Inserts or updates to checked=1 when true; removes the row when false
+ * so the specChecks map stays sparse (only true entries).
+ *
+ * @param occId - Occasion id.
+ * @param specId - Trip checklist item spec id.
+ * @param checked - New checked state.
+ */
+export async function setSpecCheck(
+  occId: number,
+  specId: number,
+  checked: boolean,
+): Promise<void> {
+  if (checked) {
+    await pool.execute(
+      `INSERT INTO checklist_spec_checks (checklist_occasion_id, checklist_trip_item_spec_id, checked)
+       VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE checked = 1`,
+      [occId, specId],
+    );
+  } else {
+    await pool.execute(
+      'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ?',
+      [occId, specId],
+    );
+  }
 }

@@ -5,6 +5,7 @@ import { db, routeSql } from '../../../test-utils/dbMocks';
 import {
   createTripItemSpec,
   deleteTripItemSpec,
+  setSpecCheck,
   updateTripItemSpec,
   verifyTripSpecBelongsToItem,
 } from './tripItemSpecRepository';
@@ -92,6 +93,30 @@ describe('tripItemSpecRepository', () => {
       const result = await updateTripItemSpec(1, data);
 
       expect(result?.storage_location).toBe(expected);
+    });
+  });
+
+  describe('setSpecCheck', () => {
+    it('upserts a checked=1 row when checked is true', async () => {
+      mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
+
+      await setSpecCheck(1, 700, true);
+
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO checklist_spec_checks'),
+        [1, 700],
+      );
+    });
+
+    it('deletes the row when checked is false', async () => {
+      mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
+
+      await setSpecCheck(1, 700, false);
+
+      expect(mockPoolExecute).toHaveBeenCalledWith(
+        'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ?',
+        [1, 700],
+      );
     });
   });
 

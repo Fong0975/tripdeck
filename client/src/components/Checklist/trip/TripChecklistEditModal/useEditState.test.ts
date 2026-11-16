@@ -14,7 +14,7 @@ type Hook = ReturnType<typeof useEditState>;
 
 function makeChecklist() {
   return makeTripChecklist({
-    occasions: [{ id: 1, name: 'Occasion A', checks: {} }],
+    occasions: [{ id: 1, name: 'Occasion A', checks: {}, specChecks: {} }],
     categories: [
       makeChecklistCategory({
         name: 'Category A',

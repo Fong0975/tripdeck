@@ -5,10 +5,11 @@ import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
   makeChecklistItem,
+  makeChecklistSpec,
   makeTripChecklist,
 } from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
-import { getTripChecklist, setCheck } from '@/utils/storage';
+import { getTripChecklist, setCheck, setSpecCheck } from '@/utils/storage';
 
 import { useChecklistState } from './useChecklistState';
 
@@ -18,7 +19,7 @@ vi.mock('@/components/ui/toast');
 
 function makeChecklist(): TripChecklist {
   return makeTripChecklist({
-    occasions: [{ id: 1, name: 'Occ A', checks: { 10: true } }],
+    occasions: [{ id: 1, name: 'Occ A', checks: { 10: true }, specChecks: {} }],
     categories: [
       makeChecklistCategory({
         name: 'Cat A',
@@ -179,7 +180,7 @@ describe('useChecklistState', () => {
     {
       description: 'drops unsaved checks for items that were removed',
       reloaded: makeTripChecklist({
-        occasions: [{ id: 1, name: 'Occ A', checks: {} }],
+        occasions: [{ id: 1, name: 'Occ A', checks: {}, specChecks: {} }],
         categories: [
           makeChecklistCategory({
             name: 'Cat A',
@@ -193,7 +194,7 @@ describe('useChecklistState', () => {
     {
       description: 'drops unsaved checks for occasions that were removed',
       reloaded: makeTripChecklist({
-        occasions: [{ id: 2, name: 'Occ B', checks: {} }],
+        occasions: [{ id: 2, name: 'Occ B', checks: {}, specChecks: {} }],
         categories: makeChecklist().categories,
       }),
       expectedDirty: false,
@@ -267,4 +268,97 @@ describe('useChecklistState', () => {
       expect(onDirtyChange).toHaveBeenCalledWith(false);
     },
   );
+});
+
+describe('useChecklistState spec checks', () => {
+  function makeSpecChecklist(specIds = [101, 102]): TripChecklist {
+    return makeTripChecklist({
+      occasions: [
+        { id: 1, name: 'Occ A', checks: {}, specChecks: { 101: true } },
+      ],
+      categories: [
+        makeChecklistCategory({
+          name: 'Cat A',
+          items: [
+            makeChecklistItem({
+              id: 10,
+              name: 'Item A',
+              specs: specIds.map(id => makeChecklistSpec({ id })),
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(getTripChecklist).mockResolvedValue(makeSpecChecklist());
+    vi.mocked(setSpecCheck).mockResolvedValue(undefined);
+  });
+
+  it('getSpecCheck falls back to the saved value when there is no local edit', async () => {
+    const { result } = await renderLoaded();
+
+    expect(result.current.getSpecCheck(1, 101)).toBe(true);
+    expect(result.current.getSpecCheck(1, 102)).toBe(false);
+  });
+
+  it('handleToggleSpecCheck flips the local value and marks the state dirty, then clean again', async () => {
+    const { result } = await renderLoaded();
+
+    act(() => result.current.handleToggleSpecCheck(1, 102));
+    expect(result.current.getSpecCheck(1, 102)).toBe(true);
+    expect(result.current.isDirty).toBe(true);
+
+    act(() => result.current.handleToggleSpecCheck(1, 102));
+    expect(result.current.isDirty).toBe(false);
+  });
+
+  it('handleSaveChecks sends only changed spec checks with their parent item id, then reloads', async () => {
+    const { result } = await renderLoaded();
+    act(() => result.current.handleToggleSpecCheck(1, 101));
+    act(() => result.current.handleToggleSpecCheck(1, 102));
+    vi.mocked(getTripChecklist).mockClear();
+
+    await act(() => result.current.handleSaveChecks());
+
+    expect(setSpecCheck).toHaveBeenCalledTimes(2);
+    expect(setSpecCheck).toHaveBeenCalledWith(1, 1, 10, 101, false);
+    expect(setSpecCheck).toHaveBeenCalledWith(1, 1, 10, 102, true);
+    expect(setCheck).not.toHaveBeenCalled();
+    expect(result.current.isDirty).toBe(false);
+    expect(getTripChecklist).toHaveBeenCalledTimes(1);
+  });
+
+  it('handleDiscardChecks clears local spec edits without calling setSpecCheck', async () => {
+    const { result } = await renderLoaded();
+    act(() => result.current.handleToggleSpecCheck(1, 102));
+
+    act(() => result.current.handleDiscardChecks());
+
+    expect(result.current.isDirty).toBe(false);
+    expect(result.current.getSpecCheck(1, 102)).toBe(false);
+    expect(setSpecCheck).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      description: 'keeps unsaved spec checks for specs that still exist',
+      reloaded: makeSpecChecklist([101, 102]),
+      expectedDirty: true,
+    },
+    {
+      description: 'drops unsaved spec checks for specs that were removed',
+      reloaded: makeSpecChecklist([101]),
+      expectedDirty: false,
+    },
+  ])('handleEditSaved $description', async ({ reloaded, expectedDirty }) => {
+    const { result } = await renderLoaded();
+    act(() => result.current.handleToggleSpecCheck(1, 102));
+    vi.mocked(getTripChecklist).mockResolvedValueOnce(reloaded);
+
+    await act(() => result.current.handleEditSaved());
+
+    expect(result.current.isDirty).toBe(expectedDirty);
+  });
 });

@@ -3,20 +3,29 @@ import { Fragment } from 'react';
 import type { TripChecklist } from '@/types';
 
 import ChecklistItemRow from './ChecklistItemRow';
+import {
+  countCheckedUnits,
+  countCheckUnits,
+  type CheckGetter,
+} from './checkProgress';
 
 interface Props {
   checklist: TripChecklist;
-  totalItems: number;
-  getCheck: (occId: number, itemId: number) => boolean;
+  getCheck: CheckGetter;
+  getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number) => void;
+  onToggleSpecCheck: (occId: number, specId: number) => void;
 }
 
 export default function ChecklistTable({
   checklist,
-  totalItems,
   getCheck,
+  getSpecCheck,
   onToggleCheck,
+  onToggleSpecCheck,
 }: Props) {
+  const totalUnits = countCheckUnits(checklist.categories);
+
   return (
     <div className='flex-1 overflow-auto'>
       <div className='mx-auto w-fit'>
@@ -27,10 +36,13 @@ export default function ChecklistTable({
                 項目
               </th>
               {checklist.occasions.map(occ => {
-                const checked = checklist.categories
-                  .flatMap(c => c.items)
-                  .filter(item => getCheck(occ.id, item.id)).length;
-                const pct = totalItems > 0 ? (checked / totalItems) * 100 : 0;
+                const checked = countCheckedUnits(
+                  checklist.categories,
+                  occ.id,
+                  getCheck,
+                  getSpecCheck,
+                );
+                const pct = totalUnits > 0 ? (checked / totalUnits) * 100 : 0;
                 return (
                   <th
                     key={occ.id}
@@ -41,7 +53,7 @@ export default function ChecklistTable({
                         {occ.name}
                       </span>
                       <span className='text-sm text-muted-foreground'>
-                        {checked} / {totalItems}
+                        {checked} / {totalUnits}
                       </span>
                       <div className='h-1 w-full overflow-hidden rounded-full bg-muted'>
                         <div
@@ -85,7 +97,9 @@ export default function ChecklistTable({
                     index={idx}
                     occasions={checklist.occasions}
                     getCheck={getCheck}
+                    getSpecCheck={getSpecCheck}
                     onToggleCheck={onToggleCheck}
+                    onToggleSpecCheck={onToggleSpecCheck}
                   />
                 ))}
               </Fragment>

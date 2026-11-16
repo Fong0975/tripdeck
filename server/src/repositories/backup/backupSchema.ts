@@ -34,6 +34,11 @@ function nullable(validator: Validator): Validator {
   return (value, path) => (value === null ? null : validator(value, path));
 }
 
+/** Accepts a missing field, e.g. one added after older backups were made. */
+function optional(validator: Validator): Validator {
+  return (value, path) => (value === undefined ? null : validator(value, path));
+}
+
 function arrayOf(item: Validator): Validator {
   return (value, path) => {
     if (!Array.isArray(value)) {
@@ -159,6 +164,7 @@ const tripChecklistValidator = shape({
       id: integerField,
       name: stringField,
       checks: recordOf(booleanField),
+      specChecks: optional(recordOf(booleanField)),
     }),
   ),
 });

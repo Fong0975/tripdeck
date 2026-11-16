@@ -43,7 +43,7 @@ describe('addOccasion', () => {
   });
 
   it('returns 201 with the created occasion', async () => {
-    const occasion = { id: 2, name: 'Return trip', checks: {} };
+    const occasion = { id: 2, name: 'Return trip', checks: {}, specChecks: {} };
     vi.mocked(checklistRepo.createOccasion).mockResolvedValue(occasion);
     const { req, res } = createMockReqRes({
       params: { tripId: '1' },
@@ -115,7 +115,7 @@ describe('updateOccasion', () => {
   });
 
   it('returns 200 with the updated occasion', async () => {
-    const occasion = { id: 2, name: 'Departure', checks: {} };
+    const occasion = { id: 2, name: 'Departure', checks: {}, specChecks: {} };
     vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
       true,
     );

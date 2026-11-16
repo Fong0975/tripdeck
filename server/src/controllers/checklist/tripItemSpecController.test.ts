@@ -12,14 +12,17 @@ import {
 import {
   addTripItemSpec,
   deleteTripItemSpec,
+  setSpecCheck,
   updateTripItemSpec,
 } from './tripItemSpecController';
 
 vi.mock('../../repositories/checklist/trip', () => ({
   createTripItemSpec: vi.fn(),
   deleteTripItemSpec: vi.fn(),
+  setSpecCheck: vi.fn(),
   updateTripItemSpec: vi.fn(),
   verifyItemBelongsToTrip: vi.fn(),
+  verifyOccasionBelongsToTrip: vi.fn(),
   verifyTripSpecBelongsToItem: vi.fn(),
 }));
 
@@ -231,8 +234,95 @@ describe('deleteTripItemSpec', () => {
   });
 });
 
+describe('setSpecCheck', () => {
+  const params = { tripId: '1', occId: '2', itemId: '3', specId: '4' };
+
+  it('returns 400 when checked is not a boolean', async () => {
+    const { req, res } = createMockReqRes({
+      params,
+      body: { checked: 'true' },
+    });
+
+    await setSpecCheck(req, res);
+
+    expectJsonStatus(res, 400, { error: 'checked must be a boolean' });
+    expect(checklistRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: 'the occasion',
+      verified: [false, true, true],
+      error: 'Occasion not found',
+    },
+    {
+      label: 'the item',
+      verified: [true, false, true],
+      error: 'Item not found',
+    },
+    {
+      label: 'the spec',
+      verified: [true, true, false],
+      error: 'Spec not found',
+    },
+  ])(
+    'returns 404 and writes nothing when $label is not found',
+    async ({ verified, error }) => {
+      const [occ, item, spec] = verified;
+      vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+        occ,
+      );
+      vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(item);
+      vi.mocked(checklistRepo.verifyTripSpecBelongsToItem).mockResolvedValue(
+        spec,
+      );
+      const { req, res } = createMockReqRes({
+        params,
+        body: { checked: true },
+      });
+
+      await setSpecCheck(req, res);
+
+      expectJsonStatus(res, 404, { error });
+      expect(checklistRepo.setSpecCheck).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([{ checked: true }, { checked: false }])(
+    'returns 204 and stores checked=$checked',
+    async ({ checked }) => {
+      vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+        true,
+      );
+      vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+      vi.mocked(checklistRepo.verifyTripSpecBelongsToItem).mockResolvedValue(
+        true,
+      );
+      const { req, res } = createMockReqRes({ params, body: { checked } });
+
+      await setSpecCheck(req, res);
+
+      expect(checklistRepo.setSpecCheck).toHaveBeenCalledWith(2, 4, checked);
+      expect(res.status).toHaveBeenCalledWith(204);
+      expect(res.send).toHaveBeenCalled();
+    },
+  );
+});
+
 describe('unexpected repository errors', () => {
   const tests: RejectCase[] = [
+    {
+      name: 'setSpecCheck',
+      handler: setSpecCheck,
+      req: {
+        params: { tripId: '1', occId: '2', itemId: '3', specId: '4' },
+        body: { checked: true },
+      },
+      arrange: error =>
+        vi
+          .mocked(checklistRepo.verifyOccasionBelongsToTrip)
+          .mockRejectedValue(error),
+    },
     {
       name: 'addTripItemSpec',
       handler: addTripItemSpec,

@@ -4,7 +4,12 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '../../../config/database';
 import { withTransaction } from '../../../utils/withTransaction';
 
-import { CheckRow, lockTrip, OccasionRow } from './shared';
+import {
+  CheckRow,
+  fetchSpecChecksByOccasionIds,
+  lockTrip,
+  OccasionRow,
+} from './shared';
 
 /** Confirms an occasion belongs to the given trip. */
 export async function verifyOccasionBelongsToTrip(
@@ -26,7 +31,7 @@ export async function createOccasion(
     'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
     [tripId, name],
   );
-  return { id: result.insertId, name, checks: {} };
+  return { id: result.insertId, name, checks: {}, specChecks: {} };
 }
 
 export async function updateOccasion(
@@ -55,7 +60,9 @@ export async function updateOccasion(
     checks[row.checklist_trip_item_id] = true;
   }
 
-  return { id: occId, name, checks };
+  const specChecks = (await fetchSpecChecksByOccasionIds([occId])).get(occId);
+
+  return { id: occId, name, checks, specChecks: specChecks ?? {} };
 }
 
 /** Outcome of {@link deleteOccasionIfNotLast}. */
