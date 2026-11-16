@@ -1,9 +1,14 @@
 import { Plus } from 'lucide-react';
 
-import type { ChecklistCategory } from '@/types';
+export interface SidebarCategory {
+  id: number;
+  name: string;
+  /** Number of items shown in the badge. */
+  count: number;
+}
 
 interface Props {
-  categories: ChecklistCategory[];
+  categories: SidebarCategory[];
   selectedId: number | null;
   onSelect: (catId: number) => void;
   onAdd: () => void;
@@ -46,7 +51,7 @@ export default function CategorySidebar({
                   : 'bg-muted text-muted-foreground'
               }`}
             >
-              {cat.items.length}
+              {cat.count}
             </span>
           </button>
         );

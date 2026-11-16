@@ -151,14 +151,79 @@ describe('useCategoryEditState', () => {
     },
   );
 
-  it('toggles a category id in and out of expandedCats', () => {
-    const { result } = renderHook(() => useCategoryEditState(makeCategories()));
+  describe('selectedCategory', () => {
+    it.each([
+      {
+        description: 'defaults to the first category',
+        steps: [],
+        expectedId: 1,
+      },
+      {
+        description: 'follows selectCategory',
+        steps: [(r: Hook) => r.selectCategory(2)],
+        expectedId: 2,
+      },
+      {
+        description:
+          'falls back to the first category when the selected one is unknown',
+        steps: [(r: Hook) => r.selectCategory(999)],
+        expectedId: 1,
+      },
+      {
+        description:
+          'moves to the next category after the selected one is removed',
+        steps: [(r: Hook) => r.removeCategory(1)],
+        expectedId: 2,
+      },
+      {
+        description:
+          'moves to the previous category after the last selected one is removed',
+        steps: [
+          (r: Hook) => r.selectCategory(2),
+          (r: Hook) => r.removeCategory(2),
+        ],
+        expectedId: 1,
+      },
+      {
+        description: 'keeps the selection when a different category is removed',
+        steps: [
+          (r: Hook) => r.selectCategory(2),
+          (r: Hook) => r.removeCategory(1),
+        ],
+        expectedId: 2,
+      },
+    ])('$description', ({ steps, expectedId }) => {
+      const { result } = renderHook(() =>
+        useCategoryEditState(makeMultiCategories()),
+      );
 
-    act(() => result.current.toggleCatExpanded(1));
-    expect(result.current.expandedCats.has(1)).toBe(true);
+      for (const step of steps) {
+        act(() => step(result.current));
+      }
 
-    act(() => result.current.toggleCatExpanded(1));
-    expect(result.current.expandedCats.has(1)).toBe(false);
+      expect(result.current.selectedCategory?.id).toBe(expectedId);
+    });
+
+    it('selects a newly added category', () => {
+      const { result } = renderHook(() =>
+        useCategoryEditState(makeCategories()),
+      );
+
+      act(() => result.current.addCategoryLocal());
+
+      expect(result.current.selectedCategory?.name).toBe('新分類');
+      expect(result.current.selectedCategory?.id).toBeLessThan(0);
+    });
+
+    it('is null when every category has been removed', () => {
+      const { result } = renderHook(() =>
+        useCategoryEditState(makeCategories()),
+      );
+
+      act(() => result.current.removeCategory(1));
+
+      expect(result.current.selectedCategory).toBeNull();
+    });
   });
 
   it('adds a locally-created item to the target category', () => {
@@ -342,8 +407,8 @@ describe('useCategoryEditState', () => {
   it.each([
     { description: 'untouched', steps: [], expectedDirty: false },
     {
-      description: 'only a category is expanded',
-      steps: [(r: Hook) => r.toggleCatExpanded(1)],
+      description: 'only the selection changes',
+      steps: [(r: Hook) => r.selectCategory(1)],
       expectedDirty: false,
     },
     {

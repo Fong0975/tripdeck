@@ -2,20 +2,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  makeChecklistCategory,
-  makeChecklistItem,
-} from '@/test-utils/fixtures';
-
 import CategorySidebar from './CategorySidebar';
 
 const categories = [
-  makeChecklistCategory({
-    id: 1,
-    name: 'Clothes',
-    items: [makeChecklistItem({ id: 1 }), makeChecklistItem({ id: 2 })],
-  }),
-  makeChecklistCategory({ id: 2, name: 'Toiletries' }),
+  { id: 1, name: 'Clothes', count: 2 },
+  { id: 2, name: 'Toiletries', count: 0 },
 ];
 
 describe('CategorySidebar', () => {

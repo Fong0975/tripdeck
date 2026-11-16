@@ -5,7 +5,9 @@ import ModalOverlay from '@/components/ui/ModalOverlay';
 import { useConfirmLeave } from '@/hooks/useConfirmLeave';
 import type { TripChecklist } from '@/types';
 
-import CategoryEditList from './CategoryEditList';
+import CategorySidebar from '../../shared/CategorySidebar';
+
+import CategoryEditPane from './CategoryEditPane';
 import OccasionEditList from './OccasionEditList';
 import { useEditState } from './useEditState';
 import { useSaveChecklist } from './useSaveChecklist';
@@ -31,17 +33,17 @@ export default function TripChecklistEditModal({
   const {
     edit,
     isDirty,
-    expandedCats,
     scrollBodyRef,
     visibleOccasions,
     visibleCategories,
+    selectedCategory,
+    selectCategory,
     addOccasionLocal,
     updateOccasionName,
     removeOccasion,
     addCategoryLocal,
     updateCategoryName,
     removeCategory,
-    toggleCatExpanded,
     addItemLocal,
     updateItem,
     removeItem,
@@ -62,7 +64,7 @@ export default function TripChecklistEditModal({
 
   return (
     <ModalOverlay onClose={guardedLeave} isolateWheel>
-      <div className='relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl'>
+      <div className='relative flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl'>
         {/* Header */}
         <div className='flex items-center gap-3 border-b border-border px-6 py-4'>
           <Pencil size={16} className='shrink-0 text-muted-foreground' />
@@ -78,31 +80,46 @@ export default function TripChecklistEditModal({
           </button>
         </div>
 
+        <OccasionEditList
+          occasions={visibleOccasions}
+          onUpdateName={updateOccasionName}
+          onRemove={removeOccasion}
+          onAdd={addOccasionLocal}
+        />
+
         {/* Body */}
-        <div
-          ref={scrollBodyRef}
-          className='flex-1 space-y-0 overflow-y-auto overscroll-contain'
-        >
-          <OccasionEditList
-            occasions={visibleOccasions}
-            onUpdateName={updateOccasionName}
-            onRemove={removeOccasion}
-            onAdd={addOccasionLocal}
+        <div className='flex min-h-0 flex-1 flex-col md:flex-row'>
+          <CategorySidebar
+            categories={visibleCategories.map(c => ({
+              id: c.id,
+              name: c.name,
+              count: c.items.filter(i => !i._deleted).length,
+            }))}
+            selectedId={selectedCategory?.id ?? null}
+            onSelect={selectCategory}
+            onAdd={addCategoryLocal}
           />
-          <CategoryEditList
-            categories={visibleCategories}
-            expandedCats={expandedCats}
-            onToggleExpand={toggleCatExpanded}
-            onUpdateName={updateCategoryName}
-            onRemove={removeCategory}
-            onAddCategory={addCategoryLocal}
-            onAddItem={addItemLocal}
-            onUpdateItem={updateItem}
-            onDeleteItem={removeItem}
-            onAddSpec={addSpecLocal}
-            onUpdateSpec={updateSpec}
-            onDeleteSpec={removeSpec}
-          />
+          <section className='flex min-h-0 min-w-0 flex-1 flex-col'>
+            {selectedCategory ? (
+              <CategoryEditPane
+                key={selectedCategory.id}
+                category={selectedCategory}
+                scrollBodyRef={scrollBodyRef}
+                onUpdateName={updateCategoryName}
+                onRemove={removeCategory}
+                onAddItem={addItemLocal}
+                onUpdateItem={updateItem}
+                onDeleteItem={removeItem}
+                onAddSpec={addSpecLocal}
+                onUpdateSpec={updateSpec}
+                onDeleteSpec={removeSpec}
+              />
+            ) : (
+              <p className='py-16 text-center text-sm text-muted-foreground'>
+                尚無分類，請先新增一個分類。
+              </p>
+            )}
+          </section>
         </div>
 
         {/* Footer */}
