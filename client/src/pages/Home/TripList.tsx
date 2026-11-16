@@ -1,4 +1,4 @@
-import { Briefcase, FolderInput, Plus } from 'lucide-react';
+import { Briefcase, Plus } from 'lucide-react';
 
 import TripCard from '@/components/TripCard';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
@@ -14,7 +14,6 @@ interface Props {
   onAdd: () => void;
   onDelete: (id: number) => void;
   onEdit: (trip: Trip) => void;
-  onImportExport: () => void;
   onOpenTemplate: () => void;
 }
 
@@ -26,7 +25,6 @@ export default function TripList({
   onAdd,
   onDelete,
   onEdit,
-  onImportExport,
   onOpenTemplate,
 }: Props) {
   return (
@@ -40,13 +38,6 @@ export default function TripList({
           >
             <Briefcase size={18} />
             行李清單模板
-          </button>
-          <button
-            onClick={onImportExport}
-            className='flex items-center gap-2 rounded-xl border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent'
-          >
-            <FolderInput size={18} />
-            匯入 / 匯出
           </button>
           <button
             onClick={onAdd}
