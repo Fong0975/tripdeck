@@ -39,23 +39,36 @@ export default function EditableItemRow({
       <div className='flex items-start gap-2'>
         <span
           /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
-          className={`w-5 shrink-0 text-xs text-muted-foreground ${compact ? 'mt-1.5' : 'mt-2'}`}
+          className={`shrink-0 text-muted-foreground ${compact ? 'mt-1.5 w-5 text-xs' : 'mt-2 w-6 text-sm'}`}
         >
           {index + 1}.
         </span>
-        <div className='min-w-0 flex-1 space-y-1.5'>
+        <div
+          /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
+          className={`min-w-0 flex-1 ${compact ? 'space-y-1.5' : 'space-y-2.5'}`}
+        >
           <input
             value={item.name}
             maxLength={FIELD_LIMITS.name}
             onFocus={e => e.target.select()}
             onChange={e => onUpdateItem(item.id, { name: e.target.value })}
-            className='w-full bg-transparent text-sm font-medium text-foreground focus:outline-hidden'
+            /* v8 ignore next -- compact/regular are both purely cosmetic input variants */
+            className={`w-full font-medium text-foreground focus:outline-hidden ${
+              compact
+                ? 'bg-transparent text-sm'
+                : 'rounded-md border border-border bg-background px-2.5 py-1.5 text-base focus:border-primary'
+            }`}
             placeholder='項目名稱'
           />
 
-          <div className='flex items-center gap-3'>
+          <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
             <div className='flex items-center gap-1'>
-              <span className='text-xs text-muted-foreground'>x</span>
+              <span
+                /* v8 ignore next -- compact/regular are both purely cosmetic text variants */
+                className={`text-muted-foreground ${compact ? 'text-xs' : 'text-sm'}`}
+              >
+                x
+              </span>
               <input
                 type='number'
                 min={1}
@@ -68,7 +81,11 @@ export default function EditableItemRow({
                 }}
                 placeholder='數量'
                 /* v8 ignore next -- compact/regular are both purely cosmetic width variants */
-                className={`bg-transparent text-xs text-muted-foreground focus:outline-hidden ${compact ? 'w-14' : 'w-16'}`}
+                className={`text-muted-foreground focus:outline-hidden ${
+                  compact
+                    ? 'w-14 bg-transparent text-xs'
+                    : 'w-20 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm focus:border-primary'
+                }`}
               />
             </div>
             <input
@@ -77,7 +94,12 @@ export default function EditableItemRow({
                 onUpdateItem(item.id, { notes: e.target.value || null })
               }
               placeholder='補充說明'
-              className='min-w-0 flex-1 bg-transparent text-xs text-muted-foreground focus:outline-hidden'
+              /* v8 ignore next -- compact/regular are both purely cosmetic input variants */
+              className={`min-w-0 flex-1 text-muted-foreground focus:outline-hidden ${
+                compact
+                  ? 'bg-transparent text-xs'
+                  : 'basis-48 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm focus:border-primary'
+              }`}
             />
           </div>
 
@@ -85,13 +107,18 @@ export default function EditableItemRow({
             <StorageCheckboxes
               value={item.storage_location}
               onChange={loc => onUpdateItem(item.id, { storage_location: loc })}
+              large={!compact}
             />
           </div>
 
           {/* Specs */}
           <div
             /* v8 ignore next -- compact/regular are both purely cosmetic spacing variants */
-            className={`space-y-1.5 border-l-2 border-border pl-3 ${compact ? 'mt-0.5' : 'mt-1'}`}
+            className={`${
+              compact
+                ? 'mt-0.5 space-y-1.5 border-l-2 border-border pl-3'
+                : 'mt-3 space-y-2.5 border-l-4 border-primary/40 pl-4'
+            }`}
           >
             {item.specs.map((spec, specIdx) => (
               <EditSpecRow
@@ -105,9 +132,10 @@ export default function EditableItemRow({
             ))}
             <button
               onClick={() => onAddSpec(item.id)}
-              className='flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary'
+              /* v8 ignore next -- compact/regular are both purely cosmetic text variants */
+              className={`flex items-center gap-1 text-muted-foreground transition-colors hover:text-primary ${compact ? 'text-xs' : 'text-sm'}`}
             >
-              <Plus size={11} />
+              <Plus size={compact ? 11 : 14} />
               新增規格
             </button>
           </div>
@@ -119,7 +147,7 @@ export default function EditableItemRow({
           aria-label='刪除項目'
         >
           {/* v8 ignore next -- compact/regular are both purely cosmetic icon-size variants */}
-          <Trash2 size={compact ? 13 : 14} />
+          <Trash2 size={compact ? 13 : 16} />
         </button>
       </div>
     </div>
