@@ -6,7 +6,7 @@ export const PX_PER_MINUTE = 1;
 /** Height of an attraction card. */
 export const CARD_HEIGHT = 44;
 /** Height of a travel card. */
-export const TRAVEL_CARD_HEIGHT = 26;
+export const TRAVEL_CARD_HEIGHT = 38;
 /** Vertical gap kept between stacked cards. */
 export const CARD_GAP = 4;
 /** Shortest height of a range bar, so very short stops stay visible. */

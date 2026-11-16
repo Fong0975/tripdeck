@@ -30,6 +30,8 @@ const COLORS = {
   grid: '#f0f1f3',
   travelBar: 'rgba(17, 24, 39, 0.6)',
   travelFill: '#f3f4f6',
+  travelTint: 'rgba(17, 24, 39, 0.15)',
+  travelText: '#374151',
 } as const;
 
 const FONT_STACK = `'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif`;
@@ -202,14 +204,20 @@ function drawDayBlocks(
 
       const y = top + cardTop;
       if (block.kind === 'travel') {
-        ctx.fillStyle = COLORS.travelFill;
+        ctx.fillStyle = COLORS.travelTint;
         fillRoundRect(ctx, cardX, y, cardWidth, cardHeight, CARD_RADIUS);
-        ctx.fillStyle = COLORS.muted;
+        ctx.fillStyle = COLORS.travelBar;
+        ctx.fillRect(cardX, y, CARD_ACCENT_WIDTH, cardHeight);
+        ctx.fillStyle = COLORS.travelText;
         ctx.font = font(11);
+        const textX = cardX + CARD_ACCENT_WIDTH + 6;
+        const textWidth = cardWidth - CARD_ACCENT_WIDTH - 12;
+        ctx.fillText(fitText(ctx, travelLabel(block), textWidth), textX, y + 5);
+        ctx.fillStyle = COLORS.muted;
         ctx.fillText(
-          fitText(ctx, travelLabel(block), cardWidth - 12),
-          cardX + 6,
-          y + 6,
+          fitText(ctx, blockTimeLabel(block), textWidth),
+          textX,
+          y + 20,
         );
         return;
       }

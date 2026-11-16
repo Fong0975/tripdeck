@@ -101,6 +101,7 @@ describe('drawTimelineImage', () => {
     { description: 'the unscheduled label', text: '未排時間' },
     { description: 'an unscheduled attraction', text: 'Market' },
     { description: 'a travel leg', text: '🚇 大眾運輸 15 分鐘' },
+    { description: 'the time range of a travel leg', text: '12:00–12:15' },
   ])('draws $description', ({ text }) => {
     const { ctx } = draw();
 

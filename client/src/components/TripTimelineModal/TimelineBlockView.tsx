@@ -36,10 +36,11 @@ export default function TimelineBlockView({ item, trackWidth }: Props) {
         />
         <div
           style={cardStyle}
-          title={travelLabel(block)}
-          className='absolute right-1 truncate rounded-md border border-dashed border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground'
+          title={`${travelLabel(block)}\n${blockTimeLabel(block)}`}
+          className='absolute right-1 overflow-hidden rounded-md border-l-4 border-foreground/60 bg-foreground/15 px-2 py-1 text-xs text-foreground/80'
         >
-          {travelLabel(block)}
+          <p className='truncate'>{travelLabel(block)}</p>
+          <p className='truncate text-foreground/60'>{blockTimeLabel(block)}</p>
         </div>
       </>
     );

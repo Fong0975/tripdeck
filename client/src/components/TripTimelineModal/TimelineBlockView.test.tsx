@@ -70,5 +70,9 @@ describe('TimelineBlockView', () => {
     );
 
     expect(screen.getByText('🚇 大眾運輸 45 分鐘')).toBeInTheDocument();
+    expect(screen.getByText('10:00–10:45')).toBeInTheDocument();
+    expect(
+      screen.getByTitle('🚇 大眾運輸 45 分鐘 10:00–10:45'),
+    ).toBeInTheDocument();
   });
 });
