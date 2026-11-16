@@ -86,7 +86,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     <div className='flex flex-1 flex-col overflow-hidden'>
       {/* Toolbar */}
       <div className='flex shrink-0 items-center justify-between border-b border-border px-4 py-2'>
-        <span className='text-xs text-muted-foreground'>
+        <span className='text-sm text-muted-foreground'>
           共 {totalItems} 項
         </span>
         <button

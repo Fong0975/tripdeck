@@ -86,4 +86,29 @@ describe('ChecklistTable', () => {
     expect(screen.getByText('Item A')).toBeInTheDocument();
     expect(screen.getByText('Item B')).toBeInTheDocument();
   });
+
+  it.each([
+    { itemCount: 0, expected: '0 項' },
+    { itemCount: 1, expected: '1 項' },
+    { itemCount: 3, expected: '3 項' },
+  ])(
+    'shows "$expected" beside a category holding $itemCount items',
+    ({ itemCount, expected }) => {
+      const items = Array.from({ length: itemCount }, (_, i) =>
+        makeChecklistItem({ id: 100 + i, name: `Item ${i}` }),
+      );
+      render(
+        <ChecklistTable
+          checklist={makeChecklist({
+            categories: [makeChecklistCategory({ name: 'Cat', items })],
+          })}
+          totalItems={itemCount}
+          getCheck={() => false}
+          onToggleCheck={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText(expected)).toBeInTheDocument();
+    },
+  );
 });

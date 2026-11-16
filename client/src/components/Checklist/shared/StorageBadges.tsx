@@ -19,11 +19,11 @@ export default function StorageBadges({ value, compact = false }: Props) {
   }
   return (
     <>
-      <Package size={compact ? 9 : 11} className='text-muted-foreground' />
+      <Package size={compact ? 11 : 13} className='text-muted-foreground' />
       {matches.map(opt => (
         <span
           key={opt}
-          className={`rounded-sm bg-primary/10 py-0.5 text-xs text-primary ${compact ? 'px-1' : 'px-1.5'}`}
+          className={`rounded-sm bg-primary/10 py-0.5 text-primary ${compact ? 'px-1 text-xs' : 'px-1.5 text-sm'}`}
         >
           {opt}
         </span>
