@@ -32,7 +32,7 @@ export default function TimelineBlockView({ item, trackWidth }: Props) {
         <div
           aria-hidden='true'
           style={barStyle}
-          className='absolute rounded-full border border-dashed border-muted-foreground/60'
+          className='absolute rounded-full bg-foreground/60'
         />
         <div
           style={cardStyle}

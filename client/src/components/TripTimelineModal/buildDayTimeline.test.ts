@@ -224,6 +224,32 @@ describe('buildDayTimeline travel', () => {
     expect(travel).toMatchObject({ key: 'travel-7', ...expected });
   });
 
+  it('keeps a short travel leg and its neighbours in the same lane', () => {
+    const { blocks } = buildDayTimeline(
+      makeDay({
+        attractions: [
+          attractionAt(1, '10:30', '12:00'),
+          attractionAt(2, '12:15', '14:30'),
+        ],
+        connections: [
+          makeConnection({
+            fromAttractionId: 1,
+            toAttractionId: 2,
+            duration: '15',
+          }),
+        ],
+      }),
+    );
+
+    expect(
+      blocks.map(({ kind, lane, laneCount }) => ({ kind, lane, laneCount })),
+    ).toEqual([
+      { kind: 'range', lane: 0, laneCount: 1 },
+      { kind: 'travel', lane: 0, laneCount: 1 },
+      { kind: 'range', lane: 0, laneCount: 1 },
+    ]);
+  });
+
   it.each([
     {
       description: 'duration is missing',

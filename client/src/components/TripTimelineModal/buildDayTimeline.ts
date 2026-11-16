@@ -4,8 +4,8 @@ import { parseDurationMinutes } from '@/utils/duration';
 import { MINUTES_PER_DAY, parseTimeMinutes } from './parseTime';
 
 /**
- * Minimum span, in minutes, a block occupies when laying out lanes and the
- * visible range. Keeps point markers from colliding with their neighbours.
+ * Minimum span, in minutes, a point marker occupies when laying out lanes and
+ * the visible range. Keeps point markers from colliding with their neighbours.
  */
 export const MIN_BLOCK_SPAN_MINUTES = 30;
 
@@ -63,9 +63,17 @@ type RawBlock =
   | Omit<PointBlock, 'lane' | 'laneCount' | 'colorIndex'>
   | Omit<TravelBlock, 'lane' | 'laneCount'>;
 
-/** The end used for overlap and range calculations. */
-export function occupiedEnd(block: Pick<BlockBase, 'start' | 'end'>): number {
-  return Math.max(block.end, block.start + MIN_BLOCK_SPAN_MINUTES);
+/**
+ * The end used for overlap and range calculations. Only a point marker is
+ * padded to {@link MIN_BLOCK_SPAN_MINUTES}; ranges and travel legs keep their
+ * real end so back-to-back blocks never share a lane by accident.
+ */
+export function occupiedEnd(
+  block: Pick<BlockBase, 'start' | 'end'> & { kind: TimelineBlock['kind'] },
+): number {
+  return block.kind === 'point'
+    ? block.start + MIN_BLOCK_SPAN_MINUTES
+    : block.end;
 }
 
 function buildAttractionBlock(attraction: Attraction): RawBlock | null {
