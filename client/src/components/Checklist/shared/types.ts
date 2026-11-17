@@ -4,6 +4,11 @@ export type EditSpec = ItemSpec;
 
 export type EditItem = ChecklistItem & {
   _deleted?: boolean;
+  /**
+   * Set by the single-category template editor when a saved item is moved
+   * out: the id of the category it will be moved to on save.
+   */
+  _movedTo?: number;
 };
 
 export type EditCategory = {

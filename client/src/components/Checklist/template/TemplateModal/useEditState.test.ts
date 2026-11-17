@@ -156,3 +156,56 @@ describe('useEditState', () => {
     },
   );
 });
+
+describe('useEditState ordering and moves', () => {
+  function makeTwoItemCategory() {
+    return makeChecklistCategory({
+      name: 'Category A',
+      items: [
+        makeChecklistItem({ id: 10, name: 'Item A' }),
+        makeChecklistItem({ id: 11, name: 'Item B' }),
+        makeChecklistItem({ id: 12, name: 'Item C' }),
+      ],
+    });
+  }
+
+  it('reorders the draft items and reports the draft as dirty', () => {
+    const { result } = renderHook(() => useEditState(makeTwoItemCategory()));
+
+    act(() => result.current.reorderItems(10, 12));
+
+    expect(result.current.edit.items.map(i => i.id)).toEqual([11, 12, 10]);
+    expect(result.current.isDirty).toBe(true);
+  });
+
+  it('is clean again after the items are dragged back', () => {
+    const { result } = renderHook(() => useEditState(makeTwoItemCategory()));
+
+    act(() => result.current.reorderItems(10, 12));
+    act(() => result.current.reorderItems(10, 11));
+
+    expect(result.current.edit.items.map(i => i.id)).toEqual([10, 11, 12]);
+    expect(result.current.isDirty).toBe(false);
+  });
+
+  it('flags a saved item as moved and hides it from the visible items', () => {
+    const { result } = renderHook(() => useEditState(makeTwoItemCategory()));
+
+    act(() => result.current.moveItem(11, 5));
+
+    expect(result.current.edit.items.find(i => i.id === 11)?._movedTo).toBe(5);
+    expect(result.current.visibleItems.map(i => i.id)).toEqual([10, 12]);
+    expect(result.current.isDirty).toBe(true);
+  });
+
+  it('refuses to move an unsaved item', () => {
+    const { result } = renderHook(() => useEditState(makeTwoItemCategory()));
+    act(() => result.current.addItem());
+    const newId = result.current.edit.items[3].id;
+
+    act(() => result.current.moveItem(newId, 5));
+
+    expect(result.current.edit.items[3]._movedTo).toBeUndefined();
+    expect(result.current.visibleItems).toHaveLength(4);
+  });
+});

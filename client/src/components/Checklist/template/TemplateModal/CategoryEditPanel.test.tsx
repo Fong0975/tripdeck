@@ -50,6 +50,8 @@ function mockEditState(
     updateCategoryName: vi.fn(),
     updateItem: vi.fn(),
     handleDeleteItem: vi.fn(),
+    reorderItems: vi.fn(),
+    moveItem: vi.fn(),
     addItem: vi.fn(),
     updateSpec: vi.fn(),
     deleteSpec: vi.fn(),

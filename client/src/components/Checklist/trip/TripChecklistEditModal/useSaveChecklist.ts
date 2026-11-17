@@ -12,6 +12,7 @@ import {
   deleteTripCategory,
   deleteTripItem,
   deleteTripItemSpec,
+  moveTripItem,
   updateOccasion,
   updateTripCategory,
   updateTripItem,
@@ -23,6 +24,11 @@ import {
   syncEditableList,
 } from '../../shared/checklistDiffSync';
 import {
+  applyItemMoves,
+  itemsAfterMoves,
+  planItemMoves,
+} from '../../shared/itemMoveSync';
+import {
   createItemSpecTrackers,
   type ItemSpecApi,
   makeItemSpecSync,
@@ -30,10 +36,13 @@ import {
 import type { EditCategory, EditOccasion } from '../../shared/types';
 import { useRetryableSave } from '../../shared/useRetryableSave';
 
+import { syncChecklistOrder } from './syncChecklistOrder';
+
 function createTrackers() {
   return {
     occasions: createSyncTracker<ChecklistOccasion>(),
     categories: createSyncTracker<ChecklistCategory>(),
+    movedItemIds: new Set<number>(),
     ...createItemSpecTrackers(),
   };
 }
@@ -53,8 +62,10 @@ function tripItemSpecApi(tripId: number, catId: number): ItemSpecApi {
 
 /**
  * Diffs the local edit state against the originally-loaded checklist and
- * saves all changes (occasions, and categories→items→specs) via the
- * checklist diff-sync engine. Retries after a partial failure are
+ * saves all changes (occasions, categories→items→specs, item moves between
+ * categories, and the arranged order) via the checklist diff-sync engine.
+ * Items moved between categories are moved (not deleted and re-created) so
+ * their check marks survive. Retries after a partial failure are
  * idempotent; see {@link useRetryableSave}.
  *
  * @param tripId - The trip whose checklist is being edited.
@@ -86,6 +97,22 @@ export function useSaveChecklist(
         tracker: trackers.occasions,
       });
 
+      const moves = planItemMoves(checklist.categories, edit.categories);
+      const resolveCatId = await applyItemMoves(moves, {
+        editedCategories: edit.categories,
+        categoryTracker: trackers.categories,
+        movedItemIds: trackers.movedItemIds,
+        createCategory: editCat =>
+          addTripCategory(tripId, editCat.name.trim() || '新分類'),
+        moveItem: (itemId, targetCatId) =>
+          moveTripItem(tripId, itemId, targetCatId),
+      });
+      const itemsByCategory = itemsAfterMoves(
+        checklist.categories,
+        moves,
+        resolveCatId,
+      );
+
       await syncEditableList(checklist.categories, edit.categories, {
         isChanged: (editCat, origCat) => editCat.name.trim() !== origCat.name,
         update: (catId, editCat, origCat) =>
@@ -98,8 +125,18 @@ export function useSaveChecklist(
           addTripCategory(tripId, editCat.name.trim() || '新分類'),
         remove: catId => deleteTripCategory(tripId, catId),
         tracker: trackers.categories,
-        syncChildren: (editCat, catId, origCat) =>
-          syncItems(catId)(origCat?.items ?? [], editCat.items),
+        syncChildren: (editCat, catId) =>
+          syncItems(catId)(itemsByCategory.get(catId) ?? [], editCat.items),
+      });
+
+      await syncChecklistOrder({
+        tripId,
+        originals: checklist.categories,
+        edited: edit.categories,
+        itemsAfterMoves: itemsByCategory,
+        resolveCatId,
+        categoryTracker: trackers.categories,
+        itemTracker: trackers.items,
       });
     },
     onSaved,

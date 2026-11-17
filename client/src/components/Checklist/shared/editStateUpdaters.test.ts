@@ -9,12 +9,14 @@ import type { ChecklistCategory } from '@/types';
 
 import {
   appendSpec,
+  moveItemToCategory,
   newEditItem,
   newEditSpec,
   patchFields,
   patchSpec,
   removeOrMarkDeleted,
   removeSpecById,
+  reorderById,
   scrollToBottomSoon,
   toEditCategory,
   updateById,
@@ -320,5 +322,100 @@ describe('scrollToBottomSoon', () => {
 
     expect(scrollTo.mock.calls).toEqual(expectedCalls);
     vi.useRealTimers();
+  });
+});
+
+describe('reorderById', () => {
+  const list = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+
+  it.each([
+    {
+      description: 'moves an entry forward',
+      active: 1,
+      over: 3,
+      expected: [2, 3, 1, 4],
+    },
+    {
+      description: 'moves an entry backward',
+      active: 4,
+      over: 2,
+      expected: [1, 4, 2, 3],
+    },
+    {
+      description: 'swaps neighbours',
+      active: 2,
+      over: 3,
+      expected: [1, 3, 2, 4],
+    },
+  ])('$description', ({ active, over, expected }) => {
+    expect(reorderById(list, active, over).map(e => e.id)).toEqual(expected);
+  });
+
+  it.each([
+    { description: 'both ids are equal', active: 2, over: 2 },
+    { description: 'the active id is unknown', active: 9, over: 2 },
+    { description: 'the over id is unknown', active: 2, over: 9 },
+  ])('returns the same array when $description', ({ active, over }) => {
+    expect(reorderById(list, active, over)).toBe(list);
+  });
+
+  it('does not mutate the input', () => {
+    const copy = [...list];
+
+    reorderById(list, 1, 4);
+
+    expect(list).toEqual(copy);
+  });
+});
+
+describe('moveItemToCategory', () => {
+  function tree(): EditCategory[] {
+    return [
+      {
+        id: 1,
+        name: 'One',
+        items: [makeEditItem({ id: 10 }), makeEditItem({ id: 11 })],
+      },
+      { id: 2, name: 'Two', items: [makeEditItem({ id: 20 })] },
+      { id: 3, name: 'Three', items: [] },
+    ];
+  }
+
+  it('removes the item from its category and appends it to the target', () => {
+    const result = moveItemToCategory(tree(), 10, 1, 2);
+
+    expect(result.map(c => c.items.map(i => i.id))).toEqual([
+      [11],
+      [20, 10],
+      [],
+    ]);
+  });
+
+  it('keeps untouched categories by reference', () => {
+    const categories = tree();
+
+    const result = moveItemToCategory(categories, 10, 1, 2);
+
+    expect(result[2]).toBe(categories[2]);
+  });
+
+  it.each([
+    { description: 'the categories are equal', itemId: 10, from: 1, to: 1 },
+    {
+      description: 'the item is not in the source category',
+      itemId: 20,
+      from: 1,
+      to: 2,
+    },
+    {
+      description: 'the source category does not exist',
+      itemId: 10,
+      from: 9,
+      to: 2,
+    },
+  ])('returns the same tree when $description', ({ itemId, from, to }) => {
+    const categories = tree();
+
+    expect(moveItemToCategory(categories, itemId, from, to)).toBe(categories);
   });
 });

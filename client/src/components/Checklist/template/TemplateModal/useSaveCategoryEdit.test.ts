@@ -12,6 +12,8 @@ import {
   addTemplateItemSpec,
   deleteTemplateItem,
   deleteTemplateItemSpec,
+  moveTemplateItem,
+  reorderTemplateItems,
   updateTemplateCategory,
   updateTemplateItem,
   updateTemplateItemSpec,
@@ -315,4 +317,91 @@ describe('useSaveCategoryEdit', () => {
       }
     },
   );
+});
+
+describe('useSaveCategoryEdit ordering and moves', () => {
+  beforeEach(() => {
+    vi.mocked(moveTemplateItem).mockReset();
+    vi.mocked(reorderTemplateItems).mockReset();
+    vi.mocked(addTemplateItem).mockResolvedValue(
+      makeChecklistItem({ id: 70, name: 'New' }),
+    );
+  });
+
+  it('sends no move or reorder call when nothing about order changed', async () => {
+    await save(unchangedEdit());
+
+    expect(moveTemplateItem).not.toHaveBeenCalled();
+    expect(reorderTemplateItems).not.toHaveBeenCalled();
+  });
+
+  it('moves an item flagged for another category after syncing its fields', async () => {
+    const edit = unchangedEdit();
+    edit.items[0] = { ...edit.items[0], name: 'Renamed', _movedTo: 5 };
+
+    await save(edit);
+
+    expect(updateTemplateItem).toHaveBeenCalledWith(
+      1,
+      10,
+      expect.objectContaining({ name: 'Renamed' }),
+    );
+    expect(moveTemplateItem).toHaveBeenCalledWith(1, 10, 5);
+    expect(deleteTemplateItem).not.toHaveBeenCalled();
+    const updateOrder =
+      vi.mocked(updateTemplateItem).mock.invocationCallOrder[0];
+    const moveOrder = vi.mocked(moveTemplateItem).mock.invocationCallOrder[0];
+    expect(updateOrder).toBeLessThan(moveOrder);
+  });
+
+  it('ignores the move flag of an unsaved or deleted item', async () => {
+    const edit = unchangedEdit();
+    edit.items[0] = { ...edit.items[0], _movedTo: 5, _deleted: true };
+
+    await save(edit);
+
+    expect(moveTemplateItem).not.toHaveBeenCalled();
+  });
+
+  it('reorders the items after they were rearranged', async () => {
+    const edit = unchangedEdit();
+    edit.items.push({
+      id: -2,
+      name: 'Second',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    });
+    edit.items.reverse();
+
+    await save(edit);
+
+    expect(reorderTemplateItems).toHaveBeenCalledWith(1, [70, 10]);
+  });
+
+  it('leaves moved items out of the desired order', async () => {
+    const edit = unchangedEdit();
+    edit.items.push({
+      id: 11,
+      name: 'Item B',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    });
+    edit.items[0] = { ...edit.items[0], _movedTo: 5 };
+    const original = makeChecklistCategory({
+      name: 'Category A',
+      items: [...category.items, makeChecklistItem({ id: 11, name: 'Item B' })],
+    });
+    const { result } = renderHook(() =>
+      useSaveCategoryEdit(original, edit, vi.fn(), vi.fn()),
+    );
+
+    await act(() => result.current.handleSave());
+
+    expect(reorderTemplateItems).not.toHaveBeenCalled();
+    expect(moveTemplateItem).toHaveBeenCalledWith(1, 10, 5);
+  });
 });

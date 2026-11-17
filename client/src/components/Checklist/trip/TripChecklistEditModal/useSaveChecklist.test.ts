@@ -18,6 +18,9 @@ import {
   deleteTripCategory,
   deleteTripItem,
   deleteTripItemSpec,
+  moveTripItem,
+  reorderTripCategories,
+  reorderTripItems,
   updateOccasion,
   updateTripCategory,
   updateTripItem,
@@ -400,5 +403,154 @@ describe('useSaveChecklist', () => {
     );
 
     expect(addOccasion).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useSaveChecklist ordering and moves', () => {
+  const secondCategory = (): EditCategory => ({
+    id: 2,
+    name: 'Category B',
+    items: [],
+  });
+
+  function twoCategoryChecklist() {
+    return makeTripChecklist({
+      occasions: checklist.occasions,
+      categories: [
+        checklist.categories[0],
+        makeChecklistCategory({ id: 2, name: 'Category B', items: [] }),
+      ],
+    });
+  }
+
+  async function saveTwo(edit: ReturnType<typeof unchangedEdit>) {
+    const { result } = renderHook(() =>
+      useSaveChecklist(1, twoCategoryChecklist(), edit, vi.fn(), vi.fn()),
+    );
+    await act(() => result.current.handleSave());
+  }
+
+  beforeEach(() => {
+    vi.mocked(moveTripItem).mockReset();
+    vi.mocked(reorderTripItems).mockReset();
+    vi.mocked(reorderTripCategories).mockReset();
+  });
+
+  it('does not reorder or move anything when only unrelated fields change', async () => {
+    const edit = unchangedEdit();
+    edit.categories[0].name = 'Renamed Cat';
+
+    await save(edit);
+
+    expect(moveTripItem).not.toHaveBeenCalled();
+    expect(reorderTripItems).not.toHaveBeenCalled();
+    expect(reorderTripCategories).not.toHaveBeenCalled();
+  });
+
+  it('moves an item to another category instead of deleting and re-creating it', async () => {
+    const edit = unchangedEdit();
+    const [item] = edit.categories[0].items;
+    edit.categories[0].items = [];
+    edit.categories.push({ ...secondCategory(), items: [item] });
+
+    await saveTwo(edit);
+
+    expect(moveTripItem).toHaveBeenCalledWith(1, 10, 2);
+    expect(deleteTripItem).not.toHaveBeenCalled();
+    expect(addTripItem).not.toHaveBeenCalled();
+  });
+
+  it('still updates the fields of a moved item', async () => {
+    const edit = unchangedEdit();
+    const [item] = edit.categories[0].items;
+    edit.categories[0].items = [];
+    edit.categories.push({
+      ...secondCategory(),
+      items: [{ ...item, name: 'Renamed Item' }],
+    });
+
+    await saveTwo(edit);
+
+    expect(updateTripItem).toHaveBeenCalledWith(1, 10, {
+      name: 'Renamed Item',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+    });
+  });
+
+  it('creates an unsaved category before moving an item into it', async () => {
+    const edit = unchangedEdit();
+    const [item] = edit.categories[0].items;
+    edit.categories[0].items = [];
+    edit.categories.push({ id: -1, name: 'Fresh', items: [item] });
+
+    await save(edit);
+
+    expect(addTripCategory).toHaveBeenCalledTimes(1);
+    expect(addTripCategory).toHaveBeenCalledWith(1, 'Fresh');
+    expect(moveTripItem).toHaveBeenCalledWith(1, 10, 60);
+    expect(deleteTripItem).not.toHaveBeenCalled();
+    expect(addTripItem).not.toHaveBeenCalled();
+  });
+
+  it('moves items out of a category that is then deleted', async () => {
+    const edit = unchangedEdit();
+    const [item] = edit.categories[0].items;
+    edit.categories[0] = { ...edit.categories[0], items: [], _deleted: true };
+    edit.categories.push({ ...secondCategory(), items: [item] });
+
+    await saveTwo(edit);
+
+    expect(moveTripItem).toHaveBeenCalledWith(1, 10, 2);
+    expect(deleteTripCategory).toHaveBeenCalledWith(1, 1);
+    const moveOrder = vi.mocked(moveTripItem).mock.invocationCallOrder[0];
+    const deleteOrder =
+      vi.mocked(deleteTripCategory).mock.invocationCallOrder[0];
+    expect(moveOrder).toBeLessThan(deleteOrder);
+  });
+
+  it('reorders the items of a category after they were rearranged', async () => {
+    const edit = unchangedEdit();
+    edit.categories[0].items.push({
+      id: -2,
+      name: 'Second',
+      quantity: null,
+      notes: null,
+      storage_location: null,
+      specs: [],
+    });
+    edit.categories[0].items.reverse();
+
+    await save(edit);
+
+    expect(reorderTripItems).toHaveBeenCalledWith(1, 1, [70, 10]);
+  });
+
+  it('reorders the categories after they were rearranged', async () => {
+    const edit = unchangedEdit();
+    edit.categories.push(secondCategory());
+    edit.categories.reverse();
+
+    await saveTwo(edit);
+
+    expect(reorderTripCategories).toHaveBeenCalledWith(1, [2, 1]);
+  });
+
+  it('does not repeat a move that succeeded in an earlier attempt', async () => {
+    const edit = unchangedEdit();
+    const [item] = edit.categories[0].items;
+    edit.categories[0].items = [];
+    edit.categories.push({ ...secondCategory(), items: [item] });
+    vi.mocked(updateTripCategory).mockRejectedValueOnce(new Error('boom'));
+    edit.categories[1].name = 'Renamed B';
+
+    const { result } = renderHook(() =>
+      useSaveChecklist(1, twoCategoryChecklist(), edit, vi.fn(), vi.fn()),
+    );
+    await act(() => result.current.handleSave());
+    await act(() => result.current.handleSave());
+
+    expect(moveTripItem).toHaveBeenCalledTimes(1);
   });
 });

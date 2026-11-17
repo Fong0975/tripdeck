@@ -441,3 +441,61 @@ describe('useCategoryEditState', () => {
     },
   );
 });
+
+describe('useCategoryEditState ordering and moves', () => {
+  function makeOrderable(): ChecklistCategory[] {
+    return [
+      makeChecklistCategory({
+        id: 1,
+        name: 'One',
+        items: [
+          makeChecklistItem({ id: 10, name: 'A' }),
+          makeChecklistItem({ id: 11, name: 'B' }),
+        ],
+      }),
+      makeChecklistCategory({ id: 2, name: 'Two', items: [] }),
+      makeChecklistCategory({ id: 3, name: 'Three', items: [] }),
+    ];
+  }
+
+  it('reorders the categories and reports the draft as dirty', () => {
+    const { result } = renderHook(() => useCategoryEditState(makeOrderable()));
+
+    act(() => result.current.reorderCategories(1, 3));
+
+    expect(result.current.categories.map(c => c.id)).toEqual([2, 3, 1]);
+    expect(result.current.isDirty).toBe(true);
+  });
+
+  it('reorders the items of one category only', () => {
+    const { result } = renderHook(() => useCategoryEditState(makeOrderable()));
+
+    act(() => result.current.reorderItems(1, 11, 10));
+
+    expect(result.current.categories[0].items.map(i => i.id)).toEqual([11, 10]);
+    expect(result.current.categories[1].items).toEqual([]);
+  });
+
+  it('moves an item into another category', () => {
+    const { result } = renderHook(() => useCategoryEditState(makeOrderable()));
+
+    act(() => result.current.moveItem(1, 10, 2));
+
+    expect(result.current.categories.map(c => c.items.map(i => i.id))).toEqual([
+      [11],
+      [10],
+      [],
+    ]);
+    expect(result.current.isDirty).toBe(true);
+  });
+
+  it('can move an unsaved item between categories', () => {
+    const { result } = renderHook(() => useCategoryEditState(makeOrderable()));
+    act(() => result.current.addItemLocal(1));
+    const newId = result.current.categories[0].items[2].id;
+
+    act(() => result.current.moveItem(1, newId, 3));
+
+    expect(result.current.categories[2].items.map(i => i.id)).toEqual([newId]);
+  });
+});
