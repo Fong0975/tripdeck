@@ -4,6 +4,7 @@ import { createLogger } from '../../logger';
 import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParam, idParams } from './params';
+import { handleReorder } from './shared/orderHandlers';
 import { rejectInvalidBody, rejectNotFound } from './shared/responses';
 import { ensureTripExists } from './shared/tripGuards';
 import { requireName } from './shared/validation';
@@ -81,4 +82,31 @@ export async function deleteTripCategory(
   }
   logger.info('Trip checklist category deleted', meta);
   res.status(204).send();
+}
+
+export async function reorderTripCategories(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Reorder the categories of a trip checklist'
+     #swagger.description = 'orderedIds must list every category of the trip checklist exactly once.'
+     #swagger.responses[204] = { description: 'Categories reordered' }
+     #swagger.responses[400] = { description: 'orderedIds is not an array of positive integers, or does not list every category exactly once' }
+     #swagger.responses[404] = { description: 'Trip not found' } */
+  const meta = idParams(req, 'tripId');
+  const { tripId } = meta;
+  if (!(await ensureTripExists(tripId, res, logger, 'Reorder-categories'))) {
+    return;
+  }
+  await handleReorder(
+    {
+      logger,
+      label: 'Trip checklist categories',
+      body: req.body,
+      meta,
+      reorder: ids => checklistRepo.reorderTripCategories(tripId, ids),
+    },
+    res,
+  );
 }

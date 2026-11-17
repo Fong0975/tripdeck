@@ -79,12 +79,12 @@ describe('restoreTemplate', () => {
       'DELETE FROM checklist_template_categories',
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
-      'INSERT INTO checklist_template_categories (name) VALUES (?)',
-      ['Documents'],
+      'INSERT INTO checklist_template_categories (name, sort_order) VALUES (?, ?)',
+      ['Documents', 0],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO checklist_template_items'),
-      [7000, 'Passport', 1, null, null],
+      [7000, 'Passport', 1, null, null, 0],
     );
     expect(mockConnQuery).toHaveBeenCalledWith(INSERT_SPECS_SQL, [
       [[8000, 'Size M', null]],

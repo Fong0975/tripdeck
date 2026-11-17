@@ -296,12 +296,12 @@ describe('importSingleTrip', () => {
 
     // Checklist: category -> item -> spec, all remapped under new parent ids.
     expect(mockConnExecute).toHaveBeenCalledWith(
-      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-      [1000, 'Clothes'],
+      'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
+      [1000, 'Clothes', 0],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO checklist_trip_items'),
-      [4000, 'Jacket', 1, null, null],
+      [4000, 'Jacket', 1, null, null, 0],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',

@@ -8,6 +8,13 @@ export const checklistTables: TableDef[] = [
     columns: [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
       { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    indexes: [
+      {
+        name: 'idx_checklist_template_categories_order',
+        columns: ['sort_order'],
+      },
     ],
   },
 
@@ -20,6 +27,13 @@ export const checklistTables: TableDef[] = [
       { name: 'quantity', type: 'INT' },
       { name: 'notes', type: 'TEXT' },
       { name: 'storage_location', type: 'VARCHAR(255)' },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    indexes: [
+      {
+        name: 'idx_checklist_template_items_category_order',
+        columns: ['checklist_template_category_id', 'sort_order'],
+      },
     ],
     foreignKeys: [
       {
@@ -55,6 +69,13 @@ export const checklistTables: TableDef[] = [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
       { name: 'trip_id', type: 'INT', notNull: true },
       { name: 'name', type: 'VARCHAR(255)', notNull: true },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    indexes: [
+      {
+        name: 'idx_checklist_trip_categories_trip_order',
+        columns: ['trip_id', 'sort_order'],
+      },
     ],
     foreignKeys: [
       {
@@ -75,6 +96,13 @@ export const checklistTables: TableDef[] = [
       { name: 'quantity', type: 'INT' },
       { name: 'notes', type: 'TEXT' },
       { name: 'storage_location', type: 'VARCHAR(255)' },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    indexes: [
+      {
+        name: 'idx_checklist_trip_items_category_order',
+        columns: ['checklist_trip_category_id', 'sort_order'],
+      },
     ],
     foreignKeys: [
       {

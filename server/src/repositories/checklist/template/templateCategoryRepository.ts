@@ -3,10 +3,11 @@ import type {
   ChecklistItem,
   ChecklistTemplate,
 } from '@tripdeck/shared';
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
 import { placeholders } from '../../../utils/sql';
+import { reorderSiblings, type ReorderResult } from '../shared/siblingOrder';
 
 import {
   fetchSpecsByItemIds,
@@ -18,7 +19,7 @@ import {
 
 export async function findTemplate(): Promise<ChecklistTemplate> {
   const [catRows] = await pool.execute<TemplateCategoryRow[]>(
-    'SELECT * FROM checklist_template_categories ORDER BY id',
+    'SELECT * FROM checklist_template_categories ORDER BY sort_order, id',
   );
 
   if (catRows.length === 0) {
@@ -29,7 +30,7 @@ export async function findTemplate(): Promise<ChecklistTemplate> {
   const [itemRows] = await pool.execute<TemplateItemRow[]>(
     `SELECT * FROM checklist_template_items
      WHERE checklist_template_category_id IN (${placeholders(catIds.length)})
-     ORDER BY checklist_template_category_id, id`,
+     ORDER BY checklist_template_category_id, sort_order, id`,
     catIds,
   );
 
@@ -51,7 +52,7 @@ export async function findTemplate(): Promise<ChecklistTemplate> {
 
 export async function createCategory(name: string): Promise<ChecklistCategory> {
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_categories (name) VALUES (?)',
+    'INSERT INTO checklist_template_categories (name, sort_order) SELECT ?, COALESCE(MAX(sort_order) + 1, 0) FROM checklist_template_categories',
     [name],
   );
 
@@ -76,7 +77,7 @@ export async function updateCategory(
   );
 
   const [itemRows] = await pool.execute<TemplateItemRow[]>(
-    'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY id',
+    'SELECT * FROM checklist_template_items WHERE checklist_template_category_id = ? ORDER BY sort_order, id',
     [catId],
   );
 
@@ -94,4 +95,26 @@ export async function deleteCategory(catId: number): Promise<boolean> {
     [catId],
   );
   return result.affectedRows > 0;
+}
+
+/**
+ * Renumbers the template categories to match `orderedIds`.
+ *
+ * @param orderedIds - Every template category id, in the desired order.
+ * @returns `reordered` on success, `invalid_order` when orderedIds is not
+ *   exactly the set of existing category ids.
+ */
+export function reorderCategories(
+  orderedIds: readonly unknown[],
+): Promise<ReorderResult> {
+  return reorderSiblings('checklist_template_categories', null, orderedIds);
+}
+
+/** Confirms a template category exists. */
+export async function categoryExists(catId: number): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id FROM checklist_template_categories WHERE id = ?',
+    [catId],
+  );
+  return rows.length > 0;
 }

@@ -8,11 +8,14 @@ import {
   addTemplateCategory,
   deleteTemplateCategory,
   getTemplate,
+  reorderTemplateCategories,
   updateTemplateCategory,
 } from '../controllers/checklist/templateCategoryController';
 import {
   addTemplateItem,
   deleteTemplateItem,
+  moveTemplateItem,
+  reorderTemplateItems,
   updateTemplateItem,
 } from '../controllers/checklist/templateItemController';
 import {
@@ -28,11 +31,14 @@ validateIdParams(router, ['catId', 'itemId', 'specId']);
 
 router.get('/', getTemplate);
 router.post('/categories', addTemplateCategory);
+router.patch('/categories/order', reorderTemplateCategories);
 router.put('/categories/:catId', updateTemplateCategory);
 router.delete('/categories/:catId', deleteTemplateCategory);
 router.post('/categories/:catId/items', addTemplateItem);
+router.patch('/categories/:catId/items/order', reorderTemplateItems);
 router.put('/categories/:catId/items/:itemId', updateTemplateItem);
 router.delete('/categories/:catId/items/:itemId', deleteTemplateItem);
+router.patch('/categories/:catId/items/:itemId/move', moveTemplateItem);
 router.post('/categories/:catId/items/:itemId/specs', addTemplateItemSpec);
 router.put(
   '/categories/:catId/items/:itemId/specs/:specId',

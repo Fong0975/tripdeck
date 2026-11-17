@@ -134,9 +134,9 @@ describe('copyTemplateIntoTrip', () => {
       expectedCount: 2,
       expectedSelects: 3,
       expectedItemInserts: [
-        [500, 'Jacket', 1, null, null],
-        [500, 'Socks', 1, null, null],
-        [501, 'Passport', 1, null, null],
+        [500, 'Jacket', 1, null, null, 0],
+        [500, 'Socks', 1, null, null, 1],
+        [501, 'Passport', 1, null, null, 0],
       ],
       expectedSpecRows: [
         [600, 'Waterproof', null],
@@ -194,8 +194,8 @@ describe('copyTemplateIntoTrip', () => {
       )
       .map(([, params]) => params);
     expect(categoryInserts).toEqual([
-      [5, 'Clothes'],
-      [5, 'Docs'],
+      [5, 'Clothes', 0],
+      [5, 'Docs', 1],
     ]);
   });
 });

@@ -90,3 +90,20 @@ export interface ChecklistSpecBody {
 export interface SetCheckBody {
   checked: boolean;
 }
+
+/**
+ * Request body of the checklist reorder endpoints. `orderedIds` must list
+ * every sibling (all categories, or all items of one category) exactly once,
+ * in the desired order.
+ */
+export interface ReorderChecklistBody {
+  orderedIds: number[];
+}
+
+/**
+ * Request body of the checklist item move endpoints: the category the item
+ * is appended to.
+ */
+export interface MoveChecklistItemBody {
+  targetCategoryId: number;
+}

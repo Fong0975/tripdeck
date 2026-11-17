@@ -259,12 +259,12 @@ describe('tripChecklistCore', () => {
         [tripId],
       );
       expect(mockConnExecute).toHaveBeenCalledWith(
-        'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-        [tripId, '衣物'],
+        'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
+        [tripId, '衣物', 0],
       );
       expect(mockConnExecute).toHaveBeenCalledWith(
-        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
-        [500, '外套', 1, null, null],
+        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        [500, '外套', 1, null, null, 0],
       );
       expect(mockConnQuery).toHaveBeenCalledWith(
         'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES ?',
@@ -299,7 +299,7 @@ describe('tripChecklistCore', () => {
     });
 
     const INSERT_CATEGORY_SQL =
-      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)';
+      'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)';
     const INSERT_OCCASION_SQL =
       "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')";
 
