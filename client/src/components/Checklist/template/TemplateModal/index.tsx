@@ -27,8 +27,14 @@ interface Props {
  */
 export default function TemplateModal({ onClose }: Props) {
   const titleId = useId();
-  const { template, loadError, reload, addCategory, deleteCategory } =
-    useTemplateData();
+  const {
+    template,
+    loadError,
+    reload,
+    addCategory,
+    deleteCategory,
+    reorderCategories,
+  } = useTemplateData();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -92,6 +98,7 @@ export default function TemplateModal({ onClose }: Props) {
           selectedId={selected?.id ?? null}
           onSelect={handleSelect}
           onAdd={handleAdd}
+          onReorder={reorderCategories}
         />
         <section className='flex min-h-0 min-w-0 flex-1 flex-col'>
           {!selected && (
@@ -103,6 +110,9 @@ export default function TemplateModal({ onClose }: Props) {
             <CategoryEditPanel
               key={selected.id}
               category={selected}
+              otherCategories={categories
+                .filter(c => c.id !== selected.id)
+                .map(c => ({ id: c.id, name: c.name }))}
               onSaved={() => void reload()}
               onDone={() => setEditing(false)}
               onCancel={() => guard(() => setEditing(false))}

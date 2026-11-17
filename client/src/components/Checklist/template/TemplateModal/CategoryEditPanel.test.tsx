@@ -69,6 +69,10 @@ function renderPanel(
   props: Partial<Parameters<typeof CategoryEditPanel>[0]> = {},
 ) {
   const handlers = {
+    otherCategories: [
+      { id: 2, name: 'Category B' },
+      { id: 3, name: 'Category C' },
+    ],
     onSaved: vi.fn(),
     onDone: vi.fn(),
     onCancel: vi.fn(),
@@ -159,5 +163,34 @@ describe('CategoryEditPanel', () => {
     unmount();
 
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('moves an item to the category picked in the move dialog', async () => {
+    const moveItem = vi.fn();
+    mockEditState({ moveItem });
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole('button', { name: 'move-item-10' }));
+    await user.click(screen.getByRole('button', { name: 'Category B' }));
+
+    expect(moveItem).toHaveBeenCalledWith(10, 2);
+  });
+
+  it.each([
+    { description: 'there is no other category', others: [], itemId: 10 },
+    {
+      description: 'the item is not saved yet',
+      others: [{ id: 2, name: 'Category B' }],
+      itemId: -1,
+    },
+  ])('disables moving when $description', ({ others, itemId }) => {
+    const unsaved = { ...editItems[0], id: itemId };
+    mockEditState({ visibleItems: [unsaved] });
+    renderPanel({ otherCategories: others });
+
+    expect(
+      screen.getByRole('button', { name: `move-item-${itemId}` }),
+    ).toBeDisabled();
   });
 });

@@ -3,10 +3,16 @@ import { Plus, Trash2 } from 'lucide-react';
 import type { RefObject } from 'react';
 
 import EditableItemRow from '../../shared/EditableItemRow';
+import type { MoveTargetCategory } from '../../shared/MoveItemDialog';
+import SortableList from '../../shared/SortableList';
+import SortableRow from '../../shared/SortableRow';
 import type { EditCategory, EditItem, EditSpec } from '../../shared/types';
+import { useMoveItemDialog } from '../../shared/useMoveItemDialog';
 
 interface Props {
   category: EditCategory;
+  /** The other visible categories an item can be moved to. */
+  otherCategories: MoveTargetCategory[];
   scrollBodyRef: RefObject<HTMLDivElement | null>;
   onUpdateName: (catId: number, name: string) => void;
   onRemove: (catId: number) => void;
@@ -25,6 +31,8 @@ interface Props {
     fields: Partial<EditSpec>,
   ) => void;
   onDeleteSpec: (catId: number, itemId: number, specId: number) => void;
+  onReorderItems: (catId: number, activeId: number, overId: number) => void;
+  onMoveItem: (fromCatId: number, itemId: number, toCatId: number) => void;
 }
 
 /**
@@ -34,6 +42,7 @@ interface Props {
  */
 export default function CategoryEditPane({
   category,
+  otherCategories,
   scrollBodyRef,
   onUpdateName,
   onRemove,
@@ -43,8 +52,14 @@ export default function CategoryEditPane({
   onAddSpec,
   onUpdateSpec,
   onDeleteSpec,
+  onReorderItems,
+  onMoveItem,
 }: Props) {
   const visibleItems = category.items.filter(i => !i._deleted);
+  const { openMove, dialog: moveDialog } = useMoveItemDialog(
+    otherCategories,
+    (itemId, toCatId) => onMoveItem(category.id, itemId, toCatId),
+  );
 
   return (
     <>
@@ -74,24 +89,37 @@ export default function CategoryEditPane({
         className='flex-1 overflow-y-auto overscroll-contain px-5 py-4'
       >
         <div className='mx-auto max-w-3xl space-y-3'>
-          {visibleItems.map((item, itemIdx) => (
-            <EditableItemRow
-              key={item.id}
-              item={item}
-              index={itemIdx}
-              onUpdateItem={(itemId, fields) =>
-                onUpdateItem(category.id, itemId, fields)
-              }
-              onDeleteItem={itemId => onDeleteItem(category.id, itemId)}
-              onUpdateSpec={(itemId, specId, fields) =>
-                onUpdateSpec(category.id, itemId, specId, fields)
-              }
-              onDeleteSpec={(itemId, specId) =>
-                onDeleteSpec(category.id, itemId, specId)
-              }
-              onAddSpec={itemId => onAddSpec(category.id, itemId)}
-            />
-          ))}
+          <SortableList
+            ids={visibleItems.map(item => item.id)}
+            onReorder={(activeId, overId) =>
+              onReorderItems(category.id, activeId, overId)
+            }
+          >
+            {visibleItems.map((item, itemIdx) => (
+              <SortableRow key={item.id} id={item.id}>
+                {dragHandle => (
+                  <EditableItemRow
+                    item={item}
+                    index={itemIdx}
+                    dragHandle={dragHandle}
+                    onUpdateItem={(itemId, fields) =>
+                      onUpdateItem(category.id, itemId, fields)
+                    }
+                    onDeleteItem={itemId => onDeleteItem(category.id, itemId)}
+                    onUpdateSpec={(itemId, specId, fields) =>
+                      onUpdateSpec(category.id, itemId, specId, fields)
+                    }
+                    onDeleteSpec={(itemId, specId) =>
+                      onDeleteSpec(category.id, itemId, specId)
+                    }
+                    onAddSpec={itemId => onAddSpec(category.id, itemId)}
+                    onMoveItem={openMove}
+                    moveDisabled={otherCategories.length === 0}
+                  />
+                )}
+              </SortableRow>
+            ))}
+          </SortableList>
 
           <button
             type='button'
@@ -103,6 +131,7 @@ export default function CategoryEditPane({
           </button>
         </div>
       </div>
+      {moveDialog}
     </>
   );
 }

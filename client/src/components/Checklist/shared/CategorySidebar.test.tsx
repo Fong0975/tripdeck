@@ -89,4 +89,38 @@ describe('CategorySidebar', () => {
 
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
+
+  it('shows no drag handles without onReorder', () => {
+    render(
+      <CategorySidebar
+        categories={categories}
+        selectedId={1}
+        onSelect={vi.fn()}
+        onAdd={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: '拖曳排序' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows one drag handle per category with onReorder and keeps selection working', async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <CategorySidebar
+        categories={categories}
+        selectedId={1}
+        onSelect={onSelect}
+        onAdd={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole('button', { name: '拖曳排序' })).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: /Toiletries/ }));
+
+    expect(onSelect).toHaveBeenCalledWith(2);
+  });
 });

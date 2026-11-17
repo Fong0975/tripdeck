@@ -6,7 +6,10 @@ import {
   addTemplateCategory,
   deleteTemplateCategory,
   getChecklistTemplate,
+  reorderTemplateCategories,
 } from '@/utils/storage';
+
+import { reorderById } from '../../shared/editStateUpdaters';
 
 /**
  * Loads the checklist template and exposes category-level mutations that
@@ -14,7 +17,9 @@ import {
  *
  * @returns `template` (null until the first load succeeds), `loadError`,
  *   `reload`, `addCategory` (resolves to the created category, or null on
- *   failure) and `deleteCategory` (resolves to whether it succeeded).
+ *   failure), `deleteCategory` (resolves to whether it succeeded) and
+ *   `reorderCategories`, which shows the new order immediately and saves it,
+ *   reloading the stored order if saving fails.
  */
 export function useTemplateData() {
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
@@ -58,5 +63,29 @@ export function useTemplateData() {
     }
   };
 
-  return { template, loadError, reload, addCategory, deleteCategory };
+  const reorderCategories = async (activeId: number, overId: number) => {
+    if (!template) {
+      return;
+    }
+    const categories = reorderById(template.categories, activeId, overId);
+    if (categories === template.categories) {
+      return;
+    }
+    setTemplate({ ...template, categories });
+    try {
+      await reorderTemplateCategories(categories.map(c => c.id));
+    } catch {
+      showToast('error', '調整分類順序失敗，請稍後再試');
+      await reload();
+    }
+  };
+
+  return {
+    template,
+    loadError,
+    reload,
+    addCategory,
+    deleteCategory,
+    reorderCategories,
+  };
 }
