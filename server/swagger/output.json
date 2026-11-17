@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Tripdeck API",
-    "version": "1.4.0",
+    "version": "1.10.0",
     "description": "REST API for the Tripdeck travel planning application."
   },
   "servers": [
@@ -2164,6 +2164,34 @@
         }
       }
     },
+    "/api/trips/{tripId}/checklist/categories/order": {
+      "patch": {
+        "tags": ["Trip Checklist"],
+        "summary": "Reorder the categories of a trip checklist",
+        "description": "orderedIds must list every category of the trip checklist exactly once.",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Categories reordered"
+          },
+          "400": {
+            "description": "orderedIds is not an array of positive integers, or does not list every category exactly once"
+          },
+          "404": {
+            "description": "Trip not found"
+          }
+        }
+      }
+    },
     "/api/trips/{tripId}/checklist/categories/{catId}": {
       "put": {
         "tags": ["Trip Checklist"],
@@ -2295,6 +2323,42 @@
         }
       }
     },
+    "/api/trips/{tripId}/checklist/categories/{catId}/items/order": {
+      "patch": {
+        "tags": ["Trip Checklist"],
+        "summary": "Reorder the items of a trip checklist category",
+        "description": "orderedIds must list every item of the category exactly once.",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Items reordered"
+          },
+          "400": {
+            "description": "orderedIds is not an array of positive integers, or does not list every item of the category exactly once"
+          },
+          "404": {
+            "description": "Category not found"
+          }
+        }
+      }
+    },
     "/api/trips/{tripId}/checklist/items/{itemId}": {
       "put": {
         "tags": ["Trip Checklist"],
@@ -2405,6 +2469,42 @@
         "responses": {
           "default": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/trips/{tripId}/checklist/items/{itemId}/move": {
+      "patch": {
+        "tags": ["Trip Checklist"],
+        "summary": "Move a trip checklist item to the end of another category",
+        "description": "The item keeps its id, specs and check marks. The target category must belong to the same trip.",
+        "parameters": [
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Item moved"
+          },
+          "400": {
+            "description": "targetCategoryId is not a positive integer"
+          },
+          "404": {
+            "description": "Item or target category not found"
           }
         }
       }
@@ -2639,6 +2739,21 @@
         }
       }
     },
+    "/api/checklist-template/categories/order": {
+      "patch": {
+        "tags": ["Checklist Template"],
+        "summary": "Reorder the template categories",
+        "description": "orderedIds must list every template category exactly once.",
+        "responses": {
+          "204": {
+            "description": "Categories reordered"
+          },
+          "400": {
+            "description": "orderedIds is not an array of positive integers, or does not list every category exactly once"
+          }
+        }
+      }
+    },
     "/api/checklist-template/categories/{catId}": {
       "put": {
         "tags": ["Checklist Template"],
@@ -2799,6 +2914,34 @@
         }
       }
     },
+    "/api/checklist-template/categories/{catId}/items/order": {
+      "patch": {
+        "tags": ["Checklist Template"],
+        "summary": "Reorder the items of a template category",
+        "description": "orderedIds must list every item of the category exactly once.",
+        "parameters": [
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Items reordered"
+          },
+          "400": {
+            "description": "orderedIds is not an array of positive integers, or does not list every item of the category exactly once"
+          },
+          "404": {
+            "description": "Category not found"
+          }
+        }
+      }
+    },
     "/api/checklist-template/categories/{catId}/items/{itemId}": {
       "put": {
         "tags": ["Checklist Template"],
@@ -2909,6 +3052,42 @@
         "responses": {
           "default": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/checklist-template/categories/{catId}/items/{itemId}/move": {
+      "patch": {
+        "tags": ["Checklist Template"],
+        "summary": "Move a template item to the end of another category",
+        "description": "",
+        "parameters": [
+          {
+            "name": "catId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Item moved"
+          },
+          "400": {
+            "description": "targetCategoryId is not a positive integer"
+          },
+          "404": {
+            "description": "Item or target category not found"
           }
         }
       }

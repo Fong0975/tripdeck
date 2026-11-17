@@ -43,13 +43,13 @@ function groupBy<T>(rows: T[], keyOf: (row: T) => number): Map<number, T[]> {
  * template, so no `WHERE` filter is needed.
  *
  * @param conn - Connection with an open transaction.
- * @returns The template rows, ordered by id within each parent.
+ * @returns The template rows, in display order within each parent.
  */
 async function loadTemplateSnapshot(
   conn: PoolConnection,
 ): Promise<TemplateSnapshot> {
   const [categories] = await conn.execute<TemplateCategoryRow[]>(
-    'SELECT * FROM checklist_template_categories ORDER BY id',
+    'SELECT * FROM checklist_template_categories ORDER BY sort_order, id',
   );
   if (categories.length === 0) {
     return {
@@ -60,7 +60,7 @@ async function loadTemplateSnapshot(
   }
 
   const [items] = await conn.execute<TemplateItemRow[]>(
-    'SELECT * FROM checklist_template_items ORDER BY checklist_template_category_id, id',
+    'SELECT * FROM checklist_template_items ORDER BY checklist_template_category_id, sort_order, id',
   );
   const [specs] = await conn.execute<TemplateItemSpecRow[]>(
     'SELECT * FROM checklist_template_item_specs ORDER BY checklist_template_item_id, id',
@@ -98,22 +98,24 @@ export async function copyTemplateIntoTrip(
   });
 
   const specRows: unknown[][] = [];
-  for (const cat of template.categories) {
+  for (const [catIndex, cat] of template.categories.entries()) {
     const [catResult] = await conn.execute<ResultSetHeader>(
-      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-      [tripId, cat.name],
+      'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
+      [tripId, cat.name, catIndex],
     );
     const tripCatId = catResult.insertId;
 
-    for (const item of template.itemsByCategoryId.get(cat.id) ?? []) {
+    const catItems = template.itemsByCategoryId.get(cat.id) ?? [];
+    for (const [itemIndex, item] of catItems.entries()) {
       const [itemResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
         [
           tripCatId,
           item.name,
           item.quantity,
           item.notes,
           item.storage_location,
+          itemIndex,
         ],
       );
       const tripItemId = itemResult.insertId;

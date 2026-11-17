@@ -6,6 +6,7 @@ import { deleteImageFromDisk } from '../../storage/imageFiles';
 import { placeholders } from '../../utils/sql';
 import { withTransaction } from '../../utils/withTransaction';
 import * as imageRepo from '../image';
+import { isPermutationOf } from '../shared/orderedIds';
 
 import { TripConnectionAdjacencyRow } from './shared';
 
@@ -68,38 +69,6 @@ async function writeSortOrder(
     `UPDATE trip_attractions SET sort_order = CASE id ${cases} END WHERE trip_day_id = ? AND id IN (${placeholders(orderedIds.length)})`,
     [...caseParams, dayId, ...orderedIds],
   );
-}
-
-/**
- * Checks that `orderedIds` is exactly a permutation of `currentIds`: same
- * size, no duplicates, every entry a positive safe integer present in the day.
- *
- * @param orderedIds - Order requested by the client.
- * @param currentIds - The day's attraction ids as stored.
- * @returns True when the requested order covers every attraction exactly once.
- */
-function isPermutationOf(
-  orderedIds: readonly unknown[],
-  currentIds: readonly number[],
-): orderedIds is readonly number[] {
-  if (orderedIds.length !== currentIds.length) {
-    return false;
-  }
-  const current = new Set(currentIds);
-  const seen = new Set<number>();
-  for (const id of orderedIds) {
-    if (
-      typeof id !== 'number' ||
-      !Number.isSafeInteger(id) ||
-      id <= 0 ||
-      !current.has(id) ||
-      seen.has(id)
-    ) {
-      return false;
-    }
-    seen.add(id);
-  }
-  return true;
 }
 
 /**

@@ -80,6 +80,55 @@ export function removeOrMarkDeleted<T extends EditableEntity>(
   return updateById(list, id, entry => ({ ...entry, _deleted: true }));
 }
 
+/**
+ * Moves the entry `activeId` to the position currently held by `overId`,
+ * shifting the entries in between (the semantics of drag-and-drop sorting).
+ * Returns the same array when either id is missing or both are equal.
+ */
+export function reorderById<T extends { id: number }>(
+  list: T[],
+  activeId: number,
+  overId: number,
+): T[] {
+  const from = list.findIndex(entry => entry.id === activeId);
+  const to = list.findIndex(entry => entry.id === overId);
+  if (from < 0 || to < 0 || from === to) {
+    return list;
+  }
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+/**
+ * Moves the item `itemId` from one category of a categories → items tree to
+ * the end of another. Returns the same tree when the categories are equal
+ * or the item is not in the source category.
+ */
+export function moveItemToCategory(
+  categories: EditCategory[],
+  itemId: number,
+  fromCatId: number,
+  toCatId: number,
+): EditCategory[] {
+  const item = categories
+    .find(cat => cat.id === fromCatId)
+    ?.items.find(entry => entry.id === itemId);
+  if (!item || fromCatId === toCatId) {
+    return categories;
+  }
+  return categories.map(cat => {
+    if (cat.id === fromCatId) {
+      return { ...cat, items: cat.items.filter(entry => entry.id !== itemId) };
+    }
+    if (cat.id === toCatId) {
+      return { ...cat, items: [...cat.items, item] };
+    }
+    return cat;
+  });
+}
+
 /** Returns an updater that shallow-merges `fields` into an entry. */
 export function patchFields<T>(fields: Partial<T>): (entry: T) => T {
   return entry => ({ ...entry, ...fields });

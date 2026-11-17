@@ -141,8 +141,12 @@ export function EditableItemRowStub({
   onAddSpec,
   onUpdateSpec,
   onDeleteSpec,
+  onMoveItem,
+  moveDisabled,
 }: {
   item: EditItem;
+  onMoveItem?: (item: EditItem) => void;
+  moveDisabled?: boolean;
   onUpdateItem: (itemId: number, fields: Partial<EditItem>) => void;
   onDeleteItem: (itemId: number) => void;
   onAddSpec: (itemId: number) => void;
@@ -163,6 +167,11 @@ export function EditableItemRowStub({
         delete-item-{item.id}
       </button>
       <button onClick={() => onAddSpec(item.id)}>add-spec-{item.id}</button>
+      {onMoveItem && (
+        <button disabled={moveDisabled} onClick={() => onMoveItem(item)}>
+          move-item-{item.id}
+        </button>
+      )}
       <button
         onClick={() => onUpdateSpec(item.id, 100, { name: 'Updated Spec' })}
       >

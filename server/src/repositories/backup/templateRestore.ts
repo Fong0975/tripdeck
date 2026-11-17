@@ -29,22 +29,23 @@ export async function restoreTemplate(
       await conn.execute('DELETE FROM checklist_template_categories');
       const specRows: unknown[][] = [];
 
-      for (const category of template.categories) {
+      for (const [categoryIndex, category] of template.categories.entries()) {
         const [categoryResult] = await conn.execute<ResultSetHeader>(
-          'INSERT INTO checklist_template_categories (name) VALUES (?)',
-          [category.name],
+          'INSERT INTO checklist_template_categories (name, sort_order) VALUES (?, ?)',
+          [category.name, categoryIndex],
         );
         const newCategoryId = categoryResult.insertId;
 
-        for (const item of category.items) {
+        for (const [itemIndex, item] of category.items.entries()) {
           const [itemResult] = await conn.execute<ResultSetHeader>(
-            'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
             [
               newCategoryId,
               item.name,
               item.quantity,
               item.notes,
               item.storage_location,
+              itemIndex,
             ],
           );
           const newItemId = itemResult.insertId;

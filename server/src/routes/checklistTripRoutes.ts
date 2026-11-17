@@ -7,12 +7,15 @@ import { Router } from 'express';
 import {
   addTripCategory,
   deleteTripCategory,
+  reorderTripCategories,
   updateTripCategory,
 } from '../controllers/checklist/tripCategoryController';
 import { getTripChecklist } from '../controllers/checklist/tripChecklistController';
 import {
   addTripItem,
   deleteTripItem,
+  moveTripItem,
+  reorderTripItems,
   setCheck,
   updateTripItem,
 } from '../controllers/checklist/tripItemController';
@@ -42,10 +45,13 @@ router.delete('/occasions/:occId', deleteOccasion);
 router.put('/occasions/:occId/items/:itemId/check', setCheck);
 router.put('/occasions/:occId/items/:itemId/specs/:specId/check', setSpecCheck);
 router.post('/categories', addTripCategory);
+router.patch('/categories/order', reorderTripCategories);
 router.put('/categories/:catId', updateTripCategory);
 router.delete('/categories/:catId', deleteTripCategory);
 router.post('/categories/:catId/items', addTripItem);
+router.patch('/categories/:catId/items/order', reorderTripItems);
 router.put('/items/:itemId', updateTripItem);
+router.patch('/items/:itemId/move', moveTripItem);
 router.delete('/items/:itemId', deleteTripItem);
 router.post('/items/:itemId/specs', addTripItemSpec);
 router.put('/items/:itemId/specs/:specId', updateTripItemSpec);

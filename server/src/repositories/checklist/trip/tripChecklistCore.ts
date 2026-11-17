@@ -41,7 +41,7 @@ export async function findChecklist(
   }
 
   const [catRows] = await pool.execute<TripChecklistCategoryRow[]>(
-    'SELECT * FROM checklist_trip_categories WHERE trip_id = ? ORDER BY id',
+    'SELECT * FROM checklist_trip_categories WHERE trip_id = ? ORDER BY sort_order, id',
     [tripId],
   );
 
@@ -51,7 +51,7 @@ export async function findChecklist(
     const [itemRows] = await pool.execute<TripChecklistItemRow[]>(
       `SELECT * FROM checklist_trip_items
        WHERE checklist_trip_category_id IN (${placeholders(catIds.length)})
-       ORDER BY checklist_trip_category_id, id`,
+       ORDER BY checklist_trip_category_id, sort_order, id`,
       catIds,
     );
 

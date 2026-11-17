@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import EditableItemRow from './EditableItemRow';
@@ -139,5 +140,56 @@ describe('EditableItemRow', () => {
     fireEvent.change(input, { target: { value: 'Changed Spec' } });
 
     expect(onUpdateSpec).toHaveBeenCalledWith(1, 10, { name: 'Changed Spec' });
+  });
+});
+
+describe('EditableItemRow sorting and moving', () => {
+  function renderWith(extra: Partial<ComponentProps<typeof EditableItemRow>>) {
+    render(
+      <EditableItemRow
+        item={makeItem()}
+        index={0}
+        onUpdateItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+        onUpdateSpec={vi.fn()}
+        onDeleteSpec={vi.fn()}
+        onAddSpec={vi.fn()}
+        {...extra}
+      />,
+    );
+  }
+
+  it('renders the given drag handle next to the index', () => {
+    renderWith({ dragHandle: <button>handle</button> });
+
+    expect(screen.getByRole('button', { name: 'handle' })).toBeInTheDocument();
+  });
+
+  it('hides the move button without a move handler', () => {
+    renderWith({});
+
+    expect(
+      screen.queryByRole('button', { name: '移動項目到其他分類' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('passes the item to onMoveItem when the move button is clicked', async () => {
+    const onMoveItem = vi.fn();
+    const user = userEvent.setup();
+    renderWith({ onMoveItem });
+
+    await user.click(
+      screen.getByRole('button', { name: '移動項目到其他分類' }),
+    );
+
+    expect(onMoveItem).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it('disables the move button when moveDisabled is set', () => {
+    renderWith({ onMoveItem: vi.fn(), moveDisabled: true });
+
+    expect(
+      screen.getByRole('button', { name: '移動項目到其他分類' }),
+    ).toBeDisabled();
   });
 });

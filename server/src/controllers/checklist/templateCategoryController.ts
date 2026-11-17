@@ -4,6 +4,7 @@ import { createLogger } from '../../logger';
 import * as templateRepo from '../../repositories/checklist/template';
 
 import { idParam } from './params';
+import { handleReorder } from './shared/orderHandlers';
 import { rejectInvalidBody, rejectNotFound } from './shared/responses';
 import { requireName } from './shared/validation';
 
@@ -160,4 +161,25 @@ export async function deleteTemplateCategory(
   }
   logger.info('Template category deleted', { catId });
   res.status(204).send();
+}
+
+export async function reorderTemplateCategories(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Checklist Template']
+     #swagger.summary = 'Reorder the template categories'
+     #swagger.description = 'orderedIds must list every template category exactly once.'
+     #swagger.responses[204] = { description: 'Categories reordered' }
+     #swagger.responses[400] = { description: 'orderedIds is not an array of positive integers, or does not list every category exactly once' } */
+  await handleReorder(
+    {
+      logger,
+      label: 'Template categories',
+      body: req.body,
+      meta: {},
+      reorder: templateRepo.reorderCategories,
+    },
+    res,
+  );
 }

@@ -4,11 +4,14 @@ import {
   addTemplateItemSpec,
   deleteTemplateItem,
   deleteTemplateItemSpec,
+  moveTemplateItem,
+  reorderTemplateItems,
   updateTemplateCategory,
   updateTemplateItem,
   updateTemplateItemSpec,
 } from '@/utils/storage';
 
+import { needsReorder, resolveSavedIds } from '../../shared/checklistOrderSync';
 import {
   createItemSpecTrackers,
   type ItemSpecApi,
@@ -31,10 +34,14 @@ function templateItemSpecApi(catId: number): ItemSpecApi {
   };
 }
 
+function createTrackers() {
+  return { ...createItemSpecTrackers(), movedItemIds: new Set<number>() };
+}
+
 /**
  * Diffs the local edit state against the originally-loaded category and
- * saves all changes (name, and items→specs) via the checklist diff-sync
- * engine. Retries after a partial failure are idempotent; see
+ * saves all changes (name, items→specs, items moved to other categories,
+ * and the arranged item order) via the checklist diff-sync engine. Retries after a partial failure are idempotent; see
  * {@link useRetryableSave}.
  *
  * @param category - The template category as loaded when editing started.
@@ -50,7 +57,7 @@ export function useSaveCategoryEdit(
   onClose: () => void,
 ) {
   return useRetryableSave({
-    createTrackers: createItemSpecTrackers,
+    createTrackers,
     sync: async trackers => {
       const catId = edit.id;
       const name = edit.name.trim();
@@ -61,6 +68,34 @@ export function useSaveCategoryEdit(
 
       const syncItems = makeItemSpecSync(templateItemSpecApi(catId), trackers);
       await syncItems(category.items, edit.items);
+
+      for (const item of edit.items) {
+        const target = item._movedTo;
+        if (
+          item.id > 0 &&
+          target !== undefined &&
+          !item._deleted &&
+          !trackers.movedItemIds.has(item.id)
+        ) {
+          await moveTemplateItem(catId, item.id, target);
+          trackers.movedItemIds.add(item.id);
+        }
+      }
+
+      const desired = resolveSavedIds(
+        edit.items
+          .filter(item => !item._deleted && item._movedTo === undefined)
+          .map(item => item.id),
+        trackers.items,
+      );
+      if (
+        needsReorder(
+          desired,
+          category.items.map(item => item.id),
+        )
+      ) {
+        await reorderTemplateItems(catId, desired);
+      }
     },
     onSaved,
     onClose,

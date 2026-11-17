@@ -2,6 +2,12 @@ import type { ChecklistItem, ChecklistItemBody } from '@tripdeck/shared';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
+import { withTransaction } from '../../../utils/withTransaction';
+import {
+  nextSiblingOrder,
+  reorderSiblings,
+  type ReorderResult,
+} from '../shared/siblingOrder';
 
 import { fetchSpecsByItemIds, TemplateItemRow, toItemResponse } from './shared';
 
@@ -18,13 +24,14 @@ export async function createItem(
   }
 
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO checklist_template_items (checklist_template_category_id, name, quantity, notes, storage_location, sort_order) SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sort_order) + 1, 0) FROM checklist_template_items WHERE checklist_template_category_id = ?',
     [
       catId,
       data.name,
       data.quantity ?? null,
       data.notes ?? null,
       data.storage_location ?? null,
+      catId,
     ],
   );
 
@@ -91,4 +98,55 @@ export async function verifyItemBelongsToCategory(
     [itemId, catId],
   );
   return rows.length > 0;
+}
+
+/**
+ * Renumbers the items of a template category to match `orderedIds`.
+ *
+ * @param catId - Category whose items are reordered.
+ * @param orderedIds - Every item id of the category, in the desired order.
+ * @returns `reordered` on success, `invalid_order` when orderedIds is not
+ *   exactly the set of the category's item ids.
+ */
+export function reorderItems(
+  catId: number,
+  orderedIds: readonly unknown[],
+): Promise<ReorderResult> {
+  return reorderSiblings('checklist_template_items', catId, orderedIds);
+}
+
+/** Outcome of {@link moveItem}. */
+export type MoveItemResult = 'moved' | 'item_not_found' | 'category_not_found';
+
+/**
+ * Moves a template item to the end of another category. The item keeps its
+ * id and specs.
+ *
+ * @param itemId - Item to move.
+ * @param targetCatId - Category receiving the item.
+ * @returns `moved` on success, or which lookup failed.
+ */
+export function moveItem(
+  itemId: number,
+  targetCatId: number,
+): Promise<MoveItemResult> {
+  return withTransaction<MoveItemResult>(async conn => {
+    const [catRows] = await conn.execute<RowDataPacket[]>(
+      'SELECT id FROM checklist_template_categories WHERE id = ? FOR UPDATE',
+      [targetCatId],
+    );
+    if (catRows.length === 0) {
+      return 'category_not_found';
+    }
+    const sortOrder = await nextSiblingOrder(
+      conn,
+      'checklist_template_items',
+      targetCatId,
+    );
+    const [result] = await conn.execute<ResultSetHeader>(
+      'UPDATE checklist_template_items SET checklist_template_category_id = ?, sort_order = ? WHERE id = ?',
+      [targetCatId, sortOrder, itemId],
+    );
+    return result.affectedRows > 0 ? 'moved' : 'item_not_found';
+  });
 }

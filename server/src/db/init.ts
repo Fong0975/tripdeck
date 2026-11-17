@@ -2,6 +2,7 @@ import pool from '../config/database';
 import { createLogger } from '../logger';
 
 import { alignExistingTable } from './alignTable';
+import { backfillChecklistOrder } from './backfillChecklistOrder';
 import { getDbName, tableExists } from './introspect';
 import { tableDefinitions, type TableDef } from './schema';
 import { buildCreateTableSql } from './sqlBuilders';
@@ -25,6 +26,8 @@ async function createTable(def: TableDef): Promise<void> {
  * - Existing tables are aligned via {@link alignExistingTable}: missing
  *   columns and indexes are added, and foreign keys are added or redefined
  *   to match (with orphan cleanup for ON DELETE CASCADE constraints).
+ * - Checklist categories and items that predate `sort_order` are backfilled
+ *   with their previous id order (see {@link backfillChecklistOrder}).
  * - Running it again against an aligned database makes no changes.
  */
 export async function initDatabase(): Promise<void> {
@@ -40,6 +43,7 @@ export async function initDatabase(): Promise<void> {
         await createTable(def);
       }
     }
+    await backfillChecklistOrder();
   } catch (err) {
     logger.error('Failed to verify/initialize tables', undefined, err);
     throw err;

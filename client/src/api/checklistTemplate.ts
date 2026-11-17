@@ -102,3 +102,36 @@ export async function deleteTemplateItemSpec(
     { method: 'DELETE' },
   );
 }
+
+/** Persists the order of every template category. */
+export async function reorderTemplateCategories(
+  orderedIds: number[],
+): Promise<void> {
+  await api<void>('/api/checklist-template/categories/order', {
+    method: 'PATCH',
+    ...json({ orderedIds }),
+  });
+}
+
+/** Persists the order of every item of a template category. */
+export async function reorderTemplateItems(
+  catId: number,
+  orderedIds: number[],
+): Promise<void> {
+  await api<void>(`/api/checklist-template/categories/${catId}/items/order`, {
+    method: 'PATCH',
+    ...json({ orderedIds }),
+  });
+}
+
+/** Moves a template item to the end of another category. */
+export async function moveTemplateItem(
+  catId: number,
+  itemId: number,
+  targetCategoryId: number,
+): Promise<void> {
+  await api<void>(
+    `/api/checklist-template/categories/${catId}/items/${itemId}/move`,
+    { method: 'PATCH', ...json({ targetCategoryId }) },
+  );
+}

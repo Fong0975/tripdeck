@@ -82,6 +82,29 @@ describe('useEditState', () => {
     expect(result.current.edit.categories).toHaveLength(2);
   });
 
+  it('exposes the category reorder and move handlers', () => {
+    const { result } = renderHook(() => useEditState(makeChecklist()));
+    act(() => result.current.addCategoryLocal());
+    const [first, second] = result.current.edit.categories;
+
+    act(() => result.current.reorderCategories(first.id, second.id));
+    expect(result.current.edit.categories.map(c => c.id)).toEqual([
+      second.id,
+      first.id,
+    ]);
+
+    act(() => result.current.moveItem(first.id, 10, second.id));
+    expect(
+      result.current.edit.categories.find(c => c.id === second.id)?.items,
+    ).toHaveLength(1);
+    expect(
+      result.current.edit.categories.find(c => c.id === first.id)?.items,
+    ).toHaveLength(0);
+
+    act(() => result.current.reorderItems(second.id, 10, 10));
+    expect(result.current.isDirty).toBe(true);
+  });
+
   it('exposes the category hook state (selectedCategory, scrollBodyRef) unchanged', () => {
     const { result } = renderHook(() => useEditState(makeChecklist()));
 

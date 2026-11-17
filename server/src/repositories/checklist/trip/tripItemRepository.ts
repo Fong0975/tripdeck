@@ -6,6 +6,12 @@ import type {
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import pool from '../../../config/database';
+import { withTransaction } from '../../../utils/withTransaction';
+import {
+  nextSiblingOrder,
+  reorderSiblings,
+  type ReorderResult,
+} from '../shared/siblingOrder';
 
 import { fetchSpecsByItemIds, TripChecklistItemRow } from './shared';
 
@@ -29,13 +35,14 @@ export async function createTripItem(
   data: ChecklistItemBody,
 ): Promise<ChecklistItem> {
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location, sort_order) SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sort_order) + 1, 0) FROM checklist_trip_items WHERE checklist_trip_category_id = ?',
     [
       catId,
       data.name,
       data.quantity ?? null,
       data.notes ?? null,
       data.storage_location ?? null,
+      catId,
     ],
   );
 
@@ -128,4 +135,67 @@ export async function setCheck(
       [occId, itemId],
     );
   }
+}
+
+/**
+ * Renumbers the items of a trip checklist category to match `orderedIds`.
+ *
+ * @param catId - Category whose items are reordered.
+ * @param orderedIds - Every item id of the category, in the desired order.
+ * @returns `reordered` on success, `invalid_order` when orderedIds is not
+ *   exactly the set of the category's item ids.
+ */
+export function reorderTripItems(
+  catId: number,
+  orderedIds: readonly unknown[],
+): Promise<ReorderResult> {
+  return reorderSiblings('checklist_trip_items', catId, orderedIds);
+}
+
+/** Outcome of {@link moveTripItem}. */
+export type MoveTripItemResult =
+  'moved' | 'item_not_found' | 'category_not_found';
+
+/**
+ * Moves a trip checklist item to the end of another category of the same
+ * trip. The item keeps its id, so its specs and check marks stay attached.
+ *
+ * @param tripId - Trip both the item and the target category must belong to.
+ * @param itemId - Item to move.
+ * @param targetCatId - Category receiving the item.
+ * @returns `moved` on success, or which ownership check failed.
+ */
+export function moveTripItem(
+  tripId: number,
+  itemId: number,
+  targetCatId: number,
+): Promise<MoveTripItemResult> {
+  return withTransaction<MoveTripItemResult>(async conn => {
+    const [catRows] = await conn.execute<RowDataPacket[]>(
+      'SELECT id FROM checklist_trip_categories WHERE id = ? AND trip_id = ? FOR UPDATE',
+      [targetCatId, tripId],
+    );
+    if (catRows.length === 0) {
+      return 'category_not_found';
+    }
+    const [itemRows] = await conn.execute<RowDataPacket[]>(
+      `SELECT cti.id FROM checklist_trip_items cti
+       JOIN checklist_trip_categories ctc ON ctc.id = cti.checklist_trip_category_id
+       WHERE cti.id = ? AND ctc.trip_id = ? FOR UPDATE`,
+      [itemId, tripId],
+    );
+    if (itemRows.length === 0) {
+      return 'item_not_found';
+    }
+    const sortOrder = await nextSiblingOrder(
+      conn,
+      'checklist_trip_items',
+      targetCatId,
+    );
+    await conn.execute(
+      'UPDATE checklist_trip_items SET checklist_trip_category_id = ?, sort_order = ? WHERE id = ?',
+      [targetCatId, sortOrder, itemId],
+    );
+    return 'moved';
+  });
 }

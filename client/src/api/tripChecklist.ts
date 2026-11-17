@@ -111,6 +111,41 @@ export async function deleteTripItemSpec(
   );
 }
 
+/** Persists the order of every category of a trip checklist. */
+export async function reorderTripCategories(
+  tripId: number,
+  orderedIds: number[],
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/checklist/categories/order`, {
+    method: 'PATCH',
+    ...json({ orderedIds }),
+  });
+}
+
+/** Persists the order of every item of a trip checklist category. */
+export async function reorderTripItems(
+  tripId: number,
+  catId: number,
+  orderedIds: number[],
+): Promise<void> {
+  await api<void>(
+    `/api/trips/${tripId}/checklist/categories/${catId}/items/order`,
+    { method: 'PATCH', ...json({ orderedIds }) },
+  );
+}
+
+/** Moves a trip checklist item to the end of another category of the trip. */
+export async function moveTripItem(
+  tripId: number,
+  itemId: number,
+  targetCategoryId: number,
+): Promise<void> {
+  await api<void>(`/api/trips/${tripId}/checklist/items/${itemId}/move`, {
+    method: 'PATCH',
+    ...json({ targetCategoryId }),
+  });
+}
+
 // --- Occasions / checks ---
 
 export async function getTripChecklist(tripId: number): Promise<TripChecklist> {

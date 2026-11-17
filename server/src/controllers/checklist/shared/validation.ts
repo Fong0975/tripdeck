@@ -2,12 +2,20 @@ import {
   type ChecklistItemBody,
   type ChecklistSpecBody,
   FIELD_LIMITS,
+  type MoveChecklistItemBody,
+  type ReorderChecklistBody,
   type UpdateTripChecklistItemBody,
 } from '@tripdeck/shared';
 
 import { findTooLongField } from '../../../validation/fieldLimits';
 
 export const NAME_REQUIRED_ERROR = 'name is required';
+export const ORDERED_IDS_REQUIRED_ERROR =
+  'orderedIds must be an array of positive integers';
+export const ORDERED_IDS_MISMATCH_ERROR =
+  'orderedIds must list every sibling exactly once';
+export const TARGET_CATEGORY_REQUIRED_ERROR =
+  'targetCategoryId must be a positive integer';
 export const INVALID_QUANTITY_ERROR = 'quantity must be a non-negative integer';
 
 /** Largest value a signed MySQL `INT` column (checklist `quantity`) holds. */
@@ -158,4 +166,38 @@ export function parseTripItemPatch(
     patch.storage_location = storage_location;
   }
   return { ok: true, value: patch };
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+/**
+ * Validates the shape of a reorder body. Whether the ids match the stored
+ * siblings is checked by the repository inside its transaction.
+ *
+ * @param body - Raw request body.
+ * @returns The ids when they form an array of positive integers, otherwise
+ *   the client-facing error.
+ */
+export function parseReorderBody(body: unknown): Validated<number[]> {
+  const { orderedIds } = asRecord(body) as Partial<ReorderChecklistBody>;
+  if (!Array.isArray(orderedIds) || !orderedIds.every(isPositiveInteger)) {
+    return invalid(ORDERED_IDS_REQUIRED_ERROR);
+  }
+  return { ok: true, value: orderedIds };
+}
+
+/**
+ * Validates an item move body.
+ *
+ * @param body - Raw request body.
+ * @returns The target category id, or the client-facing error.
+ */
+export function parseMoveBody(body: unknown): Validated<number> {
+  const { targetCategoryId } = asRecord(body) as Partial<MoveChecklistItemBody>;
+  if (!isPositiveInteger(targetCategoryId)) {
+    return invalid(TARGET_CATEGORY_REQUIRED_ERROR);
+  }
+  return { ok: true, value: targetCategoryId };
 }

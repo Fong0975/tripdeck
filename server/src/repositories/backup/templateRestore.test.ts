@@ -79,12 +79,12 @@ describe('restoreTemplate', () => {
       'DELETE FROM checklist_template_categories',
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
-      'INSERT INTO checklist_template_categories (name) VALUES (?)',
-      ['Documents'],
+      'INSERT INTO checklist_template_categories (name, sort_order) VALUES (?, ?)',
+      ['Documents', 0],
     );
     expect(mockConnExecute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO checklist_template_items'),
-      [7000, 'Passport', 1, null, null],
+      [7000, 'Passport', 1, null, null, 0],
     );
     expect(mockConnQuery).toHaveBeenCalledWith(INSERT_SPECS_SQL, [
       [[8000, 'Size M', null]],
@@ -181,5 +181,45 @@ describe('restoreTemplate', () => {
       expect.objectContaining({ incomingCategoryCount: 1 }),
       expect.any(Error),
     );
+  });
+
+  it('writes sort_order from the array position, ignoring the backup ids', async () => {
+    mockSequentialInserts();
+    // Ids are deliberately not ascending: the array order is the user's order.
+    const template: ChecklistTemplate = {
+      categories: [
+        {
+          id: 30,
+          name: 'Third by id',
+          items: [
+            { ...passport, id: 9, name: 'Z', specs: [] },
+            { ...passport, id: 2, name: 'A', specs: [] },
+          ],
+        },
+        {
+          id: 10,
+          name: 'First by id',
+          items: [{ ...passport, id: 5, name: 'M', specs: [] }],
+        },
+      ],
+    };
+
+    await restoreTemplate(template);
+
+    const paramsOf = (table: string) =>
+      mockConnExecute.mock.calls
+        .filter(([sql]) => String(sql).startsWith(`INSERT INTO ${table}`))
+        .map(([, params]) => params as unknown[]);
+    expect(paramsOf('checklist_template_categories')).toEqual([
+      ['Third by id', 0],
+      ['First by id', 1],
+    ]);
+    expect(
+      paramsOf('checklist_template_items').map(p => [p[0], p[1], p[5]]),
+    ).toEqual([
+      [7000, 'Z', 0],
+      [7000, 'A', 1],
+      [7001, 'M', 0],
+    ]);
   });
 });

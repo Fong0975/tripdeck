@@ -5,12 +5,14 @@ import type { ChecklistCategory } from '@/types';
 import { nextTempId } from '../../shared/checklistUtils';
 import {
   appendSpec,
+  moveItemToCategory,
   newEditItem,
   newEditSpec,
   patchFields,
   patchSpec,
   removeOrMarkDeleted,
   removeSpecById,
+  reorderById,
   scrollToBottomSoon,
   toEditCategory,
   updateIn,
@@ -64,7 +66,24 @@ export function useCategoryEditState(initial: ChecklistCategory[]) {
     }
   };
 
+  const reorderCategories = (activeId: number, overId: number) => {
+    setCategories(prev => reorderById(prev, activeId, overId));
+  };
+
   // ---------- Item handlers ----------
+
+  const reorderItems = (catId: number, activeId: number, overId: number) => {
+    setCategories(prev =>
+      updateIn(prev, catId, c => ({
+        ...c,
+        items: reorderById(c.items, activeId, overId),
+      })),
+    );
+  };
+
+  const moveItem = (fromCatId: number, itemId: number, toCatId: number) => {
+    setCategories(prev => moveItemToCategory(prev, itemId, fromCatId, toCatId));
+  };
 
   const addItemLocal = (catId: number) => {
     const newItem = newEditItem();
@@ -125,6 +144,9 @@ export function useCategoryEditState(initial: ChecklistCategory[]) {
     addCategoryLocal,
     updateCategoryName,
     removeCategory,
+    reorderCategories,
+    reorderItems,
+    moveItem,
     addItemLocal,
     updateItem,
     removeItem,

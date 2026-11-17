@@ -10,6 +10,7 @@ import {
   patchSpec,
   removeOrMarkDeleted,
   removeSpecById,
+  reorderById,
   scrollToBottomSoon,
   toEditCategory,
   updateById,
@@ -46,6 +47,17 @@ export function useEditState(category: ChecklistCategory) {
     updateItems(items => removeOrMarkDeleted(items, itemId));
   };
 
+  const reorderItems = (activeId: number, overId: number) => {
+    updateItems(items => reorderById(items, activeId, overId));
+  };
+
+  /** Marks a saved item to be moved to `targetCatId` when the edit is saved. */
+  const moveItem = (itemId: number, targetCatId: number) => {
+    if (itemId > 0) {
+      updateItem(itemId, { _movedTo: targetCatId });
+    }
+  };
+
   const addItem = () => {
     const newItem = newEditItem();
     updateItems(items => [...items, newItem]);
@@ -69,7 +81,9 @@ export function useEditState(category: ChecklistCategory) {
     updateItems(items => updateById(items, itemId, appendSpec(newSpec)));
   };
 
-  const visibleItems = edit.items.filter(i => !i._deleted);
+  const visibleItems = edit.items.filter(
+    i => !i._deleted && i._movedTo === undefined,
+  );
 
   return {
     edit,
@@ -79,6 +93,8 @@ export function useEditState(category: ChecklistCategory) {
     updateCategoryName,
     updateItem,
     handleDeleteItem,
+    reorderItems,
+    moveItem,
     addItem,
     updateSpec,
     deleteSpec,

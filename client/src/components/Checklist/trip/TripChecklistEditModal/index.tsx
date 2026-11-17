@@ -44,6 +44,9 @@ export default function TripChecklistEditModal({
     addCategoryLocal,
     updateCategoryName,
     removeCategory,
+    reorderCategories,
+    reorderItems,
+    moveItem,
     addItemLocal,
     updateItem,
     removeItem,
@@ -98,12 +101,16 @@ export default function TripChecklistEditModal({
             selectedId={selectedCategory?.id ?? null}
             onSelect={selectCategory}
             onAdd={addCategoryLocal}
+            onReorder={reorderCategories}
           />
           <section className='flex min-h-0 min-w-0 flex-1 flex-col'>
             {selectedCategory ? (
               <CategoryEditPane
                 key={selectedCategory.id}
                 category={selectedCategory}
+                otherCategories={visibleCategories
+                  .filter(c => c.id !== selectedCategory.id)
+                  .map(c => ({ id: c.id, name: c.name }))}
                 scrollBodyRef={scrollBodyRef}
                 onUpdateName={updateCategoryName}
                 onRemove={removeCategory}
@@ -113,6 +120,8 @@ export default function TripChecklistEditModal({
                 onAddSpec={addSpecLocal}
                 onUpdateSpec={updateSpec}
                 onDeleteSpec={removeSpec}
+                onReorderItems={reorderItems}
+                onMoveItem={moveItem}
               />
             ) : (
               <p className='py-16 text-center text-sm text-muted-foreground'>

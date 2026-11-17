@@ -11,6 +11,7 @@ import {
   handleUpdateItem,
   type ItemStore,
 } from './shared/itemHandlers';
+import { handleReorder, parseMoveTarget } from './shared/orderHandlers';
 import { rejectNotFound } from './shared/responses';
 import { parseTripItemPatch } from './shared/validation';
 
@@ -127,5 +128,62 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
   }
   await checklistRepo.setCheck(occId, itemId, checked);
   logger.debug('Trip checklist item check toggled', { ...meta, checked });
+  res.status(204).send();
+}
+
+export async function reorderTripItems(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Reorder the items of a trip checklist category'
+     #swagger.description = 'orderedIds must list every item of the category exactly once.'
+     #swagger.responses[204] = { description: 'Items reordered' }
+     #swagger.responses[400] = { description: 'orderedIds is not an array of positive integers, or does not list every item of the category exactly once' }
+     #swagger.responses[404] = { description: 'Category not found' } */
+  const meta = idParams(req, 'tripId', 'catId');
+  if (
+    !(await checklistRepo.verifyCategoryBelongsToTrip(meta.catId, meta.tripId))
+  ) {
+    const message = 'Reorder-items rejected: category not found';
+    rejectNotFound(res, logger, 'Category', message, meta);
+    return;
+  }
+  await handleReorder(
+    {
+      logger,
+      label: 'Trip checklist items',
+      body: req.body,
+      meta,
+      reorder: ids => checklistRepo.reorderTripItems(meta.catId, ids),
+    },
+    res,
+  );
+}
+
+export async function moveTripItem(req: Request, res: Response): Promise<void> {
+  /* #swagger.tags = ['Trip Checklist']
+     #swagger.summary = 'Move a trip checklist item to the end of another category'
+     #swagger.description = 'The item keeps its id, specs and check marks. The target category must belong to the same trip.'
+     #swagger.responses[204] = { description: 'Item moved' }
+     #swagger.responses[400] = { description: 'targetCategoryId is not a positive integer' }
+     #swagger.responses[404] = { description: 'Item or target category not found' } */
+  const meta = idParams(req, 'tripId', 'itemId');
+  const targetCatId = parseMoveTarget({ logger, body: req.body, meta }, res);
+  if (targetCatId === null) {
+    return;
+  }
+  const result = await checklistRepo.moveTripItem(
+    meta.tripId,
+    meta.itemId,
+    targetCatId,
+  );
+  if (result !== 'moved') {
+    const entity = result === 'item_not_found' ? 'Item' : 'Category';
+    const message = `Move-item rejected: ${entity.toLowerCase()} not found`;
+    rejectNotFound(res, logger, entity, message, { ...meta, targetCatId });
+    return;
+  }
+  logger.info('Trip checklist item moved', { ...meta, targetCatId });
   res.status(204).send();
 }

@@ -33,22 +33,23 @@ async function insertCategories(
 ): Promise<ChecklistIdMaps> {
   const itemIdMap = new Map<number, number>();
   const specIdMap = new Map<number, number>();
-  for (const category of categories) {
+  for (const [categoryIndex, category] of categories.entries()) {
     const [categoryResult] = await conn.execute<ResultSetHeader>(
-      'INSERT INTO checklist_trip_categories (trip_id, name) VALUES (?, ?)',
-      [newTripId, category.name],
+      'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
+      [newTripId, category.name, categoryIndex],
     );
     const newCategoryId = categoryResult.insertId;
 
-    for (const item of category.items) {
+    for (const [itemIndex, item] of category.items.entries()) {
       const [itemResult] = await conn.execute<ResultSetHeader>(
-        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
         [
           newCategoryId,
           item.name,
           item.quantity,
           item.notes,
           item.storage_location,
+          itemIndex,
         ],
       );
       const newItemId = itemResult.insertId;

@@ -5,12 +5,18 @@ import { useEffect, useId } from 'react';
 import type { ChecklistCategory } from '@/types';
 
 import EditableItemRow from '../../shared/EditableItemRow';
+import type { MoveTargetCategory } from '../../shared/MoveItemDialog';
+import SortableList from '../../shared/SortableList';
+import SortableRow from '../../shared/SortableRow';
+import { useMoveItemDialog } from '../../shared/useMoveItemDialog';
 
 import { useEditState } from './useEditState';
 import { useSaveCategoryEdit } from './useSaveCategoryEdit';
 
 interface Props {
   category: ChecklistCategory;
+  /** The other template categories an item can be moved to. */
+  otherCategories: MoveTargetCategory[];
   /** Called after a successful save, before the panel is dismissed. */
   onSaved: () => void;
   /** Dismisses the panel after a successful save. */
@@ -28,6 +34,7 @@ interface Props {
  */
 export default function CategoryEditPanel({
   category,
+  otherCategories,
   onSaved,
   onDone,
   onCancel,
@@ -42,6 +49,8 @@ export default function CategoryEditPanel({
     updateCategoryName,
     updateItem,
     handleDeleteItem,
+    reorderItems,
+    moveItem,
     addItem,
     updateSpec,
     deleteSpec,
@@ -52,6 +61,11 @@ export default function CategoryEditPanel({
     edit,
     onSaved,
     onDone,
+  );
+
+  const { openMove, dialog: moveDialog } = useMoveItemDialog(
+    otherCategories,
+    moveItem,
   );
 
   useEffect(() => {
@@ -85,18 +99,29 @@ export default function CategoryEditPanel({
         className='flex-1 overflow-y-auto overscroll-contain px-5 py-4'
       >
         <div className='mx-auto max-w-3xl space-y-3'>
-          {visibleItems.map((item, itemIdx) => (
-            <EditableItemRow
-              key={item.id}
-              item={item}
-              index={itemIdx}
-              onUpdateItem={updateItem}
-              onDeleteItem={handleDeleteItem}
-              onUpdateSpec={updateSpec}
-              onDeleteSpec={deleteSpec}
-              onAddSpec={addSpec}
-            />
-          ))}
+          <SortableList
+            ids={visibleItems.map(item => item.id)}
+            onReorder={reorderItems}
+          >
+            {visibleItems.map((item, itemIdx) => (
+              <SortableRow key={item.id} id={item.id}>
+                {dragHandle => (
+                  <EditableItemRow
+                    item={item}
+                    index={itemIdx}
+                    dragHandle={dragHandle}
+                    onUpdateItem={updateItem}
+                    onDeleteItem={handleDeleteItem}
+                    onUpdateSpec={updateSpec}
+                    onDeleteSpec={deleteSpec}
+                    onAddSpec={addSpec}
+                    onMoveItem={openMove}
+                    moveDisabled={item.id < 0 || otherCategories.length === 0}
+                  />
+                )}
+              </SortableRow>
+            ))}
+          </SortableList>
 
           <button
             type='button'
@@ -126,6 +151,7 @@ export default function CategoryEditPanel({
           {saving ? '儲存中…' : '儲存'}
         </button>
       </div>
+      {moveDialog}
     </>
   );
 }

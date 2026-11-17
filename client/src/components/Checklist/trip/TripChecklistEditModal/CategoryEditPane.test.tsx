@@ -41,6 +41,10 @@ function makeCategory(overrides: Partial<EditCategory> = {}): EditCategory {
 
 const renderPane = makeMounter(CategoryEditPane, () => ({
   category: makeCategory(),
+  otherCategories: [
+    { id: 2, name: 'Category B' },
+    { id: 3, name: 'Category C' },
+  ],
   scrollBodyRef: { current: null },
   onUpdateName: vi.fn(),
   onRemove: vi.fn(),
@@ -50,6 +54,8 @@ const renderPane = makeMounter(CategoryEditPane, () => ({
   onAddSpec: vi.fn(),
   onUpdateSpec: vi.fn(),
   onDeleteSpec: vi.fn(),
+  onReorderItems: vi.fn(),
+  onMoveItem: vi.fn(),
 }));
 
 describe('CategoryEditPane', () => {
@@ -127,4 +133,36 @@ describe('CategoryEditPane', () => {
       expect(callback).toHaveBeenCalledWith(...expected);
     },
   );
+
+  it('moves an item to the category picked in the move dialog', async () => {
+    const onMoveItem = vi.fn();
+    const user = userEvent.setup();
+    renderPane({ onMoveItem });
+
+    await user.click(screen.getByRole('button', { name: 'move-item-10' }));
+    await user.click(screen.getByRole('button', { name: 'Category C' }));
+
+    expect(onMoveItem).toHaveBeenCalledWith(1, 10, 3);
+    expect(
+      screen.queryByRole('dialog', { name: '移動到其他分類' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('closes the move dialog without moving when cancelled', async () => {
+    const onMoveItem = vi.fn();
+    const user = userEvent.setup();
+    renderPane({ onMoveItem });
+
+    await user.click(screen.getByRole('button', { name: 'move-item-10' }));
+    await user.click(screen.getByRole('button', { name: '取消' }));
+
+    expect(onMoveItem).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('disables moving when there is no other category', () => {
+    renderPane({ otherCategories: [] });
+
+    expect(screen.getByRole('button', { name: 'move-item-10' })).toBeDisabled();
+  });
 });

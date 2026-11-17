@@ -1,7 +1,9 @@
 import { FIELD_LIMITS } from '@tripdeck/shared';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import EditSpecRow from './EditSpecRow';
+import ItemActionBar from './ItemActionBar';
 import StorageCheckboxes from './StorageCheckboxes';
 import type { EditItem, EditSpec } from './types';
 
@@ -17,6 +19,11 @@ interface Props {
   ) => void;
   onDeleteSpec: (itemId: number, specId: number) => void;
   onAddSpec: (itemId: number) => void;
+  /** Drag handle from a surrounding `SortableRow`; omitted when not sortable. */
+  dragHandle?: ReactNode;
+  /** Opens the move-to-category flow; the move button is hidden without it. */
+  onMoveItem?: (item: EditItem) => void;
+  moveDisabled?: boolean;
 }
 
 export default function EditableItemRow({
@@ -27,10 +34,14 @@ export default function EditableItemRow({
   onUpdateSpec,
   onDeleteSpec,
   onAddSpec,
+  dragHandle,
+  onMoveItem,
+  moveDisabled,
 }: Props) {
   return (
     <div className='rounded-xl border border-border bg-muted/30 p-4'>
       <div className='flex items-start gap-2'>
+        {dragHandle && <span className='mt-1.5'>{dragHandle}</span>}
         <span className='mt-2 w-6 shrink-0 text-sm text-muted-foreground'>
           {index + 1}.
         </span>
@@ -98,15 +109,13 @@ export default function EditableItemRow({
             </button>
           </div>
         </div>
-
-        <button
-          onClick={() => onDeleteItem(item.id)}
-          className='mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive'
-          aria-label='刪除項目'
-        >
-          <Trash2 size={16} />
-        </button>
       </div>
+
+      <ItemActionBar
+        onMove={onMoveItem ? () => onMoveItem(item) : undefined}
+        moveDisabled={moveDisabled}
+        onDelete={() => onDeleteItem(item.id)}
+      />
     </div>
   );
 }
