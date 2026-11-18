@@ -16,6 +16,10 @@ export const ORDERED_IDS_MISMATCH_ERROR =
   'orderedIds must list every sibling exactly once';
 export const TARGET_CATEGORY_REQUIRED_ERROR =
   'targetCategoryId must be a positive integer';
+export const CHECKED_REQUIRED_ERROR = 'checked must be a boolean';
+export const LOCATION_REQUIRED_ERROR = 'location must be a string';
+export const INVALID_CHECK_LOCATION_ERROR =
+  'location is not a storage location of the checked unit';
 export const INVALID_QUANTITY_ERROR = 'quantity must be a non-negative integer';
 
 /** Largest value a signed MySQL `INT` column (checklist `quantity`) holds. */
@@ -44,6 +48,27 @@ function isValidQuantity(quantity: unknown): boolean {
       quantity >= 0 &&
       quantity <= MAX_QUANTITY)
   );
+}
+
+/**
+ * Validates the body of a set-check request.
+ *
+ * @param body - Raw request body.
+ * @returns The check state and the location it applies to, or the error to
+ *   answer with. Whether the location belongs to the unit is checked by the
+ *   caller against the stored unit.
+ */
+export function parseCheckBody(
+  body: unknown,
+): Validated<{ checked: boolean; location: string }> {
+  const { checked, location } = asRecord(body);
+  if (typeof checked !== 'boolean') {
+    return invalid(CHECKED_REQUIRED_ERROR);
+  }
+  if (typeof location !== 'string') {
+    return invalid(LOCATION_REQUIRED_ERROR);
+  }
+  return { ok: true, value: { checked, location } };
 }
 
 /**

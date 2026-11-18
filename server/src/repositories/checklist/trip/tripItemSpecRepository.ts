@@ -2,6 +2,7 @@ import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
 import pool from '../../../config/database';
 
+import { pruneSpecChecks } from './checkLocationPruning';
 import { tripSpecRepository } from './shared';
 
 /**
@@ -20,17 +21,22 @@ export function createTripItemSpec(
 
 /**
  * Renames a trip checklist item spec; `storage_location` is only changed
- * when the key is present in `data`.
+ * when the key is present in `data`, in which case the spec's check marks
+ * for locations it no longer has are deleted.
  *
  * @param specId - Spec id.
  * @param data - New name and optional storage location.
  * @returns The updated spec, or null when the spec does not exist.
  */
-export function updateTripItemSpec(
+export async function updateTripItemSpec(
   specId: number,
   data: ChecklistSpecBody,
 ): Promise<ItemSpec | null> {
-  return tripSpecRepository.update(specId, data);
+  const spec = await tripSpecRepository.update(specId, data);
+  if (spec && 'storage_location' in data) {
+    await pruneSpecChecks(specId, spec.storage_location);
+  }
+  return spec;
 }
 
 /**
@@ -58,30 +64,32 @@ export function verifyTripSpecBelongsToItem(
 }
 
 /**
- * Sets the checked state for a spec within an occasion.
- * Inserts or updates to checked=1 when true; removes the row when false
- * so the specChecks map stays sparse (only true entries).
+ * Sets the checked state for a spec at one of its locations within an
+ * occasion. Inserts or updates to checked=1 when true; removes the row when
+ * false so the specChecks map stays sparse (only true entries).
  *
  * @param occId - Occasion id.
  * @param specId - Trip checklist item spec id.
+ * @param location - One of the spec's effective locations; `''` when none.
  * @param checked - New checked state.
  */
 export async function setSpecCheck(
   occId: number,
   specId: number,
+  location: string,
   checked: boolean,
 ): Promise<void> {
   if (checked) {
     await pool.execute(
-      `INSERT INTO checklist_spec_checks (checklist_occasion_id, checklist_trip_item_spec_id, checked)
-       VALUES (?, ?, 1)
+      `INSERT INTO checklist_spec_checks (checklist_occasion_id, checklist_trip_item_spec_id, location, checked)
+       VALUES (?, ?, ?, 1)
        ON DUPLICATE KEY UPDATE checked = 1`,
-      [occId, specId],
+      [occId, specId, location],
     );
   } else {
     await pool.execute(
-      'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ?',
-      [occId, specId],
+      'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ? AND location = ?',
+      [occId, specId, location],
     );
   }
 }

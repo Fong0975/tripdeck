@@ -13,7 +13,11 @@ import {
 } from './shared/itemHandlers';
 import { handleReorder, parseMoveTarget } from './shared/orderHandlers';
 import { rejectNotFound } from './shared/responses';
-import { parseTripItemPatch } from './shared/validation';
+import {
+  INVALID_CHECK_LOCATION_ERROR,
+  parseCheckBody,
+  parseTripItemPatch,
+} from './shared/validation';
 
 const logger = createLogger('checklist-trip');
 
@@ -110,12 +114,13 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
      #swagger.summary = 'Set the checked state of an item within an occasion' */
   const meta = idParams(req, 'tripId', 'occId', 'itemId');
   const { tripId, occId, itemId } = meta;
-  const { checked } = req.body as { checked?: unknown };
-  if (typeof checked !== 'boolean') {
-    logger.warn('Rejected set-check request with a non-boolean value', meta);
-    res.status(400).json({ error: 'checked must be a boolean' });
+  const body = parseCheckBody(req.body);
+  if (!body.ok) {
+    logger.warn('Rejected set-check request with an invalid body', meta);
+    res.status(400).json({ error: body.error });
     return;
   }
+  const { checked, location } = body.value;
   if (!(await checklistRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
     const message = 'Set-check rejected: occasion not found';
     rejectNotFound(res, logger, 'Occasion', message, meta);
@@ -126,8 +131,21 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
     rejectNotFound(res, logger, 'Item', message, meta);
     return;
   }
-  await checklistRepo.setCheck(occId, itemId, checked);
-  logger.debug('Trip checklist item check toggled', { ...meta, checked });
+  const locations = await checklistRepo.getItemCheckLocations(itemId);
+  if (!locations.includes(location)) {
+    logger.warn('Set-check rejected: location not stored on item', {
+      ...meta,
+      location,
+    });
+    res.status(400).json({ error: INVALID_CHECK_LOCATION_ERROR });
+    return;
+  }
+  await checklistRepo.setCheck(occId, itemId, location, checked);
+  logger.debug('Trip checklist item check toggled', {
+    ...meta,
+    location,
+    checked,
+  });
   res.status(204).send();
 }
 

@@ -1,7 +1,10 @@
-import type {
-  ChecklistCategory,
-  ChecklistOccasion,
-  TripChecklist,
+import {
+  type ChecklistCategory,
+  type ChecklistOccasion,
+  checkKey,
+  getEffectiveLocations,
+  parseCheckKey,
+  type TripChecklist,
 } from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
@@ -13,10 +16,16 @@ import { consistencyError } from './tripImportHelpers';
 
 const logger = createLogger('backup');
 
-/** Old (backup) checklist item and spec IDs mapped to their new IDs. */
+/**
+ * Old (backup) checklist item and spec IDs mapped to their new IDs, plus the
+ * raw storage location each unit is filed under (a spec without its own
+ * location follows its item).
+ */
 interface ChecklistIdMaps {
   itemIdMap: Map<number, number>;
   specIdMap: Map<number, number>;
+  itemLocations: Map<number, string | null>;
+  specLocations: Map<number, string | null>;
 }
 
 /**
@@ -24,7 +33,8 @@ interface ChecklistIdMaps {
  * Every row goes in one at a time because the new item and spec IDs are
  * needed to remap the occasions' checks.
  *
- * @returns Old (backup) item and spec IDs -> newly-inserted IDs.
+ * @returns Old (backup) item and spec IDs -> newly-inserted IDs, and the
+ *   storage locations of those units.
  */
 async function insertCategories(
   conn: PoolConnection,
@@ -33,6 +43,8 @@ async function insertCategories(
 ): Promise<ChecklistIdMaps> {
   const itemIdMap = new Map<number, number>();
   const specIdMap = new Map<number, number>();
+  const itemLocations = new Map<number, string | null>();
+  const specLocations = new Map<number, string | null>();
   for (const [categoryIndex, category] of categories.entries()) {
     const [categoryResult] = await conn.execute<ResultSetHeader>(
       'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
@@ -54,6 +66,7 @@ async function insertCategories(
       );
       const newItemId = itemResult.insertId;
       itemIdMap.set(item.id, newItemId);
+      itemLocations.set(item.id, item.storage_location);
 
       for (const spec of item.specs) {
         const [specResult] = await conn.execute<ResultSetHeader>(
@@ -61,10 +74,69 @@ async function insertCategories(
           [newItemId, spec.name, spec.storage_location],
         );
         specIdMap.set(spec.id, specResult.insertId);
+        specLocations.set(
+          spec.id,
+          spec.storage_location ?? item.storage_location,
+        );
       }
     }
   }
-  return { itemIdMap, specIdMap };
+  return { itemIdMap, specIdMap, itemLocations, specLocations };
+}
+
+/** The imported units a family of checks (item checks or spec checks) refers to. */
+interface CheckTargets {
+  /** Human-readable unit name for error messages, e.g. `checklist item`. */
+  label: string;
+  idMap: Map<number, number>;
+  locations: Map<number, string | null>;
+}
+
+/**
+ * Resolves the check keys of one occasion to `[newId, location]` pairs.
+ * A `id|location` key is kept at its location, which must be one of the
+ * unit's locations. A legacy id-only key (backups from before checks were
+ * per location) is spread over every location of the unit. Pairs reached
+ * through several keys are returned once, as the table's unique key requires.
+ *
+ * @throws {TripImportDataError} When a key is malformed, references a unit
+ *   that was not imported, or names a location the unit does not have.
+ */
+function resolveChecks(
+  checks: Record<string, boolean>,
+  targets: CheckTargets,
+  originalTripId: number,
+  occasionId: number,
+): Array<[newId: number, location: string]> {
+  const resolved = new Map<string, [number, string]>();
+  const add = (newId: number, location: string): void => {
+    resolved.set(checkKey(newId, location), [newId, location]);
+  };
+  for (const [key, checked] of Object.entries(checks)) {
+    if (!checked) {
+      continue;
+    }
+    const parsed = parseCheckKey(key);
+    const newId = parsed ? targets.idMap.get(parsed.id) : undefined;
+    if (!parsed || newId === undefined) {
+      throw consistencyError(
+        originalTripId,
+        `Occasion ${occasionId} references ${targets.label} ${key} that was not imported`,
+      );
+    }
+    const locations = getEffectiveLocations(targets.locations.get(parsed.id));
+    if (!key.includes('|')) {
+      locations.forEach(location => add(newId, location));
+    } else if (locations.includes(parsed.location)) {
+      add(newId, parsed.location);
+    } else {
+      throw consistencyError(
+        originalTripId,
+        `Occasion ${occasionId} checks ${targets.label} ${parsed.id} at location "${parsed.location}" that it does not have`,
+      );
+    }
+  }
+  return [...resolved.values()];
 }
 
 /**
@@ -81,7 +153,7 @@ async function insertOccasions(
   originalTripId: number,
   newTripId: number,
   occasions: ChecklistOccasion[],
-  { itemIdMap, specIdMap }: ChecklistIdMaps,
+  { itemIdMap, specIdMap, itemLocations, specLocations }: ChecklistIdMaps,
 ): Promise<void> {
   const checkRows: unknown[][] = [];
   const specCheckRows: unknown[][] = [];
@@ -92,47 +164,42 @@ async function insertOccasions(
     );
     const newOccasionId = occasionResult.insertId;
 
-    for (const [itemIdStr, checked] of Object.entries(occasion.checks)) {
-      if (!checked) {
-        continue;
-      }
-      const newItemId = itemIdMap.get(Number(itemIdStr));
-      if (newItemId === undefined) {
-        throw consistencyError(
-          originalTripId,
-          `Occasion ${occasion.id} references checklist item ${itemIdStr} that was not imported`,
-        );
-      }
-      checkRows.push([newOccasionId, newItemId, 1]);
+    const itemChecks = resolveChecks(
+      occasion.checks,
+      { label: 'checklist item', idMap: itemIdMap, locations: itemLocations },
+      originalTripId,
+      occasion.id,
+    );
+    for (const [newItemId, location] of itemChecks) {
+      checkRows.push([newOccasionId, newItemId, location, 1]);
     }
 
     // Backups made before spec checks existed omit the field.
-    for (const [specIdStr, checked] of Object.entries(
+    const specChecks = resolveChecks(
       occasion.specChecks ?? {},
-    )) {
-      if (!checked) {
-        continue;
-      }
-      const newSpecId = specIdMap.get(Number(specIdStr));
-      if (newSpecId === undefined) {
-        throw consistencyError(
-          originalTripId,
-          `Occasion ${occasion.id} references checklist spec ${specIdStr} that was not imported`,
-        );
-      }
-      specCheckRows.push([newOccasionId, newSpecId, 1]);
+      { label: 'checklist spec', idMap: specIdMap, locations: specLocations },
+      originalTripId,
+      occasion.id,
+    );
+    for (const [newSpecId, location] of specChecks) {
+      specCheckRows.push([newOccasionId, newSpecId, location, 1]);
     }
   }
   await bulkInsert(
     conn,
     'checklist_checks',
-    ['checklist_occasion_id', 'checklist_trip_item_id', 'checked'],
+    ['checklist_occasion_id', 'checklist_trip_item_id', 'location', 'checked'],
     checkRows,
   );
   await bulkInsert(
     conn,
     'checklist_spec_checks',
-    ['checklist_occasion_id', 'checklist_trip_item_spec_id', 'checked'],
+    [
+      'checklist_occasion_id',
+      'checklist_trip_item_spec_id',
+      'location',
+      'checked',
+    ],
     specCheckRows,
   );
 }

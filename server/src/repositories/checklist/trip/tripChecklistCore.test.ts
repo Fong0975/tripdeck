@@ -84,13 +84,30 @@ describe('tripChecklistCore', () => {
               {
                 checklist_occasion_id: 2,
                 checklist_trip_item_spec_id: 1000,
+                location: '託運',
+              },
+              {
+                checklist_occasion_id: 2,
+                checklist_trip_item_spec_id: 1000,
+                location: '隨身',
               },
             ],
           ]);
         }
         if (sql.includes('checklist_checks')) {
           return Promise.resolve([
-            [{ checklist_occasion_id: 1, checklist_trip_item_id: 100 }],
+            [
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_id: 100,
+                location: '',
+              },
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_id: 101,
+                location: '隨身',
+              },
+            ],
           ]);
         }
         return Promise.resolve([[]]);
@@ -125,11 +142,21 @@ describe('tripChecklistCore', () => {
           },
         ],
         occasions: [
-          { id: 1, name: '收拾', checks: { 100: true }, specChecks: {} },
-          { id: 2, name: '出發前', checks: {}, specChecks: { 1000: true } },
+          {
+            id: 1,
+            name: '收拾',
+            checks: { '100|': true, '101|隨身': true },
+            specChecks: {},
+          },
+          {
+            id: 2,
+            name: '出發前',
+            checks: {},
+            specChecks: { '1000|託運': true, '1000|隨身': true },
+          },
         ],
       });
-      expect(result?.occasions[0].checks).not.toHaveProperty('101');
+      expect(result?.occasions[0].checks).not.toHaveProperty('101|託運');
     });
   });
 

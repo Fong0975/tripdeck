@@ -88,6 +88,29 @@ export function buildAddIndexSql(table: string, index: IndexDef): string {
 
 /**
  * @param table - Table to alter.
+ * @param name - Name of the unique key to add.
+ * @param columns - Columns of the unique key, in order.
+ * @returns An `ALTER TABLE ... ADD UNIQUE KEY` statement.
+ */
+export function buildAddUniqueKeySql(
+  table: string,
+  name: string,
+  columns: readonly string[],
+): string {
+  return `ALTER TABLE ${table} ADD UNIQUE KEY ${name} (${columns.join(', ')})`;
+}
+
+/**
+ * @param table - Table to alter.
+ * @param name - Name of the index (or unique key) to drop.
+ * @returns An `ALTER TABLE ... DROP INDEX` statement.
+ */
+export function buildDropIndexSql(table: string, name: string): string {
+  return `ALTER TABLE ${table} DROP INDEX ${name}`;
+}
+
+/**
+ * @param table - Table to alter.
  * @param fk - Foreign key to add.
  * @returns An `ALTER TABLE ... ADD CONSTRAINT` statement.
  */

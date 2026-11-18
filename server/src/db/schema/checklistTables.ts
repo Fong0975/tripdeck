@@ -155,12 +155,17 @@ export const checklistTables: TableDef[] = [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
       { name: 'checklist_occasion_id', type: 'INT', notNull: true },
       { name: 'checklist_trip_item_id', type: 'INT', notNull: true },
+      { name: 'location', type: 'VARCHAR(255)', notNull: true, default: '' },
       { name: 'checked', type: 'TINYINT(1)', notNull: true, default: 0 },
     ],
     uniqueKeys: [
       {
-        name: 'uq_occasion_item',
-        columns: ['checklist_occasion_id', 'checklist_trip_item_id'],
+        name: 'uq_occasion_item_location',
+        columns: [
+          'checklist_occasion_id',
+          'checklist_trip_item_id',
+          'location',
+        ],
       },
     ],
     foreignKeys: [
@@ -185,12 +190,17 @@ export const checklistTables: TableDef[] = [
       { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
       { name: 'checklist_occasion_id', type: 'INT', notNull: true },
       { name: 'checklist_trip_item_spec_id', type: 'INT', notNull: true },
+      { name: 'location', type: 'VARCHAR(255)', notNull: true, default: '' },
       { name: 'checked', type: 'TINYINT(1)', notNull: true, default: 0 },
     ],
     uniqueKeys: [
       {
-        name: 'uq_occasion_spec',
-        columns: ['checklist_occasion_id', 'checklist_trip_item_spec_id'],
+        name: 'uq_occasion_spec_location',
+        columns: [
+          'checklist_occasion_id',
+          'checklist_trip_item_spec_id',
+          'location',
+        ],
       },
     ],
     foreignKeys: [

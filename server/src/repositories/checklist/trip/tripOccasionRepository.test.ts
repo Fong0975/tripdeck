@@ -69,13 +69,30 @@ describe('tripOccasionRepository', () => {
               {
                 checklist_occasion_id: 1,
                 checklist_trip_item_spec_id: 700,
+                location: '託運',
               },
             ],
           ]);
         }
         if (sql.includes('checklist_checks')) {
           return Promise.resolve([
-            [{ checklist_trip_item_id: 100 }, { checklist_trip_item_id: 101 }],
+            [
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_id: 100,
+                location: '託運',
+              },
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_id: 100,
+                location: '隨身',
+              },
+              {
+                checklist_occasion_id: 1,
+                checklist_trip_item_id: 101,
+                location: '',
+              },
+            ],
           ]);
         }
         return Promise.resolve([{ affectedRows: 1 }]);
@@ -86,8 +103,8 @@ describe('tripOccasionRepository', () => {
       expect(result).toEqual({
         id: 1,
         name: '新名稱',
-        checks: { 100: true, 101: true },
-        specChecks: { 700: true },
+        checks: { '100|託運': true, '100|隨身': true, '101|': true },
+        specChecks: { '700|託運': true },
       });
     });
   });

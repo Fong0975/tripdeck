@@ -3,6 +3,7 @@ import { createLogger } from '../logger';
 
 import { alignExistingTable } from './alignTable';
 import { backfillChecklistOrder } from './backfillChecklistOrder';
+import { migrateCheckLocations } from './checkLocationMigration';
 import { getDbName, tableExists } from './introspect';
 import { tableDefinitions, type TableDef } from './schema';
 import { buildCreateTableSql } from './sqlBuilders';
@@ -28,6 +29,8 @@ async function createTable(def: TableDef): Promise<void> {
  *   to match (with orphan cleanup for ON DELETE CASCADE constraints).
  * - Checklist categories and items that predate `sort_order` are backfilled
  *   with their previous id order (see {@link backfillChecklistOrder}).
+ * - Checklist checks are made per storage location and the legacy checks
+ *   are spread over their unit's locations (see {@link migrateCheckLocations}).
  * - Running it again against an aligned database makes no changes.
  */
 export async function initDatabase(): Promise<void> {
@@ -44,6 +47,7 @@ export async function initDatabase(): Promise<void> {
       }
     }
     await backfillChecklistOrder();
+    await migrateCheckLocations();
   } catch (err) {
     logger.error('Failed to verify/initialize tables', undefined, err);
     throw err;

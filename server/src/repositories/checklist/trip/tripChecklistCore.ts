@@ -13,7 +13,7 @@ import { placeholders } from '../../../utils/sql';
 import { withTransaction } from '../../../utils/withTransaction';
 
 import {
-  CheckRow,
+  fetchChecksByOccasionIds,
   fetchSpecChecksByOccasionIds,
   fetchSpecsByItemIds,
   lockTrip,
@@ -77,23 +77,8 @@ export async function findChecklist(
     items: itemsByCatId.get(row.id) ?? [],
   }));
 
-  // Fetch only checked=1 rows; missing entries are implicitly unchecked.
   const occIds = occRows.map(r => r.id);
-  const checksByOccId = new Map<number, Record<number, boolean>>();
-  if (occIds.length > 0) {
-    const [checkRows] = await pool.execute<CheckRow[]>(
-      `SELECT checklist_occasion_id, checklist_trip_item_id
-       FROM checklist_checks
-       WHERE checklist_occasion_id IN (${placeholders(occIds.length)}) AND checked = 1`,
-      occIds,
-    );
-    for (const row of checkRows) {
-      const map = checksByOccId.get(row.checklist_occasion_id) ?? {};
-      map[row.checklist_trip_item_id] = true;
-      checksByOccId.set(row.checklist_occasion_id, map);
-    }
-  }
-
+  const checksByOccId = await fetchChecksByOccasionIds(occIds);
   const specChecksByOccId = await fetchSpecChecksByOccasionIds(occIds);
 
   const occasions: ChecklistOccasion[] = occRows.map(row => ({

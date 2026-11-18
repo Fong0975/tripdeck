@@ -1,4 +1,4 @@
-import type { ItemSpec } from '@tripdeck/shared';
+import { checkKey, type ItemSpec } from '@tripdeck/shared';
 import type { RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
 
@@ -32,11 +32,13 @@ export interface OccasionRow extends RowDataPacket {
 export interface CheckRow extends RowDataPacket {
   checklist_occasion_id: number;
   checklist_trip_item_id: number;
+  location: string;
 }
 
 export interface SpecCheckRow extends RowDataPacket {
   checklist_occasion_id: number;
   checklist_trip_item_spec_id: number;
+  location: string;
 }
 
 // --- Helpers ---
@@ -81,29 +83,58 @@ export function fetchSpecsByItemIds(
 }
 
 /**
+ * Loads the checked items of the given occasions, grouped by occasion id.
+ * Only checked=1 rows are read; missing entries are implicitly unchecked.
+ *
+ * @param occIds - Occasion ids.
+ * @returns Map of occasion id to its `checkKey(itemId, location)` -> true
+ *   map. Occasions without any checked item have no entry.
+ */
+export async function fetchChecksByOccasionIds(
+  occIds: number[],
+): Promise<Map<number, Record<string, boolean>>> {
+  const byOccId = new Map<number, Record<string, boolean>>();
+  if (occIds.length === 0) {
+    return byOccId;
+  }
+  const [rows] = await pool.execute<CheckRow[]>(
+    `SELECT checklist_occasion_id, checklist_trip_item_id, location
+     FROM checklist_checks
+     WHERE checklist_occasion_id IN (${placeholders(occIds.length)}) AND checked = 1`,
+    occIds,
+  );
+  for (const row of rows) {
+    const map = byOccId.get(row.checklist_occasion_id) ?? {};
+    map[checkKey(row.checklist_trip_item_id, row.location)] = true;
+    byOccId.set(row.checklist_occasion_id, map);
+  }
+  return byOccId;
+}
+
+/**
  * Loads the checked specs of the given occasions, grouped by occasion id.
  * Only checked=1 rows are read; missing entries are implicitly unchecked.
  *
  * @param occIds - Occasion ids.
- * @returns Map of occasion id to its spec id -> true map. Occasions without
- *   any checked spec have no entry.
+ * @returns Map of occasion id to its `checkKey(specId, location)` -> true
+ *   map. Occasions without any checked spec have no entry.
  */
 export async function fetchSpecChecksByOccasionIds(
   occIds: number[],
-): Promise<Map<number, Record<number, boolean>>> {
-  const byOccId = new Map<number, Record<number, boolean>>();
+): Promise<Map<number, Record<string, boolean>>> {
+  const byOccId = new Map<number, Record<string, boolean>>();
   if (occIds.length === 0) {
     return byOccId;
   }
   const [rows] = await pool.execute<SpecCheckRow[]>(
-    `SELECT checklist_occasion_id, checklist_trip_item_spec_id
+    `SELECT checklist_occasion_id, checklist_trip_item_spec_id, location
      FROM checklist_spec_checks
      WHERE checklist_occasion_id IN (${placeholders(occIds.length)}) AND checked = 1`,
     occIds,
   );
   for (const row of rows) {
     const map = byOccId.get(row.checklist_occasion_id) ?? {};
-    map[row.checklist_trip_item_spec_id] = true;
+    map[checkKey(row.checklist_trip_item_spec_id, row.location)] = true;
     byOccId.set(row.checklist_occasion_id, map);
   }
   return byOccId;

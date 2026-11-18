@@ -11,6 +11,10 @@ import {
   handleUpdateSpec,
   type SpecStore,
 } from './shared/specHandlers';
+import {
+  INVALID_CHECK_LOCATION_ERROR,
+  parseCheckBody,
+} from './shared/validation';
 
 /** Trip item specs are scoped by the item's `:tripId` trip. */
 const logger = createLogger('checklist-trip');
@@ -60,15 +64,13 @@ export async function setSpecCheck(req: Request, res: Response): Promise<void> {
      #swagger.summary = 'Set the checked state of an item spec within an occasion' */
   const meta = idParams(req, 'tripId', 'occId', 'itemId', 'specId');
   const { tripId, occId, itemId, specId } = meta;
-  const { checked } = req.body as { checked?: unknown };
-  if (typeof checked !== 'boolean') {
-    logger.warn(
-      'Rejected set-spec-check request with a non-boolean value',
-      meta,
-    );
-    res.status(400).json({ error: 'checked must be a boolean' });
+  const body = parseCheckBody(req.body);
+  if (!body.ok) {
+    logger.warn('Rejected set-spec-check request with an invalid body', meta);
+    res.status(400).json({ error: body.error });
     return;
   }
+  const { checked, location } = body.value;
   if (!(await checklistRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
     const message = 'Set-spec-check rejected: occasion not found';
     rejectNotFound(res, logger, 'Occasion', message, meta);
@@ -84,7 +86,20 @@ export async function setSpecCheck(req: Request, res: Response): Promise<void> {
     rejectNotFound(res, logger, 'Spec', message, meta);
     return;
   }
-  await checklistRepo.setSpecCheck(occId, specId, checked);
-  logger.debug('Trip checklist spec check toggled', { ...meta, checked });
+  const locations = await checklistRepo.getSpecCheckLocations(specId);
+  if (!locations.includes(location)) {
+    logger.warn('Set-spec-check rejected: location not stored on spec', {
+      ...meta,
+      location,
+    });
+    res.status(400).json({ error: INVALID_CHECK_LOCATION_ERROR });
+    return;
+  }
+  await checklistRepo.setSpecCheck(occId, specId, location, checked);
+  logger.debug('Trip checklist spec check toggled', {
+    ...meta,
+    location,
+    checked,
+  });
   res.status(204).send();
 }
