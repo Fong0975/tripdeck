@@ -1,23 +1,18 @@
 import { type CSSProperties, Fragment, useRef } from 'react';
 
+import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLabelsContext';
 import { useElementHeight } from '@/hooks/useElementHeight';
 import type { TripChecklist } from '@/types';
 
-import {
-  filterCategories,
-  NO_HIDDEN_KEYS,
-  type HiddenKeys,
-} from './checklistFilter';
+import { NO_HIDDEN_KEYS, type HiddenKeys } from './checklistFilter';
 import ChecklistItemRow from './ChecklistItemRow';
 import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
 import type { CheckGetter } from './checkUnits';
 import GroupHeaderRow from './GroupHeaderRow';
-import {
-  filterCategoriesByUnits,
-  type UnitVisibility,
-} from './incompleteFilter';
+import type { UnitVisibility } from './incompleteFilter';
 import type { ViewMode } from './viewMode';
+import { getDisplayedUnits, getVisibleCategories } from './visibleRows';
 
 interface Props {
   checklist: TripChecklist;
@@ -28,8 +23,9 @@ interface Props {
   /** How rows are grouped; defaults to by category. */
   viewMode?: ViewMode;
   /**
-   * Items the filter hides from the rows. The header progress always counts
-   * the whole checklist.
+   * Items the filter hides from the rows. The header shows the progress of
+   * the whole checklist, and, while the item filter hides rows, of the shown
+   * rows too. The unfinished-only view (`isUnitVisible`) shows no such extra.
    */
   hidden?: HiddenKeys;
   /**
@@ -51,10 +47,15 @@ export default function ChecklistTable({
 }: Props) {
   const headRef = useRef<HTMLTableSectionElement>(null);
   const headHeight = useElementHeight(headRef);
-  const filteredCategories = filterCategories(checklist.categories, hidden);
-  const visibleCategories = isUnitVisible
-    ? filterCategoriesByUnits(filteredCategories, isUnitVisible)
-    : filteredCategories;
+  const { labels } = useLocationLabelSet();
+  const visibleCategories = getVisibleCategories(
+    checklist.categories,
+    hidden,
+    isUnitVisible,
+  );
+  const filteredUnits = isUnitVisible
+    ? undefined
+    : getDisplayedUnits(viewMode, checklist.categories, labels, hidden);
 
   return (
     <div
@@ -67,6 +68,7 @@ export default function ChecklistTable({
             checklist={checklist}
             getCheck={getCheck}
             getSpecCheck={getSpecCheck}
+            displayedUnits={filteredUnits}
             headRef={headRef}
           />
 

@@ -5,23 +5,13 @@ import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLa
 import type { TripChecklist } from '@/types';
 
 import CategorySubheaderRow from './CategorySubheaderRow';
-import {
-  filterStorageGroups,
-  NO_HIDDEN_KEYS,
-  type HiddenKeys,
-} from './checklistFilter';
+import { NO_HIDDEN_KEYS, type HiddenKeys } from './checklistFilter';
 import ChecklistStorageRow from './ChecklistStorageRow';
 import type { CheckGetter } from './checkUnits';
-import {
-  groupByStorage,
-  NO_LOCATION_GROUP_LABEL,
-  splitByCategory,
-} from './groupByStorage';
+import { NO_LOCATION_GROUP_LABEL, splitByCategory } from './groupByStorage';
 import GroupHeaderRow from './GroupHeaderRow';
-import {
-  filterStorageGroupsByUnits,
-  type UnitVisibility,
-} from './incompleteFilter';
+import type { UnitVisibility } from './incompleteFilter';
+import { getVisibleStorageGroups } from './visibleRows';
 
 interface Props {
   checklist: TripChecklist;
@@ -46,13 +36,12 @@ export default function ChecklistStorageBody({
   onToggleSpecCheck,
 }: Props) {
   const { labels } = useLocationLabelSet();
-  const filteredGroups = filterStorageGroups(
-    groupByStorage(checklist.categories, labels),
+  const groups = getVisibleStorageGroups(
+    checklist.categories,
+    labels,
     hidden,
+    isUnitVisible,
   );
-  const groups = isUnitVisible
-    ? filterStorageGroupsByUnits(filteredGroups, isUnitVisible)
-    : filteredGroups;
 
   return (
     <tbody>

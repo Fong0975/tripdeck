@@ -662,3 +662,77 @@ describe('ChecklistTable unit visibility', () => {
     expect(screen.queryByText('Plain')).not.toBeInTheDocument();
   });
 });
+
+describe('ChecklistTable filtered progress', () => {
+  function renderProgress(
+    hidden: string[],
+    viewMode?: ViewMode,
+    getCheck: Getter = (occId, id) => occId === 1 && id === 20,
+  ) {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={getCheck}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        hidden={new Set(hidden)}
+      />,
+    );
+    return screen
+      .queryAllByTitle('篩選後的進度')
+      .map(element => element.textContent);
+  }
+
+  it.each([
+    {
+      name: 'is not shown while every unit is shown',
+      hidden: [] as string[],
+      viewMode: undefined,
+      expected: [],
+    },
+    {
+      name: 'is not shown for a key that hides nothing',
+      hidden: ['99|1'],
+      viewMode: undefined,
+      expected: [],
+    },
+    {
+      name: 'counts only the shown items in the category view',
+      hidden: ['10|1'],
+      viewMode: undefined,
+      expected: ['1 / 1', '0 / 1'],
+    },
+    {
+      name: 'counts only the shown units in the storage view',
+      hidden: ['10|'],
+      viewMode: 'storage' as const,
+      expected: ['1 / 1', '0 / 1'],
+    },
+  ])('$name', ({ hidden, viewMode, expected }) => {
+    expect(renderProgress(hidden, viewMode)).toEqual(expected);
+  });
+
+  it('keeps the overall progress next to the filtered one', () => {
+    renderProgress(['10|1']);
+
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('0 / 2')).toBeInTheDocument();
+  });
+
+  it('is not shown in the unfinished-only view', () => {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        isUnitVisible={unit => unitKey(unit) === 'item-20|'}
+      />,
+    );
+
+    expect(screen.queryAllByTitle('篩選後的進度')).toEqual([]);
+  });
+});
