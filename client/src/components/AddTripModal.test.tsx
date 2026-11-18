@@ -192,6 +192,36 @@ describe('AddTripModal', () => {
     await waitFor(() => expect(onAdded).toHaveBeenCalledTimes(1));
   });
 
+  it('shows a progress dialog when creating takes a while and hides it afterwards', async () => {
+    let resolveCreate!: (trip: ReturnType<typeof makeTrip>) => void;
+    vi.mocked(createTrip).mockReturnValue(
+      new Promise(resolve => {
+        resolveCreate = resolve;
+      }),
+    );
+    const onAdded = vi.fn();
+    const { container } = render(
+      <AddTripModal onClose={vi.fn()} onAdded={onAdded} />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('例：東京五日遊'), {
+      target: { value: 'My Trip' },
+    });
+    fillDateField(container, 'startDate', '2026-01-01');
+
+    submitForm(container);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '建立旅程中，請稍候…',
+    );
+
+    resolveCreate(makeTrip());
+    await waitFor(() => expect(onAdded).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
+    );
+  });
+
   it('shows an error and does not report to the parent on failure', async () => {
     vi.mocked(createTrip).mockRejectedValue(new Error('network error'));
     const onAdded = vi.fn();
