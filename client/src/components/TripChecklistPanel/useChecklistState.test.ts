@@ -368,7 +368,7 @@ describe('useChecklistState spec checks', () => {
 describe('useChecklistState per-location checks', () => {
   const BOTH = '託運,隨身';
 
-  /** Item 10 and spec 101 (inheriting item 10's location) at both locations. */
+  /** Item 10 and spec 201 of item 20, both filed under `itemLocation`. */
   function makeLocationChecklist(
     itemLocation: string | null = BOTH,
     saved: {
@@ -396,8 +396,10 @@ describe('useChecklistState per-location checks', () => {
             makeChecklistItem({
               id: 20,
               name: 'Item B',
-              storage_location: itemLocation,
-              specs: [makeChecklistSpec({ id: 201 })],
+              storage_location: null,
+              specs: [
+                makeChecklistSpec({ id: 201, storage_location: itemLocation }),
+              ],
             }),
           ],
         }),

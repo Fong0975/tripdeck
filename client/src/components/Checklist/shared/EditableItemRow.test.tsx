@@ -22,6 +22,14 @@ function makeSpec(overrides: Partial<EditSpec> = {}): EditSpec {
   return { id: 10, name: 'Spec A', storage_location: null, ...overrides };
 }
 
+/**
+ * The item's own location checkbox. Every spec row renders checkboxes with the
+ * same labels, and the item's come first in document order.
+ */
+function itemLocationBox(location: string): HTMLElement {
+  return screen.getAllByLabelText(location)[0];
+}
+
 function renderRow(item: EditItem) {
   const onUpdateItem = vi.fn();
   const onDeleteItem = vi.fn();
@@ -100,6 +108,81 @@ describe('EditableItemRow', () => {
     await user.click(screen.getByLabelText('託運'));
 
     expect(onUpdateItem).toHaveBeenCalledWith(1, { storage_location: '託運' });
+  });
+
+  it.each([
+    {
+      description: 'two specs cover both locations',
+      specs: [
+        makeSpec({ id: 10, storage_location: '託運' }),
+        makeSpec({ id: 11, storage_location: '隨身' }),
+      ],
+      checked託運: true,
+      checked隨身: true,
+    },
+    {
+      description: 'a spec covers one location',
+      specs: [makeSpec({ id: 10, storage_location: '隨身' })],
+      checked託運: false,
+      checked隨身: true,
+    },
+    {
+      description: 'no spec has a location',
+      specs: [makeSpec({ id: 10, storage_location: null })],
+      checked託運: false,
+      checked隨身: false,
+    },
+  ])(
+    'disables the item location and shows the specs union when $description',
+    async ({ specs, checked託運, checked隨身 }) => {
+      const user = userEvent.setup();
+      const { onUpdateItem } = renderRow(
+        makeItem({ storage_location: null, specs }),
+      );
+
+      expect(itemLocationBox('託運')).toBeDisabled();
+      expect(itemLocationBox('隨身')).toBeDisabled();
+      if (checked託運) {
+        expect(itemLocationBox('託運')).toBeChecked();
+      } else {
+        expect(itemLocationBox('託運')).not.toBeChecked();
+      }
+      if (checked隨身) {
+        expect(itemLocationBox('隨身')).toBeChecked();
+      } else {
+        expect(itemLocationBox('隨身')).not.toBeChecked();
+      }
+      expect(
+        screen.getByRole('img', { name: '位置由規格決定' }),
+      ).toHaveAttribute('title', '位置由規格決定');
+
+      await user.click(itemLocationBox('託運'));
+
+      expect(onUpdateItem).not.toHaveBeenCalled();
+    },
+  );
+
+  it('ignores a stale item location while specs exist', () => {
+    renderRow(
+      makeItem({
+        storage_location: '託運,隨身',
+        specs: [makeSpec({ storage_location: '隨身' })],
+      }),
+    );
+
+    expect(itemLocationBox('託運')).not.toBeChecked();
+    expect(itemLocationBox('隨身')).toBeChecked();
+  });
+
+  it('keeps the item location editable and hides the hint without specs', () => {
+    renderRow(makeItem({ storage_location: '託運', specs: [] }));
+
+    expect(screen.getByLabelText('託運')).toBeEnabled();
+    expect(screen.getByLabelText('託運')).toBeChecked();
+    expect(screen.getByLabelText('隨身')).toBeEnabled();
+    expect(
+      screen.queryByRole('img', { name: '位置由規格決定' }),
+    ).not.toBeInTheDocument();
   });
 
   it('calls onDeleteItem when the delete button is clicked', async () => {

@@ -34,13 +34,20 @@ const specItem = makeChecklistItem({
     makeChecklistSpec({ id: 203 }),
   ],
 });
-const inheritingSpecItem = makeChecklistItem({
+const dualSpecItem = makeChecklistItem({
   id: 30,
   storage_location: '託運,隨身',
   specs: [
-    makeChecklistSpec({ id: 301 }),
+    makeChecklistSpec({ id: 301, storage_location: '託運,隨身' }),
     makeChecklistSpec({ id: 302, storage_location: '隨身' }),
   ],
+});
+
+/** An item with specs whose own (stale) location must be ignored. */
+const staleLocationItem = makeChecklistItem({
+  id: 40,
+  storage_location: '託運,隨身',
+  specs: [makeChecklistSpec({ id: 401, storage_location: null })],
 });
 
 const categories = [
@@ -50,7 +57,7 @@ const categories = [
 
 const multiLocationCategories = [
   makeChecklistCategory({ id: 1, items: [plainItem, dualItem] }),
-  makeChecklistCategory({ id: 2, items: [inheritingSpecItem] }),
+  makeChecklistCategory({ id: 2, items: [dualSpecItem] }),
 ];
 
 /** Builds a getter that reports `true` for the given marks in occasion 1. */
@@ -135,22 +142,22 @@ describe('getItemCheckState', () => {
       expected: 'unchecked',
     },
     {
-      name: 'is partial when an inheriting spec is checked at one location only',
-      item: inheritingSpecItem,
+      name: 'is partial when a spec is checked at one of its two locations only',
+      item: dualSpecItem,
       checkedItems: [],
       checkedSpecs: [[301, '託運']],
       expected: 'partial',
     },
     {
       name: 'ignores spec checks without a location when the specs have locations',
-      item: inheritingSpecItem,
+      item: dualSpecItem,
       checkedItems: [],
       checkedSpecs: [[301], [302]],
       expected: 'unchecked',
     },
     {
       name: 'is checked when every spec is checked at every location it has',
-      item: inheritingSpecItem,
+      item: dualSpecItem,
       checkedItems: [],
       checkedSpecs: [
         [301, '託運'],
@@ -160,8 +167,22 @@ describe('getItemCheckState', () => {
       expected: 'checked',
     },
     {
-      name: 'is partial when the spec with its own location is the only one checked',
-      item: inheritingSpecItem,
+      name: 'ignores the stale item location: a spec without location has the one empty location',
+      item: staleLocationItem,
+      checkedItems: [],
+      checkedSpecs: [[401]],
+      expected: 'checked',
+    },
+    {
+      name: 'does not look at the stale item location for spec checks',
+      item: staleLocationItem,
+      checkedItems: [],
+      checkedSpecs: [[401, '託運']],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when only the spec with a single location is checked',
+      item: dualSpecItem,
       checkedItems: [],
       checkedSpecs: [[302, '隨身']],
       expected: 'partial',
@@ -240,7 +261,7 @@ describe('getCheckState', () => {
     {
       name: 'reads spec units through the spec getter',
       units: getCheckUnits([
-        makeChecklistCategory({ items: [dualItem, inheritingSpecItem] }),
+        makeChecklistCategory({ items: [dualItem, dualSpecItem] }),
       ]).filter(unit => unit.kind === 'spec'),
       checkedItems: [[11, '託運']],
       checkedSpecs: [
@@ -272,28 +293,28 @@ describe('getCheckState', () => {
 });
 
 describe('getSpecCheckState', () => {
-  const [inheriting, ownLocation] = inheritingSpecItem.specs;
+  const [dualSpec, singleSpec] = dualSpecItem.specs;
   const tests: {
     name: string;
-    spec: typeof inheriting;
+    spec: typeof dualSpec;
     checkedSpecs: Mark[];
     expected: CheckState;
   }[] = [
     {
-      name: 'is unchecked when no location of an inheriting spec is checked',
-      spec: inheriting,
+      name: 'is unchecked when no location of a two-location spec is checked',
+      spec: dualSpec,
       checkedSpecs: [],
       expected: 'unchecked',
     },
     {
-      name: 'is partial when one of the inherited locations is checked',
-      spec: inheriting,
+      name: 'is partial when one of two locations is checked',
+      spec: dualSpec,
       checkedSpecs: [[301, '託運']],
       expected: 'partial',
     },
     {
-      name: 'is checked when every inherited location is checked',
-      spec: inheriting,
+      name: 'is checked when every location is checked',
+      spec: dualSpec,
       checkedSpecs: [
         [301, '託運'],
         [301, '隨身'],
@@ -301,20 +322,20 @@ describe('getSpecCheckState', () => {
       expected: 'checked',
     },
     {
-      name: 'is checked when the only own location is checked',
-      spec: ownLocation,
+      name: 'is checked when the only location is checked',
+      spec: singleSpec,
       checkedSpecs: [[302, '隨身']],
       expected: 'checked',
     },
     {
-      name: 'does not count a check at a location outside the own one',
-      spec: ownLocation,
+      name: 'does not count a check at a location the spec does not have',
+      spec: singleSpec,
       checkedSpecs: [[302, '託運']],
       expected: 'unchecked',
     },
     {
       name: 'does not mix up the checks of sibling specs',
-      spec: inheriting,
+      spec: dualSpec,
       checkedSpecs: [[302, '隨身']],
       expected: 'unchecked',
     },
@@ -322,20 +343,15 @@ describe('getSpecCheckState', () => {
 
   it.each(tests)('$name', ({ spec, checkedSpecs, expected }) => {
     expect(
-      getSpecCheckState(
-        inheritingSpecItem,
-        spec,
-        1,
-        checksFor(...checkedSpecs),
-      ),
+      getSpecCheckState(dualSpecItem, spec, 1, checksFor(...checkedSpecs)),
     ).toBe(expected);
   });
 
   it('only looks at the requested occasion', () => {
     expect(
       getSpecCheckState(
-        inheritingSpecItem,
-        inheriting,
+        dualSpecItem,
+        dualSpec,
         2,
         checksFor([301, '託運'], [301, '隨身']),
       ),
@@ -363,9 +379,14 @@ describe('countCheckUnits', () => {
       expected: 2,
     },
     {
-      name: 'specs count once per location, inheriting or using their own',
-      input: [makeChecklistCategory({ items: [inheritingSpecItem] })],
+      name: 'specs count once per own location',
+      input: [makeChecklistCategory({ items: [dualSpecItem] })],
       expected: 3,
+    },
+    {
+      name: 'the stale location of an item with specs adds no units',
+      input: [makeChecklistCategory({ items: [staleLocationItem] })],
+      expected: 1,
     },
     {
       name: 'multi-location items and specs together',
@@ -430,7 +451,7 @@ describe('countCheckedUnits', () => {
       expected: 2,
     },
     {
-      name: 'a spec at one of its two inherited locations',
+      name: 'a spec at one of its two locations',
       items: [],
       specs: [[301, '隨身']],
       expected: 1,

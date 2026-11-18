@@ -1,11 +1,14 @@
 import { FIELD_LIMITS } from '@tripdeck/shared';
-import { Plus } from 'lucide-react';
+import { Plus, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { summarizeSpecLocations } from './checklistUtils';
 import EditSpecRow from './EditSpecRow';
 import ItemActionBar from './ItemActionBar';
 import StorageCheckboxes from './StorageCheckboxes';
 import type { EditItem, EditSpec } from './types';
+
+const SPEC_LOCATION_HINT = '位置由規格決定';
 
 interface Props {
   item: EditItem;
@@ -38,6 +41,8 @@ export default function EditableItemRow({
   onMoveItem,
   moveDisabled,
 }: Props) {
+  const hasSpecs = item.specs.length > 0;
+
   return (
     <div className='rounded-xl border border-border bg-muted/30 p-4'>
       <div className='flex items-start gap-2'>
@@ -84,9 +89,24 @@ export default function EditableItemRow({
 
           <div className='flex items-center gap-3'>
             <StorageCheckboxes
-              value={item.storage_location}
+              value={
+                hasSpecs
+                  ? summarizeSpecLocations(item.specs)
+                  : item.storage_location
+              }
+              disabled={hasSpecs}
               onChange={loc => onUpdateItem(item.id, { storage_location: loc })}
             />
+            {hasSpecs && (
+              <span
+                role='img'
+                aria-label={SPEC_LOCATION_HINT}
+                title={SPEC_LOCATION_HINT}
+                className='flex text-muted-foreground'
+              >
+                <TriangleAlert size={14} />
+              </span>
+            )}
           </div>
 
           {/* Specs */}

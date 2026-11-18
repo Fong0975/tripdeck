@@ -84,11 +84,11 @@ describe('ChecklistSpecRow', () => {
         label: 'Spec A（隨身） - Occ A',
       },
       {
-        description: 'hides the badge of a location inherited from its item',
+        description: 'hides the badge and does not follow the item location',
         itemLocation: '託運',
         specLocation: null,
         expectedBadges: [],
-        label: 'Spec A（託運） - Occ A',
+        label: 'Spec A - Occ A',
       },
       {
         description: 'hides the badge when neither has a location',
@@ -133,7 +133,7 @@ describe('ChecklistSpecRow', () => {
 
     it.each([
       { itemLocation: null, specLocation: '託運', location: '託運' },
-      { itemLocation: '隨身', specLocation: null, location: '隨身' },
+      { itemLocation: '隨身', specLocation: null, location: '' },
       { itemLocation: null, specLocation: null, location: '' },
     ])(
       'calls onToggleSpecCheck with location "$location" (item $itemLocation, spec $specLocation)',
@@ -159,9 +159,10 @@ describe('ChecklistSpecRow', () => {
       specLocation: '託運,隨身',
     },
     {
-      description: 'a spec inheriting two item locations',
-      itemLocation: '隨身,託運',
-      specLocation: null,
+      description:
+        'a spec with two locations under an item with a stale location',
+      itemLocation: '隨身',
+      specLocation: '託運,隨身',
     },
   ])('$description', ({ itemLocation, specLocation }) => {
     it('renders the name once, read-only, above one row per location', () => {

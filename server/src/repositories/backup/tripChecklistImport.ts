@@ -18,14 +18,17 @@ const logger = createLogger('backup');
 
 /**
  * Old (backup) checklist item and spec IDs mapped to their new IDs, plus the
- * raw storage location each unit is filed under (a spec without its own
- * location follows its item).
+ * raw storage location each unit is filed under. An item with specs holds no
+ * location of its own: a spec without one takes over its item's (backups from
+ * before the specs owned their locations rely on that inheritance).
  */
 interface ChecklistIdMaps {
   itemIdMap: Map<number, number>;
   specIdMap: Map<number, number>;
   itemLocations: Map<number, string | null>;
   specLocations: Map<number, string | null>;
+  /** Old IDs of items that have specs; their own checks are unused. */
+  itemsWithSpecs: Set<number>;
 }
 
 /**
@@ -45,6 +48,7 @@ async function insertCategories(
   const specIdMap = new Map<number, number>();
   const itemLocations = new Map<number, string | null>();
   const specLocations = new Map<number, string | null>();
+  const itemsWithSpecs = new Set<number>();
   for (const [categoryIndex, category] of categories.entries()) {
     const [categoryResult] = await conn.execute<ResultSetHeader>(
       'INSERT INTO checklist_trip_categories (trip_id, name, sort_order) VALUES (?, ?, ?)',
@@ -53,6 +57,8 @@ async function insertCategories(
     const newCategoryId = categoryResult.insertId;
 
     for (const [itemIndex, item] of category.items.entries()) {
+      const hasSpecs = item.specs.length > 0;
+      const itemLocation = hasSpecs ? null : item.storage_location;
       const [itemResult] = await conn.execute<ResultSetHeader>(
         'INSERT INTO checklist_trip_items (checklist_trip_category_id, name, quantity, notes, storage_location, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
         [
@@ -60,28 +66,29 @@ async function insertCategories(
           item.name,
           item.quantity,
           item.notes,
-          item.storage_location,
+          itemLocation,
           itemIndex,
         ],
       );
       const newItemId = itemResult.insertId;
       itemIdMap.set(item.id, newItemId);
-      itemLocations.set(item.id, item.storage_location);
+      itemLocations.set(item.id, itemLocation);
+      if (hasSpecs) {
+        itemsWithSpecs.add(item.id);
+      }
 
       for (const spec of item.specs) {
+        const specLocation = spec.storage_location ?? item.storage_location;
         const [specResult] = await conn.execute<ResultSetHeader>(
           'INSERT INTO checklist_trip_item_specs (checklist_trip_item_id, name, storage_location) VALUES (?, ?, ?)',
-          [newItemId, spec.name, spec.storage_location],
+          [newItemId, spec.name, specLocation],
         );
         specIdMap.set(spec.id, specResult.insertId);
-        specLocations.set(
-          spec.id,
-          spec.storage_location ?? item.storage_location,
-        );
+        specLocations.set(spec.id, specLocation);
       }
     }
   }
-  return { itemIdMap, specIdMap, itemLocations, specLocations };
+  return { itemIdMap, specIdMap, itemLocations, specLocations, itemsWithSpecs };
 }
 
 /** The imported units a family of checks (item checks or spec checks) refers to. */
@@ -90,14 +97,17 @@ interface CheckTargets {
   label: string;
   idMap: Map<number, number>;
   locations: Map<number, string | null>;
+  /** Old IDs whose checks are skipped without validation. */
+  ignoredIds?: Set<number>;
 }
 
 /**
  * Resolves the check keys of one occasion to `[newId, location]` pairs.
- * A `id|location` key is kept at its location, which must be one of the
- * unit's locations. A legacy id-only key (backups from before checks were
- * per location) is spread over every location of the unit. Pairs reached
- * through several keys are returned once, as the table's unique key requires.
+ * Checks of ignored ids are dropped. An `id|location` key is kept at its
+ * location, which must be one of the unit's locations. A legacy id-only key
+ * (backups from before checks were per location) is spread over every
+ * location of the unit. Pairs reached through several keys are returned
+ * once, as the table's unique key requires.
  *
  * @throws {TripImportDataError} When a key is malformed, references a unit
  *   that was not imported, or names a location the unit does not have.
@@ -123,6 +133,9 @@ function resolveChecks(
         originalTripId,
         `Occasion ${occasionId} references ${targets.label} ${key} that was not imported`,
       );
+    }
+    if (targets.ignoredIds?.has(parsed.id)) {
+      continue;
     }
     const locations = getEffectiveLocations(targets.locations.get(parsed.id));
     if (!key.includes('|')) {
@@ -153,7 +166,13 @@ async function insertOccasions(
   originalTripId: number,
   newTripId: number,
   occasions: ChecklistOccasion[],
-  { itemIdMap, specIdMap, itemLocations, specLocations }: ChecklistIdMaps,
+  {
+    itemIdMap,
+    specIdMap,
+    itemLocations,
+    specLocations,
+    itemsWithSpecs,
+  }: ChecklistIdMaps,
 ): Promise<void> {
   const checkRows: unknown[][] = [];
   const specCheckRows: unknown[][] = [];
@@ -166,7 +185,12 @@ async function insertOccasions(
 
     const itemChecks = resolveChecks(
       occasion.checks,
-      { label: 'checklist item', idMap: itemIdMap, locations: itemLocations },
+      {
+        label: 'checklist item',
+        idMap: itemIdMap,
+        locations: itemLocations,
+        ignoredIds: itemsWithSpecs,
+      },
       originalTripId,
       occasion.id,
     );

@@ -6,6 +6,7 @@ import { backfillChecklistOrder } from './backfillChecklistOrder';
 import { migrateCheckLocations } from './checkLocationMigration';
 import { getDbName, tableExists } from './introspect';
 import { tableDefinitions, type TableDef } from './schema';
+import { migrateSpecLocations } from './specLocationMigration';
 import { buildCreateTableSql } from './sqlBuilders';
 
 const logger = createLogger('db');
@@ -31,6 +32,8 @@ async function createTable(def: TableDef): Promise<void> {
  *   with their previous id order (see {@link backfillChecklistOrder}).
  * - Checklist checks are made per storage location and the legacy checks
  *   are spread over their unit's locations (see {@link migrateCheckLocations}).
+ * - Items that have specs hand their storage location over to the specs
+ *   (see {@link migrateSpecLocations}).
  * - Running it again against an aligned database makes no changes.
  */
 export async function initDatabase(): Promise<void> {
@@ -48,6 +51,7 @@ export async function initDatabase(): Promise<void> {
     }
     await backfillChecklistOrder();
     await migrateCheckLocations();
+    await migrateSpecLocations();
   } catch (err) {
     logger.error('Failed to verify/initialize tables', undefined, err);
     throw err;

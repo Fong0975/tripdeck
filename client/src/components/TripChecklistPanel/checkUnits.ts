@@ -30,18 +30,14 @@ export type CheckGetter = (
 ) => boolean;
 
 /**
- * Lists the locations a spec is filed under. A spec without a location of its
- * own follows its item.
+ * Lists the locations a spec is filed under. An item with specs holds no
+ * location of its own, so a spec never follows its item.
  *
- * @param item The spec's item.
  * @param spec The spec.
- * @returns Non-empty list; `['']` when neither has a known location.
+ * @returns Non-empty list; `['']` when the spec has no known location.
  */
-export function getSpecLocations(
-  item: ChecklistItem,
-  spec: ItemSpec,
-): string[] {
-  return getEffectiveLocations(spec.storage_location ?? item.storage_location);
+export function getSpecLocations(spec: ItemSpec): string[] {
+  return getEffectiveLocations(spec.storage_location);
 }
 
 /**
@@ -51,7 +47,7 @@ export function getSpecLocations(
  * @param spec The spec.
  */
 export function getSpecUnits(item: ChecklistItem, spec: ItemSpec): CheckUnit[] {
-  return getSpecLocations(item, spec).map((location): CheckUnit => ({
+  return getSpecLocations(spec).map((location): CheckUnit => ({
     kind: 'spec',
     item,
     spec,

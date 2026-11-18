@@ -18,6 +18,23 @@ export function hasStorageOption(
   return getEffectiveLocations(value).includes(option);
 }
 
+/**
+ * Combines the storage locations of an item's specs. An item with specs
+ * holds no location of its own; this is what it shows instead.
+ *
+ * @param specs The item's specs.
+ * @returns The storage options used by at least one spec, in
+ *   {@link STORAGE_OPTIONS} order and comma separated; null when none is set.
+ */
+export function summarizeSpecLocations(
+  specs: ReadonlyArray<{ storage_location: string | null }>,
+): string | null {
+  const used = STORAGE_OPTIONS.filter(option =>
+    specs.some(spec => hasStorageOption(spec.storage_location, option)),
+  );
+  return used.length > 0 ? used.join(',') : null;
+}
+
 export function toggleStorageOption(
   current: string | null | undefined,
   option: StorageOption,

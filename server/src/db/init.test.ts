@@ -20,6 +20,10 @@ vi.mock('./checkLocationMigration', () => ({
   migrateCheckLocations: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('./specLocationMigration', () => ({
+  migrateSpecLocations: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockPoolExecute = db.pool.execute;
 
 // vi.mock(...) below is hoisted above these fixtures' declarations, so the
@@ -85,6 +89,7 @@ vi.mock('./schema', () => ({
 
 import { migrateCheckLocations } from './checkLocationMigration';
 import { initDatabase } from './init';
+import { migrateSpecLocations } from './specLocationMigration';
 
 interface LiveForeignKeyRow {
   name: string;
@@ -229,16 +234,22 @@ describe('db/init', () => {
       expect(mutatingStatements()).toEqual(expected);
     });
 
-    it('migrates the check locations after every table was aligned', async () => {
+    it('runs the location migrations once each, after every table was aligned and in order', async () => {
+      vi.mocked(migrateCheckLocations).mockClear();
+      vi.mocked(migrateSpecLocations).mockClear();
       setUpLiveDatabase(outdatedState());
 
       await initDatabase();
 
       const lastQueryOrder = mockPoolExecute.mock.invocationCallOrder.at(-1);
-      const [migrationOrder] = vi.mocked(migrateCheckLocations).mock
+      const [checkOrder] = vi.mocked(migrateCheckLocations).mock
         .invocationCallOrder;
+      const [specOrder] =
+        vi.mocked(migrateSpecLocations).mock.invocationCallOrder;
       expect(migrateCheckLocations).toHaveBeenCalledTimes(1);
-      expect(migrationOrder).toBeGreaterThan(lastQueryOrder ?? Infinity);
+      expect(migrateSpecLocations).toHaveBeenCalledTimes(1);
+      expect(checkOrder).toBeGreaterThan(lastQueryOrder ?? Infinity);
+      expect(specOrder).toBeGreaterThan(checkOrder);
     });
 
     it.each([

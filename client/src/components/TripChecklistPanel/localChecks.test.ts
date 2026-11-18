@@ -86,7 +86,7 @@ describe('pruneLocalChecks', () => {
     expect(pruneLocalChecks(local, checklist)).toEqual(expected);
   });
 
-  it('ignores spec units of items that have specs', () => {
+  it('ignores item units of items that have specs', () => {
     const withSpecs = makeTripChecklist({
       occasions: checklist.occasions,
       categories: [
@@ -116,7 +116,7 @@ describe('pruneLocalSpecChecks', () => {
             id: 10,
             storage_location: '託運,隨身',
             specs: [
-              makeChecklistSpec({ id: 101 }),
+              makeChecklistSpec({ id: 101, storage_location: '託運,隨身' }),
               makeChecklistSpec({ id: 102, storage_location: '隨身' }),
               makeChecklistSpec({ id: 103, storage_location: null }),
             ],
@@ -134,7 +134,7 @@ describe('pruneLocalSpecChecks', () => {
       expected: { 1: { '101|託運': true }, 2: { '102|隨身': false } },
     },
     {
-      name: 'keeps every inherited location of a spec without its own location',
+      name: 'keeps every location of a spec filed under both locations',
       local: { 1: { '101|託運': true, '101|隨身': true } },
       expected: { 1: { '101|託運': true, '101|隨身': true } },
     },
@@ -154,6 +154,16 @@ describe('pruneLocalSpecChecks', () => {
       expected: { 1: { '101|託運': true } },
     },
     {
+      name: 'keeps the empty location of a spec without location, whatever the item location',
+      local: { 1: { '103|': true } },
+      expected: { 1: { '103|': true } },
+    },
+    {
+      name: 'drops edits at a location a spec without location does not have, although the item has it',
+      local: { 1: { '103|託運': true, '103|隨身': true } },
+      expected: {},
+    },
+    {
       name: 'treats item ids as unknown spec ids',
       local: { 1: { '10|託運': true } },
       expected: {},
@@ -164,7 +174,7 @@ describe('pruneLocalSpecChecks', () => {
     expect(pruneLocalSpecChecks(local, withSpecs)).toEqual(expected);
   });
 
-  it('drops edits at a location removed from the item when specs inherit it', () => {
+  it('drops edits at a location removed from the spec', () => {
     const narrowed = makeTripChecklist({
       occasions: checklist.occasions,
       categories: [
@@ -172,8 +182,7 @@ describe('pruneLocalSpecChecks', () => {
           items: [
             makeChecklistItem({
               id: 10,
-              storage_location: '託運',
-              specs: [makeChecklistSpec({ id: 101 })],
+              specs: [makeChecklistSpec({ id: 101, storage_location: '託運' })],
             }),
           ],
         }),

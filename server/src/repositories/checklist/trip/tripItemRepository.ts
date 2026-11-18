@@ -69,8 +69,10 @@ export async function deleteTripItem(itemId: number): Promise<boolean> {
 /**
  * Partially updates a single trip checklist item: any of name, quantity,
  * notes and storage location present in `data` is overwritten (a blank name
- * keeps the current one); absent fields keep their stored values. Check marks
- * of locations the item (or its inheriting specs) no longer has are deleted.
+ * keeps the current one); absent fields keep their stored values. An item
+ * with specs holds no storage location of its own (its specs carry them), so
+ * a requested location is ignored for it. Check marks of locations the item
+ * no longer has are deleted.
  *
  * @param itemId - Id of the item to update.
  * @param data - Fields to change.
@@ -92,19 +94,20 @@ export async function updateTripItem(
   const name = 'name' in data && data.name ? data.name : cur.name;
   const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
   const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
-  const storage_location =
+  const specs = (await fetchSpecsByItemIds([itemId])).get(itemId) ?? [];
+  const requestedLocation =
     'storage_location' in data
       ? (data.storage_location ?? null)
       : cur.storage_location;
+  const storage_location = specs.length > 0 ? null : requestedLocation;
 
   await pool.execute(
     'UPDATE checklist_trip_items SET name = ?, quantity = ?, notes = ?, storage_location = ? WHERE id = ?',
     [name, quantity, notes, storage_location, itemId],
   );
 
-  const specs = (await fetchSpecsByItemIds([itemId])).get(itemId) ?? [];
   if (storage_location !== cur.storage_location) {
-    await pruneItemChecks(itemId, storage_location, specs);
+    await pruneItemChecks(itemId, storage_location);
   }
 
   return {

@@ -105,6 +105,39 @@ describe('useEditState', () => {
     expect(specs[1].name).toBe('新規格');
   });
 
+  it.each([
+    {
+      description: 'moves the item location onto the first spec',
+      storage_location: '託運,隨身',
+      expectedItem: null,
+      expectedSpec: '託運,隨身',
+    },
+    {
+      description: 'keeps both empty when the item has no location',
+      storage_location: null,
+      expectedItem: null,
+      expectedSpec: null,
+    },
+  ])(
+    'adding the first spec $description',
+    ({ storage_location, expectedItem, expectedSpec }) => {
+      const { result } = renderHook(() =>
+        useEditState(
+          makeChecklistCategory({
+            items: [makeChecklistItem({ id: 10, storage_location, specs: [] })],
+          }),
+        ),
+      );
+
+      act(() => result.current.addSpec(10));
+
+      const item = result.current.visibleItems[0];
+      expect(item.storage_location).toBe(expectedItem);
+      expect(item.specs).toHaveLength(1);
+      expect(item.specs[0].storage_location).toBe(expectedSpec);
+    },
+  );
+
   it('updates a spec field in place', () => {
     const { result } = renderHook(() => useEditState(makeCategory()));
 

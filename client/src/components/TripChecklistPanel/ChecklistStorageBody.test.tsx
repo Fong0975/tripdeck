@@ -41,9 +41,13 @@ function makeChecklist(): TripChecklist {
           makeChecklistItem({
             id: 20,
             name: 'Charger',
-            storage_location: '隨身',
+            storage_location: null,
             specs: [
-              makeChecklistSpec({ id: 201, name: 'USB-C' }),
+              makeChecklistSpec({
+                id: 201,
+                name: 'USB-C',
+                storage_location: '隨身',
+              }),
               makeChecklistSpec({
                 id: 202,
                 name: 'Lightning',
@@ -185,7 +189,7 @@ describe('ChecklistStorageBody', () => {
     },
   );
 
-  it('files specs by their own location or the location of their item', async () => {
+  it('files specs by their own location', async () => {
     const user = userEvent.setup();
     const { onToggleSpecCheck } = renderBody();
 

@@ -432,9 +432,9 @@ describe('ChecklistTable', () => {
       const checkedAtCarryOn: Getter = (occId, id, location) =>
         occId === 1 && id === 301 && location === '隨身';
 
-      it('shows a spec inheriting a multi-location item as a read-only name row with one sub-row per location', () => {
+      it('shows a spec with two locations as a read-only name row with one sub-row per location', () => {
         const { onToggleSpecCheck } = renderTable(
-          chargerChecklist(null),
+          chargerChecklist('託運,隨身'),
           undefined,
           checkedAtCarryOn,
         );
@@ -466,6 +466,23 @@ describe('ChecklistTable', () => {
         expect(screen.getByLabelText('USB-C - Occ A')).toBeChecked();
         expect(screen.getByLabelText('USB-C（託運） - Occ A')).toBeChecked();
         expect(screen.getByLabelText('USB-C（隨身） - Occ A')).toBeChecked();
+      });
+
+      it('ignores the stale location of the item: a spec without location is a single checkable row', () => {
+        const { onToggleSpecCheck } = renderTable(chargerChecklist(null));
+
+        const cell = screen.getByLabelText('USB-C - Occ A');
+        expect(cell).toBeEnabled();
+        expect(
+          screen.queryByLabelText('USB-C（託運） - Occ A'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByLabelText('USB-C（隨身） - Occ A'),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('USB-C - Occ B'));
+
+        expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '');
       });
 
       it('keeps a spec with one own location as a single checkable row', () => {

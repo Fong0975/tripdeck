@@ -1,5 +1,4 @@
-import { getEffectiveLocations, type ItemSpec } from '@tripdeck/shared';
-import type { RowDataPacket } from 'mysql2';
+import { getEffectiveLocations } from '@tripdeck/shared';
 
 import pool from '../../../config/database';
 import { placeholders } from '../../../utils/sql';
@@ -29,36 +28,22 @@ async function deleteChecksOutsideLocations(
 }
 
 /**
- * Drops the check marks of a trip checklist item, and of its specs that
- * inherit the item's location, for locations the item no longer has. Call it
- * after the item's storage location changed.
+ * Drops the check marks of a trip checklist item for locations the item no
+ * longer has. Call it after the item's storage location changed.
  *
  * @param itemId - Trip checklist item id.
  * @param itemLocation - The item's new raw storage location.
- * @param specs - The item's specs; a spec without a location of its own
- *   follows `itemLocation`.
  */
-export async function pruneItemChecks(
+export function pruneItemChecks(
   itemId: number,
   itemLocation: string | null,
-  specs: readonly ItemSpec[],
 ): Promise<void> {
-  await deleteChecksOutsideLocations(
+  return deleteChecksOutsideLocations(
     'checklist_checks',
     'checklist_trip_item_id',
     itemId,
     itemLocation,
   );
-  for (const spec of specs) {
-    if (spec.storage_location === null) {
-      await deleteChecksOutsideLocations(
-        'checklist_spec_checks',
-        'checklist_trip_item_spec_id',
-        spec.id,
-        itemLocation,
-      );
-    }
-  }
 }
 
 /**
@@ -66,29 +51,16 @@ export async function pruneItemChecks(
  * has. Call it after the spec's storage location changed.
  *
  * @param specId - Trip checklist item spec id.
- * @param specLocation - The spec's new raw storage location; null makes it
- *   inherit the location of its item.
+ * @param specLocation - The spec's new raw storage location.
  */
-export async function pruneSpecChecks(
+export function pruneSpecChecks(
   specId: number,
   specLocation: string | null,
 ): Promise<void> {
-  let effectiveLocation = specLocation;
-  if (effectiveLocation === null) {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT i.storage_location FROM checklist_trip_items i
-       JOIN checklist_trip_item_specs s ON s.checklist_trip_item_id = i.id
-       WHERE s.id = ?`,
-      [specId],
-    );
-    effectiveLocation =
-      (rows[0] as { storage_location: string | null } | undefined)
-        ?.storage_location ?? null;
-  }
-  await deleteChecksOutsideLocations(
+  return deleteChecksOutsideLocations(
     'checklist_spec_checks',
     'checklist_trip_item_spec_id',
     specId,
-    effectiveLocation,
+    specLocation,
   );
 }

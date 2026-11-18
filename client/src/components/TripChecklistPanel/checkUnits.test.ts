@@ -28,48 +28,43 @@ function summarize(units: CheckUnit[]): string[] {
 describe('getSpecLocations', () => {
   const tests = [
     {
-      name: 'uses the spec location when it has one',
-      itemLocation: '託運',
+      name: 'uses the spec location',
       specLocation: '隨身',
       expected: ['隨身'],
     },
     {
       name: 'lists several spec locations in canonical order',
-      itemLocation: '託運',
       specLocation: '隨身,託運',
       expected: ['託運', '隨身'],
     },
     {
-      name: 'inherits the item location when the spec has none',
-      itemLocation: '託運,隨身',
-      specLocation: null,
-      expected: ['託運', '隨身'],
-    },
-    {
-      name: 'falls back to no location when neither has one',
-      itemLocation: null,
+      name: 'falls back to no location when the spec has none',
       specLocation: null,
       expected: [''],
     },
     {
-      name: 'does not inherit when the spec location is an empty string',
-      itemLocation: '託運',
+      name: 'treats an empty string as no location',
       specLocation: '',
       expected: [''],
     },
     {
       name: 'ignores unknown location values',
-      itemLocation: '託運',
       specLocation: '後背包',
       expected: [''],
     },
   ];
 
-  it.each(tests)('$name', ({ itemLocation, specLocation, expected }) => {
-    const item = makeChecklistItem({ storage_location: itemLocation });
+  it.each(tests)('$name', ({ specLocation, expected }) => {
     const spec = makeChecklistSpec({ storage_location: specLocation });
 
-    expect(getSpecLocations(item, spec)).toEqual(expected);
+    expect(getSpecLocations(spec)).toEqual(expected);
+  });
+
+  it('never follows the location of the item', () => {
+    const spec = makeChecklistSpec({ storage_location: null });
+    makeChecklistItem({ storage_location: '託運,隨身', specs: [spec] });
+
+    expect(getSpecLocations(spec)).toEqual(['']);
   });
 });
 
@@ -88,10 +83,10 @@ describe('getSpecUnits', () => {
       expected: ['spec:10@託運', 'spec:10@隨身'],
     },
     {
-      name: 'inherits every location of the item when the spec has none',
+      name: 'ignores the item location when the spec has none',
       itemLocation: '託運,隨身',
       specLocation: null,
-      expected: ['spec:10@託運', 'spec:10@隨身'],
+      expected: ['spec:10@'],
     },
     {
       name: 'yields one unit without location when neither has one',
@@ -146,23 +141,38 @@ describe('getItemUnits', () => {
       name: 'an item with specs yields spec units only, never an item unit',
       item: makeChecklistItem({
         id: 1,
-        storage_location: '託運',
-        specs: [makeChecklistSpec({ id: 10 })],
+        specs: [makeChecklistSpec({ id: 10, storage_location: '託運' })],
       }),
       expected: ['spec:10@託運'],
     },
     {
-      name: 'specs expand per location, inheriting or overriding the item location',
+      name: 'the own location of an item with specs is ignored',
       item: makeChecklistItem({
         id: 1,
         storage_location: '託運,隨身',
+        specs: [makeChecklistSpec({ id: 10, storage_location: null })],
+      }),
+      expected: ['spec:10@'],
+    },
+    {
+      name: 'specs expand per own location only',
+      item: makeChecklistItem({
+        id: 1,
+        storage_location: '隨身',
         specs: [
-          makeChecklistSpec({ id: 10, storage_location: null }),
+          makeChecklistSpec({ id: 10, storage_location: '託運,隨身' }),
           makeChecklistSpec({ id: 11, storage_location: '隨身' }),
-          makeChecklistSpec({ id: 12, storage_location: '' }),
+          makeChecklistSpec({ id: 12, storage_location: null }),
+          makeChecklistSpec({ id: 13, storage_location: '' }),
         ],
       }),
-      expected: ['spec:10@託運', 'spec:10@隨身', 'spec:11@隨身', 'spec:12@'],
+      expected: [
+        'spec:10@託運',
+        'spec:10@隨身',
+        'spec:11@隨身',
+        'spec:12@',
+        'spec:13@',
+      ],
     },
   ];
 

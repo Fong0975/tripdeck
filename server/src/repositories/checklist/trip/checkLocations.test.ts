@@ -59,8 +59,9 @@ describe('checkLocations', () => {
 
     expect(await getSpecCheckLocations(4)).toEqual(expected);
     expect(mockPoolExecute).toHaveBeenCalledWith(
-      expect.stringContaining('COALESCE(s.storage_location'),
+      'SELECT storage_location FROM checklist_trip_item_specs WHERE id = ?',
       [4],
     );
+    expect(mockPoolExecute).toHaveBeenCalledTimes(1);
   });
 });

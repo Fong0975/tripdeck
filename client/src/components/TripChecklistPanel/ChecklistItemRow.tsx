@@ -1,6 +1,7 @@
 import { getEffectiveLocations } from '@tripdeck/shared';
 import { Fragment } from 'react';
 
+import { summarizeSpecLocations } from '@/components/Checklist/shared/checklistUtils';
 import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
 
@@ -42,6 +43,9 @@ export default function ChecklistItemRow({
   const hasLocationRows = !hasSpecs && locations.length > 1;
   const hasChildren = hasSpecs || hasLocationRows;
   const [singleLocation] = locations;
+  const shownLocation = hasSpecs
+    ? summarizeSpecLocations(specs)
+    : item.storage_location;
 
   return (
     <Fragment>
@@ -63,9 +67,9 @@ export default function ChecklistItemRow({
             {item.notes && (
               <p className='text-sm text-muted-foreground'>{item.notes}</p>
             )}
-            {item.storage_location && (
+            {shownLocation && (
               <div className='flex items-center gap-1.5'>
-                <StorageBadges value={item.storage_location} />
+                <StorageBadges value={shownLocation} />
               </div>
             )}
           </div>

@@ -28,7 +28,11 @@ export interface SpecTableConfig {
 export interface SpecRepository {
   /** Loads every spec of the given items, grouped by item id. */
   fetchByItemIds(itemIds: number[]): Promise<Map<number, ItemSpec[]>>;
-  /** Inserts a spec; resolves to null when the parent item does not exist. */
+  /**
+   * Inserts a spec; resolves to null when the parent item does not exist. An
+   * item with specs holds no storage location of its own, so the item's
+   * location is cleared.
+   */
   create(itemId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   /** Updates a spec; resolves to null when the spec does not exist. */
   update(specId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
@@ -99,6 +103,10 @@ export function createSpecRepository({
       const [result] = await pool.execute<ResultSetHeader>(
         `INSERT INTO ${specTable} (${parentColumn}, name, storage_location) VALUES (?, ?, ?)`,
         [itemId, data.name, data.storage_location ?? null],
+      );
+      await pool.execute(
+        `UPDATE ${itemTable} SET storage_location = NULL WHERE id = ?`,
+        [itemId],
       );
 
       return {

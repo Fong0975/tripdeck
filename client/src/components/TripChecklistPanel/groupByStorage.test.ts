@@ -109,8 +109,32 @@ describe('groupByStorage', () => {
       ],
     },
     {
+      description: 'splits a spec with two own locations into both groups',
+      categories: [
+        makeChecklistCategory({
+          items: [
+            makeChecklistItem({
+              id: 1,
+              name: 'A',
+              specs: [
+                makeChecklistSpec({
+                  id: 10,
+                  name: 'S1',
+                  storage_location: '託運,隨身',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+      expected: [
+        { key: '託運', labels: ['A > S1'], locations: ['託運'] },
+        { key: '隨身', labels: ['A > S1'], locations: ['隨身'] },
+      ],
+    },
+    {
       description:
-        'splits a spec inheriting a multi-location item into both groups',
+        'ignores the location of an item with specs and files a spec without location in none',
       categories: [
         makeChecklistCategory({
           items: [
@@ -123,14 +147,11 @@ describe('groupByStorage', () => {
           ],
         }),
       ],
-      expected: [
-        { key: '託運', labels: ['A > S1'], locations: ['託運'] },
-        { key: '隨身', labels: ['A > S1'], locations: ['隨身'] },
-      ],
+      expected: [{ key: 'none', labels: ['A > S1'], locations: [''] }],
     },
     {
       description:
-        'splits a spec with two own locations and lets it override the item location',
+        'splits a spec with two own locations while the stale item location is ignored',
       categories: [
         makeChecklistCategory({
           items: [
@@ -178,7 +199,7 @@ describe('groupByStorage', () => {
     },
     {
       description:
-        'splits an item with specs into spec units and inherits the item location',
+        'splits an item with specs into spec units without inheriting the item location',
       categories: [
         makeChecklistCategory({
           items: [
@@ -203,8 +224,8 @@ describe('groupByStorage', () => {
         }),
       ],
       expected: [
-        { key: '託運', labels: ['A > S2'] },
         { key: '隨身', labels: ['A > S1'] },
+        { key: 'none', labels: ['A > S2'] },
       ],
     },
     {
@@ -266,8 +287,13 @@ describe('groupByStorage', () => {
         items: [
           makeChecklistItem({
             id: 1,
-            storage_location: '隨身',
-            specs: [makeChecklistSpec({ id: 10, name: 'S1' })],
+            specs: [
+              makeChecklistSpec({
+                id: 10,
+                name: 'S1',
+                storage_location: '隨身',
+              }),
+            ],
           }),
         ],
       }),

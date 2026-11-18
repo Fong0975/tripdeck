@@ -60,21 +60,22 @@ export async function updateItem(
   const cur = rows[0];
   const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
   const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
-  const storage_location =
+  const specs = (await fetchSpecsByItemIds([itemId])).get(itemId) ?? [];
+  const requestedLocation =
     'storage_location' in data
       ? (data.storage_location ?? null)
       : cur.storage_location;
+  // An item with specs holds no location of its own; its specs carry them.
+  const storage_location = specs.length > 0 ? null : requestedLocation;
 
   await pool.execute(
     'UPDATE checklist_template_items SET name = ?, quantity = ?, notes = ?, storage_location = ? WHERE id = ?',
     [data.name, quantity, notes, storage_location, itemId],
   );
 
-  const specsByItemId = await fetchSpecsByItemIds([itemId]);
-
   return toItemResponse(
     { ...cur, name: data.name, quantity, notes, storage_location },
-    specsByItemId.get(itemId) ?? [],
+    specs,
   );
 }
 

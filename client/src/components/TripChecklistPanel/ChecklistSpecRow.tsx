@@ -40,7 +40,7 @@ export default function ChecklistSpecRow({
   getSpecCheck,
   onToggleSpecCheck,
 }: Props) {
-  const locations = getSpecLocations(item, spec);
+  const locations = getSpecLocations(spec);
   const [singleLocation] = locations;
   const hasLocationRows = locations.length > 1;
 

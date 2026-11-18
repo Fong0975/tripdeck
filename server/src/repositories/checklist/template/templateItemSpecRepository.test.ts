@@ -51,6 +51,37 @@ describe('templateItemSpecRepository', () => {
     });
   });
 
+  describe('createItemSpec clearing the item location', () => {
+    it('clears the storage_location of the item once the spec is inserted', async () => {
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[{ id: 7 }]]]],
+        [{ insertId: 20 }],
+      );
+
+      await createItemSpec(7, { name: 'Spec A', storage_location: 'bag' });
+
+      const sqls = mockPoolExecute.mock.calls.map(([sql]) => sql as string);
+      const insertIndex = sqls.findIndex(sql =>
+        sql.startsWith('INSERT INTO checklist_template_item_specs'),
+      );
+      const clearIndex = sqls.indexOf(
+        'UPDATE checklist_template_items SET storage_location = NULL WHERE id = ?',
+      );
+      expect(insertIndex).toBeGreaterThan(-1);
+      expect(clearIndex).toBeGreaterThan(insertIndex);
+      expect(mockPoolExecute.mock.calls[clearIndex][1]).toEqual([7]);
+    });
+
+    it('leaves the item untouched when the item does not exist', async () => {
+      mockPoolExecute.mockResolvedValue([[]]);
+
+      await createItemSpec(999, { name: 'Spec A' });
+
+      expect(mockPoolExecute).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('updateItemSpec', () => {
     function mockSpecSelectThenUpdate(curRow = CURRENT_SPEC_ROW) {
       routeSql(

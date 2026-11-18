@@ -2,21 +2,27 @@ import type { ChecklistSpecBody, ItemSpec } from '@tripdeck/shared';
 
 import pool from '../../../config/database';
 
-import { pruneSpecChecks } from './checkLocationPruning';
+import { pruneItemChecks, pruneSpecChecks } from './checkLocationPruning';
 import { tripSpecRepository } from './shared';
 
 /**
- * Adds a spec to a trip checklist item.
+ * Adds a spec to a trip checklist item. The item then holds no storage
+ * location of its own, so its location and the check marks tied to it are
+ * cleared.
  *
  * @param itemId - Parent trip checklist item id.
  * @param data - Spec name and optional storage location.
  * @returns The created spec, or null when the item does not exist.
  */
-export function createTripItemSpec(
+export async function createTripItemSpec(
   itemId: number,
   data: ChecklistSpecBody,
 ): Promise<ItemSpec | null> {
-  return tripSpecRepository.create(itemId, data);
+  const spec = await tripSpecRepository.create(itemId, data);
+  if (spec) {
+    await pruneItemChecks(itemId, null);
+  }
+  return spec;
 }
 
 /**

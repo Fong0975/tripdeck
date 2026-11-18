@@ -105,14 +105,14 @@ describe('createSpecRepository', () => {
           itemRows: [{ id: 7 }],
           data: { name: 'Spec' },
           expected: { id: 20, name: 'Spec', storage_location: null },
-          queries: 2,
+          queries: 3,
         },
         {
           name: 'keeps a provided storage_location',
           itemRows: [{ id: 7 }],
           data: { name: 'Spec', storage_location: 'bag' },
           expected: { id: 20, name: 'Spec', storage_location: 'bag' },
-          queries: 2,
+          queries: 3,
         },
       ])('$name', async ({ itemRows, data, expected, queries }) => {
         routeSql(
@@ -129,9 +129,17 @@ describe('createSpecRepository', () => {
           `FROM ${config.itemTable}`,
         );
         if (queries > 1) {
-          expect(lastSql()).toContain(
+          expect(mockPoolExecute.mock.calls[1][0]).toContain(
             `INSERT INTO ${config.specTable} (${config.parentColumn},`,
           );
+          expect(lastSql()).toBe(
+            `UPDATE ${config.itemTable} SET storage_location = NULL WHERE id = ?`,
+          );
+          expect(mockPoolExecute.mock.calls.at(-1)?.[1]).toEqual([7]);
+        } else {
+          expect(
+            mockPoolExecute.mock.calls.map(([sql]) => sql),
+          ).not.toContainEqual(expect.stringContaining('UPDATE'));
         }
       });
     });

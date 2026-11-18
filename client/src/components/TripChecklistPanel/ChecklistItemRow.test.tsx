@@ -50,6 +50,17 @@ function renderRow(
   return { onToggleCheck, onToggleSpecCheck };
 }
 
+/** Texts of the storage badges rendered inside the row of a checkbox. */
+function badgesInRowOf(checkboxName: string): (string | null)[] {
+  const row = screen
+    .getByRole('checkbox', { name: checkboxName })
+    // eslint-disable-next-line testing-library/no-node-access
+    .closest('tr') as HTMLElement;
+  return within(row)
+    .queryAllByText(/^(託運|隨身)$/)
+    .map(badge => badge.textContent);
+}
+
 const itemWithSpecs = makeItem({
   specs: [
     { id: 101, name: 'Spec A', storage_location: null },
@@ -94,7 +105,8 @@ describe('ChecklistItemRow', () => {
 
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText('Spec A')).toBeInTheDocument();
-    expect(screen.getByText('隨身')).toBeInTheDocument();
+    // Once on the spec row and once, as the summary, on the item name row.
+    expect(screen.getAllByText('隨身')).toHaveLength(2);
   });
 
   it('reflects the checked state from getCheck for each occasion', () => {
@@ -359,10 +371,58 @@ describe('ChecklistItemRow', () => {
     });
   });
 
+  describe('the storage badges on the name row of an item with specs', () => {
+    it.each([
+      {
+        description: 'the union of the spec locations in canonical order',
+        itemLocation: null,
+        specLocations: ['隨身', '託運'],
+        expected: ['託運', '隨身'],
+      },
+      {
+        description: 'a single location shared by several specs once',
+        itemLocation: null,
+        specLocations: ['隨身', '隨身'],
+        expected: ['隨身'],
+      },
+      {
+        description: 'nothing when no spec has a location',
+        itemLocation: null,
+        specLocations: [null, null],
+        expected: [],
+      },
+      {
+        description: 'the spec union, not the stale location of the item',
+        itemLocation: '託運',
+        specLocations: ['隨身'],
+        expected: ['隨身'],
+      },
+      {
+        description: 'nothing when only the stale item location is set',
+        itemLocation: '託運,隨身',
+        specLocations: [null],
+        expected: [],
+      },
+    ])('shows $description', ({ itemLocation, specLocations, expected }) => {
+      renderRow(
+        makeItem({
+          storage_location: itemLocation,
+          specs: specLocations.map((location, index) => ({
+            id: 101 + index,
+            name: `Spec ${index + 1}`,
+            storage_location: location,
+          })),
+        }),
+      );
+
+      expect(badgesInRowOf('Item A - Occ A')).toEqual(expected);
+    });
+  });
+
   describe('an item with specs filed under several locations', () => {
     const specItem = makeItem({
       storage_location: '託運,隨身',
-      specs: [{ id: 101, name: 'Spec A', storage_location: null }],
+      specs: [{ id: 101, name: 'Spec A', storage_location: '託運,隨身' }],
     });
 
     it('renders a read-only item row, a read-only spec name row and one row per location', () => {
@@ -454,27 +514,29 @@ describe('ChecklistItemRow', () => {
   describe('spec location badges', () => {
     it.each([
       {
-        description: 'a spec inheriting a single item location shows none',
+        description:
+          'a spec without location shows none and does not follow the item',
         item: makeItem({
           storage_location: '託運',
           specs: [{ id: 101, name: 'Spec A', storage_location: null }],
         }),
-        expectedBadgeCount: 1,
+        expectedBadges: [],
       },
       {
-        description: 'a spec with its own location shows it beside its name',
+        description:
+          'a spec with its own location shows it beside its name and in the summary',
         item: makeItem({
           storage_location: '託運',
           specs: [{ id: 101, name: 'Spec A', storage_location: '隨身' }],
         }),
-        expectedBadgeCount: 2,
+        expectedBadges: ['隨身', '隨身'],
       },
-    ])('$description', ({ item, expectedBadgeCount }) => {
+    ])('$description', ({ item, expectedBadges }) => {
       renderRow(item);
 
-      expect(screen.getAllByText(/^(託運|隨身)$/)).toHaveLength(
-        expectedBadgeCount,
-      );
+      expect(
+        screen.queryAllByText(/^(託運|隨身)$/).map(badge => badge.textContent),
+      ).toEqual(expectedBadges);
     });
   });
 });

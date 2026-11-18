@@ -57,11 +57,24 @@ describe('templateItemRepository', () => {
   });
 
   describe('updateItem', () => {
-    function mockItemSelectThenUpdate(curRow = CURRENT_ITEM_ROW) {
+    const SPEC_ROW = {
+      id: 30,
+      checklist_template_item_id: 1,
+      name: 'Spec',
+      storage_location: 'bag',
+    };
+
+    function mockItemSelectThenUpdate(
+      curRow = CURRENT_ITEM_ROW,
+      specRows: Array<typeof SPEC_ROW> = [],
+    ) {
       routeSql(
         mockPoolExecute,
         [
-          [sql => isSelectFrom(sql, 'checklist_template_item_specs'), [[]]],
+          [
+            sql => isSelectFrom(sql, 'checklist_template_item_specs'),
+            [specRows],
+          ],
           [sql => sql.trim().startsWith('SELECT'), [[curRow]]],
         ],
         [{ affectedRows: 1 }],
@@ -121,6 +134,48 @@ describe('templateItemRepository', () => {
         (sql as string).trim().startsWith('UPDATE'),
       );
       expect(updateCall?.[1][paramIndex]).toBe(expectedParam);
+    });
+
+    describe('an item that has specs', () => {
+      it.each([
+        {
+          name: 'ignores a requested storage_location and stores null',
+          data: { name: 'New Name', storage_location: 'new location' },
+        },
+        {
+          name: 'clears the stored legacy storage_location when it is omitted',
+          data: { name: 'New Name' },
+        },
+      ])('$name', async ({ data }) => {
+        mockItemSelectThenUpdate(CURRENT_ITEM_ROW, [SPEC_ROW]);
+
+        const result = await updateItem(1, data);
+
+        const updateCall = mockPoolExecute.mock.calls.find(([sql]) =>
+          (sql as string).trim().startsWith('UPDATE'),
+        );
+        expect(updateCall?.[1][3]).toBeNull();
+        expect(result?.storage_location).toBeNull();
+        expect(result?.specs).toEqual([
+          { id: 30, name: 'Spec', storage_location: 'bag' },
+        ]);
+      });
+    });
+
+    it('reads the specs before writing the item', async () => {
+      mockItemSelectThenUpdate();
+
+      await updateItem(1, { name: 'New Name' });
+
+      const sqls = mockPoolExecute.mock.calls.map(([sql]) => sql as string);
+      const specsIndex = sqls.findIndex(sql =>
+        sql.includes('checklist_template_item_specs'),
+      );
+      const updateIndex = sqls.findIndex(sql =>
+        sql.trim().startsWith('UPDATE'),
+      );
+      expect(specsIndex).toBeGreaterThan(-1);
+      expect(specsIndex).toBeLessThan(updateIndex);
     });
   });
 

@@ -311,10 +311,10 @@ describe('importSingleTrip', () => {
       'INSERT INTO checklist_occasions (trip_id, name) VALUES (?, ?)',
       [1000, 'Packing'],
     );
-    // The checked item references the new item id (5000), not the original 400.
-    expect(mockConnQuery).toHaveBeenCalledWith(
-      'INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, location, checked) VALUES ?',
-      [[[6000, 5000, '', 1]]],
+    // The item has specs, so its own check (400) is unused and not imported.
+    expect(mockConnQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO checklist_checks'),
+      expect.anything(),
     );
     // The checked spec references the new spec id (7000), not the original 500.
     expect(mockConnQuery).toHaveBeenCalledWith(
@@ -458,7 +458,11 @@ describe('importSingleTrip', () => {
   });
 
   describe('check locations', () => {
-    /** Backup whose item (400) is filed under 託運,隨身 and whose spec (500) inherits it. */
+    /**
+     * Backup whose item (400) is filed under 託運,隨身 and has one spec (500)
+     * without a location of its own, as older backups stored it. The item
+     * itself holds no location after import.
+     */
     function dataWithChecks(
       checks: Record<string, boolean>,
       specChecks: Record<string, boolean>,
@@ -491,6 +495,32 @@ describe('importSingleTrip', () => {
       };
     }
 
+    /** Backup whose item (400) has no specs and is filed under 託運,隨身. */
+    function dataWithPlainItem(
+      checks: Record<string, boolean>,
+    ): TripBackupData {
+      const base = dataWithChecks(checks, {});
+      const checklist = base.checklist as TripChecklist;
+      return {
+        ...base,
+        checklist: {
+          ...checklist,
+          categories: [
+            {
+              ...checklist.categories[0],
+              items: [{ ...checklist.categories[0].items[0], specs: [] }],
+            },
+          ],
+        },
+      };
+    }
+
+    function insertParams(tablePrefix: string): unknown[] {
+      return mockConnExecute.mock.calls
+        .filter(([sql]) => String(sql).startsWith(tablePrefix))
+        .map(([, params]) => params);
+    }
+
     function insertedRows(table: string): unknown[] {
       return mockConnQuery.mock.calls
         .filter(([sql]) => String(sql).startsWith(`INSERT INTO ${table} `))
@@ -499,25 +529,22 @@ describe('importSingleTrip', () => {
 
     it.each([
       {
-        name: 'spreads a legacy id-only key over every location of the unit',
+        name: 'spreads a legacy id-only spec key over every location of the spec',
         checks: { 400: true },
         specChecks: { 500: true },
         specLocation: null,
-        expectedChecks: [
-          [6000, 5000, '託運', 1],
-          [6000, 5000, '隨身', 1],
-        ],
+        expectedChecks: [],
         expectedSpecChecks: [
           [6000, 7000, '託運', 1],
           [6000, 7000, '隨身', 1],
         ],
       },
       {
-        name: 'keeps a location-specific key at its own location only',
+        name: 'keeps a location-specific spec key at its own location only',
         checks: { '400|隨身': true },
         specChecks: { '500|託運': true },
         specLocation: null,
-        expectedChecks: [[6000, 5000, '隨身', 1]],
+        expectedChecks: [],
         expectedSpecChecks: [[6000, 7000, '託運', 1]],
       },
       {
@@ -552,14 +579,85 @@ describe('importSingleTrip', () => {
       },
     );
 
+    it('spreads a legacy key of an item without specs over its locations', async () => {
+      mockNoTitleConflicts();
+      mockSequentialInserts();
+
+      await importSingleTrip(
+        dataWithPlainItem({ 400: true }),
+        sampleImageBuffers(),
+      );
+
+      expect(insertedRows('checklist_checks')).toEqual([
+        [6000, 5000, '託運', 1],
+        [6000, 5000, '隨身', 1],
+      ]);
+      expect(insertParams('INSERT INTO checklist_trip_items')).toEqual([
+        [4000, 'Jacket', 1, null, '託運,隨身', 0],
+      ]);
+    });
+
+    it('rolls back on an item check at a location the item does not have', async () => {
+      mockNoTitleConflicts();
+      mockSequentialInserts();
+
+      await expect(
+        importSingleTrip(
+          dataWithPlainItem({ '400|': true }),
+          sampleImageBuffers(),
+        ),
+      ).rejects.toThrow(
+        /checks checklist item 400 at location "" that it does not have/,
+      );
+
+      expect(mockConnRollback).toHaveBeenCalled();
+    });
+
     it.each([
       {
-        name: 'an item check at a location the item does not have',
-        checks: { '400|': true },
-        specChecks: {},
-        message:
-          /checks checklist item 400 at location "" that it does not have/,
+        name: 'takes over the location of its item when it has none',
+        specLocation: null,
+        expectedSpecLocation: '託運,隨身',
       },
+      {
+        name: 'keeps its own location over the one of its item',
+        specLocation: '隨身',
+        expectedSpecLocation: '隨身',
+      },
+    ])(
+      'stores the location on a spec that $name and none on its item',
+      async ({ specLocation, expectedSpecLocation }) => {
+        mockNoTitleConflicts();
+        mockSequentialInserts();
+
+        await importSingleTrip(
+          dataWithChecks({}, {}, specLocation),
+          sampleImageBuffers(),
+        );
+
+        expect(insertParams('INSERT INTO checklist_trip_items')).toEqual([
+          [4000, 'Jacket', 1, null, null, 0],
+        ]);
+        expect(insertParams('INSERT INTO checklist_trip_item_specs')).toEqual([
+          [5000, 'Size M', expectedSpecLocation],
+        ]);
+      },
+    );
+
+    it('skips the checks of an item with specs without validating them', async () => {
+      mockNoTitleConflicts();
+      mockSequentialInserts();
+
+      await importSingleTrip(
+        dataWithChecks({ '400|後背包': true, '400|': true, 400: true }, {}),
+        sampleImageBuffers(),
+      );
+
+      expect(insertedRows('checklist_checks')).toEqual([]);
+      expect(mockConnCommit).toHaveBeenCalled();
+    });
+
+    it.each([
       {
         name: 'a spec check at a location the spec does not have',
         checks: {},
@@ -760,7 +858,7 @@ describe('importSingleTrip', () => {
                   quantity: 1,
                   notes: null,
                   storage_location: null,
-                  specs: [{ id: 500, name: 'Size M', storage_location: null }],
+                  specs: [],
                 },
                 {
                   id: 401,
@@ -768,7 +866,16 @@ describe('importSingleTrip', () => {
                   quantity: 2,
                   notes: null,
                   storage_location: null,
+                  specs: [],
+                },
+                {
+                  id: 402,
+                  name: 'Shirt',
+                  quantity: 3,
+                  notes: null,
+                  storage_location: null,
                   specs: [
+                    { id: 500, name: 'Size M', storage_location: null },
                     { id: 501, name: 'Pair', storage_location: 'Drawer' },
                   ],
                 },
