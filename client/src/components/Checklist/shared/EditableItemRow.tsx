@@ -11,7 +11,7 @@ import LocationPicker from './LocationPicker';
 import StorageBadges from './StorageBadges';
 import type { EditItem, EditSpec } from './types';
 
-const SPEC_LOCATION_HINT = '位置由規格決定';
+const SPEC_LOCATION_HINT = '存放位置由規格決定';
 
 interface Props {
   item: EditItem;

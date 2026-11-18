@@ -21,7 +21,7 @@ export default function OrphanLocationList({ orphans, onRestore }: Props) {
         已刪除但旅程仍在使用
       </h3>
       <p className='text-xs text-muted-foreground'>
-        這些位置已不在上方清單，但既有旅程仍沿用，勾選紀錄不受影響。加回後即可再次選用。
+        這些存放位置已不在上方清單，但既有旅程仍沿用，勾選紀錄不受影響。加回後即可再次選用。
       </p>
       <ul className='space-y-2'>
         {orphans.map(orphan => (

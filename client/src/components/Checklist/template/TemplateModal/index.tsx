@@ -164,7 +164,7 @@ export default function TemplateModal({ onClose }: Props) {
               className='inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent'
             >
               <MapPin size={14} />
-              管理位置
+              存放位置
             </button>
             <button
               type='button'

@@ -10,7 +10,7 @@ import type { CheckGetter } from './checkUnits';
 import { groupByStorage, splitByCategory } from './groupByStorage';
 import GroupHeaderRow from './GroupHeaderRow';
 
-const NO_LOCATION_GROUP_LABEL = '未指定位置';
+const NO_LOCATION_GROUP_LABEL = '未指定存放位置';
 
 interface Props {
   checklist: TripChecklist;

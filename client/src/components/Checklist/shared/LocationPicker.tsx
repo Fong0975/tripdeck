@@ -44,7 +44,7 @@ export default function LocationPicker({ value, onChange }: Props) {
         className='flex min-h-8 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-sm transition-colors hover:border-primary'
       >
         {selected.length === 0 ? (
-          <span className='text-muted-foreground'>選擇位置</span>
+          <span className='text-muted-foreground'>選擇存放位置</span>
         ) : (
           selected.map(name => (
             <span
@@ -69,7 +69,7 @@ export default function LocationPicker({ value, onChange }: Props) {
         >
           {options.length === 0 ? (
             <p className='px-2 py-1 text-sm text-muted-foreground'>
-              尚未建立位置標籤
+              尚未建立存放位置
             </p>
           ) : (
             options.map(option => (

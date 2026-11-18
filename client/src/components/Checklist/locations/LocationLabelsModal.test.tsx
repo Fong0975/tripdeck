@@ -44,10 +44,10 @@ beforeEach(() => {
 });
 
 describe('LocationLabelsModal', () => {
-  it('is exposed as a dialog named 管理行李位置 listing the labels', async () => {
+  it('is exposed as a dialog named 存放位置 listing the labels', async () => {
     await renderLoaded();
 
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('管理行李位置');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('存放位置');
     expect(screen.getByText('託運')).toBeInTheDocument();
     expect(screen.getByLabelText('託運 獨立分組')).toBeChecked();
     expect(screen.getByLabelText('隨身 獨立分組')).not.toBeChecked();
@@ -59,7 +59,7 @@ describe('LocationLabelsModal', () => {
     render(<LocationLabelsModal onClose={vi.fn()} />);
 
     expect(screen.getByText('載入中…')).toBeInTheDocument();
-    await screen.findByText('載入位置標籤失敗，請稍後再試');
+    await screen.findByText('載入存放位置失敗，請稍後再試');
 
     vi.mocked(getLocationLabels).mockResolvedValue(stored);
     await user.click(screen.getByRole('button', { name: '重試' }));
@@ -70,7 +70,7 @@ describe('LocationLabelsModal', () => {
   it('shows an empty hint without labels', async () => {
     await renderLoaded({ labels: [], orphans: [] });
 
-    expect(screen.getByText('尚未建立任何位置標籤。')).toBeInTheDocument();
+    expect(screen.getByText('尚未建立任何存放位置。')).toBeInTheDocument();
   });
 
   it('closes through the close button', async () => {
@@ -84,7 +84,7 @@ describe('LocationLabelsModal', () => {
   describe('adding a label', () => {
     it('adds the trimmed name with the group setting and clears the input', async () => {
       const { user } = await renderLoaded();
-      const input = screen.getByLabelText('新增位置標籤');
+      const input = screen.getByLabelText('新增存放位置');
 
       await user.type(input, ' 手提 ');
       await user.click(
@@ -102,18 +102,18 @@ describe('LocationLabelsModal', () => {
     });
 
     it.each([
-      { name: 'a blank name', text: '   ', error: '請輸入位置名稱' },
-      { name: 'a name that exists', text: '託運', error: '已有同名的位置標籤' },
+      { name: 'a blank name', text: '   ', error: '請輸入存放位置名稱' },
+      { name: 'a name that exists', text: '託運', error: '已有同名的存放位置' },
       {
         name: 'a name with a comma',
         text: 'a,b',
-        error: '位置名稱不可包含「,」或「|」',
+        error: '存放位置名稱不可包含「,」或「|」',
       },
     ])('rejects $name without calling the API', async ({ text, error }) => {
       const { user } = await renderLoaded();
 
       if (text.trim() !== '') {
-        await user.type(screen.getByLabelText('新增位置標籤'), text);
+        await user.type(screen.getByLabelText('新增存放位置'), text);
       }
       await user.click(screen.getByRole('button', { name: '新增' }));
 

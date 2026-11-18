@@ -338,7 +338,7 @@ describe('TemplateModal location label management', () => {
     const { user, onClose } = await renderLoaded();
     expect(screen.queryByText('location-labels-modal')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '管理位置' }));
+    await user.click(screen.getByRole('button', { name: '存放位置' }));
     expect(screen.getByText('location-labels-modal')).toBeInTheDocument();
 
     await user.click(

@@ -145,8 +145,8 @@ describe('EditableItemRow', () => {
         within(itemPart).queryByRole('button', { name: '設定存放位置' }),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole('img', { name: '位置由規格決定' }),
-      ).toHaveAttribute('title', '位置由規格決定');
+        screen.getByRole('img', { name: '存放位置由規格決定' }),
+      ).toHaveAttribute('title', '存放位置由規格決定');
     },
   );
 
@@ -172,7 +172,7 @@ describe('EditableItemRow', () => {
     expect(screen.getByLabelText('託運')).toBeChecked();
     expect(screen.getByLabelText('隨身')).not.toBeChecked();
     expect(
-      screen.queryByRole('img', { name: '位置由規格決定' }),
+      screen.queryByRole('img', { name: '存放位置由規格決定' }),
     ).not.toBeInTheDocument();
   });
 

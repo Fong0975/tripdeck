@@ -52,7 +52,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
     if (!data) {
       return loadError ? (
         <RetryableError
-          message='載入位置標籤失敗，請稍後再試'
+          message='載入存放位置失敗，請稍後再試'
           onRetry={() => void reload()}
         />
       ) : (
@@ -64,7 +64,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
     return (
       <div className='space-y-5'>
         <p className='text-sm text-muted-foreground'>
-          位置標籤可在行李項目與規格上複選。刪除標籤不會影響已建立的旅程，但之後無法再為旅程中的項目選用，除非以同名重新新增。
+          存放位置可在行李項目與規格上複選。刪除存放位置不會影響已建立的旅程，但之後無法再為旅程中的項目選用，除非以同名重新新增。
         </p>
         <AddLocationLabelForm
           existingNames={labels.map(label => label.name)}
@@ -72,7 +72,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
         />
         {labels.length === 0 ? (
           <p className='py-4 text-center text-sm text-muted-foreground'>
-            尚未建立任何位置標籤。
+            尚未建立任何存放位置。
           </p>
         ) : (
           <ul className='space-y-2'>
@@ -100,7 +100,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
   return (
     <>
       <Modal
-        title='管理行李位置'
+        title='存放位置'
         onClose={handleClose}
         maxWidth='max-w-lg'
         scrollable
@@ -110,7 +110,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
       {deleting && (
         <ConfirmDialog
           title={`刪除「${deleting.name}」？`}
-          message='行李清單模板中的此位置會一併移除；既有旅程不受影響，仍可使用此位置，但取消後無法再選回。'
+          message='行李清單模板中的此存放位置會一併移除；既有旅程不受影響，仍可使用此存放位置，但取消後無法再選回。'
           confirmLabel='刪除'
           onCancel={() => setDeleting(null)}
           onConfirm={() => void handleConfirmDelete()}

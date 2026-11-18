@@ -105,7 +105,7 @@ describe('ChecklistStorageBody', () => {
     const headers = screen
       .getAllByText(/ 項$/)
       .map(count => count.parentElement?.textContent);
-    expect(headers).toEqual(['託運2 項', '隨身2 項', '未指定位置1 項']);
+    expect(headers).toEqual(['託運2 項', '隨身2 項', '未指定存放位置1 項']);
   });
 
   it('shows a category subheader per category inside a group', () => {
@@ -126,11 +126,11 @@ describe('ChecklistStorageBody', () => {
     ).toHaveLength(2);
   });
 
-  it('puts units without a location under "未指定位置"', () => {
+  it('puts units without a location under "未指定存放位置"', () => {
     renderBody();
 
-    expect(screen.getByText('未指定位置')).toBeInTheDocument();
-    const noneRows = rowsOfGroup('未指定位置');
+    expect(screen.getByText('未指定存放位置')).toBeInTheDocument();
+    const noneRows = rowsOfGroup('未指定存放位置');
     expect(
       within(noneRows[noneRows.length - 1]).getByText('Socks'),
     ).toBeInTheDocument();
@@ -272,13 +272,13 @@ describe('ChecklistStorageBody with user-defined labels', () => {
     const headers = screen
       .getAllByText(/ 項$/)
       .map(count => count.parentElement?.textContent);
-    expect(headers).toEqual(['手提1 項', '未指定位置2 項']);
+    expect(headers).toEqual(['手提1 項', '未指定存放位置2 項']);
   });
 
-  it('shows the location of units in the "未指定位置" group, and not in a named group', () => {
+  it('shows the location of units in the "未指定存放位置" group, and not in a named group', () => {
     renderWithLabels();
 
-    const noneRows = rowsOfGroup('未指定位置');
+    const noneRows = rowsOfGroup('未指定存放位置');
     expect(within(noneRows[1]).getByText('託運')).toBeInTheDocument();
     expect(within(noneRows[2]).getByText('背包')).toBeInTheDocument();
     expect(

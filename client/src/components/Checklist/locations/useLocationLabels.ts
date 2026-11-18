@@ -49,13 +49,13 @@ export function useLocationLabels() {
     try {
       await addLocationLabel({ name, show_as_group: showAsGroup });
       await reload();
-      showToast('success', '已新增位置標籤。');
+      showToast('success', '已新增存放位置。');
       return true;
     } catch (err) {
       const duplicate = err instanceof ApiError && err.status === 409;
       showToast(
         'error',
-        duplicate ? '已有同名的位置標籤' : '新增位置標籤失敗，請稍後再試',
+        duplicate ? '已有同名的存放位置' : '新增存放位置失敗，請稍後再試',
       );
       return false;
     }
@@ -65,10 +65,10 @@ export function useLocationLabels() {
     try {
       await deleteLocationLabel(labelId);
       await reload();
-      showToast('success', '已刪除位置標籤。');
+      showToast('success', '已刪除存放位置。');
       return true;
     } catch {
-      showToast('error', '刪除位置標籤失敗，請稍後再試');
+      showToast('error', '刪除存放位置失敗，請稍後再試');
       return false;
     }
   };
@@ -78,7 +78,7 @@ export function useLocationLabels() {
       await updateLocationLabel(labelId, { show_as_group: showAsGroup });
       await reload();
     } catch {
-      showToast('error', '更新位置標籤失敗，請稍後再試');
+      showToast('error', '更新存放位置失敗，請稍後再試');
     }
   };
 
@@ -96,7 +96,7 @@ export function useLocationLabels() {
     try {
       await reorderLocationLabels(labels.map(label => label.id));
     } catch {
-      showToast('error', '調整位置順序失敗，請稍後再試');
+      showToast('error', '調整存放位置順序失敗，請稍後再試');
       await reload();
     }
   };

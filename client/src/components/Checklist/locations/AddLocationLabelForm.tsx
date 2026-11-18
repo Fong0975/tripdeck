@@ -38,8 +38,8 @@ export default function AddLocationLabelForm({ existingNames, onAdd }: Props) {
       <div className='flex gap-2'>
         <input
           type='text'
-          aria-label='新增位置標籤'
-          placeholder='新增位置，例如：手提'
+          aria-label='新增存放位置'
+          placeholder='新增存放位置，例如：手提'
           value={name}
           onChange={e => setName(e.target.value)}
           className={`${INPUT_CLS} min-w-0 flex-1`}

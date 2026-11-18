@@ -13,16 +13,16 @@ export function validateLocationLabelName(
 ): string | null {
   const trimmed = name.trim();
   if (trimmed === '') {
-    return '請輸入位置名稱';
+    return '請輸入存放位置名稱';
   }
   if (/[,|]/.test(trimmed)) {
-    return '位置名稱不可包含「,」或「|」';
+    return '存放位置名稱不可包含「,」或「|」';
   }
   if ([...trimmed].length > FIELD_LIMITS.locationLabel) {
-    return `位置名稱最多 ${FIELD_LIMITS.locationLabel} 個字`;
+    return `存放位置名稱最多 ${FIELD_LIMITS.locationLabel} 個字`;
   }
   if (existingNames.includes(trimmed)) {
-    return '已有同名的位置標籤';
+    return '已有同名的存放位置';
   }
   return null;
 }

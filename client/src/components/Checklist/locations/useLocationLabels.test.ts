@@ -66,7 +66,7 @@ describe('useLocationLabels', () => {
         run: (r: ReturnType<typeof useLocationLabels>) =>
           r.addLabel('手提', false),
         success: true,
-        toast: ['success', '已新增位置標籤。'],
+        toast: ['success', '已新增存放位置。'],
         reloads: true,
       },
       {
@@ -78,7 +78,7 @@ describe('useLocationLabels', () => {
         run: (r: ReturnType<typeof useLocationLabels>) =>
           r.addLabel('託運', true),
         success: false,
-        toast: ['error', '已有同名的位置標籤'],
+        toast: ['error', '已有同名的存放位置'],
         reloads: false,
       },
       {
@@ -88,7 +88,7 @@ describe('useLocationLabels', () => {
         run: (r: ReturnType<typeof useLocationLabels>) =>
           r.addLabel('手提', true),
         success: false,
-        toast: ['error', '新增位置標籤失敗，請稍後再試'],
+        toast: ['error', '新增存放位置失敗，請稍後再試'],
         reloads: false,
       },
       {
@@ -96,7 +96,7 @@ describe('useLocationLabels', () => {
         setup: () => vi.mocked(deleteLocationLabel).mockResolvedValue(),
         run: (r: ReturnType<typeof useLocationLabels>) => r.removeLabel(1),
         success: true,
-        toast: ['success', '已刪除位置標籤。'],
+        toast: ['success', '已刪除存放位置。'],
         reloads: true,
       },
       {
@@ -105,7 +105,7 @@ describe('useLocationLabels', () => {
           vi.mocked(deleteLocationLabel).mockRejectedValue(new Error('x')),
         run: (r: ReturnType<typeof useLocationLabels>) => r.removeLabel(1),
         success: false,
-        toast: ['error', '刪除位置標籤失敗，請稍後再試'],
+        toast: ['error', '刪除存放位置失敗，請稍後再試'],
         reloads: false,
       },
     ])('$name', async ({ setup, run, success, toast, reloads }) => {
@@ -146,7 +146,7 @@ describe('useLocationLabels', () => {
 
       expect(showToast).toHaveBeenCalledWith(
         'error',
-        '更新位置標籤失敗，請稍後再試',
+        '更新存放位置失敗，請稍後再試',
       );
     });
   });
@@ -200,7 +200,7 @@ describe('useLocationLabels', () => {
 
       expect(showToast).toHaveBeenCalledWith(
         'error',
-        '調整位置順序失敗，請稍後再試',
+        '調整存放位置順序失敗，請稍後再試',
       );
       expect(result.current.data).toEqual(stored);
     });

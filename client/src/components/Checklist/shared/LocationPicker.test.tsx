@@ -53,9 +53,9 @@ describe('LocationPicker', () => {
         expect(openButton()).toHaveTextContent(name);
       }
       if (hint) {
-        expect(openButton()).toHaveTextContent('選擇位置');
+        expect(openButton()).toHaveTextContent('選擇存放位置');
       } else {
-        expect(openButton()).not.toHaveTextContent('選擇位置');
+        expect(openButton()).not.toHaveTextContent('選擇存放位置');
       }
     },
   );
@@ -136,7 +136,7 @@ describe('LocationPicker', () => {
 
     await user.click(openButton());
 
-    expect(screen.getByText('尚未建立位置標籤')).toBeInTheDocument();
+    expect(screen.getByText('尚未建立存放位置')).toBeInTheDocument();
   });
 
   it.each([

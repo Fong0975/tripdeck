@@ -194,7 +194,7 @@ describe('ChecklistTable', () => {
     it.each([
       { header: '託運', count: '1 項' },
       { header: '隨身', count: '2 項' },
-      { header: '未指定位置', count: '1 項' },
+      { header: '未指定存放位置', count: '1 項' },
     ])('shows the "$header" group with "$count"', ({ header, count }) => {
       renderTable(storageChecklist, undefined, undefined, 'storage');
 
