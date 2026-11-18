@@ -4,6 +4,9 @@ import type { ChecklistCategory } from '@/types';
 
 import { getItemUnits, type CheckUnit } from './checkUnits';
 
+/** Heading of the group of units without an own-group storage location. */
+export const NO_LOCATION_GROUP_LABEL = '未指定存放位置';
+
 /**
  * Group key: the name of a label that is its own group, or
  * {@link NO_LOCATION} for the group of every other unit.
