@@ -2,9 +2,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ChecklistOccasion } from '@/types';
+
 import type { FilterGroup } from './checklistFilter';
 import type { ViewMode } from './viewMode';
 import ViewSettingsMenu from './ViewSettingsMenu';
+
+const twoOccasions: ChecklistOccasion[] = [
+  { id: 1, name: 'Out', checks: {}, specChecks: {} },
+  { id: 2, name: 'Back', checks: {}, specChecks: {} },
+];
 
 const groups: FilterGroup[] = [
   {
@@ -22,11 +29,14 @@ function renderMenu(
     hidden?: string[];
     viewMode?: ViewMode;
     incompleteOnly?: boolean;
+    occasions?: ChecklistOccasion[];
+    hiddenOccasionIds?: number[];
   } = {},
 ) {
   const handlers = {
     onViewModeChange: vi.fn(),
     onIncompleteOnlyChange: vi.fn(),
+    onToggleOccasion: vi.fn(),
     onToggleItem: vi.fn(),
     onToggleGroup: vi.fn(),
     onClearFilter: vi.fn(),
@@ -37,6 +47,8 @@ function renderMenu(
       groups={groups}
       hidden={new Set(options.hidden ?? [])}
       incompleteOnly={options.incompleteOnly ?? false}
+      occasions={options.occasions ?? []}
+      hiddenOccasionIds={new Set(options.hiddenOccasionIds ?? [])}
       {...handlers}
     />,
   );
@@ -206,5 +218,48 @@ describe('ViewSettingsMenu', () => {
     for (const badge of badges) {
       expect(screen.getByText(badge)).toBeInTheDocument();
     }
+  });
+
+  it.each([
+    { name: 'no occasion', occasions: [] as ChecklistOccasion[], shown: false },
+    { name: 'one occasion', occasions: twoOccasions.slice(0, 1), shown: false },
+    { name: 'two occasions', occasions: twoOccasions, shown: true },
+  ])(
+    'shows the occasion filter only for several occasions: $name',
+    async ({ occasions, shown }) => {
+      renderMenu({ occasions });
+      await openMenu();
+
+      if (shown) {
+        expect(
+          screen.getByRole('group', { name: '檢查時機' }),
+        ).toBeInTheDocument();
+      } else {
+        expect(
+          screen.queryByRole('group', { name: '檢查時機' }),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it('reports a toggled occasion even without unfinished-only', async () => {
+    const { onToggleOccasion } = renderMenu({ occasions: twoOccasions });
+    const user = await openMenu();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Back' }));
+
+    expect(onToggleOccasion).toHaveBeenCalledWith(2);
+  });
+
+  it('shows the shown occasion count in a badge once one is hidden', () => {
+    renderMenu({ occasions: twoOccasions, hiddenOccasionIds: [2] });
+
+    expect(screen.getByText('時機 1/2')).toBeInTheDocument();
+  });
+
+  it('shows no occasion badge while every occasion is shown', () => {
+    renderMenu({ occasions: twoOccasions });
+
+    expect(screen.queryByText(/時機/)).not.toBeInTheDocument();
   });
 });

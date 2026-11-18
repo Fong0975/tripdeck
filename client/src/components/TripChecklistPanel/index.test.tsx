@@ -30,6 +30,10 @@ vi.mock('./ChecklistTable', () => ({
     <div>
       checklist-table-{checklist.categories.length}-{viewMode}-{hidden.size}
       {isUnitVisible ? '-unfinished' : ''}
+      <span>
+        table-occasions-
+        {checklist.occasions.map(occasion => occasion.id).join(',')}
+      </span>
     </div>
   ),
 }));
@@ -361,5 +365,64 @@ describe('TripChecklistPanel', () => {
     expect(
       screen.getByText(/^checklist-table-1-category-0/),
     ).toBeInTheDocument();
+  });
+
+  it('passes only the chosen occasion columns to the table', async () => {
+    vi.mocked(useChecklistState).mockReturnValue(
+      makeState({
+        checklist: makeTripChecklist({
+          occasions: [
+            { id: 1, name: 'Out', checks: {}, specChecks: {} },
+            { id: 2, name: 'Back', checks: {}, specChecks: {} },
+          ],
+          categories: [
+            makeChecklistCategory({
+              items: [makeChecklistItem({ id: 10, name: 'Item A' })],
+            }),
+          ],
+        }),
+      }),
+    );
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+    expect(screen.getByText('table-occasions-1,2')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /檢視設定/ }));
+
+    await user.click(screen.getByRole('checkbox', { name: 'Back' }));
+
+    expect(screen.getByText('table-occasions-1')).toBeInTheDocument();
+    expect(screen.getByText('時機 1/2')).toBeInTheDocument();
+  });
+
+  it('judges unfinished by the chosen occasions only', async () => {
+    vi.mocked(useChecklistState).mockReturnValue(
+      makeState({
+        checklist: makeTripChecklist({
+          occasions: [
+            { id: 1, name: 'Out', checks: {}, specChecks: {} },
+            { id: 2, name: 'Back', checks: {}, specChecks: {} },
+          ],
+          categories: [
+            makeChecklistCategory({
+              items: [makeChecklistItem({ id: 10, name: 'Item A' })],
+            }),
+          ],
+        }),
+        getCheck: (occId: number) => occId === 2,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+    await user.click(screen.getByRole('button', { name: /檢視設定/ }));
+    await user.click(
+      screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
+    );
+    expect(
+      screen.getByText(/^checklist-table-1-category-0/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Out' }));
+
+    expect(screen.getByText('所有項目都已完成 🎉')).toBeInTheDocument();
   });
 });

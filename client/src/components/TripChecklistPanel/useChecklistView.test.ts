@@ -5,7 +5,7 @@ import {
   makeChecklistCategory,
   makeChecklistItem,
 } from '@/test-utils/fixtures';
-import type { ChecklistCategory } from '@/types';
+import type { ChecklistCategory, ChecklistOccasion } from '@/types';
 
 import { useChecklistView } from './useChecklistView';
 
@@ -20,10 +20,15 @@ const categories: ChecklistCategory[] = [
   }),
 ];
 
+const occasions: ChecklistOccasion[] = [
+  { id: 1, name: 'Out', checks: {}, specChecks: {} },
+  { id: 2, name: 'Back', checks: {}, specChecks: {} },
+];
+
 type View = ReturnType<typeof useChecklistView>;
 
 function renderView() {
-  return renderHook(() => useChecklistView(categories));
+  return renderHook(() => useChecklistView(categories, occasions));
 }
 
 describe('useChecklistView', () => {
@@ -39,7 +44,7 @@ describe('useChecklistView', () => {
   });
 
   it('has no groups while the checklist is loading', () => {
-    const { result } = renderHook(() => useChecklistView(undefined));
+    const { result } = renderHook(() => useChecklistView(undefined, undefined));
 
     expect(result.current.groups).toEqual([]);
     expect(result.current.allHidden).toBe(false);
@@ -151,5 +156,43 @@ describe('useChecklistView', () => {
     act(() => result.current.changeViewMode('storage'));
 
     expect(result.current.incompleteOnly).toBe(false);
+  });
+
+  it('shows every occasion by default and none while loading', () => {
+    const { result } = renderView();
+    const { result: loadingResult } = renderHook(() =>
+      useChecklistView(undefined, undefined),
+    );
+
+    expect(result.current.visibleOccasions).toEqual(occasions);
+    expect(result.current.occasions).toEqual(occasions);
+    expect(loadingResult.current.visibleOccasions).toEqual([]);
+  });
+
+  it('hides an occasion but keeps the last shown one', () => {
+    const { result } = renderView();
+
+    act(() => result.current.toggleOccasion(2));
+    expect(
+      result.current.visibleOccasions.map(occasion => occasion.id),
+    ).toEqual([1]);
+    expect([...result.current.hiddenOccasionIds]).toEqual([2]);
+
+    act(() => result.current.toggleOccasion(1));
+    expect(
+      result.current.visibleOccasions.map(occasion => occasion.id),
+    ).toEqual([1]);
+
+    act(() => result.current.toggleOccasion(2));
+    expect(result.current.visibleOccasions).toHaveLength(2);
+  });
+
+  it('keeps the occasion selection when the view mode changes', () => {
+    const { result } = renderView();
+    act(() => result.current.toggleOccasion(2));
+
+    act(() => result.current.changeViewMode('storage'));
+
+    expect([...result.current.hiddenOccasionIds]).toEqual([2]);
   });
 });

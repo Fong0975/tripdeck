@@ -2,6 +2,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import AnchoredPopover from '@/components/ui/AnchoredPopover';
+import type { ChecklistOccasion } from '@/types';
 
 import {
   hiddenCount,
@@ -9,6 +10,11 @@ import {
   type HiddenKeys,
 } from './checklistFilter';
 import ChecklistFilterList from './ChecklistFilterList';
+import OccasionFilter from './OccasionFilter';
+import {
+  getVisibleOccasions,
+  type HiddenOccasionIds,
+} from './occasionSelection';
 import type { ViewMode } from './viewMode';
 import ViewModeToggle from './ViewModeToggle';
 
@@ -20,9 +26,13 @@ interface Props {
   /** Filter groups of the current view. */
   groups: FilterGroup[];
   hidden: HiddenKeys;
-  /** Whether only unfinished units are shown, which disables the item filter. */
+  /** Whether finished units are hidden, on top of the item filter. */
   incompleteOnly: boolean;
   onIncompleteOnlyChange: (enabled: boolean) => void;
+  /** All occasions of the checklist. */
+  occasions: ChecklistOccasion[];
+  hiddenOccasionIds: HiddenOccasionIds;
+  onToggleOccasion: (occasionId: number) => void;
   onToggleItem: (groupKey: string, itemId: number) => void;
   onToggleGroup: (group: FilterGroup) => void;
   onClearFilter: () => void;
@@ -40,6 +50,9 @@ export default function ViewSettingsMenu({
   hidden,
   incompleteOnly,
   onIncompleteOnlyChange,
+  occasions,
+  hiddenOccasionIds,
+  onToggleOccasion,
   onToggleItem,
   onToggleGroup,
   onClearFilter,
@@ -47,9 +60,17 @@ export default function ViewSettingsMenu({
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
   const hiddenTotal = hiddenCount(hidden, groups);
+  const shownOccasionCount = getVisibleOccasions(
+    occasions,
+    hiddenOccasionIds,
+  ).length;
+  const hiddenOccasionCount = occasions.length - shownOccasionCount;
   const badges = [
     incompleteOnly ? '僅未完成' : null,
     hiddenTotal > 0 ? `已隱藏 ${hiddenTotal}` : null,
+    hiddenOccasionCount > 0
+      ? `時機 ${shownOccasionCount}/${occasions.length}`
+      : null,
   ].filter((badge): badge is string => badge !== null);
 
   return (
@@ -121,6 +142,11 @@ export default function ViewSettingsMenu({
                   </span>
                 </span>
               </label>
+              <OccasionFilter
+                occasions={occasions}
+                hidden={hiddenOccasionIds}
+                onToggle={onToggleOccasion}
+              />
               <hr className='border-border' />
               <ChecklistFilterList
                 groups={groups}

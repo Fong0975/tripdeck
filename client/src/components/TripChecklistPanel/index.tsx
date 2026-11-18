@@ -35,10 +35,10 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     handleDiscardChecks,
     handleEditSaved,
   } = useChecklistState(tripId, onDirtyChange);
-  const view = useChecklistView(checklist?.categories);
+  const view = useChecklistView(checklist?.categories, checklist?.occasions);
   const incomplete = useIncompleteOnly({
     enabled: view.incompleteOnly,
-    occasions: checklist?.occasions,
+    occasions: view.visibleOccasions,
     units: view.filteredUnits,
     getCheck,
     getSpecCheck,
@@ -107,6 +107,9 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
             onViewModeChange={view.changeViewMode}
             groups={view.groups}
             hidden={view.hidden}
+            occasions={view.occasions}
+            hiddenOccasionIds={view.hiddenOccasionIds}
+            onToggleOccasion={view.toggleOccasion}
             incompleteOnly={view.incompleteOnly}
             onIncompleteOnlyChange={view.setIncompleteOnly}
             onToggleItem={view.toggleItem}
@@ -152,7 +155,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
         </div>
       ) : (
         <ChecklistTable
-          checklist={checklist}
+          checklist={{ ...checklist, occasions: view.visibleOccasions }}
           getCheck={getCheck}
           getSpecCheck={getSpecCheck}
           onToggleCheck={incomplete.toggleCheck}
