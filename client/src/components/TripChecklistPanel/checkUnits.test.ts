@@ -33,9 +33,9 @@ describe('getSpecLocations', () => {
       expected: ['隨身'],
     },
     {
-      name: 'lists several spec locations in canonical order',
+      name: 'lists several spec locations in stored order',
       specLocation: '隨身,託運',
-      expected: ['託運', '隨身'],
+      expected: ['隨身', '託運'],
     },
     {
       name: 'falls back to no location when the spec has none',
@@ -77,10 +77,10 @@ describe('getSpecUnits', () => {
       expected: ['spec:10@隨身'],
     },
     {
-      name: 'yields one unit per own location in canonical order',
+      name: 'yields one unit per own location in stored order',
       itemLocation: null,
       specLocation: '隨身,託運',
-      expected: ['spec:10@託運', 'spec:10@隨身'],
+      expected: ['spec:10@隨身', 'spec:10@託運'],
     },
     {
       name: 'ignores the item location when the spec has none',
@@ -127,7 +127,7 @@ describe('getItemUnits', () => {
     {
       name: 'an item without specs yields one unit per location',
       item: makeChecklistItem({ id: 1, storage_location: '隨身,託運' }),
-      expected: ['item:1@託運', 'item:1@隨身'],
+      expected: ['item:1@隨身', 'item:1@託運'],
     },
     {
       name: 'undefined specs are treated as no specs',

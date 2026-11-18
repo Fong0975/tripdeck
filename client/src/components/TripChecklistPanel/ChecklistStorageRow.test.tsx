@@ -161,3 +161,42 @@ describe('ChecklistStorageRow', () => {
     },
   );
 });
+
+describe('ChecklistStorageRow location display', () => {
+  function renderWithLocation(showLocation: boolean) {
+    render(
+      <table>
+        <tbody>
+          <ChecklistStorageRow
+            unit={{ ...itemUnit, location: '手提' }}
+            showLocation={showLocation}
+            index={0}
+            occasions={occasions}
+            getCheck={() => false}
+            getSpecCheck={() => false}
+            onToggleCheck={vi.fn()}
+            onToggleSpecCheck={vi.fn()}
+          />
+        </tbody>
+      </table>,
+    );
+  }
+
+  it('shows the location badge and names the location in the cell labels when asked to', () => {
+    renderWithLocation(true);
+
+    expect(screen.getByText('手提')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Jacket（手提） - Occ A' }),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the location when the group already names it', () => {
+    renderWithLocation(false);
+
+    expect(screen.queryByText('手提')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Jacket - Occ A' }),
+    ).toBeInTheDocument();
+  });
+});

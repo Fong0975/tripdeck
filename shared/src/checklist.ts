@@ -1,15 +1,6 @@
 /** Location labels seeded into a freshly created database. */
 export const DEFAULT_LOCATION_LABELS = ['託運', '隨身'] as const;
 
-/**
- * Default location labels, kept for clients that have not yet moved to the
- * user-defined labels served by the location label API.
- */
-export const STORAGE_OPTIONS = DEFAULT_LOCATION_LABELS;
-
-/** One of {@link STORAGE_OPTIONS}. */
-export type StorageOption = (typeof STORAGE_OPTIONS)[number];
-
 /** Check location of a unit that has no storage location. */
 export const NO_LOCATION = '';
 

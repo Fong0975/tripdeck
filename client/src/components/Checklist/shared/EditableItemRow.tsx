@@ -2,10 +2,13 @@ import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Plus, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { useLocationLabelSet } from '../locations/LocationLabelsContext';
+
 import { summarizeSpecLocations } from './checklistUtils';
 import EditSpecRow from './EditSpecRow';
 import ItemActionBar from './ItemActionBar';
-import StorageCheckboxes from './StorageCheckboxes';
+import LocationPicker from './LocationPicker';
+import StorageBadges from './StorageBadges';
 import type { EditItem, EditSpec } from './types';
 
 const SPEC_LOCATION_HINT = '位置由規格決定';
@@ -41,6 +44,7 @@ export default function EditableItemRow({
   onMoveItem,
   moveDisabled,
 }: Props) {
+  const { names } = useLocationLabelSet();
   const hasSpecs = item.specs.length > 0;
 
   return (
@@ -87,16 +91,23 @@ export default function EditableItemRow({
             />
           </div>
 
-          <div className='flex items-center gap-3'>
-            <StorageCheckboxes
-              value={
-                hasSpecs
-                  ? summarizeSpecLocations(item.specs)
-                  : item.storage_location
-              }
-              disabled={hasSpecs}
-              onChange={loc => onUpdateItem(item.id, { storage_location: loc })}
-            />
+          <div
+            role='group'
+            aria-label='項目存放位置'
+            className='flex items-center gap-3'
+          >
+            {hasSpecs ? (
+              <StorageBadges
+                value={summarizeSpecLocations(item.specs, names)}
+              />
+            ) : (
+              <LocationPicker
+                value={item.storage_location}
+                onChange={loc =>
+                  onUpdateItem(item.id, { storage_location: loc })
+                }
+              />
+            )}
             {hasSpecs && (
               <span
                 role='img'

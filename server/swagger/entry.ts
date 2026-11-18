@@ -2,6 +2,7 @@ import express from 'express';
 
 import appRoutes from '../src/routes/appRoutes';
 import backupRoutes from '../src/routes/backupRoutes';
+import checklistLocationRoutes from '../src/routes/checklistLocationRoutes';
 import checklistTemplateRoutes from '../src/routes/checklistTemplateRoutes';
 import tripRoutes from '../src/routes/tripRoutes';
 
@@ -12,6 +13,7 @@ const app = express();
 app.use('/api', appRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/checklist-template', checklistTemplateRoutes);
+app.use('/api/checklist-locations', checklistLocationRoutes);
 app.use('/api/backups', backupRoutes);
 
 export default app;

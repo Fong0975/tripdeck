@@ -8,6 +8,7 @@ import RetryableError from '@/components/ui/RetryableError';
 
 import AddLocationLabelForm from './AddLocationLabelForm';
 import LocationLabelRow from './LocationLabelRow';
+import { useLocationLabelSet } from './LocationLabelsContext';
 import OrphanLocationList from './OrphanLocationList';
 import { useLocationLabels } from './useLocationLabels';
 
@@ -31,7 +32,13 @@ export default function LocationLabelsModal({ onClose }: Props) {
     setShowAsGroup,
     moveLabel,
   } = useLocationLabels();
+  const { reload: reloadLabelSet } = useLocationLabelSet();
   const [deleting, setDeleting] = useState<LocationLabel | null>(null);
+
+  const handleClose = () => {
+    onClose();
+    void reloadLabelSet();
+  };
 
   const handleConfirmDelete = async () => {
     const target = deleting;
@@ -94,7 +101,7 @@ export default function LocationLabelsModal({ onClose }: Props) {
     <>
       <Modal
         title='管理行李位置'
-        onClose={onClose}
+        onClose={handleClose}
         maxWidth='max-w-lg'
         scrollable
       >

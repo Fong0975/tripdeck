@@ -1,4 +1,4 @@
-import { getEffectiveLocations, STORAGE_OPTIONS } from '@tripdeck/shared';
+import { getEffectiveLocations } from '@tripdeck/shared';
 
 import type { ChecklistCategory, ChecklistItem, ItemSpec } from '@/types';
 
@@ -37,7 +37,7 @@ export type CheckGetter = (
  * @returns Non-empty list; `['']` when the spec has no location.
  */
 export function getSpecLocations(spec: ItemSpec): string[] {
-  return getEffectiveLocations(spec.storage_location, STORAGE_OPTIONS);
+  return getEffectiveLocations(spec.storage_location);
 }
 
 /**
@@ -64,7 +64,7 @@ export function getSpecUnits(item: ChecklistItem, spec: ItemSpec): CheckUnit[] {
 export function getItemUnits(item: ChecklistItem): CheckUnit[] {
   const specs = item.specs ?? [];
   if (specs.length === 0) {
-    return getEffectiveLocations(item.storage_location, STORAGE_OPTIONS).map(
+    return getEffectiveLocations(item.storage_location).map(
       (location): CheckUnit => ({ kind: 'item', item, location }),
     );
   }

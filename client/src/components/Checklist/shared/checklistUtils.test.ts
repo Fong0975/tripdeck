@@ -97,10 +97,43 @@ describe('toggleStorageOption', () => {
       expected: '隨身',
       description: 'remove one of two options',
     },
+    {
+      current: '隨身',
+      option: '託運' as const,
+      expected: '隨身,託運',
+      description: 'add keeps stored order without a label order',
+    },
+    {
+      current: '隨身',
+      option: '託運' as const,
+      order: ['託運', '隨身'],
+      expected: '託運,隨身',
+      description: 'add sorts by the label order',
+    },
+    {
+      current: '背包,隨身',
+      option: '託運' as const,
+      order: ['託運', '隨身'],
+      expected: '託運,隨身,背包',
+      description: 'names that are no longer labels follow the labels',
+    },
+    {
+      current: '託運,背包',
+      option: '背包' as const,
+      order: ['託運', '隨身'],
+      expected: '託運',
+      description: 'removing a deleted label that the value still carries',
+    },
+    {
+      current: '手提',
+      option: '手提' as const,
+      expected: null,
+      description: 'removing a custom name',
+    },
   ])(
     'returns $expected for toggling "$option" on "$current" ($description)',
-    ({ current, option, expected }) => {
-      expect(toggleStorageOption(current, option)).toBe(expected);
+    ({ current, option, expected, order }) => {
+      expect(toggleStorageOption(current, option, order)).toBe(expected);
     },
   );
 });
@@ -109,6 +142,7 @@ describe('summarizeSpecLocations', () => {
   const tests: {
     name: string;
     locations: (string | null)[];
+    order?: string[];
     expected: string | null;
   }[] = [
     { name: 'no specs', locations: [], expected: null },
@@ -125,37 +159,49 @@ describe('summarizeSpecLocations', () => {
       expected: '託運,隨身',
     },
     {
-      name: 'different options on different specs',
+      name: 'different options on different specs, in the order they appear',
       locations: ['隨身', null, '託運'],
+      expected: '隨身,託運',
+    },
+    {
+      name: 'different options on different specs, sorted by the label order',
+      locations: ['隨身', null, '託運'],
+      order: ['託運', '隨身'],
       expected: '託運,隨身',
     },
     {
       name: 'options listed out of order with spaces',
       locations: ['隨身, 託運'],
+      order: ['託運', '隨身'],
       expected: '託運,隨身',
     },
     {
       name: 'the same option on several specs, counted once',
       locations: ['隨身', '隨身', '託運,隨身'],
+      order: ['託運', '隨身'],
       expected: '託運,隨身',
     },
     {
-      name: 'unknown location values',
+      name: 'names that are not labels, after the labels',
       locations: ['後背包', '隨身'],
-      expected: '隨身',
+      order: ['託運', '隨身'],
+      expected: '隨身,後背包',
     },
     {
-      name: 'only unknown location values',
+      name: 'only names that are not labels',
       locations: ['後背包'],
-      expected: null,
+      expected: '後背包',
     },
   ];
 
-  it.each(tests)('returns the union for $name', ({ locations, expected }) => {
-    const specs = locations.map(storage_location => ({ storage_location }));
+  it.each(tests)(
+    'returns the union for $name',
+    ({ locations, order, expected }) => {
+      const specs = locations.map(storage_location => ({ storage_location }));
 
-    expect(summarizeSpecLocations(specs)).toBe(expected);
-  });
+      expect(summarizeSpecLocations(specs, order)).toBe(expected);
+    },
+  );
 });
 
 describe('nextTempId', () => {

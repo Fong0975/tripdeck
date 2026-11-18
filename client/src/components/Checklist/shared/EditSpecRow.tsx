@@ -1,7 +1,7 @@
 import { FIELD_LIMITS } from '@tripdeck/shared';
 import { Trash2 } from 'lucide-react';
 
-import StorageCheckboxes from './StorageCheckboxes';
+import LocationPicker from './LocationPicker';
 import type { EditSpec } from './types';
 
 interface Props {
@@ -31,7 +31,7 @@ export default function EditSpecRow({
         className='min-w-0 flex-1 basis-40 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:border-primary focus:outline-hidden'
       />
       <div className='flex items-center gap-2'>
-        <StorageCheckboxes
+        <LocationPicker
           value={spec.storage_location}
           onChange={loc => onUpdate({ storage_location: loc })}
         />

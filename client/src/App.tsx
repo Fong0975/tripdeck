@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
+import { LocationLabelsProvider } from '@/components/Checklist/locations/LocationLabelsProvider';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 import { ThemeProvider } from '@/context/ThemeProvider';
 
@@ -19,14 +20,16 @@ function RouteFallback() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path='/' element={<Home />} />
-            <Route path='/trip/:id' element={<TripDetail />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <LocationLabelsProvider>
+        <BrowserRouter>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path='/' element={<Home />} />
+              <Route path='/trip/:id' element={<TripDetail />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </LocationLabelsProvider>
       <Toaster position='bottom-right' expand />
     </ThemeProvider>
   );
