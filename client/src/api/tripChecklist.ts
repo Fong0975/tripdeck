@@ -152,6 +152,20 @@ export async function getTripChecklist(tripId: number): Promise<TripChecklist> {
   return api<TripChecklist>(`/api/trips/${tripId}/checklist/`);
 }
 
+/**
+ * Copies the global template into a trip whose checklist has no categories.
+ *
+ * @returns The resulting checklist.
+ * @throws {ApiError} with status 409 when the trip already has categories.
+ */
+export async function syncTripChecklistFromTemplate(
+  tripId: number,
+): Promise<TripChecklist> {
+  return api<TripChecklist>(`/api/trips/${tripId}/checklist/sync-template`, {
+    method: 'POST',
+  });
+}
+
 export async function addOccasion(
   tripId: number,
   name: string,

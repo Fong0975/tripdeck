@@ -1,4 +1,4 @@
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
@@ -8,6 +8,7 @@ import CheckSaveBar from '../Checklist/trip/CheckSaveBar';
 import TripChecklistEditModal from '../Checklist/trip/TripChecklistEditModal';
 
 import ChecklistTable from './ChecklistTable';
+import EmptyChecklistState from './EmptyChecklistState';
 import { useChecklistState } from './useChecklistState';
 import { useChecklistView } from './useChecklistView';
 import { useIncompleteOnly } from './useIncompleteOnly';
@@ -26,6 +27,8 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     loadError,
     retryLoad,
     saving,
+    syncing,
+    handleSyncTemplate,
     isDirty,
     getCheck,
     getSpecCheck,
@@ -66,20 +69,12 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
 
   if (checklist.categories.length === 0) {
     return (
-      <div className='flex flex-1 items-center justify-center py-24 text-center'>
-        <div>
-          <p className='mb-2 text-4xl'>🧳</p>
-          <p className='mb-4 text-sm text-muted-foreground'>
-            尚未有任何分類，請點擊「編輯清單」以開始建立行李清單。
-          </p>
-          <button
-            onClick={() => setShowEditModal(true)}
-            className='inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary'
-          >
-            <Plus size={12} />
-            編輯清單
-          </button>
-        </div>
+      <>
+        <EmptyChecklistState
+          syncing={syncing}
+          onSyncTemplate={() => void handleSyncTemplate()}
+          onEdit={() => setShowEditModal(true)}
+        />
         {showEditModal && (
           <TripChecklistEditModal
             tripId={tripId}
@@ -88,7 +83,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
             onSaved={() => void handleEditSaved()}
           />
         )}
-      </div>
+      </>
     );
   }
 

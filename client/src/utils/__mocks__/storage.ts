@@ -69,6 +69,7 @@ export const reorderTripCategories = vi.fn();
 export const reorderTripItems = vi.fn();
 export const moveTripItem = vi.fn();
 export const getTripChecklist = vi.fn();
+export const syncTripChecklistFromTemplate = vi.fn();
 export const addOccasion = vi.fn();
 export const updateOccasion = vi.fn();
 export const deleteOccasion = vi.fn();

@@ -68,6 +68,7 @@ import {
   reorderTripItems,
   setCheck,
   setSpecCheck,
+  syncTripChecklistFromTemplate,
   updateOccasion,
   updateTripCategory,
   updateTripItem,
@@ -441,6 +442,12 @@ describe('trip checklist API', () => {
       name: 'getTripChecklist GETs the trip checklist endpoint with no init',
       call: () => getTripChecklist(1),
       url: '/api/trips/1/checklist/',
+    },
+    {
+      name: 'syncTripChecklistFromTemplate POSTs to the sync-template endpoint',
+      call: () => syncTripChecklistFromTemplate(1),
+      url: '/api/trips/1/checklist/sync-template',
+      init: { method: 'POST' },
     },
     {
       name: 'addTripCategory POSTs to the categories endpoint',
