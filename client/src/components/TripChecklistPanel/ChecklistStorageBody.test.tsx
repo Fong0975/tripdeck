@@ -1,7 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { LocationLabel } from '@tripdeck/shared';
 import { describe, expect, it, vi } from 'vitest';
 
+import { LocationLabelsContext } from '@/components/Checklist/locations/LocationLabelsContext';
+import { buildLabelSet } from '@/components/Checklist/locations/locationLabelSet';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -102,7 +105,7 @@ describe('ChecklistStorageBody', () => {
     const headers = screen
       .getAllByText(/ 項$/)
       .map(count => count.parentElement?.textContent);
-    expect(headers).toEqual(['託運2 項', '隨身2 項', '未指定位置1 項']);
+    expect(headers).toEqual(['託運2 項', '隨身2 項', '未指定存放位置1 項']);
   });
 
   it('shows a category subheader per category inside a group', () => {
@@ -123,11 +126,11 @@ describe('ChecklistStorageBody', () => {
     ).toHaveLength(2);
   });
 
-  it('puts units without a location under "未指定位置"', () => {
+  it('puts units without a location under "未指定存放位置"', () => {
     renderBody();
 
-    expect(screen.getByText('未指定位置')).toBeInTheDocument();
-    const noneRows = rowsOfGroup('未指定位置');
+    expect(screen.getByText('未指定存放位置')).toBeInTheDocument();
+    const noneRows = rowsOfGroup('未指定存放位置');
     expect(
       within(noneRows[noneRows.length - 1]).getByText('Socks'),
     ).toBeInTheDocument();
@@ -210,5 +213,82 @@ describe('ChecklistStorageBody', () => {
 
     expect(onToggleSpecCheck).toHaveBeenNthCalledWith(1, 1, 201, '隨身');
     expect(onToggleSpecCheck).toHaveBeenNthCalledWith(2, 1, 202, '託運');
+  });
+});
+
+describe('ChecklistStorageBody with user-defined labels', () => {
+  const labels: LocationLabel[] = [
+    { id: 1, name: '手提', show_as_group: true, sort_order: 0 },
+    { id: 2, name: '託運', show_as_group: false, sort_order: 1 },
+  ];
+
+  function renderWithLabels() {
+    const checklist = makeTripChecklist({
+      occasions,
+      categories: [
+        makeChecklistCategory({
+          id: 1,
+          name: 'Clothes',
+          items: [
+            makeChecklistItem({
+              id: 10,
+              name: 'Jacket',
+              storage_location: '手提',
+            }),
+            makeChecklistItem({
+              id: 11,
+              name: 'Shoes',
+              storage_location: '託運',
+            }),
+            makeChecklistItem({
+              id: 12,
+              name: 'Scarf',
+              storage_location: '背包',
+            }),
+          ],
+        }),
+      ],
+    });
+    render(
+      <LocationLabelsContext.Provider
+        value={buildLabelSet(labels, async () => {})}
+      >
+        <table>
+          <ChecklistStorageBody
+            checklist={checklist}
+            getCheck={() => false}
+            getSpecCheck={() => false}
+            onToggleCheck={vi.fn()}
+            onToggleSpecCheck={vi.fn()}
+          />
+        </table>
+      </LocationLabelsContext.Provider>,
+    );
+  }
+
+  it('lists only the labels that are their own group, by label name', () => {
+    renderWithLabels();
+
+    const headers = screen
+      .getAllByText(/ 項$/)
+      .map(count => count.parentElement?.textContent);
+    expect(headers).toEqual(['手提1 項', '未指定存放位置2 項']);
+  });
+
+  it('shows the location of units in the "未指定存放位置" group, and not in a named group', () => {
+    renderWithLabels();
+
+    const noneRows = rowsOfGroup('未指定存放位置');
+    expect(within(noneRows[1]).getByText('託運')).toBeInTheDocument();
+    expect(within(noneRows[2]).getByText('背包')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Shoes（託運） - Occ A' }),
+    ).toBeInTheDocument();
+
+    const named = rowsOfGroup('手提');
+    expect(within(named[1]).queryByText('手提')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Jacket - Occ A' }),
+    ).toBeInTheDocument();
   });
 });

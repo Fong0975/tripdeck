@@ -4,7 +4,7 @@ import type { Logger, LogMeta } from '../../../logger';
 
 /** Checklist resources that can be reported as missing. */
 export type ChecklistEntity =
-  'Trip' | 'Category' | 'Item' | 'Spec' | 'Occasion';
+  'Trip' | 'Category' | 'Item' | 'Spec' | 'Occasion' | 'Location label';
 
 /**
  * Logs and sends `400 { error }` for a request body that failed validation.

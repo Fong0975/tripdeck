@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import type { Logger } from '../../../logger';
 import { idParams } from '../params';
 
+import { rejectDisallowedLocation } from './locationGuard';
 import { rejectInvalidBody, rejectNotFound } from './responses';
 import { parseItemFields, type Validated } from './validation';
 
@@ -11,7 +12,9 @@ import { parseItemFields, type Validated } from './validation';
  * Storage operations and log settings that let the template and trip
  * checklists share the same item request flows.
  */
-export interface ItemStore<TUpdate extends object> {
+export interface ItemStore<
+  TUpdate extends { storage_location?: string | null },
+> {
   logger: Logger;
   /** Log label for the resource, e.g. `'Template item'`. */
   label: string;
@@ -29,6 +32,14 @@ export interface ItemStore<TUpdate extends object> {
   /** Validates an update body, returning the fields or a client-facing error. */
   parseUpdate(body: unknown): Validated<TUpdate>;
   verifyItem(itemId: number, parentId: number): Promise<boolean>;
+  /**
+   * Returns the first location name a write may not file the item under, or
+   * null. `itemId` is omitted when the item is being created.
+   */
+  findDisallowedLocation(
+    location: string | null | undefined,
+    itemId?: number,
+  ): Promise<string | null>;
   update(itemId: number, data: TUpdate): Promise<object | null>;
   remove(itemId: number): Promise<boolean>;
 }
@@ -41,11 +52,9 @@ export interface ItemStore<TUpdate extends object> {
  * @param req - Incoming request.
  * @param res - Outgoing response.
  */
-export async function handleAddItem<TUpdate extends object>(
-  store: ItemStore<TUpdate>,
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function handleAddItem<
+  TUpdate extends { storage_location?: string | null },
+>(store: ItemStore<TUpdate>, req: Request, res: Response): Promise<void> {
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'catId');
   const catId = meta.catId;
@@ -60,6 +69,18 @@ export async function handleAddItem<TUpdate extends object>(
   const fields = parseItemFields(req.body);
   if (!fields.ok) {
     rejectInvalidBody(res, logger, 'add-item', fields.error, meta);
+    return;
+  }
+  if (
+    await rejectDisallowedLocation(
+      res,
+      logger,
+      'add-item',
+      meta,
+      fields.value.storage_location,
+      location => store.findDisallowedLocation(location),
+    )
+  ) {
     return;
   }
   const item = await store.create(catId, fields.value);
@@ -79,11 +100,9 @@ export async function handleAddItem<TUpdate extends object>(
  * @param req - Incoming request.
  * @param res - Outgoing response.
  */
-export async function handleUpdateItem<TUpdate extends object>(
-  store: ItemStore<TUpdate>,
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function handleUpdateItem<
+  TUpdate extends { storage_location?: string | null },
+>(store: ItemStore<TUpdate>, req: Request, res: Response): Promise<void> {
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'itemId');
   const itemId = meta.itemId;
@@ -96,6 +115,19 @@ export async function handleUpdateItem<TUpdate extends object>(
   if (!(await store.verifyItem(itemId, meta[store.parentParam]))) {
     const message = 'Update-item rejected: item not found';
     rejectNotFound(res, logger, 'Item', message, meta);
+    return;
+  }
+  if (
+    'storage_location' in data &&
+    (await rejectDisallowedLocation(
+      res,
+      logger,
+      'update-item',
+      meta,
+      data.storage_location,
+      location => store.findDisallowedLocation(location, itemId),
+    ))
+  ) {
     return;
   }
   const item = await store.update(itemId, data);
@@ -118,11 +150,9 @@ export async function handleUpdateItem<TUpdate extends object>(
  * @param req - Incoming request.
  * @param res - Outgoing response.
  */
-export async function handleDeleteItem<TUpdate extends object>(
-  store: ItemStore<TUpdate>,
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function handleDeleteItem<
+  TUpdate extends { storage_location?: string | null },
+>(store: ItemStore<TUpdate>, req: Request, res: Response): Promise<void> {
   const { logger } = store;
   const meta = idParams(req, store.parentParam, 'itemId');
   const itemId = meta.itemId;

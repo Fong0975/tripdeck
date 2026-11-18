@@ -2,6 +2,7 @@ import type { UpdateTripChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParams } from './params';
@@ -33,6 +34,13 @@ const tripItems: ItemStore<UpdateTripChecklistItemBody> = {
   create: checklistRepo.createTripItem,
   parseUpdate: parseTripItemPatch,
   verifyItem: checklistRepo.verifyItemBelongsToTrip,
+  findDisallowedLocation: async (location, itemId) =>
+    labelRepo.findDisallowedLocation(
+      location,
+      itemId === undefined
+        ? []
+        : await checklistRepo.getItemCheckLocations(itemId),
+    ),
   update: checklistRepo.updateTripItem,
   remove: checklistRepo.deleteTripItem,
 };
@@ -58,7 +66,7 @@ export async function addTripItem(req: Request, res: Response): Promise<void> {
          }
        }
      }
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer' } */
   await handleAddItem(tripItems, req, res);
 }
 
@@ -105,7 +113,7 @@ export async function updateTripItem(
          }
        }
      }
-     #swagger.responses[400] = { description: 'Blank or too long name, too long storage_location, or quantity not a non-negative integer' } */
+     #swagger.responses[400] = { description: 'Blank or too long name; too long storage_location; storage_location adding a location label that is not defined (names the item already carries may be kept); or quantity not a non-negative integer' } */
   await handleUpdateItem(tripItems, req, res);
 }
 
@@ -124,7 +132,7 @@ export async function setCheck(req: Request, res: Response): Promise<void> {
                checked: { type: 'boolean', example: true },
                location: {
                  type: 'string',
-                 description: 'One of the storage locations of the item (託運 or 隨身); an empty string when it has none.',
+                 description: 'One of the storage locations of the item, i.e. a location label name (including a deleted one the item still carries); an empty string when it has none.',
                  example: '託運'
                }
              }

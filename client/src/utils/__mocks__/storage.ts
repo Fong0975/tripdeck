@@ -17,6 +17,12 @@ export const importTripsBackup = vi.fn();
 export const listAutoBackups = vi.fn();
 export const getAutoBackupDownloadUrl = vi.fn();
 
+export const getLocationLabels = vi.fn();
+export const addLocationLabel = vi.fn();
+export const updateLocationLabel = vi.fn();
+export const deleteLocationLabel = vi.fn();
+export const reorderLocationLabels = vi.fn();
+
 export const getChecklistTemplate = vi.fn();
 export const addTemplateCategory = vi.fn();
 export const updateTemplateCategory = vi.fn();

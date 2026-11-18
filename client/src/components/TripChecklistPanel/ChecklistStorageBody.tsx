@@ -1,22 +1,16 @@
+import { NO_LOCATION } from '@tripdeck/shared';
 import { Fragment } from 'react';
 
+import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLabelsContext';
 import type { TripChecklist } from '@/types';
 
 import CategorySubheaderRow from './CategorySubheaderRow';
 import ChecklistStorageRow from './ChecklistStorageRow';
 import type { CheckGetter } from './checkUnits';
-import {
-  groupByStorage,
-  splitByCategory,
-  type StorageGroupKey,
-} from './groupByStorage';
+import { groupByStorage, splitByCategory } from './groupByStorage';
 import GroupHeaderRow from './GroupHeaderRow';
 
-const GROUP_LABELS: Record<StorageGroupKey, string> = {
-  託運: '託運',
-  隨身: '隨身',
-  none: '未指定位置',
-};
+const NO_LOCATION_GROUP_LABEL = '未指定存放位置';
 
 interface Props {
   checklist: TripChecklist;
@@ -34,12 +28,16 @@ export default function ChecklistStorageBody({
   onToggleCheck,
   onToggleSpecCheck,
 }: Props) {
+  const { labels } = useLocationLabelSet();
+
   return (
     <tbody>
-      {groupByStorage(checklist.categories).map(group => (
+      {groupByStorage(checklist.categories, labels).map(group => (
         <Fragment key={group.key}>
           <GroupHeaderRow
-            label={GROUP_LABELS[group.key]}
+            label={
+              group.key === NO_LOCATION ? NO_LOCATION_GROUP_LABEL : group.key
+            }
             count={group.units.length}
             colSpan={checklist.occasions.length + 2}
           />
@@ -57,6 +55,9 @@ export default function ChecklistStorageBody({
                       : `spec-${unit.spec.id}`
                   }
                   unit={unit}
+                  showLocation={
+                    group.key === NO_LOCATION && unit.location !== NO_LOCATION
+                  }
                   index={index}
                   occasions={checklist.occasions}
                   getCheck={getCheck}

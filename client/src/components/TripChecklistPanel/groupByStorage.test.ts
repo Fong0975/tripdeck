@@ -1,5 +1,7 @@
+import type { LocationLabel } from '@tripdeck/shared';
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_LABELS } from '@/components/Checklist/locations/locationLabelSet';
 import {
   makeChecklistCategory,
   makeChecklistItem,
@@ -15,7 +17,7 @@ import {
 
 /** Summarizes groups as `key -> unit labels` for compact assertions. */
 function summarize(categories: ChecklistCategory[]) {
-  return groupByStorage(categories).map(group => ({
+  return groupByStorage(categories, DEFAULT_LABELS).map(group => ({
     key: group.key,
     labels: group.units.map(unit =>
       unit.kind === 'item'
@@ -68,7 +70,7 @@ describe('groupByStorage', () => {
       ],
       expected: [
         { key: '託運', labels: ['B'] },
-        { key: 'none', labels: ['A'] },
+        { key: '', labels: ['A'] },
       ],
     },
     {
@@ -147,7 +149,7 @@ describe('groupByStorage', () => {
           ],
         }),
       ],
-      expected: [{ key: 'none', labels: ['A > S1'], locations: [''] }],
+      expected: [{ key: '', labels: ['A > S1'], locations: [''] }],
     },
     {
       description:
@@ -182,7 +184,7 @@ describe('groupByStorage', () => {
     },
     {
       description:
-        'files unknown location values and specs without any in none',
+        'files names that are not default labels and specs without any in none',
       categories: [
         makeChecklistCategory({
           items: [
@@ -195,7 +197,9 @@ describe('groupByStorage', () => {
           ],
         }),
       ],
-      expected: [{ key: 'none', labels: ['A', 'B > S1'], locations: [''] }],
+      expected: [
+        { key: '', labels: ['A', 'B > S1'], locations: ['後背包', ''] },
+      ],
     },
     {
       description:
@@ -225,7 +229,7 @@ describe('groupByStorage', () => {
       ],
       expected: [
         { key: '隨身', labels: ['A > S1'] },
-        { key: 'none', labels: ['A > S2'] },
+        { key: '', labels: ['A > S2'] },
       ],
     },
     {
@@ -256,7 +260,10 @@ describe('groupByStorage', () => {
   it('gives every unit of a multi-location item its own location and the same item', () => {
     const item = makeChecklistItem({ id: 1, storage_location: '託運,隨身' });
 
-    const groups = groupByStorage([makeChecklistCategory({ items: [item] })]);
+    const groups = groupByStorage(
+      [makeChecklistCategory({ items: [item] })],
+      DEFAULT_LABELS,
+    );
 
     expect(
       groups.map(group => ({
@@ -280,24 +287,27 @@ describe('groupByStorage', () => {
   });
 
   it('records the category and spec on each unit', () => {
-    const groups = groupByStorage([
-      makeChecklistCategory({
-        id: 7,
-        name: 'Clothes',
-        items: [
-          makeChecklistItem({
-            id: 1,
-            specs: [
-              makeChecklistSpec({
-                id: 10,
-                name: 'S1',
-                storage_location: '隨身',
-              }),
-            ],
-          }),
-        ],
-      }),
-    ]);
+    const groups = groupByStorage(
+      [
+        makeChecklistCategory({
+          id: 7,
+          name: 'Clothes',
+          items: [
+            makeChecklistItem({
+              id: 1,
+              specs: [
+                makeChecklistSpec({
+                  id: 10,
+                  name: 'S1',
+                  storage_location: '隨身',
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+      DEFAULT_LABELS,
+    );
 
     expect(groups[0].units[0]).toMatchObject({
       kind: 'spec',
@@ -305,6 +315,74 @@ describe('groupByStorage', () => {
       categoryName: 'Clothes',
       spec: { id: 10 },
     });
+  });
+});
+
+describe('groupByStorage with user-defined labels', () => {
+  const label = (
+    name: string,
+    show_as_group: boolean,
+    sort_order: number,
+  ): LocationLabel => ({ id: sort_order + 1, name, show_as_group, sort_order });
+
+  const categories = [
+    makeChecklistCategory({
+      items: [
+        makeChecklistItem({ id: 1, name: 'A', storage_location: '手提' }),
+        makeChecklistItem({ id: 2, name: 'B', storage_location: '託運' }),
+        makeChecklistItem({ id: 3, name: 'C', storage_location: '背包' }),
+        makeChecklistItem({ id: 4, name: 'D', storage_location: '隨身' }),
+        makeChecklistItem({ id: 5, name: 'E', storage_location: null }),
+      ],
+    }),
+  ];
+
+  const tests: {
+    description: string;
+    labels: LocationLabel[];
+    expected: { key: string; labels: string[] }[];
+  }[] = [
+    {
+      description: 'orders the groups by label order',
+      labels: [
+        label('手提', true, 0),
+        label('隨身', true, 1),
+        label('託運', true, 2),
+      ],
+      expected: [
+        { key: '手提', labels: ['A'] },
+        { key: '隨身', labels: ['D'] },
+        { key: '託運', labels: ['B'] },
+        { key: '', labels: ['C', 'E'] },
+      ],
+    },
+    {
+      description:
+        'merges labels that are not their own group, and deleted names, into the none group',
+      labels: [
+        label('手提', false, 0),
+        label('託運', true, 1),
+        label('隨身', false, 2),
+      ],
+      expected: [
+        { key: '託運', labels: ['B'] },
+        { key: '', labels: ['A', 'C', 'D', 'E'] },
+      ],
+    },
+    {
+      description: 'puts everything in the none group without labels',
+      labels: [],
+      expected: [{ key: '', labels: ['A', 'B', 'C', 'D', 'E'] }],
+    },
+  ];
+
+  it.each(tests)('$description', ({ labels, expected }) => {
+    const groups = groupByStorage(categories, labels).map(group => ({
+      key: group.key,
+      labels: group.units.map(unit => unit.item.name),
+    }));
+
+    expect(groups).toEqual(expected);
   });
 });
 
@@ -356,7 +434,9 @@ describe('splitByCategory', () => {
   ];
 
   it.each(tests)('$description', ({ categories, expected }) => {
-    const units = groupByStorage(categories).flatMap(group => group.units);
+    const units = groupByStorage(categories, DEFAULT_LABELS).flatMap(
+      group => group.units,
+    );
 
     expect(
       splitByCategory(units).map(section => ({

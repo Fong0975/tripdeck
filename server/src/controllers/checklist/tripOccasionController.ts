@@ -64,7 +64,7 @@ export async function updateOccasion(
                name: { type: 'string', example: '出發' },
                checks: {
                  type: 'object',
-                 description: 'Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.',
+                 description: 'Keys are `<itemId>|<location>` (location is the name of a location label, including a deleted one the unit still carries, or empty for an item without a storage location); only checked entries are present.',
                  additionalProperties: { type: 'boolean' },
                  example: { '3|託運': true, '3|隨身': true, '7|': true }
                },

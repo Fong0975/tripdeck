@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as templateRepo from '../../repositories/checklist/template';
 
 import {
@@ -17,6 +18,8 @@ const templateSpecs: SpecStore = {
   parentParam: 'catId',
   verifyItem: templateRepo.verifyItemBelongsToCategory,
   verifySpec: templateRepo.verifySpecBelongsToItem,
+  findDisallowedLocation: location =>
+    labelRepo.findDisallowedLocation(location),
   create: templateRepo.createItemSpec,
   update: templateRepo.updateItemSpec,
   remove: templateRepo.deleteItemSpec,
@@ -28,7 +31,7 @@ export async function addTemplateItemSpec(
 ): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Add a spec to a template item'
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined' } */
   await handleAddSpec(templateSpecs, req, res);
 }
 
@@ -38,7 +41,7 @@ export async function updateTemplateItemSpec(
 ): Promise<void> {
   /* #swagger.tags = ['Checklist Template']
      #swagger.summary = 'Update a template item spec'
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined' } */
   await handleUpdateSpec(templateSpecs, req, res);
 }
 

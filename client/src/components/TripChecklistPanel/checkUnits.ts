@@ -34,7 +34,7 @@ export type CheckGetter = (
  * location of its own, so a spec never follows its item.
  *
  * @param spec The spec.
- * @returns Non-empty list; `['']` when the spec has no known location.
+ * @returns Non-empty list; `['']` when the spec has no location.
  */
 export function getSpecLocations(spec: ItemSpec): string[] {
   return getEffectiveLocations(spec.storage_location);

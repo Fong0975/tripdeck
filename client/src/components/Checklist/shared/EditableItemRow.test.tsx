@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,12 +22,9 @@ function makeSpec(overrides: Partial<EditSpec> = {}): EditSpec {
   return { id: 10, name: 'Spec A', storage_location: null, ...overrides };
 }
 
-/**
- * The item's own location checkbox. Every spec row renders checkboxes with the
- * same labels, and the item's come first in document order.
- */
-function itemLocationBox(location: string): HTMLElement {
-  return screen.getAllByLabelText(location)[0];
+/** Opens the item's location picker. Only the item's own picker exists in a row without specs. */
+async function openLocationPicker(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: '設定存放位置' }));
 }
 
 function renderRow(item: EditItem) {
@@ -105,6 +102,7 @@ describe('EditableItemRow', () => {
     const user = userEvent.setup();
     const { onUpdateItem } = renderRow(makeItem());
 
+    await openLocationPicker(user);
     await user.click(screen.getByLabelText('託運'));
 
     expect(onUpdateItem).toHaveBeenCalledWith(1, { storage_location: '託運' });
@@ -117,48 +115,38 @@ describe('EditableItemRow', () => {
         makeSpec({ id: 10, storage_location: '託運' }),
         makeSpec({ id: 11, storage_location: '隨身' }),
       ],
-      checked託運: true,
-      checked隨身: true,
+      badges: ['託運', '隨身'],
     },
     {
       description: 'a spec covers one location',
       specs: [makeSpec({ id: 10, storage_location: '隨身' })],
-      checked託運: false,
-      checked隨身: true,
+      badges: ['隨身'],
+    },
+    {
+      description: 'a spec carries a name that is not a default label',
+      specs: [makeSpec({ id: 10, storage_location: '手提,託運' })],
+      badges: ['託運', '手提'],
     },
     {
       description: 'no spec has a location',
       specs: [makeSpec({ id: 10, storage_location: null })],
-      checked託運: false,
-      checked隨身: false,
+      badges: [],
     },
   ])(
-    'disables the item location and shows the specs union when $description',
-    async ({ specs, checked託運, checked隨身 }) => {
-      const user = userEvent.setup();
-      const { onUpdateItem } = renderRow(
-        makeItem({ storage_location: null, specs }),
-      );
+    'shows the specs union read-only, without an item picker, when $description',
+    ({ specs, badges }) => {
+      renderRow(makeItem({ storage_location: null, specs }));
 
-      expect(itemLocationBox('託運')).toBeDisabled();
-      expect(itemLocationBox('隨身')).toBeDisabled();
-      if (checked託運) {
-        expect(itemLocationBox('託運')).toBeChecked();
-      } else {
-        expect(itemLocationBox('託運')).not.toBeChecked();
-      }
-      if (checked隨身) {
-        expect(itemLocationBox('隨身')).toBeChecked();
-      } else {
-        expect(itemLocationBox('隨身')).not.toBeChecked();
+      const itemPart = screen.getByRole('group', { name: '項目存放位置' });
+      for (const badge of badges) {
+        expect(within(itemPart).getByText(badge)).toBeInTheDocument();
       }
       expect(
-        screen.getByRole('img', { name: '位置由規格決定' }),
-      ).toHaveAttribute('title', '位置由規格決定');
-
-      await user.click(itemLocationBox('託運'));
-
-      expect(onUpdateItem).not.toHaveBeenCalled();
+        within(itemPart).queryByRole('button', { name: '設定存放位置' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('img', { name: '存放位置由規格決定' }),
+      ).toHaveAttribute('title', '存放位置由規格決定');
     },
   );
 
@@ -170,18 +158,21 @@ describe('EditableItemRow', () => {
       }),
     );
 
-    expect(itemLocationBox('託運')).not.toBeChecked();
-    expect(itemLocationBox('隨身')).toBeChecked();
+    const itemPart = screen.getByRole('group', { name: '項目存放位置' });
+    expect(within(itemPart).getByText('隨身')).toBeInTheDocument();
+    expect(within(itemPart).queryByText('託運')).not.toBeInTheDocument();
   });
 
-  it('keeps the item location editable and hides the hint without specs', () => {
+  it('keeps the item location editable and hides the hint without specs', async () => {
+    const user = userEvent.setup();
     renderRow(makeItem({ storage_location: '託運', specs: [] }));
 
-    expect(screen.getByLabelText('託運')).toBeEnabled();
+    await openLocationPicker(user);
+
     expect(screen.getByLabelText('託運')).toBeChecked();
-    expect(screen.getByLabelText('隨身')).toBeEnabled();
+    expect(screen.getByLabelText('隨身')).not.toBeChecked();
     expect(
-      screen.queryByRole('img', { name: '位置由規格決定' }),
+      screen.queryByRole('img', { name: '存放位置由規格決定' }),
     ).not.toBeInTheDocument();
   });
 

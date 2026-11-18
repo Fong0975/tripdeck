@@ -7,7 +7,7 @@ describe('StorageBadges', () => {
   it.each([
     { description: 'the value is null', value: null },
     { description: 'the value is an empty string', value: '' },
-    { description: 'the value matches no known option', value: 'unknown' },
+    { description: 'the value only holds separators', value: ' , ' },
   ])('renders nothing when $description', ({ value }) => {
     const { container } = render(<StorageBadges value={value} />);
 
@@ -19,6 +19,12 @@ describe('StorageBadges', () => {
 
     expect(screen.getByText('託運')).toBeInTheDocument();
     expect(screen.queryByText('隨身')).not.toBeInTheDocument();
+  });
+
+  it('renders a badge for a name that is not a default label', () => {
+    render(<StorageBadges value='手提' />);
+
+    expect(screen.getByText('手提')).toBeInTheDocument();
   });
 
   it('renders a badge for every matching option', () => {

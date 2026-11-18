@@ -57,6 +57,8 @@ export const FIELD_LIMITS = {
   name: 255,
   /** Checklist `storage_location`. */
   storageLocation: 255,
+  /** Location label name. */
+  locationLabel: 20,
   /** Attraction `startTime` / `endTime`. */
   time: 10,
   /** Connection `duration`. */

@@ -1,6 +1,7 @@
 import { getEffectiveLocations } from '@tripdeck/shared';
 import { Fragment } from 'react';
 
+import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLabelsContext';
 import { summarizeSpecLocations } from '@/components/Checklist/shared/checklistUtils';
 import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
@@ -37,6 +38,7 @@ export default function ChecklistItemRow({
   onToggleCheck,
   onToggleSpecCheck,
 }: Props) {
+  const { names } = useLocationLabelSet();
   const specs = item.specs ?? [];
   const hasSpecs = specs.length > 0;
   const locations = getEffectiveLocations(item.storage_location);
@@ -44,7 +46,7 @@ export default function ChecklistItemRow({
   const hasChildren = hasSpecs || hasLocationRows;
   const [singleLocation] = locations;
   const shownLocation = hasSpecs
-    ? summarizeSpecLocations(specs)
+    ? summarizeSpecLocations(specs, names)
     : item.storage_location;
 
   return (

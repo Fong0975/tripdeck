@@ -1,28 +1,78 @@
-/** Storage locations a checklist item or spec can be filed under. */
-export const STORAGE_OPTIONS = ['託運', '隨身'] as const;
-
-/** One of {@link STORAGE_OPTIONS}. */
-export type StorageOption = (typeof STORAGE_OPTIONS)[number];
+/** Location labels seeded into a freshly created database. */
+export const DEFAULT_LOCATION_LABELS = ['託運', '隨身'] as const;
 
 /** Check location of a unit that has no storage location. */
 export const NO_LOCATION = '';
 
 /**
- * Lists the locations a checklist unit is filed under: the known storage
- * options contained in the comma-separated `location`, in
- * {@link STORAGE_OPTIONS} order. A unit without any known option is filed
- * under the single {@link NO_LOCATION} entry. A spec without a location of
- * its own passes its item's location instead.
+ * Lists the locations a checklist unit is filed under: the distinct,
+ * non-blank names in the comma-separated `location`. A unit without any
+ * name is filed under the single {@link NO_LOCATION} entry. Names are not
+ * checked against the defined labels, so a deleted label that a unit still
+ * carries stays one of its locations.
  *
  * @param location - Raw `storage_location` value (e.g. `託運,隨身`).
+ * @param order - Label names in display order. Listed names come first in
+ *   this order; the rest keep their stored order. Defaults to stored order.
  * @returns Non-empty list of locations, each owning an independent check.
  */
 export function getEffectiveLocations(
   location: string | null | undefined,
+  order: readonly string[] = [],
 ): string[] {
-  const parts = (location ?? '').split(',').map(part => part.trim());
-  const options = STORAGE_OPTIONS.filter(option => parts.includes(option));
-  return options.length > 0 ? options : [NO_LOCATION];
+  const names = [
+    ...new Set(
+      (location ?? '')
+        .split(',')
+        .map(part => part.trim())
+        .filter(part => part !== ''),
+    ),
+  ];
+  if (names.length === 0) {
+    return [NO_LOCATION];
+  }
+  const rank = (name: string): number => {
+    const index = order.indexOf(name);
+    return index === -1 ? order.length : index;
+  };
+  return names
+    .map((name, position) => ({ name, position }))
+    .sort((a, b) => rank(a.name) - rank(b.name) || a.position - b.position)
+    .map(({ name }) => name);
+}
+
+/** A user-defined storage location label (e.g. 託運) a unit can be filed under. */
+export interface LocationLabel {
+  id: number;
+  name: string;
+  /** Whether the "by storage location" view lists it as a group of its own. */
+  show_as_group: boolean;
+  sort_order: number;
+}
+
+/** A label name that trips still use although it is no longer defined. */
+export interface OrphanLocation {
+  name: string;
+  /** Number of trips with a checklist unit filed under the name. */
+  trip_count: number;
+}
+
+/** Response of `GET /api/checklist-locations`. */
+export interface LocationLabelsResponse {
+  labels: LocationLabel[];
+  orphans: OrphanLocation[];
+}
+
+/** Request body of `POST /api/checklist-locations`. */
+export interface CreateLocationLabelBody {
+  name: string;
+  /** Defaults to true. */
+  show_as_group?: boolean;
+}
+
+/** Request body of `PUT /api/checklist-locations/:labelId`. */
+export interface UpdateLocationLabelBody {
+  show_as_group: boolean;
 }
 
 /**

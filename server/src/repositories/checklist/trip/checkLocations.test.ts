@@ -13,9 +13,9 @@ const mockPoolExecute = db.pool.execute;
 
 const CASES = [
   {
-    name: 'lists every storage option in canonical order',
+    name: 'lists every name in stored order',
     rows: [{ storage_location: '隨身,託運' }],
-    expected: ['託運', '隨身'],
+    expected: ['隨身', '託運'],
   },
   {
     name: 'lists a single storage option',
@@ -28,9 +28,9 @@ const CASES = [
     expected: [''],
   },
   {
-    name: 'ignores unknown storage values',
+    name: 'keeps names that are not defined labels any more',
     rows: [{ storage_location: '後背包' }],
-    expected: [''],
+    expected: ['後背包'],
   },
   {
     name: 'falls back to the empty location when the row is missing',

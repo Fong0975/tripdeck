@@ -1,11 +1,17 @@
+import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistOccasion } from '@/types';
 
 import CheckCell from './CheckCell';
-import type { CheckGetter } from './checkUnits';
+import { getCheckCellLabel, type CheckGetter } from './checkUnits';
 import type { StorageUnit } from './groupByStorage';
 
 interface Props {
   unit: StorageUnit;
+  /**
+   * Shows the unit's location next to its name. Set when the group does not
+   * name the location, i.e. in the group of units without an own-group label.
+   */
+  showLocation?: boolean;
   /** Zero-based position within the group, used for row striping. */
   index: number;
   occasions: ChecklistOccasion[];
@@ -21,6 +27,7 @@ interface Props {
  */
 export default function ChecklistStorageRow({
   unit,
+  showLocation = false,
   index,
   occasions,
   getCheck,
@@ -59,6 +66,11 @@ export default function ChecklistStorageRow({
               </>
             )}
           </div>
+          {showLocation && (
+            <div className='flex flex-wrap items-center gap-1.5'>
+              <StorageBadges value={unit.location} compact />
+            </div>
+          )}
           {unit.kind === 'item' && item.notes && (
             <p className='text-sm text-muted-foreground'>{item.notes}</p>
           )}
@@ -66,7 +78,11 @@ export default function ChecklistStorageRow({
       </td>
 
       {occasions.map(occ => {
-        const label = `${unit.kind === 'item' ? item.name : unit.spec.name} - ${occ.name}`;
+        const label = getCheckCellLabel(
+          unit.kind === 'item' ? item.name : unit.spec.name,
+          showLocation ? unit.location : '',
+          occ.name,
+        );
         return unit.kind === 'item' ? (
           <CheckCell
             key={occ.id}

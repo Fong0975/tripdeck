@@ -53,6 +53,7 @@ describe('EditSpecRow', () => {
       />,
     );
 
+    await user.click(screen.getByRole('button', { name: '設定存放位置' }));
     await user.click(screen.getByLabelText('託運'));
 
     expect(onUpdate).toHaveBeenCalledWith({ storage_location: '託運' });

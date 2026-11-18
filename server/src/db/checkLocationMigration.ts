@@ -1,4 +1,4 @@
-import { STORAGE_OPTIONS } from '@tripdeck/shared';
+import { DEFAULT_LOCATION_LABELS } from '@tripdeck/shared';
 import type { ResultSetHeader } from 'mysql2';
 
 import pool from '../config/database';
@@ -77,16 +77,18 @@ function containsOption(locationExpr: string): string {
 
 /**
  * Spreads the checks stored before the `location` column existed (all
- * `location = ''`) over every storage option their unit is filed under, then
- * removes the legacy rows. Units without any known option keep their `''`
- * check. Idempotent: afterwards no `''` row belongs to a unit that has an
- * option, because the API only writes locations the unit actually has.
+ * `location = ''`) over every default label their unit is filed under, then
+ * removes the legacy rows. Only the default labels are considered because
+ * they were the sole locations when those checks were written. Units without
+ * a default label keep their `''` check. Idempotent: afterwards no `''` row
+ * belongs to a unit that has a default label, because the API only writes
+ * locations the unit actually has.
  */
 async function spreadLegacyChecks(config: CheckTableConfig): Promise<void> {
   const { table, idColumn, joins, locationExpr } = config;
 
   let inserted = 0;
-  for (const option of STORAGE_OPTIONS) {
+  for (const option of DEFAULT_LOCATION_LABELS) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT IGNORE INTO ${table} (checklist_occasion_id, ${idColumn}, location, checked)
        SELECT c.checklist_occasion_id, c.${idColumn}, ?, c.checked
@@ -97,13 +99,13 @@ async function spreadLegacyChecks(config: CheckTableConfig): Promise<void> {
     inserted += result.affectedRows;
   }
 
-  const hasAnyOption = STORAGE_OPTIONS.map(() =>
+  const hasAnyOption = DEFAULT_LOCATION_LABELS.map(() =>
     containsOption(locationExpr),
   ).join(' OR ');
   const [deleted] = await pool.execute<ResultSetHeader>(
     `DELETE c FROM ${table} c ${joins}
      WHERE c.location = '' AND (${hasAnyOption})`,
-    [...STORAGE_OPTIONS],
+    [...DEFAULT_LOCATION_LABELS],
   );
 
   if (inserted > 0 || deleted.affectedRows > 0) {

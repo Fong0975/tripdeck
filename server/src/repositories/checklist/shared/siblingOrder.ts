@@ -7,6 +7,7 @@ import { isPermutationOf } from '../../shared/orderedIds';
 
 /** Checklist tables whose rows carry a `sort_order` among their siblings. */
 export type OrderedChecklistTable =
+  | 'checklist_location_labels'
   | 'checklist_template_categories'
   | 'checklist_template_items'
   | 'checklist_trip_categories'
@@ -14,10 +15,11 @@ export type OrderedChecklistTable =
 
 /**
  * Column grouping the siblings of each table, or null when all rows of the
- * table are siblings (the single global template category list). Only these
+ * table are siblings (the global template category and location label lists). Only these
  * fixed values are ever interpolated into SQL.
  */
 const SIBLING_COLUMN: Record<OrderedChecklistTable, string | null> = {
+  checklist_location_labels: null,
   checklist_template_categories: null,
   checklist_template_items: 'checklist_template_category_id',
   checklist_trip_categories: 'trip_id',

@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Tripdeck API",
-    "version": "1.11.0",
+    "version": "1.12.0",
     "description": "REST API for the Tripdeck travel planning application."
   },
   "servers": [
@@ -1862,7 +1862,7 @@
                           },
                           "checks": {
                             "type": "object",
-                            "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
+                            "description": "Keys are `<itemId>|<location>` (location is the name of a location label, including a deleted one the unit still carries, or empty for an item without a storage location); only checked entries are present.",
                             "additionalProperties": {
                               "type": "boolean"
                             },
@@ -1990,7 +1990,7 @@
                     },
                     "checks": {
                       "type": "object",
-                      "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
+                      "description": "Keys are `<itemId>|<location>` (location is the name of a location label, including a deleted one the unit still carries, or empty for an item without a storage location); only checked entries are present.",
                       "additionalProperties": {
                         "type": "boolean"
                       },
@@ -2108,7 +2108,7 @@
                   },
                   "location": {
                     "type": "string",
-                    "description": "One of the storage locations of the item (託運 or 隨身); an empty string when it has none.",
+                    "description": "One of the storage locations of the item, i.e. a location label name (including a deleted one the item still carries); an empty string when it has none.",
                     "example": "託運"
                   }
                 }
@@ -2122,7 +2122,7 @@
       "put": {
         "tags": ["Trip Checklist"],
         "summary": "Set the checked state of an item spec at one of its storage locations within an occasion",
-        "description": "Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.",
+        "description": "Each storage location of a spec is checked independently. A spec never inherits the locations of its item.",
         "parameters": [
           {
             "name": "tripId",
@@ -2182,7 +2182,7 @@
                   },
                   "location": {
                     "type": "string",
-                    "description": "One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.",
+                    "description": "One of the storage locations of the spec, i.e. a location label name (including a deleted one the spec still carries); an empty string when it has none.",
                     "example": "託運"
                   }
                 }
@@ -2371,7 +2371,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       }
@@ -2493,7 +2493,7 @@
             }
           },
           "400": {
-            "description": "Blank or too long name, too long storage_location, or quantity not a non-negative integer"
+            "description": "Blank or too long name; too long storage_location; storage_location adding a location label that is not defined (names the item already carries may be kept); or quantity not a non-negative integer"
           }
         }
       },
@@ -2587,7 +2587,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)"
           }
         }
       }
@@ -2625,7 +2625,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)"
           }
         }
       },
@@ -2962,7 +2962,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       }
@@ -3076,7 +3076,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       },
@@ -3170,7 +3170,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined"
           }
         }
       }
@@ -3208,7 +3208,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined"
           }
         }
       },
@@ -3245,6 +3245,187 @@
         "responses": {
           "default": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/checklist-locations/": {
+      "get": {
+        "tags": ["Checklist Locations"],
+        "summary": "List the location labels and the deleted labels that trips still use",
+        "description": "orphans lists names that trip checklist units are still filed under although no label with that name exists; re-creating a label with the same name makes them refer to it again.",
+        "responses": {
+          "200": {
+            "description": "Labels in display order and the still-used deleted names",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "labels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "託運"
+                          },
+                          "show_as_group": {
+                            "type": "boolean",
+                            "example": true
+                          },
+                          "sort_order": {
+                            "type": "integer",
+                            "example": 0
+                          }
+                        }
+                      }
+                    },
+                    "orphans": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "example": "手提"
+                          },
+                          "trip_count": {
+                            "type": "integer",
+                            "example": 2
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Checklist Locations"],
+        "summary": "Add a location label",
+        "description": "",
+        "responses": {
+          "201": {
+            "description": "Label created"
+          },
+          "400": {
+            "description": "Missing, blank or too long name, name containing \",\" or \"|\", or show_as_group not a boolean"
+          },
+          "409": {
+            "description": "A label with this name already exists"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "手提"
+                  },
+                  "show_as_group": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/checklist-locations/order": {
+      "patch": {
+        "tags": ["Checklist Locations"],
+        "summary": "Reorder the location labels",
+        "description": "orderedIds must list every label exactly once.",
+        "responses": {
+          "204": {
+            "description": "Labels reordered"
+          },
+          "400": {
+            "description": "orderedIds is not an array of positive integers, or does not list every label exactly once"
+          }
+        }
+      }
+    },
+    "/api/checklist-locations/{labelId}": {
+      "put": {
+        "tags": ["Checklist Locations"],
+        "summary": "Change whether a location label is its own group in the storage view",
+        "description": "Labels cannot be renamed: delete the label and add one with the new name instead.",
+        "parameters": [
+          {
+            "name": "labelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Label updated"
+          },
+          "400": {
+            "description": "show_as_group is not a boolean"
+          },
+          "404": {
+            "description": "Label not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["show_as_group"],
+                "properties": {
+                  "show_as_group": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Checklist Locations"],
+        "summary": "Delete a location label",
+        "description": "The name is removed from the checklist template. Trip checklists keep it: their units stay filed under the name and keep their checks, but the name cannot be added to a unit again unless a label with the same name is re-created.",
+        "parameters": [
+          {
+            "name": "labelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Label deleted"
+          },
+          "404": {
+            "description": "Label not found"
           }
         }
       }

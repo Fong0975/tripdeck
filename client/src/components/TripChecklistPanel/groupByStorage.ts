@@ -1,15 +1,14 @@
-import { NO_LOCATION } from '@tripdeck/shared';
+import { NO_LOCATION, type LocationLabel } from '@tripdeck/shared';
 
-import {
-  STORAGE_OPTIONS,
-  type StorageOption,
-} from '@/components/Checklist/shared/checklistUtils';
 import type { ChecklistCategory } from '@/types';
 
 import { getItemUnits, type CheckUnit } from './checkUnits';
 
-/** Group key: a storage option, or `none` when no location is set. */
-export type StorageGroupKey = StorageOption | 'none';
+/**
+ * Group key: the name of a label that is its own group, or
+ * {@link NO_LOCATION} for the group of every other unit.
+ */
+export type StorageGroupKey = string;
 
 /** A checkable unit placed in a storage group, with its category. */
 export type StorageUnit = CheckUnit & {
@@ -68,24 +67,31 @@ export function splitByCategory(units: StorageUnit[]): CategorySection[] {
  * Groups the checkable units of a checklist by storage location. Every unit
  * already carries exactly one location (a unit filed under several locations
  * is expanded into one unit per location), so each lands in exactly one
- * group; units without a location go to the `none` group. Empty groups are
- * omitted.
+ * group. A label with `show_as_group` gets a group of its own; units without
+ * a location, under a label that is not its own group, or under a name that
+ * is no longer a defined label go to the {@link NO_LOCATION} group. Empty
+ * groups are omitted.
  *
  * @param categories The checklist categories.
- * @returns Groups ordered by {@link STORAGE_OPTIONS}, then `none`.
+ * @param labels The defined location labels in display order.
+ * @returns Groups in label order, then the {@link NO_LOCATION} group.
  */
 export function groupByStorage(
   categories: ChecklistCategory[],
+  labels: readonly LocationLabel[],
 ): StorageGroup[] {
   const units = toStorageUnits(categories);
+  const groupNames = labels
+    .filter(label => label.show_as_group)
+    .map(label => label.name);
   const groups: StorageGroup[] = [
-    ...STORAGE_OPTIONS.map(option => ({
-      key: option,
-      units: units.filter(unit => unit.location === option),
+    ...groupNames.map(name => ({
+      key: name,
+      units: units.filter(unit => unit.location === name),
     })),
     {
-      key: 'none',
-      units: units.filter(unit => unit.location === NO_LOCATION),
+      key: NO_LOCATION,
+      units: units.filter(unit => !groupNames.includes(unit.location)),
     },
   ];
   return groups.filter(group => group.units.length > 0);
