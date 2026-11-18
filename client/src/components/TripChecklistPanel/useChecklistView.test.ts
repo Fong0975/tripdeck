@@ -112,4 +112,38 @@ describe('useChecklistView', () => {
     expect(result.current.viewMode).toBe('storage');
     expect(result.current.hidden.size).toBe(0);
   });
+
+  it('keeps the hidden items but applies none while unfinished-only is on', () => {
+    const { result } = renderView();
+    act(() => result.current.toggleItem('1', 10));
+
+    act(() => result.current.setIncompleteOnly(true));
+
+    expect(result.current.incompleteOnly).toBe(true);
+    expect(result.current.hidden.size).toBe(1);
+    expect(result.current.activeHidden.size).toBe(0);
+
+    act(() => result.current.setIncompleteOnly(false));
+
+    expect(result.current.activeHidden.size).toBe(1);
+  });
+
+  it('does not report allHidden while unfinished-only is on', () => {
+    const { result } = renderView();
+    act(() => result.current.toggleGroup(result.current.groups[0]));
+    expect(result.current.allHidden).toBe(true);
+
+    act(() => result.current.setIncompleteOnly(true));
+
+    expect(result.current.allHidden).toBe(false);
+  });
+
+  it('turns unfinished-only off when the view mode changes', () => {
+    const { result } = renderView();
+    act(() => result.current.setIncompleteOnly(true));
+
+    act(() => result.current.changeViewMode('storage'));
+
+    expect(result.current.incompleteOnly).toBe(false);
+  });
 });

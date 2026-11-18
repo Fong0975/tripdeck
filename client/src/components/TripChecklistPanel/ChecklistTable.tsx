@@ -13,6 +13,10 @@ import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
 import type { CheckGetter } from './checkUnits';
 import GroupHeaderRow from './GroupHeaderRow';
+import {
+  filterCategoriesByUnits,
+  type UnitVisibility,
+} from './incompleteFilter';
 import type { ViewMode } from './viewMode';
 
 interface Props {
@@ -28,6 +32,11 @@ interface Props {
    * the whole checklist.
    */
   hidden?: HiddenKeys;
+  /**
+   * Limits the rows to the visible units (the "unfinished only" view).
+   * Defaults to every unit.
+   */
+  isUnitVisible?: UnitVisibility;
 }
 
 export default function ChecklistTable({
@@ -38,9 +47,14 @@ export default function ChecklistTable({
   onToggleSpecCheck,
   viewMode = 'category',
   hidden = NO_HIDDEN_KEYS,
+  isUnitVisible,
 }: Props) {
   const headRef = useRef<HTMLTableSectionElement>(null);
   const headHeight = useElementHeight(headRef);
+  const filteredCategories = filterCategories(checklist.categories, hidden);
+  const visibleCategories = isUnitVisible
+    ? filterCategoriesByUnits(filteredCategories, isUnitVisible)
+    : filteredCategories;
 
   return (
     <div
@@ -60,6 +74,7 @@ export default function ChecklistTable({
             <ChecklistStorageBody
               checklist={checklist}
               hidden={hidden}
+              isUnitVisible={isUnitVisible}
               getCheck={getCheck}
               getSpecCheck={getSpecCheck}
               onToggleCheck={onToggleCheck}
@@ -67,7 +82,7 @@ export default function ChecklistTable({
             />
           ) : (
             <tbody>
-              {filterCategories(checklist.categories, hidden).map(cat => (
+              {visibleCategories.map(cat => (
                 <Fragment key={cat.id}>
                   <GroupHeaderRow
                     label={cat.name}
@@ -84,6 +99,7 @@ export default function ChecklistTable({
                       getSpecCheck={getSpecCheck}
                       onToggleCheck={onToggleCheck}
                       onToggleSpecCheck={onToggleSpecCheck}
+                      isUnitVisible={isUnitVisible}
                     />
                   ))}
                 </Fragment>

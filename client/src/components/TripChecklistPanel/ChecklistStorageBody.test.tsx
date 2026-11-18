@@ -15,6 +15,7 @@ import type { TripChecklist } from '@/types';
 
 import ChecklistStorageBody from './ChecklistStorageBody';
 import type { CheckGetter } from './checkUnits';
+import { unitKey } from './incompleteFilter';
 
 const occasions = [
   { id: 1, name: 'Occ A', checks: {}, specChecks: {} },
@@ -333,5 +334,29 @@ describe('ChecklistStorageBody filter', () => {
         .getAllByText(/ 項$/)
         .map(count => count.parentElement?.textContent),
     ).toEqual(headers);
+  });
+});
+
+describe('ChecklistStorageBody unit visibility', () => {
+  it('lists only the visible units and drops empty groups', () => {
+    const visible = new Set(['spec-201|隨身', 'item-11|']);
+    render(
+      <table>
+        <ChecklistStorageBody
+          checklist={makeChecklist()}
+          isUnitVisible={unit => visible.has(unitKey(unit))}
+          getCheck={() => false}
+          getSpecCheck={() => false}
+          onToggleCheck={vi.fn()}
+          onToggleSpecCheck={vi.fn()}
+        />
+      </table>,
+    );
+
+    expect(
+      screen
+        .getAllByText(/ 項$/)
+        .map(count => count.parentElement?.textContent),
+    ).toEqual(['隨身1 項', '未指定存放位置1 項']);
   });
 });

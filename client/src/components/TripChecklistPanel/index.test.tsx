@@ -20,13 +20,16 @@ vi.mock('./ChecklistTable', () => ({
     checklist,
     viewMode,
     hidden,
+    isUnitVisible,
   }: {
     checklist: TripChecklist;
     viewMode: string;
     hidden: ReadonlySet<string>;
+    isUnitVisible?: unknown;
   }) => (
     <div>
       checklist-table-{checklist.categories.length}-{viewMode}-{hidden.size}
+      {isUnitVisible ? '-unfinished' : ''}
     </div>
   ),
 }));
@@ -300,5 +303,58 @@ describe('TripChecklistPanel', () => {
     render(<TripChecklistPanel tripId={7} onDirtyChange={onDirtyChange} />);
 
     expect(useChecklistState).toHaveBeenCalledWith(7, onDirtyChange);
+  });
+
+  it('limits the table to unfinished units and pauses the hidden filter', async () => {
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+    await user.click(screen.getByRole('button', { name: /檢視設定/ }));
+    await user.click(screen.getByRole('checkbox', { name: 'Item A' }));
+    expect(screen.getByText('沒有符合篩選的項目')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
+    );
+
+    expect(
+      screen.getByText('checklist-table-1-category-0-unfinished'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('僅未完成')).toBeInTheDocument();
+  });
+
+  it('shows the all-done state and returns to every item from it', async () => {
+    const checked = () => true;
+    vi.mocked(useChecklistState).mockReturnValue(
+      makeState({
+        checklist: makeTripChecklist({
+          occasions: [{ id: 1, name: 'Out', checks: {}, specChecks: {} }],
+          categories: [
+            makeChecklistCategory({
+              name: 'Cat A',
+              items: [makeChecklistItem({ id: 10, name: 'Item A' })],
+            }),
+          ],
+        }),
+        getCheck: checked,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<TripChecklistPanel tripId={1} />);
+    await user.click(screen.getByRole('button', { name: /檢視設定/ }));
+
+    await user.click(
+      screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
+    );
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByText('所有項目都已完成 🎉')).toBeInTheDocument();
+    expect(screen.queryByText(/^checklist-table-/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '顯示全部項目' }));
+
+    expect(screen.queryByText('所有項目都已完成 🎉')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/^checklist-table-1-category-0/),
+    ).toBeInTheDocument();
   });
 });

@@ -10,6 +10,7 @@ import TripChecklistEditModal from '../Checklist/trip/TripChecklistEditModal';
 import ChecklistTable from './ChecklistTable';
 import { useChecklistState } from './useChecklistState';
 import { useChecklistView } from './useChecklistView';
+import { useIncompleteOnly } from './useIncompleteOnly';
 import ViewSettingsMenu from './ViewSettingsMenu';
 
 interface Props {
@@ -35,6 +36,15 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     handleEditSaved,
   } = useChecklistState(tripId, onDirtyChange);
   const view = useChecklistView(checklist?.categories);
+  const incomplete = useIncompleteOnly({
+    enabled: view.incompleteOnly,
+    occasions: checklist?.occasions,
+    categories: checklist?.categories,
+    getCheck,
+    getSpecCheck,
+    onToggleCheck: handleToggleCheck,
+    onToggleSpecCheck: handleToggleSpecCheck,
+  });
 
   if (loadError) {
     return (
@@ -97,6 +107,8 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
             onViewModeChange={view.changeViewMode}
             groups={view.groups}
             hidden={view.hidden}
+            incompleteOnly={view.incompleteOnly}
+            onIncompleteOnlyChange={view.setIncompleteOnly}
             onToggleItem={view.toggleItem}
             onToggleGroup={view.toggleGroup}
             onClearFilter={view.clearFilter}
@@ -116,7 +128,18 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
         </div>
       </div>
 
-      {view.allHidden ? (
+      {incomplete.allFinished ? (
+        <div className='flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center'>
+          <p className='text-sm text-muted-foreground'>所有項目都已完成 🎉</p>
+          <button
+            type='button'
+            onClick={() => view.setIncompleteOnly(false)}
+            className='rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-muted'
+          >
+            顯示全部項目
+          </button>
+        </div>
+      ) : view.allHidden ? (
         <div className='flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center'>
           <p className='text-sm text-muted-foreground'>沒有符合篩選的項目</p>
           <button
@@ -132,10 +155,11 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
           checklist={checklist}
           getCheck={getCheck}
           getSpecCheck={getSpecCheck}
-          onToggleCheck={handleToggleCheck}
-          onToggleSpecCheck={handleToggleSpecCheck}
+          onToggleCheck={incomplete.toggleCheck}
+          onToggleSpecCheck={incomplete.toggleSpecCheck}
           viewMode={view.viewMode}
-          hidden={view.hidden}
+          hidden={view.activeHidden}
+          isUnitVisible={incomplete.isUnitVisible}
         />
       )}
 

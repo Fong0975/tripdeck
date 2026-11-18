@@ -18,11 +18,17 @@ import {
   splitByCategory,
 } from './groupByStorage';
 import GroupHeaderRow from './GroupHeaderRow';
+import {
+  filterStorageGroupsByUnits,
+  type UnitVisibility,
+} from './incompleteFilter';
 
 interface Props {
   checklist: TripChecklist;
   /** Items the filter hides; defaults to showing everything. */
   hidden?: HiddenKeys;
+  /** Limits the rows to the visible units. Defaults to every unit. */
+  isUnitVisible?: UnitVisibility;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number, location: string) => void;
@@ -33,19 +39,24 @@ interface Props {
 export default function ChecklistStorageBody({
   checklist,
   hidden = NO_HIDDEN_KEYS,
+  isUnitVisible,
   getCheck,
   getSpecCheck,
   onToggleCheck,
   onToggleSpecCheck,
 }: Props) {
   const { labels } = useLocationLabelSet();
+  const filteredGroups = filterStorageGroups(
+    groupByStorage(checklist.categories, labels),
+    hidden,
+  );
+  const groups = isUnitVisible
+    ? filterStorageGroupsByUnits(filteredGroups, isUnitVisible)
+    : filteredGroups;
 
   return (
     <tbody>
-      {filterStorageGroups(
-        groupByStorage(checklist.categories, labels),
-        hidden,
-      ).map(group => (
+      {groups.map(group => (
         <Fragment key={group.key}>
           <GroupHeaderRow
             label={

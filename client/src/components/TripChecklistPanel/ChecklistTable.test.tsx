@@ -10,6 +10,7 @@ import {
 import type { TripChecklist } from '@/types';
 
 import ChecklistTable from './ChecklistTable';
+import { unitKey } from './incompleteFilter';
 import type { ViewMode } from './viewMode';
 
 function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
@@ -566,5 +567,98 @@ describe('ChecklistTable filter', () => {
     renderFiltered(['10|1']);
 
     expect(screen.getAllByText('0 / 2')).toHaveLength(2);
+  });
+});
+
+describe('ChecklistTable unit visibility', () => {
+  const checklist = makeChecklist({
+    categories: [
+      makeChecklistCategory({
+        id: 1,
+        name: 'Category A',
+        items: [
+          makeChecklistItem({
+            id: 10,
+            name: 'Charger',
+            specs: [
+              makeChecklistSpec({
+                id: 101,
+                name: 'USB-C',
+                storage_location: '隨身',
+              }),
+              makeChecklistSpec({
+                id: 102,
+                name: 'Lightning',
+                storage_location: '託運,隨身',
+              }),
+            ],
+          }),
+          makeChecklistItem({
+            id: 20,
+            name: 'Plain',
+            storage_location: '託運,隨身',
+          }),
+          makeChecklistItem({ id: 30, name: 'Done' }),
+        ],
+      }),
+    ],
+  });
+
+  function renderVisible(keys: string[], viewMode?: ViewMode) {
+    const visible = new Set(keys);
+    render(
+      <ChecklistTable
+        checklist={checklist}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        isUnitVisible={unit => visible.has(unitKey(unit))}
+      />,
+    );
+  }
+
+  it('lists only the visible spec locations of an item', () => {
+    renderVisible(['spec-102|隨身']);
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Lightning（隨身） - Occ A' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Lightning（託運） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'USB-C（隨身） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain')).not.toBeInTheDocument();
+    expect(screen.queryByText('Done')).not.toBeInTheDocument();
+  });
+
+  it('lists only the visible locations of an item without specs', () => {
+    renderVisible(['item-20|託運']);
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Plain（託運） - Occ A' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Plain（隨身） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Charger')).not.toBeInTheDocument();
+  });
+
+  it('keeps the original spec numbers', () => {
+    renderVisible(['spec-102|託運']);
+
+    expect(screen.getByText('2.')).toBeInTheDocument();
+    expect(screen.queryByText('1.')).not.toBeInTheDocument();
+  });
+
+  it('filters the rows of the storage view too', () => {
+    renderVisible(['item-30|'], 'storage');
+
+    expect(screen.getByText('Done')).toBeInTheDocument();
+    expect(screen.queryByText('Charger')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain')).not.toBeInTheDocument();
   });
 });

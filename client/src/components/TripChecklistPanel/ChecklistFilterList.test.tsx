@@ -129,4 +129,27 @@ describe('ChecklistFilterList', () => {
     expect(onToggleGroup).toHaveBeenCalledWith(clothes);
     expect(onToggleItem).not.toHaveBeenCalled();
   });
+
+  it('disables every checkbox and ignores clicks while disabled', async () => {
+    const user = userEvent.setup();
+    const onToggleItem = vi.fn();
+    const onToggleGroup = vi.fn();
+    render(
+      <ChecklistFilterList
+        groups={[clothes]}
+        hidden={new Set(['10|1'])}
+        onToggleItem={onToggleItem}
+        onToggleGroup={onToggleGroup}
+        disabled
+      />,
+    );
+
+    for (const checkbox of screen.getAllByRole('checkbox')) {
+      expect(checkbox).toBeDisabled();
+    }
+    await user.click(screen.getByRole('checkbox', { name: 'Jacket' }));
+
+    expect(onToggleItem).not.toHaveBeenCalled();
+    expect(onToggleGroup).not.toHaveBeenCalled();
+  });
 });

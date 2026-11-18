@@ -17,9 +17,16 @@ const groups: FilterGroup[] = [
   },
 ];
 
-function renderMenu(options: { hidden?: string[]; viewMode?: ViewMode } = {}) {
+function renderMenu(
+  options: {
+    hidden?: string[];
+    viewMode?: ViewMode;
+    incompleteOnly?: boolean;
+  } = {},
+) {
   const handlers = {
     onViewModeChange: vi.fn(),
+    onIncompleteOnlyChange: vi.fn(),
     onToggleItem: vi.fn(),
     onToggleGroup: vi.fn(),
     onClearFilter: vi.fn(),
@@ -29,6 +36,7 @@ function renderMenu(options: { hidden?: string[]; viewMode?: ViewMode } = {}) {
       viewMode={options.viewMode ?? 'category'}
       groups={groups}
       hidden={new Set(options.hidden ?? [])}
+      incompleteOnly={options.incompleteOnly ?? false}
       {...handlers}
     />,
   );
@@ -127,5 +135,63 @@ describe('ViewSettingsMenu', () => {
     await user.keyboard('{Escape}');
 
     expect(screen.queryByText('檢視方式')).not.toBeInTheDocument();
+  });
+  it.each([
+    { incompleteOnly: false, expected: false },
+    { incompleteOnly: true, expected: true },
+  ])(
+    'shows the unfinished-only option as checked=$expected',
+    async ({ incompleteOnly, expected }) => {
+      renderMenu({ incompleteOnly });
+      await openMenu();
+
+      const option = screen.getByRole('checkbox', {
+        name: '僅顯示未完成的項目',
+      });
+
+      if (expected) {
+        expect(option).toBeChecked();
+      } else {
+        expect(option).not.toBeChecked();
+      }
+    },
+  );
+
+  it.each([
+    { incompleteOnly: false, checked: true },
+    { incompleteOnly: true, checked: false },
+  ])(
+    'reports $checked when the unfinished-only option is clicked while it is $incompleteOnly',
+    async ({ incompleteOnly, checked }) => {
+      const { onIncompleteOnlyChange } = renderMenu({ incompleteOnly });
+      const user = await openMenu();
+
+      await user.click(
+        screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
+      );
+
+      expect(onIncompleteOnlyChange).toHaveBeenCalledWith(checked);
+    },
+  );
+
+  it('disables the item filter but keeps the unfinished-only option usable', async () => {
+    renderMenu({ incompleteOnly: true, hidden: ['10|1'] });
+    await openMenu();
+
+    expect(screen.getByRole('checkbox', { name: 'Shirt' })).toBeDisabled();
+    expect(
+      screen.getByRole('checkbox', { name: 'Clothes（全部項目）' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: '清除篩選' })).toBeDisabled();
+    expect(
+      screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
+    ).toBeEnabled();
+  });
+
+  it('shows the unfinished-only badge instead of the hidden count', () => {
+    renderMenu({ incompleteOnly: true, hidden: ['10|1'] });
+
+    expect(screen.getByText('僅未完成')).toBeInTheDocument();
+    expect(screen.queryByText(/已隱藏/)).not.toBeInTheDocument();
   });
 });
