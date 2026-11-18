@@ -39,7 +39,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   const incomplete = useIncompleteOnly({
     enabled: view.incompleteOnly,
     occasions: checklist?.occasions,
-    categories: checklist?.categories,
+    units: view.filteredUnits,
     getCheck,
     getSpecCheck,
     onToggleCheck: handleToggleCheck,
@@ -158,7 +158,7 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
           onToggleCheck={incomplete.toggleCheck}
           onToggleSpecCheck={incomplete.toggleSpecCheck}
           viewMode={view.viewMode}
-          hidden={view.activeHidden}
+          hidden={view.hidden}
           isUnitVisible={incomplete.isUnitVisible}
         />
       )}

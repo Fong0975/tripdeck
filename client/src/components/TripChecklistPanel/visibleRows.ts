@@ -2,7 +2,11 @@ import type { LocationLabel } from '@tripdeck/shared';
 
 import type { ChecklistCategory } from '@/types';
 
-import { filterCategories, filterStorageGroups, type HiddenKeys } from './checklistFilter';
+import {
+  filterCategories,
+  filterStorageGroups,
+  type HiddenKeys,
+} from './checklistFilter';
 import { getItemUnits, type CheckUnit } from './checkUnits';
 import { groupByStorage, type StorageGroup } from './groupByStorage';
 import {

@@ -3,11 +3,7 @@ import type { Ref } from 'react';
 import type { TripChecklist } from '@/types';
 
 import { countCheckedUnits, countCheckUnits } from './checkProgress';
-import {
-  isUnitChecked,
-  type CheckGetter,
-  type CheckUnit,
-} from './checkUnits';
+import { isUnitChecked, type CheckGetter, type CheckUnit } from './checkUnits';
 
 interface Props {
   checklist: TripChecklist;

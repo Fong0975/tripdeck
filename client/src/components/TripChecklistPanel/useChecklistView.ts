@@ -13,8 +13,10 @@ import {
   type FilterGroup,
   type HiddenKeys,
 } from './checklistFilter';
+import type { CheckUnit } from './checkUnits';
 import { groupByStorage } from './groupByStorage';
 import type { ViewMode } from './viewMode';
+import { getDisplayedUnits } from './visibleRows';
 
 /** State and actions of the checklist view settings. */
 export interface ChecklistView {
@@ -23,13 +25,13 @@ export interface ChecklistView {
   changeViewMode: (mode: ViewMode) => void;
   /** Filter groups of the current view. */
   groups: FilterGroup[];
-  /** Items hidden by the filter; kept while "unfinished only" is on. */
+  /** Items hidden by the filter. */
   hidden: HiddenKeys;
-  /** Hidden items that currently apply: none while "unfinished only" is on. */
-  activeHidden: HiddenKeys;
+  /** Units the item filter leaves in the current view. */
+  filteredUnits: CheckUnit[];
   /** True when the filter hides every item of the checklist. */
   allHidden: boolean;
-  /** Whether only unfinished units are shown, overriding the item filter. */
+  /** Whether finished units are hidden, on top of the item filter. */
   incompleteOnly: boolean;
   setIncompleteOnly: (enabled: boolean) => void;
   toggleItem: (groupKey: string, itemId: number) => void;
@@ -59,6 +61,11 @@ export function useChecklistView(
       : buildCategoryFilterGroups(source);
   }, [categories, labels, viewMode]);
 
+  const filteredUnits = useMemo(
+    () => getDisplayedUnits(viewMode, categories ?? [], labels, hidden),
+    [viewMode, categories, labels, hidden],
+  );
+
   const itemTotal = groups.reduce((sum, group) => sum + group.items.length, 0);
 
   const changeViewMode = useCallback((mode: ViewMode) => {
@@ -72,11 +79,8 @@ export function useChecklistView(
     changeViewMode,
     groups,
     hidden,
-    activeHidden: incompleteOnly ? NO_HIDDEN_KEYS : hidden,
-    allHidden:
-      !incompleteOnly &&
-      itemTotal > 0 &&
-      hiddenCount(hidden, groups) === itemTotal,
+    filteredUnits,
+    allHidden: itemTotal > 0 && hiddenCount(hidden, groups) === itemTotal,
     incompleteOnly,
     setIncompleteOnly,
     toggleItem: (groupKey, itemId) =>

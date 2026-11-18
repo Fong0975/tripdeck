@@ -47,12 +47,10 @@ export default function ViewSettingsMenu({
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
   const hiddenTotal = hiddenCount(hidden, groups);
-  let badge: string | null = null;
-  if (incompleteOnly) {
-    badge = '僅未完成';
-  } else if (hiddenTotal > 0) {
-    badge = `已隱藏 ${hiddenTotal}`;
-  }
+  const badges = [
+    incompleteOnly ? '僅未完成' : null,
+    hiddenTotal > 0 ? `已隱藏 ${hiddenTotal}` : null,
+  ].filter((badge): badge is string => badge !== null);
 
   return (
     <>
@@ -66,11 +64,14 @@ export default function ViewSettingsMenu({
       >
         <SlidersHorizontal size={14} />
         檢視設定
-        {badge && (
-          <span className='rounded-full bg-primary px-1.5 text-xs text-primary-foreground'>
+        {badges.map(badge => (
+          <span
+            key={badge}
+            className='rounded-full bg-primary px-1.5 text-xs text-primary-foreground'
+          >
             {badge}
           </span>
-        )}
+        ))}
       </button>
       {open && (
         <AnchoredPopover
@@ -92,7 +93,7 @@ export default function ViewSettingsMenu({
                 </h3>
                 <button
                   type='button'
-                  disabled={incompleteOnly || hiddenTotal === 0}
+                  disabled={hiddenTotal === 0}
                   onClick={onClearFilter}
                   className='text-xs text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline'
                 >
@@ -116,13 +117,12 @@ export default function ViewSettingsMenu({
                     id={INCOMPLETE_HINT_ID}
                     className='text-xs text-muted-foreground'
                   >
-                    勾選後 3 秒隱藏；啟用時下方篩選停用
+                    勾選後 3 秒隱藏；可與下方篩選併用
                   </span>
                 </span>
               </label>
               <hr className='border-border' />
               <ChecklistFilterList
-                disabled={incompleteOnly}
                 groups={groups}
                 hidden={hidden}
                 onToggleItem={onToggleItem}

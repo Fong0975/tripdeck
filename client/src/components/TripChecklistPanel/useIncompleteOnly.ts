@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
-import type { ChecklistCategory, ChecklistOccasion } from '@/types';
+import type { ChecklistOccasion } from '@/types';
 
-import { getCheckUnits, type CheckGetter } from './checkUnits';
+import type { CheckGetter, CheckUnit } from './checkUnits';
 import {
   createUnfinishedVisibility,
   unitKeyOf,
@@ -21,7 +21,8 @@ interface Options {
   /** Whether only unfinished units are shown. */
   enabled: boolean;
   occasions?: ChecklistOccasion[];
-  categories?: ChecklistCategory[];
+  /** Units the item filter leaves in the view; decides {@link IncompleteOnly.allFinished}. */
+  units?: CheckUnit[];
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
   onToggleCheck: ToggleHandler;
@@ -31,7 +32,7 @@ interface Options {
 interface IncompleteOnly {
   /** Visibility rule of a unit; undefined while every unit is shown. */
   isUnitVisible: UnitVisibility | undefined;
-  /** True when the view is on, the checklist has units and none is left. */
+  /** True when the view is on, units are listed and none is left to show. */
   allFinished: boolean;
   /** Toggle handlers that keep a just finished unit visible for a while. */
   toggleCheck: ToggleHandler;
@@ -46,7 +47,7 @@ interface IncompleteOnly {
 export function useIncompleteOnly({
   enabled,
   occasions = NO_OCCASIONS,
-  categories,
+  units,
   getCheck,
   getSpecCheck,
   onToggleCheck,
@@ -69,9 +70,9 @@ export function useIncompleteOnly({
 
   const allFinished =
     isUnitVisible !== undefined &&
-    categories !== undefined &&
-    getCheckUnits(categories).length > 0 &&
-    !getCheckUnits(categories).some(isUnitVisible);
+    units !== undefined &&
+    units.length > 0 &&
+    !units.some(isUnitVisible);
 
   const wrap =
     (

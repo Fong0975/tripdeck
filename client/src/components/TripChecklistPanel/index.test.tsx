@@ -305,7 +305,7 @@ describe('TripChecklistPanel', () => {
     expect(useChecklistState).toHaveBeenCalledWith(7, onDirtyChange);
   });
 
-  it('limits the table to unfinished units and pauses the hidden filter', async () => {
+  it('limits the table to unfinished units while keeping the item filter', async () => {
     const user = userEvent.setup();
     render(<TripChecklistPanel tripId={1} />);
     await user.click(screen.getByRole('button', { name: /檢視設定/ }));
@@ -316,10 +316,15 @@ describe('TripChecklistPanel', () => {
       screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
     );
 
+    expect(screen.getByText('沒有符合篩選的項目')).toBeInTheDocument();
+    expect(screen.getByText('僅未完成')).toBeInTheDocument();
+    expect(screen.getByText('已隱藏 1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Item A' }));
+
     expect(
       screen.getByText('checklist-table-1-category-0-unfinished'),
     ).toBeInTheDocument();
-    expect(screen.getByText('僅未完成')).toBeInTheDocument();
   });
 
   it('shows the all-done state and returns to every item from it', async () => {

@@ -113,7 +113,7 @@ describe('useChecklistView', () => {
     expect(result.current.hidden.size).toBe(0);
   });
 
-  it('keeps the hidden items but applies none while unfinished-only is on', () => {
+  it('keeps applying the item filter while unfinished-only is on', () => {
     const { result } = renderView();
     act(() => result.current.toggleItem('1', 10));
 
@@ -121,21 +121,27 @@ describe('useChecklistView', () => {
 
     expect(result.current.incompleteOnly).toBe(true);
     expect(result.current.hidden.size).toBe(1);
-    expect(result.current.activeHidden.size).toBe(0);
-
-    act(() => result.current.setIncompleteOnly(false));
-
-    expect(result.current.activeHidden.size).toBe(1);
+    expect(result.current.filteredUnits).toHaveLength(1);
   });
 
-  it('does not report allHidden while unfinished-only is on', () => {
+  it('lists the units the item filter leaves', () => {
+    const { result } = renderView();
+    expect(result.current.filteredUnits).toHaveLength(2);
+
+    act(() => result.current.toggleItem('1', 11));
+
+    expect(result.current.filteredUnits.map(unit => unit.item.id)).toEqual([
+      10,
+    ]);
+  });
+
+  it('reports allHidden while unfinished-only is on too', () => {
     const { result } = renderView();
     act(() => result.current.toggleGroup(result.current.groups[0]));
-    expect(result.current.allHidden).toBe(true);
 
     act(() => result.current.setIncompleteOnly(true));
 
-    expect(result.current.allHidden).toBe(false);
+    expect(result.current.allHidden).toBe(true);
   });
 
   it('turns unfinished-only off when the view mode changes', () => {

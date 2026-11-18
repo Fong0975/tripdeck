@@ -1,10 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  makeChecklistCategory,
-  makeChecklistItem,
-} from '@/test-utils/fixtures';
+import { makeChecklistItem } from '@/test-utils/fixtures';
 import type { ChecklistOccasion } from '@/types';
 
 import type { CheckUnit } from './checkUnits';
@@ -158,9 +155,7 @@ describe('useIncompleteOnly', () => {
         useIncompleteOnly({
           enabled,
           occasions,
-          categories: [
-            makeChecklistCategory({ items: [makeChecklistItem({ id: 10 })] }),
-          ],
+          units: [unit],
           getCheck: (occId, id) => set.has(`${occId}:${id}`),
           getSpecCheck: () => false,
           onToggleCheck: vi.fn(),
@@ -172,12 +167,12 @@ describe('useIncompleteOnly', () => {
     },
   );
 
-  it('does not report allFinished for a checklist without units', () => {
+  it('does not report allFinished when no units are listed', () => {
     const view = renderHook(() =>
       useIncompleteOnly({
         enabled: true,
         occasions,
-        categories: [],
+        units: [],
         getCheck: () => true,
         getSpecCheck: () => true,
         onToggleCheck: vi.fn(),

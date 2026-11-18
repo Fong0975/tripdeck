@@ -174,24 +174,37 @@ describe('ViewSettingsMenu', () => {
     },
   );
 
-  it('disables the item filter but keeps the unfinished-only option usable', async () => {
-    renderMenu({ incompleteOnly: true, hidden: ['10|1'] });
-    await openMenu();
+  it('keeps the item filter usable while unfinished-only is on', async () => {
+    const { onToggleItem, onClearFilter } = renderMenu({
+      incompleteOnly: true,
+      hidden: ['10|1'],
+    });
+    const user = await openMenu();
 
-    expect(screen.getByRole('checkbox', { name: 'Shirt' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Shirt' })).toBeEnabled();
     expect(
       screen.getByRole('checkbox', { name: 'Clothes（全部項目）' }),
-    ).toBeDisabled();
-    expect(screen.getByRole('button', { name: '清除篩選' })).toBeDisabled();
-    expect(
-      screen.getByRole('checkbox', { name: '僅顯示未完成的項目' }),
     ).toBeEnabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Shirt' }));
+    await user.click(screen.getByRole('button', { name: '清除篩選' }));
+
+    expect(onToggleItem).toHaveBeenCalledWith('1', 11);
+    expect(onClearFilter).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the unfinished-only badge instead of the hidden count', () => {
-    renderMenu({ incompleteOnly: true, hidden: ['10|1'] });
+  it.each([
+    { incompleteOnly: true, hidden: [] as string[], badges: ['僅未完成'] },
+    { incompleteOnly: false, hidden: ['10|1'], badges: ['已隱藏 1'] },
+    {
+      incompleteOnly: true,
+      hidden: ['10|1'],
+      badges: ['僅未完成', '已隱藏 1'],
+    },
+  ])('shows the badges $badges', ({ incompleteOnly, hidden, badges }) => {
+    renderMenu({ incompleteOnly, hidden });
 
-    expect(screen.getByText('僅未完成')).toBeInTheDocument();
-    expect(screen.queryByText(/已隱藏/)).not.toBeInTheDocument();
+    for (const badge of badges) {
+      expect(screen.getByText(badge)).toBeInTheDocument();
+    }
   });
 });

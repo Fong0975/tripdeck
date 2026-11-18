@@ -136,12 +136,7 @@ describe('getDisplayedUnits', () => {
       viewMode: 'storage' as const,
       hidden: ['10|託運'],
       isUnitVisible: undefined,
-      expected: [
-        'spec-202|託運',
-        'spec-201|隨身',
-        'spec-202|隨身',
-        'item-11|',
-      ],
+      expected: ['spec-202|託運', 'spec-201|隨身', 'spec-202|隨身', 'item-11|'],
     },
   ])('$name', ({ viewMode, hidden, isUnitVisible, expected }) => {
     const units = getDisplayedUnits(

@@ -10,8 +10,6 @@ interface Props {
   hidden: HiddenKeys;
   onToggleItem: (groupKey: string, itemId: number) => void;
   onToggleGroup: (group: FilterGroup) => void;
-  /** Disables every checkbox; the selection is kept. */
-  disabled?: boolean;
 }
 
 /**
@@ -24,11 +22,7 @@ export default function ChecklistFilterList({
   hidden,
   onToggleItem,
   onToggleGroup,
-  disabled = false,
 }: Props) {
-  const rowState = disabled
-    ? 'cursor-not-allowed'
-    : 'cursor-pointer hover:bg-accent';
   const listedGroups = groups.filter(group => group.items.length > 0);
 
   if (listedGroups.length === 0) {
@@ -40,18 +34,12 @@ export default function ChecklistFilterList({
   }
 
   return (
-    <div
-      className={`flex max-h-64 flex-col gap-2 overflow-y-auto ${
-        disabled ? 'opacity-50' : ''
-      }`}
-    >
+    <div className='flex max-h-64 flex-col gap-2 overflow-y-auto'>
       {listedGroups.map(group => {
         const state = groupState(hidden, group);
         return (
           <div key={group.key} role='group' aria-label={group.label}>
-            <label
-              className={`flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-foreground ${rowState}`}
-            >
+            <label className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-foreground hover:bg-accent'>
               <input
                 type='checkbox'
                 aria-label={`${group.label}（全部項目）`}
@@ -61,7 +49,6 @@ export default function ChecklistFilterList({
                     element.indeterminate = state === 'some';
                   }
                 }}
-                disabled={disabled}
                 onChange={() => onToggleGroup(group)}
                 className='size-4 accent-primary'
               />
@@ -70,12 +57,11 @@ export default function ChecklistFilterList({
             {group.items.map(item => (
               <label
                 key={item.id}
-                className={`flex items-center gap-2 rounded-md py-1 pr-2 pl-7 text-sm text-foreground ${rowState}`}
+                className='flex cursor-pointer items-center gap-2 rounded-md py-1 pr-2 pl-7 text-sm text-foreground hover:bg-accent'
               >
                 <input
                   type='checkbox'
                   checked={!isHidden(hidden, group.key, item.id)}
-                  disabled={disabled}
                   onChange={() => onToggleItem(group.key, item.id)}
                   className='size-4 accent-primary'
                 />

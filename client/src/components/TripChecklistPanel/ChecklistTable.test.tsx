@@ -721,7 +721,25 @@ describe('ChecklistTable filtered progress', () => {
     expect(screen.getByText('0 / 2')).toBeInTheDocument();
   });
 
-  it('is not shown in the unfinished-only view', () => {
+  it('counts the checked units the unfinished-only view hides', () => {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={(occId, id) => occId === 1 && id === 20}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        hidden={new Set(['10|1'])}
+        isUnitVisible={unit => unitKey(unit) === 'item-10|'}
+      />,
+    );
+
+    expect(
+      screen.getAllByTitle('篩選後的進度').map(element => element.textContent),
+    ).toEqual(['1 / 1', '0 / 1']);
+  });
+
+  it('is not shown in the unfinished-only view without a hidden item', () => {
     render(
       <ChecklistTable
         checklist={makeChecklist()}

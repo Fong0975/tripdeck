@@ -24,8 +24,8 @@ interface Props {
   viewMode?: ViewMode;
   /**
    * Items the filter hides from the rows. The header shows the progress of
-   * the whole checklist, and, while the item filter hides rows, of the shown
-   * rows too. The unfinished-only view (`isUnitVisible`) shows no such extra.
+   * the whole checklist, and, while the item filter hides rows, of the rows
+   * it leaves, counting finished rows the unfinished-only view hides too.
    */
   hidden?: HiddenKeys;
   /**
@@ -53,9 +53,12 @@ export default function ChecklistTable({
     hidden,
     isUnitVisible,
   );
-  const filteredUnits = isUnitVisible
-    ? undefined
-    : getDisplayedUnits(viewMode, checklist.categories, labels, hidden);
+  const filteredUnits = getDisplayedUnits(
+    viewMode,
+    checklist.categories,
+    labels,
+    hidden,
+  );
 
   return (
     <div
