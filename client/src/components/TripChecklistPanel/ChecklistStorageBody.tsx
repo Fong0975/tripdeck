@@ -5,15 +5,20 @@ import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLa
 import type { TripChecklist } from '@/types';
 
 import CategorySubheaderRow from './CategorySubheaderRow';
+import { NO_HIDDEN_KEYS, type HiddenKeys } from './checklistFilter';
 import ChecklistStorageRow from './ChecklistStorageRow';
 import type { CheckGetter } from './checkUnits';
-import { groupByStorage, splitByCategory } from './groupByStorage';
+import { NO_LOCATION_GROUP_LABEL, splitByCategory } from './groupByStorage';
 import GroupHeaderRow from './GroupHeaderRow';
-
-const NO_LOCATION_GROUP_LABEL = '未指定存放位置';
+import type { UnitVisibility } from './incompleteFilter';
+import { getVisibleStorageGroups } from './visibleRows';
 
 interface Props {
   checklist: TripChecklist;
+  /** Items the filter hides; defaults to showing everything. */
+  hidden?: HiddenKeys;
+  /** Limits the rows to the visible units. Defaults to every unit. */
+  isUnitVisible?: UnitVisibility;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number, location: string) => void;
@@ -23,16 +28,24 @@ interface Props {
 /** Table body that lists the checklist grouped by storage location. */
 export default function ChecklistStorageBody({
   checklist,
+  hidden = NO_HIDDEN_KEYS,
+  isUnitVisible,
   getCheck,
   getSpecCheck,
   onToggleCheck,
   onToggleSpecCheck,
 }: Props) {
   const { labels } = useLocationLabelSet();
+  const groups = getVisibleStorageGroups(
+    checklist.categories,
+    labels,
+    hidden,
+    isUnitVisible,
+  );
 
   return (
     <tbody>
-      {groupByStorage(checklist.categories, labels).map(group => (
+      {groups.map(group => (
         <Fragment key={group.key}>
           <GroupHeaderRow
             label={

@@ -9,8 +9,9 @@ import TripChecklistEditModal from '../Checklist/trip/TripChecklistEditModal';
 
 import ChecklistTable from './ChecklistTable';
 import { useChecklistState } from './useChecklistState';
-import type { ViewMode } from './viewMode';
-import ViewModeToggle from './ViewModeToggle';
+import { useChecklistView } from './useChecklistView';
+import { useIncompleteOnly } from './useIncompleteOnly';
+import ViewSettingsMenu from './ViewSettingsMenu';
 
 interface Props {
   tripId: number;
@@ -19,7 +20,6 @@ interface Props {
 
 export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
   const [showEditModal, setShowEditModal] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('category');
   const {
     checklist,
     loading,
@@ -35,6 +35,16 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
     handleDiscardChecks,
     handleEditSaved,
   } = useChecklistState(tripId, onDirtyChange);
+  const view = useChecklistView(checklist?.categories, checklist?.occasions);
+  const incomplete = useIncompleteOnly({
+    enabled: view.incompleteOnly,
+    occasions: view.visibleOccasions,
+    units: view.filteredUnits,
+    getCheck,
+    getSpecCheck,
+    onToggleCheck: handleToggleCheck,
+    onToggleSpecCheck: handleToggleSpecCheck,
+  });
 
   if (loadError) {
     return (
@@ -92,7 +102,20 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
       {/* Toolbar */}
       <div className='shrink-0 border-b border-border px-4 py-2'>
         <div className='mx-auto flex max-w-5xl items-center justify-between'>
-          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+          <ViewSettingsMenu
+            viewMode={view.viewMode}
+            onViewModeChange={view.changeViewMode}
+            groups={view.groups}
+            hidden={view.hidden}
+            occasions={view.occasions}
+            hiddenOccasionIds={view.hiddenOccasionIds}
+            onToggleOccasion={view.toggleOccasion}
+            incompleteOnly={view.incompleteOnly}
+            onIncompleteOnlyChange={view.setIncompleteOnly}
+            onToggleItem={view.toggleItem}
+            onToggleGroup={view.toggleGroup}
+            onClearFilter={view.clearFilter}
+          />
           <div className='flex items-center gap-3'>
             <span className='text-sm text-muted-foreground'>
               共 {totalItems} 項
@@ -108,14 +131,40 @@ export default function TripChecklistPanel({ tripId, onDirtyChange }: Props) {
         </div>
       </div>
 
-      <ChecklistTable
-        checklist={checklist}
-        getCheck={getCheck}
-        getSpecCheck={getSpecCheck}
-        onToggleCheck={handleToggleCheck}
-        onToggleSpecCheck={handleToggleSpecCheck}
-        viewMode={viewMode}
-      />
+      {incomplete.allFinished ? (
+        <div className='flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center'>
+          <p className='text-sm text-muted-foreground'>所有項目都已完成 🎉</p>
+          <button
+            type='button'
+            onClick={() => view.setIncompleteOnly(false)}
+            className='rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-muted'
+          >
+            顯示全部項目
+          </button>
+        </div>
+      ) : view.allHidden ? (
+        <div className='flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center'>
+          <p className='text-sm text-muted-foreground'>沒有符合篩選的項目</p>
+          <button
+            type='button'
+            onClick={view.clearFilter}
+            className='rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-muted'
+          >
+            清除篩選
+          </button>
+        </div>
+      ) : (
+        <ChecklistTable
+          checklist={{ ...checklist, occasions: view.visibleOccasions }}
+          getCheck={getCheck}
+          getSpecCheck={getSpecCheck}
+          onToggleCheck={incomplete.toggleCheck}
+          onToggleSpecCheck={incomplete.toggleSpecCheck}
+          viewMode={view.viewMode}
+          hidden={view.hidden}
+          isUnitVisible={incomplete.isUnitVisible}
+        />
+      )}
 
       {/* Floating save/discard bar */}
       {isDirty && (

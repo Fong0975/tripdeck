@@ -9,6 +9,7 @@ import {
   getSpecLocations,
   type CheckGetter,
 } from './checkUnits';
+import type { UnitVisibility } from './incompleteFilter';
 
 interface Props {
   item: ChecklistItem;
@@ -22,6 +23,8 @@ interface Props {
   occasions: ChecklistOccasion[];
   getSpecCheck: CheckGetter;
   onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
+  /** Limits the location rows to the visible units. Defaults to every unit. */
+  isUnitVisible?: UnitVisibility;
 }
 
 /**
@@ -39,10 +42,14 @@ export default function ChecklistSpecRow({
   occasions,
   getSpecCheck,
   onToggleSpecCheck,
+  isUnitVisible,
 }: Props) {
   const locations = getSpecLocations(spec);
   const [singleLocation] = locations;
   const hasLocationRows = locations.length > 1;
+  const visibleLocations = locations.filter(
+    location => isUnitVisible?.({ kind: 'spec', item, spec, location }) ?? true,
+  );
 
   const nameRow = (
     <tr
@@ -94,13 +101,13 @@ export default function ChecklistSpecRow({
   return (
     <>
       {nameRow}
-      {locations.map((location, locationIndex) => (
+      {visibleLocations.map((location, locationIndex) => (
         <ChecklistLocationRow
           key={location}
           name={spec.name}
           location={location}
           depth={2}
-          isLast={isLast && locationIndex === locations.length - 1}
+          isLast={isLast && locationIndex === visibleLocations.length - 1}
           itemIndex={itemIndex}
           occasions={occasions}
           isChecked={occId => getSpecCheck(occId, spec.id, location)}

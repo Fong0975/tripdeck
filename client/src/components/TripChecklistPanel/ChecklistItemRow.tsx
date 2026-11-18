@@ -10,7 +10,12 @@ import CheckCell from './CheckCell';
 import ChecklistLocationRow from './ChecklistLocationRow';
 import ChecklistSpecRow from './ChecklistSpecRow';
 import { getItemCheckState } from './checkProgress';
-import { getCheckCellLabel, type CheckGetter } from './checkUnits';
+import {
+  getCheckCellLabel,
+  getItemUnits,
+  type CheckGetter,
+} from './checkUnits';
+import type { UnitVisibility } from './incompleteFilter';
 
 interface Props {
   item: ChecklistItem;
@@ -20,6 +25,11 @@ interface Props {
   getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number, location: string) => void;
   onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
+  /**
+   * Limits the location and spec rows to the visible units. The state of the
+   * item's own row still covers all of its units. Defaults to every unit.
+   */
+  isUnitVisible?: UnitVisibility;
 }
 
 /**
@@ -37,6 +47,7 @@ export default function ChecklistItemRow({
   getSpecCheck,
   onToggleCheck,
   onToggleSpecCheck,
+  isUnitVisible,
 }: Props) {
   const { names } = useLocationLabelSet();
   const specs = item.specs ?? [];
@@ -45,6 +56,13 @@ export default function ChecklistItemRow({
   const hasLocationRows = !hasSpecs && locations.length > 1;
   const hasChildren = hasSpecs || hasLocationRows;
   const [singleLocation] = locations;
+  const visibleUnits = getItemUnits(item).filter(
+    unit => isUnitVisible?.(unit) ?? true,
+  );
+  const visibleLocations = visibleUnits.map(unit => unit.location);
+  const visibleSpecs = specs.filter(spec =>
+    visibleUnits.some(unit => unit.kind === 'spec' && unit.spec.id === spec.id),
+  );
   const shownLocation = hasSpecs
     ? summarizeSpecLocations(specs, names)
     : item.storage_location;
@@ -102,13 +120,13 @@ export default function ChecklistItemRow({
       </tr>
 
       {hasLocationRows &&
-        locations.map((location, locationIndex) => (
+        visibleLocations.map((location, locationIndex) => (
           <ChecklistLocationRow
             key={location}
             name={item.name}
             location={location}
             depth={1}
-            isLast={locationIndex === locations.length - 1}
+            isLast={locationIndex === visibleLocations.length - 1}
             itemIndex={index}
             occasions={occasions}
             isChecked={occId => getCheck(occId, item.id, location)}
@@ -116,14 +134,15 @@ export default function ChecklistItemRow({
           />
         ))}
 
-      {specs.map((spec, specIndex) => (
+      {visibleSpecs.map(spec => (
         <ChecklistSpecRow
           key={spec.id}
           item={item}
           spec={spec}
-          specIndex={specIndex}
+          specIndex={specs.indexOf(spec)}
           itemIndex={index}
-          isLast={specIndex === specs.length - 1}
+          isLast={spec === visibleSpecs[visibleSpecs.length - 1]}
+          isUnitVisible={isUnitVisible}
           occasions={occasions}
           getSpecCheck={getSpecCheck}
           onToggleSpecCheck={onToggleSpecCheck}

@@ -10,6 +10,7 @@ import {
 import type { TripChecklist } from '@/types';
 
 import ChecklistTable from './ChecklistTable';
+import { unitKey } from './incompleteFilter';
 import type { ViewMode } from './viewMode';
 
 function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
@@ -507,5 +508,249 @@ describe('ChecklistTable', () => {
         expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '隨身');
       });
     });
+  });
+});
+
+describe('ChecklistTable filter', () => {
+  function renderFiltered(hidden: string[], viewMode?: ViewMode) {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        hidden={new Set(hidden)}
+      />,
+    );
+  }
+
+  it.each([
+    {
+      name: 'hides a hidden item in the category view',
+      hidden: ['10|1'],
+      visible: ['Item B'],
+      absent: ['Item A'],
+    },
+    {
+      name: 'ignores a key of another category',
+      hidden: ['10|9'],
+      visible: ['Item A', 'Item B'],
+      absent: [],
+    },
+    {
+      name: 'drops a category whose items are all hidden',
+      hidden: ['10|1', '20|1'],
+      visible: [],
+      absent: ['Category A', 'Item A', 'Item B'],
+    },
+  ])('$name', ({ hidden, visible, absent }) => {
+    renderFiltered(hidden);
+
+    for (const text of visible) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    for (const text of absent) {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    }
+  });
+
+  it('hides an item in the storage view with the storage group key', () => {
+    renderFiltered(['10|'], 'storage');
+
+    expect(screen.queryByText('Item A')).not.toBeInTheDocument();
+    expect(screen.getByText('Item B')).toBeInTheDocument();
+  });
+
+  it('keeps counting the whole checklist in the progress', () => {
+    renderFiltered(['10|1']);
+
+    expect(screen.getAllByText('0 / 2')).toHaveLength(2);
+  });
+});
+
+describe('ChecklistTable unit visibility', () => {
+  const checklist = makeChecklist({
+    categories: [
+      makeChecklistCategory({
+        id: 1,
+        name: 'Category A',
+        items: [
+          makeChecklistItem({
+            id: 10,
+            name: 'Charger',
+            specs: [
+              makeChecklistSpec({
+                id: 101,
+                name: 'USB-C',
+                storage_location: '隨身',
+              }),
+              makeChecklistSpec({
+                id: 102,
+                name: 'Lightning',
+                storage_location: '託運,隨身',
+              }),
+            ],
+          }),
+          makeChecklistItem({
+            id: 20,
+            name: 'Plain',
+            storage_location: '託運,隨身',
+          }),
+          makeChecklistItem({ id: 30, name: 'Done' }),
+        ],
+      }),
+    ],
+  });
+
+  function renderVisible(keys: string[], viewMode?: ViewMode) {
+    const visible = new Set(keys);
+    render(
+      <ChecklistTable
+        checklist={checklist}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        isUnitVisible={unit => visible.has(unitKey(unit))}
+      />,
+    );
+  }
+
+  it('lists only the visible spec locations of an item', () => {
+    renderVisible(['spec-102|隨身']);
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Lightning（隨身） - Occ A' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Lightning（託運） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'USB-C（隨身） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain')).not.toBeInTheDocument();
+    expect(screen.queryByText('Done')).not.toBeInTheDocument();
+  });
+
+  it('lists only the visible locations of an item without specs', () => {
+    renderVisible(['item-20|託運']);
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Plain（託運） - Occ A' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Plain（隨身） - Occ A' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Charger')).not.toBeInTheDocument();
+  });
+
+  it('keeps the original spec numbers', () => {
+    renderVisible(['spec-102|託運']);
+
+    expect(screen.getByText('2.')).toBeInTheDocument();
+    expect(screen.queryByText('1.')).not.toBeInTheDocument();
+  });
+
+  it('filters the rows of the storage view too', () => {
+    renderVisible(['item-30|'], 'storage');
+
+    expect(screen.getByText('Done')).toBeInTheDocument();
+    expect(screen.queryByText('Charger')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ChecklistTable filtered progress', () => {
+  function renderProgress(
+    hidden: string[],
+    viewMode?: ViewMode,
+    getCheck: Getter = (occId, id) => occId === 1 && id === 20,
+  ) {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={getCheck}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        hidden={new Set(hidden)}
+      />,
+    );
+    return screen
+      .queryAllByTitle('篩選後的進度')
+      .map(element => element.textContent);
+  }
+
+  it.each([
+    {
+      name: 'is not shown while every unit is shown',
+      hidden: [] as string[],
+      viewMode: undefined,
+      expected: [],
+    },
+    {
+      name: 'is not shown for a key that hides nothing',
+      hidden: ['99|1'],
+      viewMode: undefined,
+      expected: [],
+    },
+    {
+      name: 'counts only the shown items in the category view',
+      hidden: ['10|1'],
+      viewMode: undefined,
+      expected: ['1 / 1', '0 / 1'],
+    },
+    {
+      name: 'counts only the shown units in the storage view',
+      hidden: ['10|'],
+      viewMode: 'storage' as const,
+      expected: ['1 / 1', '0 / 1'],
+    },
+  ])('$name', ({ hidden, viewMode, expected }) => {
+    expect(renderProgress(hidden, viewMode)).toEqual(expected);
+  });
+
+  it('keeps the overall progress next to the filtered one', () => {
+    renderProgress(['10|1']);
+
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('0 / 2')).toBeInTheDocument();
+  });
+
+  it('counts the checked units the unfinished-only view hides', () => {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={(occId, id) => occId === 1 && id === 20}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        hidden={new Set(['10|1'])}
+        isUnitVisible={unit => unitKey(unit) === 'item-10|'}
+      />,
+    );
+
+    expect(
+      screen.getAllByTitle('篩選後的進度').map(element => element.textContent),
+    ).toEqual(['1 / 1', '0 / 1']);
+  });
+
+  it('is not shown in the unfinished-only view without a hidden item', () => {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        isUnitVisible={unit => unitKey(unit) === 'item-20|'}
+      />,
+    );
+
+    expect(screen.queryAllByTitle('篩選後的進度')).toEqual([]);
   });
 });

@@ -15,6 +15,7 @@ import type { TripChecklist } from '@/types';
 
 import ChecklistStorageBody from './ChecklistStorageBody';
 import type { CheckGetter } from './checkUnits';
+import { unitKey } from './incompleteFilter';
 
 const occasions = [
   { id: 1, name: 'Occ A', checks: {}, specChecks: {} },
@@ -290,5 +291,72 @@ describe('ChecklistStorageBody with user-defined labels', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Jacket - Occ A' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('ChecklistStorageBody filter', () => {
+  function renderFiltered(hidden: string[]) {
+    render(
+      <table>
+        <ChecklistStorageBody
+          checklist={makeChecklist()}
+          hidden={new Set(hidden)}
+          getCheck={() => false}
+          getSpecCheck={() => false}
+          onToggleCheck={vi.fn()}
+          onToggleSpecCheck={vi.fn()}
+        />
+      </table>,
+    );
+  }
+
+  it.each([
+    {
+      name: 'hides an item only in the given group',
+      hidden: ['10|託運'],
+      headers: ['託運1 項', '隨身2 項', '未指定存放位置1 項'],
+    },
+    {
+      name: 'drops a group whose items are all hidden',
+      hidden: ['11|', '20|', '10|隨身'],
+      headers: ['託運2 項', '隨身1 項'],
+    },
+    {
+      name: 'ignores keys that match no group',
+      hidden: ['10|手提', '99|託運'],
+      headers: ['託運2 項', '隨身2 項', '未指定存放位置1 項'],
+    },
+  ])('$name', ({ hidden, headers }) => {
+    renderFiltered(hidden);
+
+    expect(
+      screen
+        .getAllByText(/ 項$/)
+        .map(count => count.parentElement?.textContent),
+    ).toEqual(headers);
+  });
+});
+
+describe('ChecklistStorageBody unit visibility', () => {
+  it('lists only the visible units and drops empty groups', () => {
+    const visible = new Set(['spec-201|隨身', 'item-11|']);
+    render(
+      <table>
+        <ChecklistStorageBody
+          checklist={makeChecklist()}
+          isUnitVisible={unit => visible.has(unitKey(unit))}
+          getCheck={() => false}
+          getSpecCheck={() => false}
+          onToggleCheck={vi.fn()}
+          onToggleSpecCheck={vi.fn()}
+        />
+      </table>,
+    );
+
+    expect(
+      screen
+        .getAllByText(/ 項$/)
+        .map(count => count.parentElement?.textContent),
+    ).toEqual(['隨身1 項', '未指定存放位置1 項']);
   });
 });

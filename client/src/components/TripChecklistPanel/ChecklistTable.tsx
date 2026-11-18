@@ -1,14 +1,18 @@
 import { type CSSProperties, Fragment, useRef } from 'react';
 
+import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLabelsContext';
 import { useElementHeight } from '@/hooks/useElementHeight';
 import type { TripChecklist } from '@/types';
 
+import { NO_HIDDEN_KEYS, type HiddenKeys } from './checklistFilter';
 import ChecklistItemRow from './ChecklistItemRow';
 import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
 import type { CheckGetter } from './checkUnits';
 import GroupHeaderRow from './GroupHeaderRow';
+import type { UnitVisibility } from './incompleteFilter';
 import type { ViewMode } from './viewMode';
+import { getDisplayedUnits, getVisibleCategories } from './visibleRows';
 
 interface Props {
   checklist: TripChecklist;
@@ -18,6 +22,17 @@ interface Props {
   onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
   /** How rows are grouped; defaults to by category. */
   viewMode?: ViewMode;
+  /**
+   * Items the filter hides from the rows. The header shows the progress of
+   * the whole checklist, and, while the item filter hides rows, of the rows
+   * it leaves, counting finished rows the unfinished-only view hides too.
+   */
+  hidden?: HiddenKeys;
+  /**
+   * Limits the rows to the visible units (the "unfinished only" view).
+   * Defaults to every unit.
+   */
+  isUnitVisible?: UnitVisibility;
 }
 
 export default function ChecklistTable({
@@ -27,9 +42,23 @@ export default function ChecklistTable({
   onToggleCheck,
   onToggleSpecCheck,
   viewMode = 'category',
+  hidden = NO_HIDDEN_KEYS,
+  isUnitVisible,
 }: Props) {
   const headRef = useRef<HTMLTableSectionElement>(null);
   const headHeight = useElementHeight(headRef);
+  const { labels } = useLocationLabelSet();
+  const visibleCategories = getVisibleCategories(
+    checklist.categories,
+    hidden,
+    isUnitVisible,
+  );
+  const filteredUnits = getDisplayedUnits(
+    viewMode,
+    checklist.categories,
+    labels,
+    hidden,
+  );
 
   return (
     <div
@@ -42,12 +71,15 @@ export default function ChecklistTable({
             checklist={checklist}
             getCheck={getCheck}
             getSpecCheck={getSpecCheck}
+            displayedUnits={filteredUnits}
             headRef={headRef}
           />
 
           {viewMode === 'storage' ? (
             <ChecklistStorageBody
               checklist={checklist}
+              hidden={hidden}
+              isUnitVisible={isUnitVisible}
               getCheck={getCheck}
               getSpecCheck={getSpecCheck}
               onToggleCheck={onToggleCheck}
@@ -55,7 +87,7 @@ export default function ChecklistTable({
             />
           ) : (
             <tbody>
-              {checklist.categories.map(cat => (
+              {visibleCategories.map(cat => (
                 <Fragment key={cat.id}>
                   <GroupHeaderRow
                     label={cat.name}
@@ -72,6 +104,7 @@ export default function ChecklistTable({
                       getSpecCheck={getSpecCheck}
                       onToggleCheck={onToggleCheck}
                       onToggleSpecCheck={onToggleSpecCheck}
+                      isUnitVisible={isUnitVisible}
                     />
                   ))}
                 </Fragment>

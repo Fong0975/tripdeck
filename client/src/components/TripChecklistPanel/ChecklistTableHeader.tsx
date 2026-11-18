@@ -3,12 +3,17 @@ import type { Ref } from 'react';
 import type { TripChecklist } from '@/types';
 
 import { countCheckedUnits, countCheckUnits } from './checkProgress';
-import type { CheckGetter } from './checkUnits';
+import { isUnitChecked, type CheckGetter, type CheckUnit } from './checkUnits';
 
 interface Props {
   checklist: TripChecklist;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
+  /**
+   * Units the table shows rows for. While fewer than all units are shown, the
+   * progress of the shown units is listed below the overall progress.
+   */
+  displayedUnits?: CheckUnit[];
   /** Ref to the `thead`, used to offset the sticky section headers. */
   headRef?: Ref<HTMLTableSectionElement>;
 }
@@ -18,9 +23,12 @@ export default function ChecklistTableHeader({
   checklist,
   getCheck,
   getSpecCheck,
+  displayedUnits,
   headRef,
 }: Props) {
   const totalUnits = countCheckUnits(checklist.categories);
+  const isFiltered =
+    displayedUnits !== undefined && displayedUnits.length !== totalUnits;
 
   return (
     <thead ref={headRef}>
@@ -35,6 +43,10 @@ export default function ChecklistTableHeader({
             getCheck,
             getSpecCheck,
           );
+          const shownTotal = displayedUnits?.length ?? 0;
+          const shownChecked = (displayedUnits ?? []).filter(unit =>
+            isUnitChecked(unit, occ.id, getCheck, getSpecCheck),
+          ).length;
           const pct = totalUnits > 0 ? (checked / totalUnits) * 100 : 0;
           return (
             <th
@@ -48,6 +60,14 @@ export default function ChecklistTableHeader({
                 <span className='text-sm text-muted-foreground'>
                   {checked} / {totalUnits}
                 </span>
+                {isFiltered && (
+                  <span
+                    title='篩選後的進度'
+                    className='text-xs font-medium text-primary'
+                  >
+                    {shownChecked} / {shownTotal}
+                  </span>
+                )}
                 <div className='h-1 w-full overflow-hidden rounded-full bg-muted'>
                   <div
                     className='h-full rounded-full bg-primary transition-all duration-300'
