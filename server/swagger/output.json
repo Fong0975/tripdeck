@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "Tripdeck API",
-    "version": "1.11.0",
+    "version": "1.12.0",
     "description": "REST API for the Tripdeck travel planning application."
   },
   "servers": [
@@ -1862,7 +1862,7 @@
                           },
                           "checks": {
                             "type": "object",
-                            "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
+                            "description": "Keys are `<itemId>|<location>` (location is the name of a location label, including a deleted one the unit still carries, or empty for an item without a storage location); only checked entries are present.",
                             "additionalProperties": {
                               "type": "boolean"
                             },
@@ -1990,7 +1990,7 @@
                     },
                     "checks": {
                       "type": "object",
-                      "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
+                      "description": "Keys are `<itemId>|<location>` (location is the name of a location label, including a deleted one the unit still carries, or empty for an item without a storage location); only checked entries are present.",
                       "additionalProperties": {
                         "type": "boolean"
                       },
@@ -2108,7 +2108,7 @@
                   },
                   "location": {
                     "type": "string",
-                    "description": "One of the storage locations of the item (託運 or 隨身); an empty string when it has none.",
+                    "description": "One of the storage locations of the item, i.e. a location label name (including a deleted one the item still carries); an empty string when it has none.",
                     "example": "託運"
                   }
                 }
@@ -2122,7 +2122,7 @@
       "put": {
         "tags": ["Trip Checklist"],
         "summary": "Set the checked state of an item spec at one of its storage locations within an occasion",
-        "description": "Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.",
+        "description": "Each storage location of a spec is checked independently. A spec never inherits the locations of its item.",
         "parameters": [
           {
             "name": "tripId",
@@ -2182,7 +2182,7 @@
                   },
                   "location": {
                     "type": "string",
-                    "description": "One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.",
+                    "description": "One of the storage locations of the spec, i.e. a location label name (including a deleted one the spec still carries); an empty string when it has none.",
                     "example": "託運"
                   }
                 }
@@ -2371,7 +2371,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       }
@@ -2493,7 +2493,7 @@
             }
           },
           "400": {
-            "description": "Blank or too long name, too long storage_location, or quantity not a non-negative integer"
+            "description": "Blank or too long name; too long storage_location; storage_location adding a location label that is not defined (names the item already carries may be kept); or quantity not a non-negative integer"
           }
         }
       },
@@ -2587,7 +2587,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)"
           }
         }
       }
@@ -2625,7 +2625,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)"
           }
         }
       },
@@ -2962,7 +2962,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       }
@@ -3076,7 +3076,7 @@
             }
           },
           "400": {
-            "description": "Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer"
+            "description": "Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer"
           }
         }
       },
@@ -3170,7 +3170,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined"
           }
         }
       }
@@ -3208,7 +3208,7 @@
         ],
         "responses": {
           "400": {
-            "description": "Missing, blank, or too long name, or too long storage_location"
+            "description": "Missing, blank, or too long name; too long storage_location; or storage_location naming a location label that is not defined"
           }
         }
       },

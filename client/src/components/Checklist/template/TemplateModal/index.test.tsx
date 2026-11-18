@@ -323,3 +323,28 @@ describe('TemplateModal', () => {
     });
   });
 });
+
+vi.mock('../../locations/LocationLabelsModal', () => ({
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div>
+      <span>location-labels-modal</span>
+      <button onClick={onClose}>close-location-labels</button>
+    </div>
+  ),
+}));
+
+describe('TemplateModal location label management', () => {
+  it('opens the location label manager from the header and closes it again', async () => {
+    const { user, onClose } = await renderLoaded();
+    expect(screen.queryByText('location-labels-modal')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '管理位置' }));
+    expect(screen.getByText('location-labels-modal')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'close-location-labels' }),
+    );
+    expect(screen.queryByText('location-labels-modal')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

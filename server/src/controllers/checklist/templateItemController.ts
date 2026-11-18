@@ -56,7 +56,7 @@ export async function addTemplateItem(
          }
        }
      }
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer' } */
   await handleAddItem(templateItems, req, res);
 }
 
@@ -94,7 +94,7 @@ export async function updateTemplateItem(
          }
        }
      }
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or quantity not a non-negative integer' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; storage_location naming a location label that is not defined; or quantity not a non-negative integer' } */
   await handleUpdateItem(templateItems, req, res);
 }
 

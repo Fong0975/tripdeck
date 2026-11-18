@@ -9,6 +9,13 @@ import {
   updateAttraction,
 } from './attractions';
 import {
+  addLocationLabel,
+  deleteLocationLabel,
+  getLocationLabels,
+  reorderLocationLabels,
+  updateLocationLabel,
+} from './checklistLocations';
+import {
   addTemplateCategory,
   addTemplateItem,
   addTemplateItemSpec,
@@ -156,6 +163,43 @@ describe('attractions API', () => {
       call: () => moveAttraction(1, 5, 20, 2),
       url: '/api/trips/1/attractions/5/move',
       init: { method: 'PATCH', ...json({ dayId: 20, index: 2 }) },
+    },
+  ]);
+});
+
+describe('checklist location label API', () => {
+  itCallsApi([
+    {
+      name: 'getLocationLabels GETs the labels endpoint with no init',
+      call: () => getLocationLabels(),
+      url: '/api/checklist-locations/',
+    },
+    {
+      name: 'addLocationLabel POSTs to the labels endpoint',
+      call: () => addLocationLabel({ name: '手提', show_as_group: false }),
+      url: '/api/checklist-locations/',
+      init: {
+        method: 'POST',
+        ...json({ name: '手提', show_as_group: false }),
+      },
+    },
+    {
+      name: 'updateLocationLabel PUTs to the label endpoint',
+      call: () => updateLocationLabel(3, { show_as_group: true }),
+      url: '/api/checklist-locations/3',
+      init: { method: 'PUT', ...json({ show_as_group: true }) },
+    },
+    {
+      name: 'deleteLocationLabel DELETEs the label endpoint',
+      call: () => deleteLocationLabel(3),
+      url: '/api/checklist-locations/3',
+      init: { method: 'DELETE' },
+    },
+    {
+      name: 'reorderLocationLabels PATCHes the order endpoint',
+      call: () => reorderLocationLabels([2, 1]),
+      url: '/api/checklist-locations/order',
+      init: { method: 'PATCH', ...json({ orderedIds: [2, 1] }) },
     },
   ]);
 });

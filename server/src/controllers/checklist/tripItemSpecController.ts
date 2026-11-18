@@ -44,7 +44,7 @@ export async function addTripItemSpec(
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Add a spec to a trip checklist item'
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)' } */
   await handleAddSpec(tripSpecs, req, res);
 }
 
@@ -54,7 +54,7 @@ export async function updateTripItemSpec(
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Update a trip checklist item spec'
-     #swagger.responses[400] = { description: 'Missing, blank, or too long name, or too long storage_location' } */
+     #swagger.responses[400] = { description: 'Missing, blank, or too long name; too long storage_location; or storage_location adding a location label that is not defined (names the spec already carries may be kept)' } */
   await handleUpdateSpec(tripSpecs, req, res);
 }
 
@@ -70,7 +70,7 @@ export async function deleteTripItemSpec(
 export async function setSpecCheck(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Set the checked state of an item spec at one of its storage locations within an occasion'
-     #swagger.description = 'Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.'
+     #swagger.description = 'Each storage location of a spec is checked independently. A spec never inherits the locations of its item.'
      #swagger.requestBody = {
        required: true,
        content: {
@@ -82,7 +82,7 @@ export async function setSpecCheck(req: Request, res: Response): Promise<void> {
                checked: { type: 'boolean', example: true },
                location: {
                  type: 'string',
-                 description: 'One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.',
+                 description: 'One of the storage locations of the spec, i.e. a location label name (including a deleted one the spec still carries); an empty string when it has none.',
                  example: '託運'
                }
              }

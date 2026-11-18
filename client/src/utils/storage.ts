@@ -14,6 +14,7 @@
  */
 export * from '@/api/attractions';
 export * from '@/api/backup';
+export * from '@/api/checklistLocations';
 export * from '@/api/checklistTemplate';
 export * from '@/api/connections';
 export * from '@/api/dayLocations';
