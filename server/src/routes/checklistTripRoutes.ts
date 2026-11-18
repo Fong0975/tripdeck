@@ -10,7 +10,10 @@ import {
   reorderTripCategories,
   updateTripCategory,
 } from '../controllers/checklist/tripCategoryController';
-import { getTripChecklist } from '../controllers/checklist/tripChecklistController';
+import {
+  getTripChecklist,
+  syncTripChecklist,
+} from '../controllers/checklist/tripChecklistController';
 import {
   addTripItem,
   deleteTripItem,
@@ -39,6 +42,7 @@ const router = Router({ mergeParams: true });
 validateIdParams(router, ['occId', 'catId', 'itemId', 'specId']);
 
 router.get('/', getTripChecklist);
+router.post('/sync-template', syncTripChecklist);
 router.post('/occasions', addOccasion);
 router.put('/occasions/:occId', updateOccasion);
 router.delete('/occasions/:occId', deleteOccasion);

@@ -1,6 +1,7 @@
 export * from './checkLocations';
 export * from './tripCategoryRepository';
 export * from './tripChecklistCore';
+export * from './tripChecklistSync';
 export * from './tripItemRepository';
 export * from './tripItemSpecRepository';
 export * from './tripOccasionRepository';

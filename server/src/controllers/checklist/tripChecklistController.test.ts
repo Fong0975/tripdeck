@@ -8,11 +8,12 @@ import {
   type RejectCase,
 } from '../../test-utils/httpMocks';
 
-import { getTripChecklist } from './tripChecklistController';
+import { getTripChecklist, syncTripChecklist } from './tripChecklistController';
 
 vi.mock('../../repositories/checklist/trip', () => ({
   findChecklist: vi.fn(),
   tripExists: vi.fn(),
+  syncChecklistFromTemplate: vi.fn(),
 }));
 
 describe('getTripChecklist', () => {
@@ -64,6 +65,48 @@ describe('getTripChecklist', () => {
   );
 });
 
+describe('syncTripChecklist', () => {
+  const checklist = {
+    tripId: 5,
+    categories: [],
+    occasions: [{ id: 1, name: '收拾', checks: {}, specChecks: {} }],
+  };
+
+  it.each([
+    {
+      result: 'synced' as const,
+      assert: (res: ReturnType<typeof createMockReqRes>['res']) =>
+        expect(res.json).toHaveBeenCalledWith(checklist),
+    },
+    {
+      result: 'not_found' as const,
+      assert: (res: ReturnType<typeof createMockReqRes>['res']) =>
+        expectJsonStatus(res, 404, { error: 'Trip not found' }),
+    },
+    {
+      result: 'has_categories' as const,
+      assert: (res: ReturnType<typeof createMockReqRes>['res']) =>
+        expectJsonStatus(res, 409, {
+          error: 'Checklist already has categories',
+        }),
+    },
+  ])(
+    'responds according to the sync result $result',
+    async ({ result, assert }) => {
+      vi.mocked(checklistRepo.syncChecklistFromTemplate).mockResolvedValue(
+        result,
+      );
+      vi.mocked(checklistRepo.findChecklist).mockResolvedValue(checklist);
+      const { req, res } = createMockReqRes({ params: { tripId: '5' } });
+
+      await syncTripChecklist(req, res);
+
+      expect(checklistRepo.syncChecklistFromTemplate).toHaveBeenCalledWith(5);
+      assert(res);
+    },
+  );
+});
+
 describe('unexpected repository errors', () => {
   const tests: RejectCase[] = [
     {
@@ -72,6 +115,15 @@ describe('unexpected repository errors', () => {
       req: { params: { tripId: '1' } },
       arrange: error =>
         vi.mocked(checklistRepo.findChecklist).mockRejectedValue(error),
+    },
+    {
+      name: 'syncTripChecklist',
+      handler: syncTripChecklist,
+      req: { params: { tripId: '1' } },
+      arrange: error =>
+        vi
+          .mocked(checklistRepo.syncChecklistFromTemplate)
+          .mockRejectedValue(error),
     },
   ];
 
