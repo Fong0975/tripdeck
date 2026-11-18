@@ -14,9 +14,7 @@
   "paths": {
     "/api/health": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Health check",
         "description": "",
         "responses": {
@@ -46,9 +44,7 @@
     },
     "/api/info": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Application info",
         "description": "",
         "responses": {
@@ -77,9 +73,7 @@
     },
     "/api/fetch-title": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Fetch page title via server-side proxy",
         "description": "",
         "parameters": [
@@ -130,9 +124,7 @@
     },
     "/api/trips/": {
       "get": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "List all trips",
         "description": "",
         "responses": {
@@ -187,9 +179,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Create a new trip",
         "description": "",
         "responses": {
@@ -269,9 +259,7 @@
     },
     "/api/trips/{tripId}": {
       "get": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Get a trip by ID",
         "description": "",
         "parameters": [
@@ -339,9 +327,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Update a trip",
         "description": "",
         "parameters": [
@@ -432,9 +418,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Delete a trip",
         "description": "",
         "parameters": [
@@ -462,9 +446,7 @@
     },
     "/api/trips/{tripId}/content": {
       "get": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Get full trip content (days, attractions, connections)",
         "description": "",
         "parameters": [
@@ -550,9 +532,7 @@
                                   "items": {
                                     "type": "string"
                                   },
-                                  "example": [
-                                    "https://inari.jp/"
-                                  ]
+                                  "example": ["https://inari.jp/"]
                                 },
                                 "sortOrder": {
                                   "type": "integer",
@@ -571,11 +551,7 @@
                                 "geoSource": {
                                   "type": "string",
                                   "nullable": true,
-                                  "enum": [
-                                    "url",
-                                    "geocode",
-                                    "not_found"
-                                  ],
+                                  "enum": ["url", "geocode", "not_found"],
                                   "example": "url"
                                 }
                               }
@@ -640,9 +616,7 @@
     },
     "/api/trips/export": {
       "post": {
-        "tags": [
-          "Backup"
-        ],
+        "tags": ["Backup"],
         "summary": "Export one or more trips (and optionally the checklist template) as a backup zip",
         "description": "",
         "responses": {
@@ -671,10 +645,7 @@
                     "items": {
                       "type": "integer"
                     },
-                    "example": [
-                      1,
-                      2
-                    ]
+                    "example": [1, 2]
                   },
                   "includeTemplate": {
                     "type": "boolean",
@@ -682,9 +653,7 @@
                     "description": "Also include a snapshot of the global packing checklist template."
                   }
                 },
-                "required": [
-                  "tripIds"
-                ]
+                "required": ["tripIds"]
               }
             }
           }
@@ -693,9 +662,7 @@
     },
     "/api/trips/import": {
       "post": {
-        "tags": [
-          "Backup"
-        ],
+        "tags": ["Backup"],
         "summary": "Import every trip in a backup zip as new trips",
         "description": "",
         "responses": {
@@ -764,9 +731,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/attractions": {
       "post": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Add an attraction to a day",
         "description": "",
         "parameters": [
@@ -833,9 +798,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "example": [
-                        "https://inari.jp/"
-                      ]
+                      "example": ["https://inari.jp/"]
                     },
                     "sortOrder": {
                       "type": "integer",
@@ -871,9 +834,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}": {
       "put": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Update an attraction",
         "description": "",
         "parameters": [
@@ -940,9 +901,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "example": [
-                        "https://inari.jp/"
-                      ]
+                      "example": ["https://inari.jp/"]
                     },
                     "sortOrder": {
                       "type": "integer",
@@ -962,9 +921,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Delete an attraction",
         "description": "",
         "parameters": [
@@ -997,9 +954,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/duplicate": {
       "post": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Duplicate an attraction to the end of its day",
         "description": "",
         "parameters": [
@@ -1032,9 +987,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/attractions/order": {
       "patch": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Reorder attractions within a day",
         "description": "orderedIds must list every attraction of the day exactly once.",
         "parameters": [
@@ -1084,9 +1037,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/move": {
       "patch": {
-        "tags": [
-          "Attractions"
-        ],
+        "tags": ["Attractions"],
         "summary": "Move an attraction to a position in another (or the same) day",
         "description": "Keeps the attraction id, so images, websites, times and geo stay attached. Connections whose endpoints are no longer adjacent in the source or target day are deleted. A same-day target behaves as a reorder. index is 0-based and clamped to the end of the day.",
         "parameters": [
@@ -1124,10 +1075,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "dayId",
-                  "index"
-                ],
+                "required": ["dayId", "index"],
                 "properties": {
                   "dayId": {
                     "type": "integer",
@@ -1272,9 +1220,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/notes": {
       "put": {
-        "tags": [
-          "Trips"
-        ],
+        "tags": ["Trips"],
         "summary": "Update the notes for a day",
         "description": "",
         "parameters": [
@@ -1324,9 +1270,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/connections": {
       "post": {
-        "tags": [
-          "Connections"
-        ],
+        "tags": ["Connections"],
         "summary": "Add a connection between two attractions",
         "description": "",
         "parameters": [
@@ -1423,9 +1367,7 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}": {
       "put": {
-        "tags": [
-          "Connections"
-        ],
+        "tags": ["Connections"],
         "summary": "Update a connection",
         "description": "",
         "parameters": [
@@ -1520,9 +1462,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Connections"
-        ],
+        "tags": ["Connections"],
         "summary": "Delete a connection",
         "description": "",
         "parameters": [
@@ -1558,9 +1498,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for an attraction",
         "description": "",
         "parameters": [
@@ -1590,9 +1528,7 @@
     },
     "/api/trips/{tripId}/attractions/{attractionId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete an attraction image",
         "description": "",
         "parameters": [
@@ -1630,9 +1566,7 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for a connection",
         "description": "",
         "parameters": [
@@ -1662,9 +1596,7 @@
     },
     "/api/trips/{tripId}/connections/{connectionId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete a connection image",
         "description": "",
         "parameters": [
@@ -1702,9 +1634,7 @@
     },
     "/api/trips/{tripId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for a trip",
         "description": "",
         "parameters": [
@@ -1726,9 +1656,7 @@
     },
     "/api/trips/{tripId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete a trip image",
         "description": "",
         "parameters": [
@@ -1758,9 +1686,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/images": {
       "post": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Upload an image for a day",
         "description": "",
         "parameters": [
@@ -1790,9 +1716,7 @@
     },
     "/api/trips/{tripId}/days/{dayId}/images/{imageId}": {
       "delete": {
-        "tags": [
-          "Images"
-        ],
+        "tags": ["Images"],
         "summary": "Delete a day image",
         "description": "",
         "parameters": [
@@ -1830,9 +1754,7 @@
     },
     "/api/trips/{tripId}/checklist/": {
       "get": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Get the packing checklist for a trip",
         "description": "Returns the trip checklist. Automatically initialized from the global template if it does not exist yet.",
         "parameters": [
@@ -1973,9 +1895,7 @@
     },
     "/api/trips/{tripId}/checklist/occasions": {
       "post": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Add a packing occasion to a trip checklist",
         "description": "",
         "parameters": [
@@ -2031,9 +1951,7 @@
     },
     "/api/trips/{tripId}/checklist/occasions/{occId}": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Update an occasion name",
         "description": "",
         "parameters": [
@@ -2103,9 +2021,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Delete an occasion",
         "description": "Rejected with 409 if this is the last remaining occasion.",
         "parameters": [
@@ -2138,9 +2054,7 @@
     },
     "/api/trips/{tripId}/checklist/occasions/{occId}/items/{itemId}/check": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Set the checked state of an item at one of its storage locations within an occasion",
         "description": "Each storage location of an item is checked independently.",
         "parameters": [
@@ -2186,10 +2100,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "checked",
-                  "location"
-                ],
+                "required": ["checked", "location"],
                 "properties": {
                   "checked": {
                     "type": "boolean",
@@ -2209,9 +2120,7 @@
     },
     "/api/trips/{tripId}/checklist/occasions/{occId}/items/{itemId}/specs/{specId}/check": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Set the checked state of an item spec at one of its storage locations within an occasion",
         "description": "Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.",
         "parameters": [
@@ -2265,10 +2174,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "checked",
-                  "location"
-                ],
+                "required": ["checked", "location"],
                 "properties": {
                   "checked": {
                     "type": "boolean",
@@ -2288,9 +2194,7 @@
     },
     "/api/trips/{tripId}/checklist/categories": {
       "post": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Add a category to a trip checklist",
         "description": "",
         "parameters": [
@@ -2315,9 +2219,7 @@
     },
     "/api/trips/{tripId}/checklist/categories/order": {
       "patch": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Reorder the categories of a trip checklist",
         "description": "orderedIds must list every category of the trip checklist exactly once.",
         "parameters": [
@@ -2345,9 +2247,7 @@
     },
     "/api/trips/{tripId}/checklist/categories/{catId}": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Update a trip checklist category name",
         "description": "",
         "parameters": [
@@ -2378,9 +2278,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Delete a trip checklist category and all its items",
         "description": "",
         "parameters": [
@@ -2410,9 +2308,7 @@
     },
     "/api/trips/{tripId}/checklist/categories/{catId}/items": {
       "post": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Add an item to a trip checklist category",
         "description": "",
         "parameters": [
@@ -2482,9 +2378,7 @@
     },
     "/api/trips/{tripId}/checklist/categories/{catId}/items/order": {
       "patch": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Reorder the items of a trip checklist category",
         "description": "orderedIds must list every item of the category exactly once.",
         "parameters": [
@@ -2520,9 +2414,7 @@
     },
     "/api/trips/{tripId}/checklist/items/{itemId}": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Update name, quantity, notes or storage_location of a trip checklist item",
         "description": "",
         "parameters": [
@@ -2606,9 +2498,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Delete an item from a trip checklist",
         "description": "",
         "parameters": [
@@ -2638,9 +2528,7 @@
     },
     "/api/trips/{tripId}/checklist/items/{itemId}/move": {
       "patch": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Move a trip checklist item to the end of another category",
         "description": "The item keeps its id, specs and check marks. The target category must belong to the same trip.",
         "parameters": [
@@ -2676,9 +2564,7 @@
     },
     "/api/trips/{tripId}/checklist/items/{itemId}/specs": {
       "post": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Add a spec to a trip checklist item",
         "description": "",
         "parameters": [
@@ -2708,9 +2594,7 @@
     },
     "/api/trips/{tripId}/checklist/items/{itemId}/specs/{specId}": {
       "put": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Update a trip checklist item spec",
         "description": "",
         "parameters": [
@@ -2746,9 +2630,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Trip Checklist"
-        ],
+        "tags": ["Trip Checklist"],
         "summary": "Delete a trip checklist item spec",
         "description": "",
         "parameters": [
@@ -2786,9 +2668,7 @@
     },
     "/api/checklist-template/": {
       "get": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Get the global packing checklist template",
         "description": "",
         "responses": {
@@ -2877,9 +2757,7 @@
     },
     "/api/checklist-template/categories": {
       "post": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Add a category to the template",
         "description": "",
         "responses": {
@@ -2916,9 +2794,7 @@
     },
     "/api/checklist-template/categories/order": {
       "patch": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Reorder the template categories",
         "description": "orderedIds must list every template category exactly once.",
         "responses": {
@@ -2933,9 +2809,7 @@
     },
     "/api/checklist-template/categories/{catId}": {
       "put": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Update a template category name",
         "description": "",
         "parameters": [
@@ -3011,9 +2885,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Delete a template category and all its items",
         "description": "",
         "parameters": [
@@ -3035,9 +2907,7 @@
     },
     "/api/checklist-template/categories/{catId}/items": {
       "post": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Add an item to a template category",
         "description": "",
         "parameters": [
@@ -3099,9 +2969,7 @@
     },
     "/api/checklist-template/categories/{catId}/items/order": {
       "patch": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Reorder the items of a template category",
         "description": "orderedIds must list every item of the category exactly once.",
         "parameters": [
@@ -3129,9 +2997,7 @@
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}": {
       "put": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Update a template item",
         "description": "",
         "parameters": [
@@ -3215,9 +3081,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Delete a template item",
         "description": "",
         "parameters": [
@@ -3247,9 +3111,7 @@
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}/move": {
       "patch": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Move a template item to the end of another category",
         "description": "",
         "parameters": [
@@ -3285,9 +3147,7 @@
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}/specs": {
       "post": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Add a spec to a template item",
         "description": "",
         "parameters": [
@@ -3317,9 +3177,7 @@
     },
     "/api/checklist-template/categories/{catId}/items/{itemId}/specs/{specId}": {
       "put": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Update a template item spec",
         "description": "",
         "parameters": [
@@ -3355,9 +3213,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Checklist Template"
-        ],
+        "tags": ["Checklist Template"],
         "summary": "Delete a template item spec",
         "description": "",
         "parameters": [
@@ -3395,9 +3251,7 @@
     },
     "/api/backups/": {
       "get": {
-        "tags": [
-          "Backup"
-        ],
+        "tags": ["Backup"],
         "summary": "List automatic backups",
         "description": "",
         "responses": {

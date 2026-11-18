@@ -45,6 +45,21 @@ export function getSpecLocations(
 }
 
 /**
+ * Expands a spec into its checkable units, one per location.
+ *
+ * @param item The spec's item.
+ * @param spec The spec.
+ */
+export function getSpecUnits(item: ChecklistItem, spec: ItemSpec): CheckUnit[] {
+  return getSpecLocations(item, spec).map((location): CheckUnit => ({
+    kind: 'spec',
+    item,
+    spec,
+    location,
+  }));
+}
+
+/**
  * Expands an item into its checkable units: one per location for an item
  * without specs, one per spec and location for an item with specs.
  *
@@ -53,20 +68,11 @@ export function getSpecLocations(
 export function getItemUnits(item: ChecklistItem): CheckUnit[] {
   const specs = item.specs ?? [];
   if (specs.length === 0) {
-    return getEffectiveLocations(item.storage_location).map(location => ({
-      kind: 'item',
-      item,
-      location,
-    }));
+    return getEffectiveLocations(item.storage_location).map(
+      (location): CheckUnit => ({ kind: 'item', item, location }),
+    );
   }
-  return specs.flatMap(spec =>
-    getSpecLocations(item, spec).map((location): CheckUnit => ({
-      kind: 'spec',
-      item,
-      spec,
-      location,
-    })),
-  );
+  return specs.flatMap(spec => getSpecUnits(item, spec));
 }
 
 /**

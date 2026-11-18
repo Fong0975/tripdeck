@@ -10,9 +10,12 @@ import {
 import {
   countCheckedUnits,
   countCheckUnits,
+  getCheckState,
   getItemCheckState,
+  getSpecCheckState,
   type CheckState,
 } from './checkProgress';
+import { getCheckUnits, getItemUnits } from './checkUnits';
 
 /** A check mark: `[id, location]`; the location defaults to none. */
 type Mark = [id: number, location?: string];
@@ -183,6 +186,158 @@ describe('getItemCheckState', () => {
         2,
         checksFor(),
         checksFor([201], [202], [203]),
+      ),
+    ).toBe('unchecked');
+  });
+});
+
+describe('getCheckState', () => {
+  const tests: {
+    name: string;
+    units: ReturnType<typeof getItemUnits>;
+    checkedItems: Mark[];
+    checkedSpecs: Mark[];
+    expected: CheckState;
+  }[] = [
+    {
+      name: 'is unchecked for an empty group of units',
+      units: [],
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is checked when the only unit is checked',
+      units: getItemUnits(plainItem),
+      checkedItems: [[10]],
+      checkedSpecs: [],
+      expected: 'checked',
+    },
+    {
+      name: 'is unchecked when no unit is checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when only some units are checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [],
+      expected: 'partial',
+    },
+    {
+      name: 'is checked when every unit is checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [
+        [11, '託運'],
+        [11, '隨身'],
+      ],
+      checkedSpecs: [],
+      expected: 'checked',
+    },
+    {
+      name: 'reads spec units through the spec getter',
+      units: getCheckUnits([
+        makeChecklistCategory({ items: [dualItem, inheritingSpecItem] }),
+      ]).filter(unit => unit.kind === 'spec'),
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [
+        [301, '託運'],
+        [301, '隨身'],
+        [302, '隨身'],
+      ],
+      expected: 'checked',
+    },
+    {
+      name: 'ignores marks at locations the units do not have',
+      units: getItemUnits(dualItem),
+      checkedItems: [[11], [11, '後背包']],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+  ];
+
+  it.each(tests)('$name', ({ units, checkedItems, checkedSpecs, expected }) => {
+    expect(
+      getCheckState(
+        units,
+        1,
+        checksFor(...checkedItems),
+        checksFor(...checkedSpecs),
+      ),
+    ).toBe(expected);
+  });
+});
+
+describe('getSpecCheckState', () => {
+  const [inheriting, ownLocation] = inheritingSpecItem.specs;
+  const tests: {
+    name: string;
+    spec: typeof inheriting;
+    checkedSpecs: Mark[];
+    expected: CheckState;
+  }[] = [
+    {
+      name: 'is unchecked when no location of an inheriting spec is checked',
+      spec: inheriting,
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when one of the inherited locations is checked',
+      spec: inheriting,
+      checkedSpecs: [[301, '託運']],
+      expected: 'partial',
+    },
+    {
+      name: 'is checked when every inherited location is checked',
+      spec: inheriting,
+      checkedSpecs: [
+        [301, '託運'],
+        [301, '隨身'],
+      ],
+      expected: 'checked',
+    },
+    {
+      name: 'is checked when the only own location is checked',
+      spec: ownLocation,
+      checkedSpecs: [[302, '隨身']],
+      expected: 'checked',
+    },
+    {
+      name: 'does not count a check at a location outside the own one',
+      spec: ownLocation,
+      checkedSpecs: [[302, '託運']],
+      expected: 'unchecked',
+    },
+    {
+      name: 'does not mix up the checks of sibling specs',
+      spec: inheriting,
+      checkedSpecs: [[302, '隨身']],
+      expected: 'unchecked',
+    },
+  ];
+
+  it.each(tests)('$name', ({ spec, checkedSpecs, expected }) => {
+    expect(
+      getSpecCheckState(
+        inheritingSpecItem,
+        spec,
+        1,
+        checksFor(...checkedSpecs),
+      ),
+    ).toBe(expected);
+  });
+
+  it('only looks at the requested occasion', () => {
+    expect(
+      getSpecCheckState(
+        inheritingSpecItem,
+        inheriting,
+        2,
+        checksFor([301, '託運'], [301, '隨身']),
       ),
     ).toBe('unchecked');
   });

@@ -1,19 +1,23 @@
 import StorageBadges from '@/components/Checklist/shared/StorageBadges';
-import type { ChecklistOccasion, ItemSpec } from '@/types';
+import type { ChecklistItem, ChecklistOccasion, ItemSpec } from '@/types';
 
 import CheckCell from './CheckCell';
-import { getCheckCellLabel, type CheckGetter } from './checkUnits';
+import ChecklistLocationRow from './ChecklistLocationRow';
+import { getSpecCheckState } from './checkProgress';
+import {
+  getCheckCellLabel,
+  getSpecLocations,
+  type CheckGetter,
+} from './checkUnits';
 
 interface Props {
+  item: ChecklistItem;
   spec: ItemSpec;
-  /** The location this row checks; `''` when the spec has none. */
-  location: string;
-  /** Whether to show the location badge next to the spec name. */
-  showLocation: boolean;
   /** Zero-based position of the spec within its item. */
   specIndex: number;
   /** Zero-based position of the parent item, used for row striping. */
   itemIndex: number;
+  /** Whether this is the last spec of its item, closing the item's border. */
   isLast: boolean;
   occasions: ChecklistOccasion[];
   getSpecCheck: CheckGetter;
@@ -21,13 +25,14 @@ interface Props {
 }
 
 /**
- * One row of a spec at one of its locations, with its own check cell per
- * occasion. A spec filed under several locations has one such row each.
+ * A spec of a checklist item. A spec with one location is a single row with
+ * its own check cell per occasion. A spec filed under several locations is a
+ * name row with a read-only state derived from them, followed by one row per
+ * location that is checked independently.
  */
 export default function ChecklistSpecRow({
+  item,
   spec,
-  location,
-  showLocation,
   specIndex,
   itemIndex,
   isLast,
@@ -35,10 +40,14 @@ export default function ChecklistSpecRow({
   getSpecCheck,
   onToggleSpecCheck,
 }: Props) {
-  return (
+  const locations = getSpecLocations(item, spec);
+  const [singleLocation] = locations;
+  const hasLocationRows = locations.length > 1;
+
+  const nameRow = (
     <tr
       className={`group border-b transition-colors hover:bg-accent/60 ${
-        isLast ? 'border-border' : 'border-border/40'
+        isLast && !hasLocationRows ? 'border-border' : 'border-border/40'
       } ${itemIndex % 2 === 0 ? '' : 'bg-muted/10'}`}
     >
       <td className='sticky left-0 z-10 bg-background py-2 pr-2 pl-3 transition-colors group-hover:bg-accent sm:pr-4 sm:pl-8'>
@@ -47,22 +56,57 @@ export default function ChecklistSpecRow({
             {specIndex + 1}.
           </span>
           <span className='text-sm text-foreground/80'>{spec.name}</span>
-          {showLocation && <StorageBadges value={location} compact />}
+          {!hasLocationRows && spec.storage_location !== null && (
+            <StorageBadges value={singleLocation} compact />
+          )}
         </div>
       </td>
 
-      {occasions.map(occ => (
-        <CheckCell
-          key={occ.id}
-          state={
-            getSpecCheck(occ.id, spec.id, location) ? 'checked' : 'unchecked'
-          }
-          label={getCheckCellLabel(spec.name, location, occ.name)}
-          onToggle={() => onToggleSpecCheck(occ.id, spec.id, location)}
-        />
-      ))}
+      {occasions.map(occ =>
+        hasLocationRows ? (
+          <CheckCell
+            key={occ.id}
+            state={getSpecCheckState(item, spec, occ.id, getSpecCheck)}
+            label={`${spec.name} - ${occ.name}`}
+          />
+        ) : (
+          <CheckCell
+            key={occ.id}
+            state={
+              getSpecCheck(occ.id, spec.id, singleLocation)
+                ? 'checked'
+                : 'unchecked'
+            }
+            label={getCheckCellLabel(spec.name, singleLocation, occ.name)}
+            onToggle={() => onToggleSpecCheck(occ.id, spec.id, singleLocation)}
+          />
+        ),
+      )}
 
       <td />
     </tr>
+  );
+
+  if (!hasLocationRows) {
+    return nameRow;
+  }
+
+  return (
+    <>
+      {nameRow}
+      {locations.map((location, locationIndex) => (
+        <ChecklistLocationRow
+          key={location}
+          name={spec.name}
+          location={location}
+          depth={2}
+          isLast={isLast && locationIndex === locations.length - 1}
+          itemIndex={itemIndex}
+          occasions={occasions}
+          isChecked={occId => getSpecCheck(occId, spec.id, location)}
+          onToggle={occId => onToggleSpecCheck(occId, spec.id, location)}
+        />
+      ))}
+    </>
   );
 }

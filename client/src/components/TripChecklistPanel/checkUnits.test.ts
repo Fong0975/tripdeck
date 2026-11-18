@@ -11,6 +11,7 @@ import {
   getCheckUnits,
   getItemUnits,
   getSpecLocations,
+  getSpecUnits,
   isUnitChecked,
   type CheckUnit,
 } from './checkUnits';
@@ -69,6 +70,55 @@ describe('getSpecLocations', () => {
     const spec = makeChecklistSpec({ storage_location: specLocation });
 
     expect(getSpecLocations(item, spec)).toEqual(expected);
+  });
+});
+
+describe('getSpecUnits', () => {
+  const tests = [
+    {
+      name: 'yields one unit for a spec with a single own location',
+      itemLocation: '託運',
+      specLocation: '隨身',
+      expected: ['spec:10@隨身'],
+    },
+    {
+      name: 'yields one unit per own location in canonical order',
+      itemLocation: null,
+      specLocation: '隨身,託運',
+      expected: ['spec:10@託運', 'spec:10@隨身'],
+    },
+    {
+      name: 'inherits every location of the item when the spec has none',
+      itemLocation: '託運,隨身',
+      specLocation: null,
+      expected: ['spec:10@託運', 'spec:10@隨身'],
+    },
+    {
+      name: 'yields one unit without location when neither has one',
+      itemLocation: null,
+      specLocation: null,
+      expected: ['spec:10@'],
+    },
+  ];
+
+  it.each(tests)('$name', ({ itemLocation, specLocation, expected }) => {
+    const spec = makeChecklistSpec({ id: 10, storage_location: specLocation });
+    const item = makeChecklistItem({
+      id: 1,
+      storage_location: itemLocation,
+      specs: [spec],
+    });
+
+    expect(summarize(getSpecUnits(item, spec))).toEqual(expected);
+  });
+
+  it('references the original item and spec objects on each unit', () => {
+    const spec = makeChecklistSpec({ id: 10 });
+    const item = makeChecklistItem({ id: 1, specs: [spec] });
+
+    expect(getSpecUnits(item, spec)).toEqual([
+      { kind: 'spec', item, spec, location: '' },
+    ]);
   });
 });
 

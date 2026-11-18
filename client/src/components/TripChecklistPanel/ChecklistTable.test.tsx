@@ -252,13 +252,13 @@ describe('ChecklistTable', () => {
     const checkedAtCheckedBaggage: Getter = (occId, id, location) =>
       occId === 1 && id === 10 && location === '託運';
 
-    it('splits a multi-location item into one independently checked row per location in the category view', () => {
+    it('shows a multi-location item once with one independently checked sub-row per location in the category view', () => {
       const { onToggleCheck } = renderTable(
         jacketChecklist,
         checkedAtCheckedBaggage,
       );
 
-      expect(screen.getAllByText('Jacket')).toHaveLength(2);
+      expect(screen.getAllByText('Jacket')).toHaveLength(1);
       expect(screen.getByLabelText('Jacket（託運） - Occ A')).toBeChecked();
       expect(screen.getByLabelText('Jacket（隨身） - Occ A')).not.toBeChecked();
 
@@ -267,6 +267,51 @@ describe('ChecklistTable', () => {
       expect(onToggleCheck).toHaveBeenCalledTimes(1);
       expect(onToggleCheck).toHaveBeenCalledWith(2, 10, '隨身');
     });
+
+    it.each([
+      {
+        name: 'none of the locations is checked',
+        checkedLocations: [],
+        occA: 'unchecked',
+        occB: 'unchecked',
+      },
+      {
+        name: 'one of the locations is checked',
+        checkedLocations: ['託運'],
+        occA: 'partial',
+        occB: 'unchecked',
+      },
+      {
+        name: 'every location is checked',
+        checkedLocations: ['託運', '隨身'],
+        occA: 'checked',
+        occB: 'unchecked',
+      },
+    ])(
+      'derives the read-only name row state of a multi-location item when $name',
+      ({ checkedLocations, occA, occB }) => {
+        const { onToggleCheck } = renderTable(
+          jacketChecklist,
+          (occId, id, location) =>
+            occId === 1 && id === 10 && checkedLocations.includes(location),
+        );
+
+        const states = {
+          checked: (box: HTMLElement) => expect(box).toBeChecked(),
+          partial: (box: HTMLElement) => expect(box).toBePartiallyChecked(),
+          unchecked: (box: HTMLElement) => expect(box).not.toBeChecked(),
+        };
+        const nameRowA = screen.getByLabelText('Jacket - Occ A');
+        const nameRowB = screen.getByLabelText('Jacket - Occ B');
+        states[occA as keyof typeof states](nameRowA);
+        states[occB as keyof typeof states](nameRowB);
+        expect(nameRowA).toBeDisabled();
+
+        fireEvent.click(nameRowA);
+
+        expect(onToggleCheck).not.toHaveBeenCalled();
+      },
+    );
 
     it('checks the two groups of a multi-location item independently in the storage view', () => {
       const { onToggleCheck } = renderTable(
@@ -301,9 +346,13 @@ describe('ChecklistTable', () => {
         labels: ['Jacket（隨身） - Occ A'],
       },
       {
-        name: 'item with both locations',
+        name: 'item with both locations (name row plus one sub-row each)',
         storage_location: '託運,隨身',
-        labels: ['Jacket（託運） - Occ A', 'Jacket（隨身） - Occ A'],
+        labels: [
+          'Jacket - Occ A',
+          'Jacket（託運） - Occ A',
+          'Jacket（隨身） - Occ A',
+        ],
       },
     ])(
       'labels the category view check cells of an $name',
@@ -333,8 +382,33 @@ describe('ChecklistTable', () => {
       },
     );
 
-    it('splits a spec inheriting a multi-location item into one row per location and keeps the item row read-only', () => {
-      const { onToggleSpecCheck } = renderTable(
+    it('keeps a single-location item as one checkable row without sub-rows', () => {
+      const { onToggleCheck } = renderTable(
+        makeChecklist({
+          categories: [
+            makeChecklistCategory({
+              items: [
+                makeChecklistItem({
+                  id: 10,
+                  name: 'Jacket',
+                  storage_location: '隨身',
+                }),
+              ],
+            }),
+          ],
+        }),
+      );
+
+      const cell = screen.getByLabelText('Jacket（隨身） - Occ A');
+      expect(cell).toBeEnabled();
+
+      fireEvent.click(cell);
+
+      expect(onToggleCheck).toHaveBeenCalledWith(1, 10, '隨身');
+    });
+
+    describe('specs', () => {
+      const chargerChecklist = (specLocation: string | null) =>
         makeChecklist({
           categories: [
             makeChecklistCategory({
@@ -343,27 +417,78 @@ describe('ChecklistTable', () => {
                   id: 30,
                   name: 'Charger',
                   storage_location: '託運,隨身',
-                  specs: [makeChecklistSpec({ id: 301, name: 'USB-C' })],
+                  specs: [
+                    makeChecklistSpec({
+                      id: 301,
+                      name: 'USB-C',
+                      storage_location: specLocation,
+                    }),
+                  ],
                 }),
               ],
             }),
           ],
-        }),
-        undefined,
-        (occId, id, location) =>
-          occId === 1 && id === 301 && location === '隨身',
-      );
+        });
+      const checkedAtCarryOn: Getter = (occId, id, location) =>
+        occId === 1 && id === 301 && location === '隨身';
 
-      expect(screen.getByLabelText('Charger - Occ A')).toBeDisabled();
-      // Only one of the two units is checked, so the item row is partial.
-      expect(screen.getByLabelText('Charger - Occ A')).toBePartiallyChecked();
-      expect(screen.getByLabelText('USB-C（託運） - Occ A')).not.toBeChecked();
-      expect(screen.getByLabelText('USB-C（隨身） - Occ A')).toBeChecked();
+      it('shows a spec inheriting a multi-location item as a read-only name row with one sub-row per location', () => {
+        const { onToggleSpecCheck } = renderTable(
+          chargerChecklist(null),
+          undefined,
+          checkedAtCarryOn,
+        );
 
-      fireEvent.click(screen.getByLabelText('USB-C（託運） - Occ B'));
+        // The item row and the spec name row both derive their state.
+        expect(screen.getByLabelText('Charger - Occ A')).toBeDisabled();
+        expect(screen.getByLabelText('Charger - Occ A')).toBePartiallyChecked();
+        expect(screen.getByLabelText('USB-C - Occ A')).toBeDisabled();
+        expect(screen.getByLabelText('USB-C - Occ A')).toBePartiallyChecked();
+        expect(screen.getAllByText('USB-C')).toHaveLength(1);
+        expect(
+          screen.getByLabelText('USB-C（託運） - Occ A'),
+        ).not.toBeChecked();
+        expect(screen.getByLabelText('USB-C（隨身） - Occ A')).toBeChecked();
 
-      expect(onToggleSpecCheck).toHaveBeenCalledTimes(1);
-      expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '託運');
+        fireEvent.click(screen.getByLabelText('USB-C（託運） - Occ B'));
+
+        expect(onToggleSpecCheck).toHaveBeenCalledTimes(1);
+        expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '託運');
+      });
+
+      it('shows a spec with several own locations as a name row with sub-rows, ignoring the item locations', () => {
+        renderTable(
+          chargerChecklist('隨身,託運'),
+          undefined,
+          (occId, id) => occId === 1 && id === 301,
+        );
+
+        expect(screen.getByLabelText('USB-C - Occ A')).toBeChecked();
+        expect(screen.getByLabelText('USB-C（託運） - Occ A')).toBeChecked();
+        expect(screen.getByLabelText('USB-C（隨身） - Occ A')).toBeChecked();
+      });
+
+      it('keeps a spec with one own location as a single checkable row', () => {
+        const { onToggleSpecCheck } = renderTable(
+          chargerChecklist('隨身'),
+          undefined,
+          checkedAtCarryOn,
+        );
+
+        const cell = screen.getByLabelText('USB-C（隨身） - Occ A');
+        expect(cell).toBeEnabled();
+        expect(cell).toBeChecked();
+        expect(
+          screen.queryByLabelText('USB-C - Occ A'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByLabelText('USB-C（託運） - Occ A'),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('USB-C（隨身） - Occ B'));
+
+        expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '隨身');
+      });
     });
   });
 });
