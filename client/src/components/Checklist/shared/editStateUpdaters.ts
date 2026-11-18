@@ -134,9 +134,22 @@ export function patchFields<T>(fields: Partial<T>): (entry: T) => T {
   return entry => ({ ...entry, ...fields });
 }
 
-/** Returns an item updater that appends `spec` to the item's specs. */
+/**
+ * Returns an item updater that appends `spec` to the item's specs. An item
+ * with specs holds no storage location of its own, so the first spec takes
+ * over the location the item had and the item's own is cleared.
+ */
 export function appendSpec(spec: EditSpec): (item: EditItem) => EditItem {
-  return item => ({ ...item, specs: [...item.specs, spec] });
+  return item => {
+    if (item.specs.length > 0) {
+      return { ...item, specs: [...item.specs, spec] };
+    }
+    return {
+      ...item,
+      storage_location: null,
+      specs: [{ ...spec, storage_location: item.storage_location }],
+    };
+  };
 }
 
 /** Returns an item updater that merges `fields` into the spec `specId`. */

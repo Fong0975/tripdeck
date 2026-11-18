@@ -22,7 +22,8 @@ export async function addOccasion(req: Request, res: Response): Promise<void> {
              properties: {
                id: { type: 'integer', example: 2 },
                name: { type: 'string', example: '回程' },
-               checks: { type: 'object', additionalProperties: { type: 'boolean' }, example: {} }
+               checks: { type: 'object', additionalProperties: { type: 'boolean' }, example: {} },
+               specChecks: { type: 'object', additionalProperties: { type: 'boolean' }, example: {} }
              }
            }
          }
@@ -63,8 +64,15 @@ export async function updateOccasion(
                name: { type: 'string', example: '出發' },
                checks: {
                  type: 'object',
+                 description: 'Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.',
                  additionalProperties: { type: 'boolean' },
-                 example: { '3': true, '7': true }
+                 example: { '3|託運': true, '3|隨身': true, '7|': true }
+               },
+               specChecks: {
+                 type: 'object',
+                 description: 'Keys are `<specId>|<location>`; only checked entries are present.',
+                 additionalProperties: { type: 'boolean' },
+                 example: { '11|託運': true }
                }
              }
            }

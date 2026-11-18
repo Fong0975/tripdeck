@@ -1,15 +1,44 @@
-import type { ChecklistCategory, ChecklistItem } from '@/types';
+import type { ChecklistCategory, ChecklistItem, ItemSpec } from '@/types';
 
-/** Reads one check mark for an occasion, by item ID or spec ID. */
-export type CheckGetter = (occId: number, id: number) => boolean;
+import {
+  getCheckUnits,
+  getItemUnits,
+  getSpecUnits,
+  isUnitChecked,
+  type CheckGetter,
+  type CheckUnit,
+} from './checkUnits';
 
 /** How much of an item is checked for one occasion. */
 export type CheckState = 'checked' | 'partial' | 'unchecked';
 
 /**
- * Resolves an item's check state for one occasion. An item without specs
- * uses its own check; an item with specs is derived from them, so it is
- * checked only when every spec is.
+ * Resolves the combined check state of a group of units for one occasion:
+ * checked only when every unit is, partial when some are.
+ *
+ * @param units The units to combine.
+ * @param occId The occasion to evaluate.
+ * @param getCheck Reads an item's own check.
+ * @param getSpecCheck Reads a spec's check.
+ */
+export function getCheckState(
+  units: CheckUnit[],
+  occId: number,
+  getCheck: CheckGetter,
+  getSpecCheck: CheckGetter,
+): CheckState {
+  const checked = units.filter(unit =>
+    isUnitChecked(unit, occId, getCheck, getSpecCheck),
+  ).length;
+  if (checked === 0) {
+    return 'unchecked';
+  }
+  return checked === units.length ? 'checked' : 'partial';
+}
+
+/**
+ * Resolves an item's overall check state for one occasion from all of its
+ * units (see {@link getItemUnits}).
  *
  * @param item The checklist item.
  * @param occId The occasion to evaluate.
@@ -22,27 +51,40 @@ export function getItemCheckState(
   getCheck: CheckGetter,
   getSpecCheck: CheckGetter,
 ): CheckState {
-  const specs = item.specs ?? [];
-  if (specs.length === 0) {
-    return getCheck(occId, item.id) ? 'checked' : 'unchecked';
-  }
-  const checked = specs.filter(spec => getSpecCheck(occId, spec.id)).length;
-  if (checked === 0) {
-    return 'unchecked';
-  }
-  return checked === specs.length ? 'checked' : 'partial';
+  return getCheckState(getItemUnits(item), occId, getCheck, getSpecCheck);
 }
 
 /**
- * Counts the checkable units: one per item without specs, one per spec for
- * an item that has specs.
+ * Resolves a spec's overall check state for one occasion from its units, one
+ * per location (see {@link getSpecUnits}).
+ *
+ * @param item The spec's item.
+ * @param spec The spec.
+ * @param occId The occasion to evaluate.
+ * @param getSpecCheck Reads a spec's check.
+ */
+export function getSpecCheckState(
+  item: ChecklistItem,
+  spec: ItemSpec,
+  occId: number,
+  getSpecCheck: CheckGetter,
+): CheckState {
+  return getCheckState(
+    getSpecUnits(item, spec),
+    occId,
+    () => false,
+    getSpecCheck,
+  );
+}
+
+/**
+ * Counts the checkable units: one per item without specs, or per spec of an
+ * item that has specs, for each storage location it is filed under.
  *
  * @param categories The checklist categories.
  */
 export function countCheckUnits(categories: ChecklistCategory[]): number {
-  return categories
-    .flatMap(category => category.items)
-    .reduce((sum, item) => sum + Math.max(item.specs?.length ?? 0, 1), 0);
+  return getCheckUnits(categories).length;
 }
 
 /**
@@ -59,13 +101,7 @@ export function countCheckedUnits(
   getCheck: CheckGetter,
   getSpecCheck: CheckGetter,
 ): number {
-  return categories
-    .flatMap(category => category.items)
-    .reduce((sum, item) => {
-      const specs = item.specs ?? [];
-      if (specs.length === 0) {
-        return sum + (getCheck(occId, item.id) ? 1 : 0);
-      }
-      return sum + specs.filter(spec => getSpecCheck(occId, spec.id)).length;
-    }, 0);
+  return getCheckUnits(categories).filter(unit =>
+    isUnitChecked(unit, occId, getCheck, getSpecCheck),
+  ).length;
 }

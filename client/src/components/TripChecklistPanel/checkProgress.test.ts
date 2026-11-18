@@ -1,3 +1,4 @@
+import { checkKey } from '@tripdeck/shared';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,11 +10,22 @@ import {
 import {
   countCheckedUnits,
   countCheckUnits,
+  getCheckState,
   getItemCheckState,
+  getSpecCheckState,
   type CheckState,
 } from './checkProgress';
+import { getCheckUnits, getItemUnits } from './checkUnits';
+
+/** A check mark: `[id, location]`; the location defaults to none. */
+type Mark = [id: number, location?: string];
 
 const plainItem = makeChecklistItem({ id: 10, specs: [] });
+const dualItem = makeChecklistItem({
+  id: 11,
+  storage_location: '託運,隨身',
+  specs: [],
+});
 const specItem = makeChecklistItem({
   id: 20,
   specs: [
@@ -22,29 +34,51 @@ const specItem = makeChecklistItem({
     makeChecklistSpec({ id: 203 }),
   ],
 });
+const dualSpecItem = makeChecklistItem({
+  id: 30,
+  storage_location: '託運,隨身',
+  specs: [
+    makeChecklistSpec({ id: 301, storage_location: '託運,隨身' }),
+    makeChecklistSpec({ id: 302, storage_location: '隨身' }),
+  ],
+});
+
+/** An item with specs whose own (stale) location must be ignored. */
+const staleLocationItem = makeChecklistItem({
+  id: 40,
+  storage_location: '託運,隨身',
+  specs: [makeChecklistSpec({ id: 401, storage_location: null })],
+});
 
 const categories = [
   makeChecklistCategory({ id: 1, items: [plainItem] }),
   makeChecklistCategory({ id: 2, items: [specItem] }),
 ];
 
-/** Builds a getter that reports `true` for the given ids in occasion 1. */
-function checksFor(...ids: number[]) {
-  return (occId: number, id: number) => occId === 1 && ids.includes(id);
+const multiLocationCategories = [
+  makeChecklistCategory({ id: 1, items: [plainItem, dualItem] }),
+  makeChecklistCategory({ id: 2, items: [dualSpecItem] }),
+];
+
+/** Builds a getter that reports `true` for the given marks in occasion 1. */
+function checksFor(...marks: Mark[]) {
+  const keys = marks.map(([id, location = '']) => checkKey(id, location));
+  return (occId: number, id: number, location: string) =>
+    occId === 1 && keys.includes(checkKey(id, location));
 }
 
 describe('getItemCheckState', () => {
   const tests: {
     name: string;
     item: typeof plainItem;
-    checkedItems: number[];
-    checkedSpecs: number[];
+    checkedItems: Mark[];
+    checkedSpecs: Mark[];
     expected: CheckState;
   }[] = [
     {
       name: 'uses the item check when it has no specs (checked)',
       item: plainItem,
-      checkedItems: [10],
+      checkedItems: [[10]],
       checkedSpecs: [],
       expected: 'checked',
     },
@@ -58,7 +92,7 @@ describe('getItemCheckState', () => {
     {
       name: 'ignores the item check when it has specs',
       item: specItem,
-      checkedItems: [20],
+      checkedItems: [[20]],
       checkedSpecs: [],
       expected: 'unchecked',
     },
@@ -66,22 +100,92 @@ describe('getItemCheckState', () => {
       name: 'is partial when only some specs are checked',
       item: specItem,
       checkedItems: [],
-      checkedSpecs: [201],
+      checkedSpecs: [[201]],
       expected: 'partial',
     },
     {
       name: 'is checked when every spec is checked',
       item: specItem,
       checkedItems: [],
-      checkedSpecs: [201, 202, 203],
+      checkedSpecs: [[201], [202], [203]],
       expected: 'checked',
     },
     {
       name: 'treats undefined specs as no specs',
       item: { ...plainItem, specs: undefined } as unknown as typeof plainItem,
-      checkedItems: [10],
+      checkedItems: [[10]],
       checkedSpecs: [],
       expected: 'checked',
+    },
+    {
+      name: 'is partial when an item without specs is checked at one of two locations',
+      item: dualItem,
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [],
+      expected: 'partial',
+    },
+    {
+      name: 'is checked when an item without specs is checked at every location',
+      item: dualItem,
+      checkedItems: [
+        [11, '託運'],
+        [11, '隨身'],
+      ],
+      checkedSpecs: [],
+      expected: 'checked',
+    },
+    {
+      name: 'ignores an item check at a location the item does not have',
+      item: dualItem,
+      checkedItems: [[11]],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when a spec is checked at one of its two locations only',
+      item: dualSpecItem,
+      checkedItems: [],
+      checkedSpecs: [[301, '託運']],
+      expected: 'partial',
+    },
+    {
+      name: 'ignores spec checks without a location when the specs have locations',
+      item: dualSpecItem,
+      checkedItems: [],
+      checkedSpecs: [[301], [302]],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is checked when every spec is checked at every location it has',
+      item: dualSpecItem,
+      checkedItems: [],
+      checkedSpecs: [
+        [301, '託運'],
+        [301, '隨身'],
+        [302, '隨身'],
+      ],
+      expected: 'checked',
+    },
+    {
+      name: 'ignores the stale item location: a spec without location has the one empty location',
+      item: staleLocationItem,
+      checkedItems: [],
+      checkedSpecs: [[401]],
+      expected: 'checked',
+    },
+    {
+      name: 'does not look at the stale item location for spec checks',
+      item: staleLocationItem,
+      checkedItems: [],
+      checkedSpecs: [[401, '託運']],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when only the spec with a single location is checked',
+      item: dualSpecItem,
+      checkedItems: [],
+      checkedSpecs: [[302, '隨身']],
+      expected: 'partial',
     },
   ];
 
@@ -98,7 +202,159 @@ describe('getItemCheckState', () => {
 
   it('only looks at the requested occasion', () => {
     expect(
-      getItemCheckState(specItem, 2, checksFor(), checksFor(201, 202, 203)),
+      getItemCheckState(
+        specItem,
+        2,
+        checksFor(),
+        checksFor([201], [202], [203]),
+      ),
+    ).toBe('unchecked');
+  });
+});
+
+describe('getCheckState', () => {
+  const tests: {
+    name: string;
+    units: ReturnType<typeof getItemUnits>;
+    checkedItems: Mark[];
+    checkedSpecs: Mark[];
+    expected: CheckState;
+  }[] = [
+    {
+      name: 'is unchecked for an empty group of units',
+      units: [],
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is checked when the only unit is checked',
+      units: getItemUnits(plainItem),
+      checkedItems: [[10]],
+      checkedSpecs: [],
+      expected: 'checked',
+    },
+    {
+      name: 'is unchecked when no unit is checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when only some units are checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [],
+      expected: 'partial',
+    },
+    {
+      name: 'is checked when every unit is checked',
+      units: getItemUnits(dualItem),
+      checkedItems: [
+        [11, '託運'],
+        [11, '隨身'],
+      ],
+      checkedSpecs: [],
+      expected: 'checked',
+    },
+    {
+      name: 'reads spec units through the spec getter',
+      units: getCheckUnits([
+        makeChecklistCategory({ items: [dualItem, dualSpecItem] }),
+      ]).filter(unit => unit.kind === 'spec'),
+      checkedItems: [[11, '託運']],
+      checkedSpecs: [
+        [301, '託運'],
+        [301, '隨身'],
+        [302, '隨身'],
+      ],
+      expected: 'checked',
+    },
+    {
+      name: 'ignores marks at locations the units do not have',
+      units: getItemUnits(dualItem),
+      checkedItems: [[11], [11, '後背包']],
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+  ];
+
+  it.each(tests)('$name', ({ units, checkedItems, checkedSpecs, expected }) => {
+    expect(
+      getCheckState(
+        units,
+        1,
+        checksFor(...checkedItems),
+        checksFor(...checkedSpecs),
+      ),
+    ).toBe(expected);
+  });
+});
+
+describe('getSpecCheckState', () => {
+  const [dualSpec, singleSpec] = dualSpecItem.specs;
+  const tests: {
+    name: string;
+    spec: typeof dualSpec;
+    checkedSpecs: Mark[];
+    expected: CheckState;
+  }[] = [
+    {
+      name: 'is unchecked when no location of a two-location spec is checked',
+      spec: dualSpec,
+      checkedSpecs: [],
+      expected: 'unchecked',
+    },
+    {
+      name: 'is partial when one of two locations is checked',
+      spec: dualSpec,
+      checkedSpecs: [[301, '託運']],
+      expected: 'partial',
+    },
+    {
+      name: 'is checked when every location is checked',
+      spec: dualSpec,
+      checkedSpecs: [
+        [301, '託運'],
+        [301, '隨身'],
+      ],
+      expected: 'checked',
+    },
+    {
+      name: 'is checked when the only location is checked',
+      spec: singleSpec,
+      checkedSpecs: [[302, '隨身']],
+      expected: 'checked',
+    },
+    {
+      name: 'does not count a check at a location the spec does not have',
+      spec: singleSpec,
+      checkedSpecs: [[302, '託運']],
+      expected: 'unchecked',
+    },
+    {
+      name: 'does not mix up the checks of sibling specs',
+      spec: dualSpec,
+      checkedSpecs: [[302, '隨身']],
+      expected: 'unchecked',
+    },
+  ];
+
+  it.each(tests)('$name', ({ spec, checkedSpecs, expected }) => {
+    expect(
+      getSpecCheckState(dualSpecItem, spec, 1, checksFor(...checkedSpecs)),
+    ).toBe(expected);
+  });
+
+  it('only looks at the requested occasion', () => {
+    expect(
+      getSpecCheckState(
+        dualSpecItem,
+        dualSpec,
+        2,
+        checksFor([301, '託運'], [301, '隨身']),
+      ),
     ).toBe('unchecked');
   });
 });
@@ -117,6 +373,26 @@ describe('countCheckUnits', () => {
       expected: 3,
     },
     { name: 'mixed categories', input: categories, expected: 4 },
+    {
+      name: 'an item without specs counts once per location',
+      input: [makeChecklistCategory({ items: [dualItem] })],
+      expected: 2,
+    },
+    {
+      name: 'specs count once per own location',
+      input: [makeChecklistCategory({ items: [dualSpecItem] })],
+      expected: 3,
+    },
+    {
+      name: 'the stale location of an item with specs adds no units',
+      input: [makeChecklistCategory({ items: [staleLocationItem] })],
+      expected: 1,
+    },
+    {
+      name: 'multi-location items and specs together',
+      input: multiLocationCategories,
+      expected: 6,
+    },
   ])('counts $expected for $name', ({ input, expected }) => {
     expect(countCheckUnits(input)).toBe(expected);
   });
@@ -124,29 +400,89 @@ describe('countCheckUnits', () => {
 
 describe('countCheckedUnits', () => {
   it.each([
-    { name: 'nothing checked', items: [], specs: [], expected: 0 },
-    { name: 'the plain item only', items: [10], specs: [], expected: 1 },
-    { name: 'some specs only', items: [], specs: [201, 202], expected: 2 },
+    { name: 'nothing', items: [], specs: [], expected: 0 },
+    { name: 'the plain item only', items: [[10]], specs: [], expected: 1 },
+    {
+      name: 'some specs only',
+      items: [],
+      specs: [[201], [202]],
+      expected: 2,
+    },
     {
       name: 'everything',
-      items: [10],
-      specs: [201, 202, 203],
+      items: [[10]],
+      specs: [[201], [202], [203]],
       expected: 4,
     },
     {
-      name: 'an item check on an item with specs is ignored',
-      items: [20],
+      name: 'an item check on an item with specs (ignored)',
+      items: [[20]],
       specs: [],
       expected: 0,
     },
-  ])('counts $expected when $name is checked', ({ items, specs, expected }) => {
-    expect(
-      countCheckedUnits(
-        categories,
-        1,
-        checksFor(...items),
-        checksFor(...specs),
-      ),
-    ).toBe(expected);
-  });
+  ] as { name: string; items: Mark[]; specs: Mark[]; expected: number }[])(
+    'counts $expected when $name is checked',
+    ({ items, specs, expected }) => {
+      expect(
+        countCheckedUnits(
+          categories,
+          1,
+          checksFor(...items),
+          checksFor(...specs),
+        ),
+      ).toBe(expected);
+    },
+  );
+
+  it.each([
+    {
+      name: 'one of two locations of a plain item',
+      items: [[11, '託運']],
+      specs: [],
+      expected: 1,
+    },
+    {
+      name: 'both locations of a plain item count separately',
+      items: [
+        [11, '託運'],
+        [11, '隨身'],
+      ],
+      specs: [],
+      expected: 2,
+    },
+    {
+      name: 'a spec at one of its two locations',
+      items: [],
+      specs: [[301, '隨身']],
+      expected: 1,
+    },
+    {
+      name: 'every unit at every location',
+      items: [[10], [11, '託運'], [11, '隨身']],
+      specs: [
+        [301, '託運'],
+        [301, '隨身'],
+        [302, '隨身'],
+      ],
+      expected: 6,
+    },
+    {
+      name: 'checks at locations the unit does not have (ignored)',
+      items: [[11, '後背包'], [11]],
+      specs: [[302, '託運'], [301]],
+      expected: 0,
+    },
+  ] as { name: string; items: Mark[]; specs: Mark[]; expected: number }[])(
+    'counts $expected for $name',
+    ({ items, specs, expected }) => {
+      expect(
+        countCheckedUnits(
+          multiLocationCategories,
+          1,
+          checksFor(...items),
+          checksFor(...specs),
+        ),
+      ).toBe(expected);
+    },
+  );
 });

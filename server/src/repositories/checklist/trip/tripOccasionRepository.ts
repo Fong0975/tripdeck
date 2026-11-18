@@ -5,7 +5,7 @@ import pool from '../../../config/database';
 import { withTransaction } from '../../../utils/withTransaction';
 
 import {
-  CheckRow,
+  fetchChecksByOccasionIds,
   fetchSpecChecksByOccasionIds,
   lockTrip,
   OccasionRow,
@@ -51,18 +51,15 @@ export async function updateOccasion(
     occId,
   ]);
 
-  const [checkRows] = await pool.execute<CheckRow[]>(
-    'SELECT checklist_trip_item_id FROM checklist_checks WHERE checklist_occasion_id = ? AND checked = 1',
-    [occId],
-  );
-  const checks: Record<number, boolean> = {};
-  for (const row of checkRows) {
-    checks[row.checklist_trip_item_id] = true;
-  }
-
+  const checks = (await fetchChecksByOccasionIds([occId])).get(occId);
   const specChecks = (await fetchSpecChecksByOccasionIds([occId])).get(occId);
 
-  return { id: occId, name, checks, specChecks: specChecks ?? {} };
+  return {
+    id: occId,
+    name,
+    checks: checks ?? {},
+    specChecks: specChecks ?? {},
+  };
 }
 
 /** Outcome of {@link deleteOccasionIfNotLast}. */

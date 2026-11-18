@@ -16,6 +16,14 @@ vi.mock('../logger', async () => {
   return { createLogger: () => mockLogger };
 });
 
+vi.mock('./checkLocationMigration', () => ({
+  migrateCheckLocations: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('./specLocationMigration', () => ({
+  migrateSpecLocations: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockPoolExecute = db.pool.execute;
 
 // vi.mock(...) below is hoisted above these fixtures' declarations, so the
@@ -79,8 +87,9 @@ vi.mock('./schema', () => ({
   tableDefinitions: [barTable, bazTable, fooTable],
 }));
 
-// eslint-disable-next-line import/order -- must come after the vi.mock calls above so ./init resolves the mocked ./schema
+import { migrateCheckLocations } from './checkLocationMigration';
 import { initDatabase } from './init';
+import { migrateSpecLocations } from './specLocationMigration';
 
 interface LiveForeignKeyRow {
   name: string;
@@ -223,6 +232,24 @@ describe('db/init', () => {
       await initDatabase();
 
       expect(mutatingStatements()).toEqual(expected);
+    });
+
+    it('runs the location migrations once each, after every table was aligned and in order', async () => {
+      vi.mocked(migrateCheckLocations).mockClear();
+      vi.mocked(migrateSpecLocations).mockClear();
+      setUpLiveDatabase(outdatedState());
+
+      await initDatabase();
+
+      const lastQueryOrder = mockPoolExecute.mock.invocationCallOrder.at(-1);
+      const [checkOrder] = vi.mocked(migrateCheckLocations).mock
+        .invocationCallOrder;
+      const [specOrder] =
+        vi.mocked(migrateSpecLocations).mock.invocationCallOrder;
+      expect(migrateCheckLocations).toHaveBeenCalledTimes(1);
+      expect(migrateSpecLocations).toHaveBeenCalledTimes(1);
+      expect(checkOrder).toBeGreaterThan(lastQueryOrder ?? Infinity);
+      expect(specOrder).toBeGreaterThan(checkOrder);
     });
 
     it.each([

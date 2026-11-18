@@ -1,7 +1,7 @@
 import type { ChecklistOccasion } from '@/types';
 
 import CheckCell from './CheckCell';
-import type { CheckGetter } from './checkProgress';
+import type { CheckGetter } from './checkUnits';
 import type { StorageUnit } from './groupByStorage';
 
 interface Props {
@@ -11,8 +11,8 @@ interface Props {
   occasions: ChecklistOccasion[];
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
-  onToggleCheck: (occId: number, itemId: number) => void;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleCheck: (occId: number, itemId: number, location: string) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
 }
 
 /**
@@ -70,16 +70,24 @@ export default function ChecklistStorageRow({
         return unit.kind === 'item' ? (
           <CheckCell
             key={occ.id}
-            state={getCheck(occ.id, item.id) ? 'checked' : 'unchecked'}
+            state={
+              getCheck(occ.id, item.id, unit.location) ? 'checked' : 'unchecked'
+            }
             label={label}
-            onToggle={() => onToggleCheck(occ.id, item.id)}
+            onToggle={() => onToggleCheck(occ.id, item.id, unit.location)}
           />
         ) : (
           <CheckCell
             key={occ.id}
-            state={getSpecCheck(occ.id, unit.spec.id) ? 'checked' : 'unchecked'}
+            state={
+              getSpecCheck(occ.id, unit.spec.id, unit.location)
+                ? 'checked'
+                : 'unchecked'
+            }
             label={label}
-            onToggle={() => onToggleSpecCheck(occ.id, unit.spec.id)}
+            onToggle={() =>
+              onToggleSpecCheck(occ.id, unit.spec.id, unit.location)
+            }
           />
         );
       })}

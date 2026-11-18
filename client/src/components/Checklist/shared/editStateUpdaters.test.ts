@@ -243,6 +243,57 @@ describe('item updaters', () => {
   });
 });
 
+describe('appendSpec and the item storage location', () => {
+  const spec = makeEditSpec({ id: -50, name: 'New', storage_location: null });
+
+  it.each<{
+    description: string;
+    item: EditItem;
+    expected: EditItem;
+  }>([
+    {
+      description:
+        'the first spec takes over the item location and clears the item own',
+      item: makeEditItem({ storage_location: '託運,隨身', specs: [] }),
+      expected: makeEditItem({
+        storage_location: null,
+        specs: [{ ...spec, storage_location: '託運,隨身' }],
+      }),
+    },
+    {
+      description:
+        'the first spec stays without a location when the item has none',
+      item: makeEditItem({ storage_location: null, specs: [] }),
+      expected: makeEditItem({ storage_location: null, specs: [spec] }),
+    },
+    {
+      description:
+        'a later spec keeps the passed location and the item stays clear',
+      item: makeEditItem({
+        storage_location: null,
+        specs: [makeEditSpec({ id: 100, storage_location: '託運' })],
+      }),
+      expected: makeEditItem({
+        storage_location: null,
+        specs: [makeEditSpec({ id: 100, storage_location: '託運' }), spec],
+      }),
+    },
+    {
+      description: 'a later spec never touches a stale item location',
+      item: makeEditItem({
+        storage_location: '隨身',
+        specs: [makeEditSpec({ id: 100, storage_location: '託運' })],
+      }),
+      expected: makeEditItem({
+        storage_location: '隨身',
+        specs: [makeEditSpec({ id: 100, storage_location: '託運' }), spec],
+      }),
+    },
+  ])('$description', ({ item, expected }) => {
+    expect(appendSpec(spec)(item)).toEqual(expected);
+  });
+});
+
 describe('updateIn', () => {
   it.each<{
     description: string;

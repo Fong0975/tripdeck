@@ -13,6 +13,7 @@ import {
   type ReorderResult,
 } from '../shared/siblingOrder';
 
+import { pruneItemChecks } from './checkLocationPruning';
 import { fetchSpecsByItemIds, TripChecklistItemRow } from './shared';
 
 /** Confirms a checklist item belongs to the given trip (via its category). */
@@ -68,7 +69,10 @@ export async function deleteTripItem(itemId: number): Promise<boolean> {
 /**
  * Partially updates a single trip checklist item: any of name, quantity,
  * notes and storage location present in `data` is overwritten (a blank name
- * keeps the current one); absent fields keep their stored values.
+ * keeps the current one); absent fields keep their stored values. An item
+ * with specs holds no storage location of its own (its specs carry them), so
+ * a requested location is ignored for it. Check marks of locations the item
+ * no longer has are deleted.
  *
  * @param itemId - Id of the item to update.
  * @param data - Fields to change.
@@ -90,17 +94,21 @@ export async function updateTripItem(
   const name = 'name' in data && data.name ? data.name : cur.name;
   const quantity = 'quantity' in data ? (data.quantity ?? null) : cur.quantity;
   const notes = 'notes' in data ? (data.notes ?? null) : cur.notes;
-  const storage_location =
+  const specs = (await fetchSpecsByItemIds([itemId])).get(itemId) ?? [];
+  const requestedLocation =
     'storage_location' in data
       ? (data.storage_location ?? null)
       : cur.storage_location;
+  const storage_location = specs.length > 0 ? null : requestedLocation;
 
   await pool.execute(
     'UPDATE checklist_trip_items SET name = ?, quantity = ?, notes = ?, storage_location = ? WHERE id = ?',
     [name, quantity, notes, storage_location, itemId],
   );
 
-  const specsByItemId = await fetchSpecsByItemIds([itemId]);
+  if (storage_location !== cur.storage_location) {
+    await pruneItemChecks(itemId, storage_location);
+  }
 
   return {
     id: cur.id,
@@ -108,31 +116,37 @@ export async function updateTripItem(
     quantity,
     notes,
     storage_location,
-    specs: specsByItemId.get(itemId) ?? [],
+    specs,
   };
 }
 
 /**
- * Sets the checked state for an item within an occasion.
- * Inserts or updates to checked=1 when true; removes the row when false
- * so the checks map stays sparse (only true entries).
+ * Sets the checked state for an item at one of its locations within an
+ * occasion. Inserts or updates to checked=1 when true; removes the row when
+ * false so the checks map stays sparse (only true entries).
+ *
+ * @param occId - Occasion id.
+ * @param itemId - Trip checklist item id.
+ * @param location - One of the item's effective locations; `''` when none.
+ * @param checked - New checked state.
  */
 export async function setCheck(
   occId: number,
   itemId: number,
+  location: string,
   checked: boolean,
 ): Promise<void> {
   if (checked) {
     await pool.execute(
-      `INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, checked)
-       VALUES (?, ?, 1)
+      `INSERT INTO checklist_checks (checklist_occasion_id, checklist_trip_item_id, location, checked)
+       VALUES (?, ?, ?, 1)
        ON DUPLICATE KEY UPDATE checked = 1`,
-      [occId, itemId],
+      [occId, itemId, location],
     );
   } else {
     await pool.execute(
-      'DELETE FROM checklist_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_id = ?',
-      [occId, itemId],
+      'DELETE FROM checklist_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_id = ? AND location = ?',
+      [occId, itemId, location],
     );
   }
 }

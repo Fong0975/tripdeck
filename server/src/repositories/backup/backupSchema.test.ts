@@ -205,6 +205,18 @@ describe('assertTripBackupData', () => {
       expectedError: null,
     },
     {
+      name: 'an occasion whose checks are keyed per storage location',
+      data: withValueAt(
+        withValueAt(valid, 'checklist.occasions[0].checks', {
+          '400|託運': true,
+          '400|隨身': true,
+        }),
+        'checklist.occasions[0].specChecks',
+        { '500|': true },
+      ),
+      expectedError: null,
+    },
+    {
       name: 'a null checklist item quantity',
       data: withValueAt(
         valid,

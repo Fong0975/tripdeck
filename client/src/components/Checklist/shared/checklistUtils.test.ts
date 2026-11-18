@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasStorageOption,
   nextTempId,
+  summarizeSpecLocations,
   toggleStorageOption,
 } from './checklistUtils';
 
@@ -102,6 +103,59 @@ describe('toggleStorageOption', () => {
       expect(toggleStorageOption(current, option)).toBe(expected);
     },
   );
+});
+
+describe('summarizeSpecLocations', () => {
+  const tests: {
+    name: string;
+    locations: (string | null)[];
+    expected: string | null;
+  }[] = [
+    { name: 'no specs', locations: [], expected: null },
+    {
+      name: 'specs without any location',
+      locations: [null, null],
+      expected: null,
+    },
+    { name: 'an empty location string', locations: [''], expected: null },
+    { name: 'a single spec location', locations: ['隨身'], expected: '隨身' },
+    {
+      name: 'both options on one spec',
+      locations: ['託運,隨身'],
+      expected: '託運,隨身',
+    },
+    {
+      name: 'different options on different specs',
+      locations: ['隨身', null, '託運'],
+      expected: '託運,隨身',
+    },
+    {
+      name: 'options listed out of order with spaces',
+      locations: ['隨身, 託運'],
+      expected: '託運,隨身',
+    },
+    {
+      name: 'the same option on several specs, counted once',
+      locations: ['隨身', '隨身', '託運,隨身'],
+      expected: '託運,隨身',
+    },
+    {
+      name: 'unknown location values',
+      locations: ['後背包', '隨身'],
+      expected: '隨身',
+    },
+    {
+      name: 'only unknown location values',
+      locations: ['後背包'],
+      expected: null,
+    },
+  ];
+
+  it.each(tests)('returns the union for $name', ({ locations, expected }) => {
+    const specs = locations.map(storage_location => ({ storage_location }));
+
+    expect(summarizeSpecLocations(specs)).toBe(expected);
+  });
 });
 
 describe('nextTempId', () => {

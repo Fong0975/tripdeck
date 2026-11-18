@@ -54,6 +54,46 @@ describe('StorageCheckboxes', () => {
     expect(onChange).toHaveBeenCalledWith('託運');
   });
 
+  it.each([
+    { description: 'enabled by default', disabled: undefined, expected: false },
+    { description: 'explicitly enabled', disabled: false, expected: false },
+    { description: 'disabled', disabled: true, expected: true },
+  ])(
+    'renders the checkboxes as disabled=$expected when $description',
+    ({ disabled, expected }) => {
+      render(
+        <StorageCheckboxes
+          value='託運'
+          onChange={vi.fn()}
+          disabled={disabled}
+        />,
+      );
+
+      for (const option of ['託運', '隨身']) {
+        const checkbox = screen.getByLabelText(option);
+        if (expected) {
+          expect(checkbox).toBeDisabled();
+        } else {
+          expect(checkbox).toBeEnabled();
+        }
+      }
+    },
+  );
+
+  it('keeps the selected state visible and ignores clicks when disabled', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <StorageCheckboxes value='託運,隨身' onChange={onChange} disabled />,
+    );
+
+    await user.click(screen.getByLabelText('託運'));
+
+    expect(screen.getByLabelText('託運')).toBeChecked();
+    expect(screen.getByLabelText('隨身')).toBeChecked();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('calls onChange with the option removed when toggled off', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

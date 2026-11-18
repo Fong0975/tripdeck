@@ -1,23 +1,38 @@
-export type StorageOption = '託運' | '隨身';
+import {
+  STORAGE_OPTIONS,
+  getEffectiveLocations,
+  type StorageOption,
+} from '@tripdeck/shared';
+
+export { STORAGE_OPTIONS, type StorageOption };
 
 let _tempId = -1;
 export function nextTempId(): number {
   return _tempId--;
 }
 
-export const STORAGE_OPTIONS: StorageOption[] = ['託運', '隨身'];
-
 export function hasStorageOption(
   value: string | null | undefined,
   option: StorageOption,
 ): boolean {
-  if (!value) {
-    return false;
-  }
-  return value
-    .split(',')
-    .map(s => s.trim())
-    .includes(option);
+  return getEffectiveLocations(value).includes(option);
+}
+
+/**
+ * Combines the storage locations of an item's specs. An item with specs
+ * holds no location of its own; this is what it shows instead.
+ *
+ * @param specs The item's specs.
+ * @returns The storage options used by at least one spec, in
+ *   {@link STORAGE_OPTIONS} order and comma separated; null when none is set.
+ */
+export function summarizeSpecLocations(
+  specs: ReadonlyArray<{ storage_location: string | null }>,
+): string | null {
+  const used = STORAGE_OPTIONS.filter(option =>
+    specs.some(spec => hasStorageOption(spec.storage_location, option)),
+  );
+  return used.length > 0 ? used.join(',') : null;
 }
 
 export function toggleStorageOption(

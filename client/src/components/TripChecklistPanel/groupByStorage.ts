@@ -1,28 +1,21 @@
+import { NO_LOCATION } from '@tripdeck/shared';
+
 import {
   STORAGE_OPTIONS,
-  hasStorageOption,
   type StorageOption,
 } from '@/components/Checklist/shared/checklistUtils';
-import type { ChecklistCategory, ChecklistItem, ItemSpec } from '@/types';
+import type { ChecklistCategory } from '@/types';
+
+import { getItemUnits, type CheckUnit } from './checkUnits';
 
 /** Group key: a storage option, or `none` when no location is set. */
 export type StorageGroupKey = StorageOption | 'none';
 
-/** A checkable unit placed in a storage group. */
-export type StorageUnit =
-  | {
-      kind: 'item';
-      categoryId: number;
-      categoryName: string;
-      item: ChecklistItem;
-    }
-  | {
-      kind: 'spec';
-      categoryId: number;
-      categoryName: string;
-      item: ChecklistItem;
-      spec: ItemSpec;
-    };
+/** A checkable unit placed in a storage group, with its category. */
+export type StorageUnit = CheckUnit & {
+  categoryId: number;
+  categoryName: string;
+};
 
 export interface StorageGroup {
   key: StorageGroupKey;
@@ -36,40 +29,16 @@ export interface CategorySection {
   units: StorageUnit[];
 }
 
-/**
- * Resolves the storage location a unit is filed under. A spec without its own
- * location inherits the one of its item.
- */
-function getUnitLocation(unit: StorageUnit): string | null {
-  if (unit.kind === 'item') {
-    return unit.item.storage_location;
-  }
-  return unit.spec.storage_location ?? unit.item.storage_location;
-}
-
 /** Flattens categories into checkable units, keeping category and item order. */
-function toUnits(categories: ChecklistCategory[]): StorageUnit[] {
+function toStorageUnits(categories: ChecklistCategory[]): StorageUnit[] {
   return categories.flatMap(category =>
-    category.items.flatMap((item): StorageUnit[] => {
-      const specs = item.specs ?? [];
-      if (specs.length === 0) {
-        return [
-          {
-            kind: 'item',
-            categoryId: category.id,
-            categoryName: category.name,
-            item,
-          },
-        ];
-      }
-      return specs.map(spec => ({
-        kind: 'spec' as const,
+    category.items.flatMap(item =>
+      getItemUnits(item).map((unit): StorageUnit => ({
+        ...unit,
         categoryId: category.id,
         categoryName: category.name,
-        item,
-        spec,
-      }));
-    }),
+      })),
+    ),
   );
 }
 
@@ -96,9 +65,11 @@ export function splitByCategory(units: StorageUnit[]): CategorySection[] {
 }
 
 /**
- * Groups the checkable units of a checklist by storage location. A unit with
- * several locations appears once in each matching group; a unit with none
- * goes to the `none` group. Empty groups are omitted.
+ * Groups the checkable units of a checklist by storage location. Every unit
+ * already carries exactly one location (a unit filed under several locations
+ * is expanded into one unit per location), so each lands in exactly one
+ * group; units without a location go to the `none` group. Empty groups are
+ * omitted.
  *
  * @param categories The checklist categories.
  * @returns Groups ordered by {@link STORAGE_OPTIONS}, then `none`.
@@ -106,21 +77,16 @@ export function splitByCategory(units: StorageUnit[]): CategorySection[] {
 export function groupByStorage(
   categories: ChecklistCategory[],
 ): StorageGroup[] {
-  const units = toUnits(categories);
-  const groups: StorageGroup[] = STORAGE_OPTIONS.map(option => ({
-    key: option,
-    units: units.filter(unit =>
-      hasStorageOption(getUnitLocation(unit), option),
-    ),
-  }));
-  groups.push({
-    key: 'none',
-    units: units.filter(
-      unit =>
-        !STORAGE_OPTIONS.some(option =>
-          hasStorageOption(getUnitLocation(unit), option),
-        ),
-    ),
-  });
+  const units = toStorageUnits(categories);
+  const groups: StorageGroup[] = [
+    ...STORAGE_OPTIONS.map(option => ({
+      key: option,
+      units: units.filter(unit => unit.location === option),
+    })),
+    {
+      key: 'none',
+      units: units.filter(unit => unit.location === NO_LOCATION),
+    },
+  ];
   return groups.filter(group => group.units.length > 0);
 }

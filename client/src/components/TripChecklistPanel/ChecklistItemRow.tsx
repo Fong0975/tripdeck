@@ -1,11 +1,15 @@
+import { getEffectiveLocations } from '@tripdeck/shared';
 import { Fragment } from 'react';
 
+import { summarizeSpecLocations } from '@/components/Checklist/shared/checklistUtils';
 import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
 
 import CheckCell from './CheckCell';
+import ChecklistLocationRow from './ChecklistLocationRow';
 import ChecklistSpecRow from './ChecklistSpecRow';
-import { getItemCheckState, type CheckGetter } from './checkProgress';
+import { getItemCheckState } from './checkProgress';
+import { getCheckCellLabel, type CheckGetter } from './checkUnits';
 
 interface Props {
   item: ChecklistItem;
@@ -13,13 +17,16 @@ interface Props {
   occasions: ChecklistOccasion[];
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
-  onToggleCheck: (occId: number, itemId: number) => void;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleCheck: (occId: number, itemId: number, location: string) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
 }
 
 /**
- * An item row followed by one row per spec. An item without specs is checked
- * directly; an item with specs shows a read-only state derived from them.
+ * The rows of one item. An item without specs and with one location is a
+ * single checkable row. An item filed under several locations, or with
+ * specs, is a name row with a read-only state derived from its parts,
+ * followed by one row per location, or per spec, that is checked
+ * independently.
  */
 export default function ChecklistItemRow({
   item,
@@ -32,12 +39,19 @@ export default function ChecklistItemRow({
 }: Props) {
   const specs = item.specs ?? [];
   const hasSpecs = specs.length > 0;
+  const locations = getEffectiveLocations(item.storage_location);
+  const hasLocationRows = !hasSpecs && locations.length > 1;
+  const hasChildren = hasSpecs || hasLocationRows;
+  const [singleLocation] = locations;
+  const shownLocation = hasSpecs
+    ? summarizeSpecLocations(specs)
+    : item.storage_location;
 
   return (
     <Fragment>
       <tr
         className={`group border-b transition-colors hover:bg-accent/60 ${
-          hasSpecs ? 'border-border/40' : 'border-border'
+          hasChildren ? 'border-border/40' : 'border-border'
         } ${index % 2 === 0 ? '' : 'bg-muted/10'}`}
       >
         <td className='sticky left-0 z-10 bg-background px-2 py-3 transition-colors group-hover:bg-accent sm:px-4'>
@@ -53,31 +67,57 @@ export default function ChecklistItemRow({
             {item.notes && (
               <p className='text-sm text-muted-foreground'>{item.notes}</p>
             )}
-            {item.storage_location && (
+            {shownLocation && (
               <div className='flex items-center gap-1.5'>
-                <StorageBadges value={item.storage_location} />
+                <StorageBadges value={shownLocation} />
               </div>
             )}
           </div>
         </td>
 
-        {occasions.map(occ => (
-          <CheckCell
-            key={occ.id}
-            state={getItemCheckState(item, occ.id, getCheck, getSpecCheck)}
-            label={`${item.name} - ${occ.name}`}
-            onToggle={
-              hasSpecs ? undefined : () => onToggleCheck(occ.id, item.id)
-            }
-          />
-        ))}
+        {occasions.map(occ =>
+          hasChildren ? (
+            <CheckCell
+              key={occ.id}
+              state={getItemCheckState(item, occ.id, getCheck, getSpecCheck)}
+              label={`${item.name} - ${occ.name}`}
+            />
+          ) : (
+            <CheckCell
+              key={occ.id}
+              state={
+                getCheck(occ.id, item.id, singleLocation)
+                  ? 'checked'
+                  : 'unchecked'
+              }
+              label={getCheckCellLabel(item.name, singleLocation, occ.name)}
+              onToggle={() => onToggleCheck(occ.id, item.id, singleLocation)}
+            />
+          ),
+        )}
 
         <td />
       </tr>
 
+      {hasLocationRows &&
+        locations.map((location, locationIndex) => (
+          <ChecklistLocationRow
+            key={location}
+            name={item.name}
+            location={location}
+            depth={1}
+            isLast={locationIndex === locations.length - 1}
+            itemIndex={index}
+            occasions={occasions}
+            isChecked={occId => getCheck(occId, item.id, location)}
+            onToggle={occId => onToggleCheck(occId, item.id, location)}
+          />
+        ))}
+
       {specs.map((spec, specIndex) => (
         <ChecklistSpecRow
           key={spec.id}
+          item={item}
           spec={spec}
           specIndex={specIndex}
           itemIndex={index}

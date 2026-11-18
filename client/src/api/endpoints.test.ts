@@ -489,16 +489,22 @@ describe('trip checklist API', () => {
       init: { method: 'DELETE' },
     },
     {
-      name: 'setCheck PUTs to the item check endpoint',
-      call: () => setCheck(1, 5, 3, true),
+      name: 'setCheck PUTs the checked state and location to the item check endpoint',
+      call: () => setCheck(1, 5, 3, '託運', true),
       url: '/api/trips/1/checklist/occasions/5/items/3/check',
-      init: { method: 'PUT', ...json({ checked: true }) },
+      init: { method: 'PUT', ...json({ checked: true, location: '託運' }) },
     },
     {
-      name: 'setSpecCheck PUTs to the spec check endpoint',
-      call: () => setSpecCheck(1, 5, 3, 4, false),
+      name: 'setCheck sends the empty location of an item without one',
+      call: () => setCheck(1, 5, 3, '', false),
+      url: '/api/trips/1/checklist/occasions/5/items/3/check',
+      init: { method: 'PUT', ...json({ checked: false, location: '' }) },
+    },
+    {
+      name: 'setSpecCheck PUTs the checked state and location to the spec check endpoint',
+      call: () => setSpecCheck(1, 5, 3, 4, '隨身', false),
       url: '/api/trips/1/checklist/occasions/5/items/3/specs/4/check',
-      init: { method: 'PUT', ...json({ checked: false }) },
+      init: { method: 'PUT', ...json({ checked: false, location: '隨身' }) },
     },
   ]);
 });

@@ -1,11 +1,12 @@
-import { Fragment } from 'react';
+import { type CSSProperties, Fragment, useRef } from 'react';
 
+import { useElementHeight } from '@/hooks/useElementHeight';
 import type { TripChecklist } from '@/types';
 
 import ChecklistItemRow from './ChecklistItemRow';
 import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
-import type { CheckGetter } from './checkProgress';
+import type { CheckGetter } from './checkUnits';
 import GroupHeaderRow from './GroupHeaderRow';
 import type { ViewMode } from './viewMode';
 
@@ -13,8 +14,8 @@ interface Props {
   checklist: TripChecklist;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
-  onToggleCheck: (occId: number, itemId: number) => void;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleCheck: (occId: number, itemId: number, location: string) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
   /** How rows are grouped; defaults to by category. */
   viewMode?: ViewMode;
 }
@@ -27,14 +28,21 @@ export default function ChecklistTable({
   onToggleSpecCheck,
   viewMode = 'category',
 }: Props) {
+  const headRef = useRef<HTMLTableSectionElement>(null);
+  const headHeight = useElementHeight(headRef);
+
   return (
-    <div className='flex-1 overflow-auto'>
+    <div
+      className='flex-1 overflow-auto'
+      style={{ '--checklist-head-h': `${headHeight}px` } as CSSProperties}
+    >
       <div className='mx-auto w-full sm:w-fit'>
         <table className='w-full border-collapse text-base sm:w-auto'>
           <ChecklistTableHeader
             checklist={checklist}
             getCheck={getCheck}
             getSpecCheck={getSpecCheck}
+            headRef={headRef}
           />
 
           {viewMode === 'storage' ? (

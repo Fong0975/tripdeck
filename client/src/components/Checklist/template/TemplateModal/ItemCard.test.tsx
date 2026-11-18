@@ -5,6 +5,15 @@ import { makeChecklistItem, makeChecklistSpec } from '@/test-utils/fixtures';
 
 import ItemCard from './ItemCard';
 
+/** Counts the badges of a location outside the specs list, i.e. the item's own. */
+function countItemBadges(location: string): number {
+  const specList = screen.queryByRole('list', { name: '規格' });
+  const inSpecs = specList
+    ? within(specList).queryAllByText(location).length
+    : 0;
+  return screen.queryAllByText(location).length - inSpecs;
+}
+
 describe('ItemCard', () => {
   it.each([
     { description: 'a quantity', quantity: 3, expected: '× 3' },
@@ -43,6 +52,66 @@ describe('ItemCard', () => {
     );
 
     expect(screen.getByText('託運')).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      description: 'the union of the spec locations, not the item own',
+      itemLocation: '託運',
+      specLocations: ['隨身', null],
+      shown: ['隨身'],
+      hidden: ['託運'],
+    },
+    {
+      description: 'both locations when the specs cover them',
+      itemLocation: null,
+      specLocations: ['託運', '隨身'],
+      shown: ['託運', '隨身'],
+      hidden: [],
+    },
+  ])(
+    'shows $description on an item with specs',
+    ({ itemLocation, specLocations, shown, hidden }) => {
+      render(
+        <ul>
+          <ItemCard
+            item={makeChecklistItem({
+              storage_location: itemLocation,
+              specs: specLocations.map((storage_location, index) =>
+                makeChecklistSpec({
+                  id: index + 1,
+                  name: `Spec ${index + 1}`,
+                  storage_location,
+                }),
+              ),
+            })}
+          />
+        </ul>,
+      );
+
+      for (const location of shown) {
+        expect(countItemBadges(location)).toBe(1);
+      }
+      for (const location of hidden) {
+        expect(countItemBadges(location)).toBe(0);
+      }
+    },
+  );
+
+  it('shows no item badge when the specs have no location', () => {
+    render(
+      <ul>
+        <ItemCard
+          item={makeChecklistItem({
+            storage_location: null,
+            specs: [makeChecklistSpec({ id: 1, storage_location: null })],
+          })}
+        />
+      </ul>,
+    );
+
+    expect(countItemBadges('託運')).toBe(0);
+    expect(countItemBadges('隨身')).toBe(0);
   });
 
   it('lists numbered specs with their own storage badges', () => {

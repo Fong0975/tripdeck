@@ -19,6 +19,7 @@ import {
 vi.mock('../../repositories/checklist/trip', () => ({
   createTripItem: vi.fn(),
   deleteTripItem: vi.fn(),
+  getItemCheckLocations: vi.fn(),
   setCheck: vi.fn(),
   updateTripItem: vi.fn(),
   verifyCategoryBelongsToTrip: vi.fn(),
@@ -248,15 +249,31 @@ describe('updateTripItem', () => {
 });
 
 describe('setCheck', () => {
-  it('returns 400 when checked is not a boolean', async () => {
+  it.each([
+    {
+      label: 'checked is not a boolean',
+      body: { checked: 'true', location: '託運' },
+      error: 'checked must be a boolean',
+    },
+    {
+      label: 'location is missing',
+      body: { checked: true },
+      error: 'location must be a string',
+    },
+    {
+      label: 'location is not a string',
+      body: { checked: true, location: 1 },
+      error: 'location must be a string',
+    },
+  ])('returns 400 when $label', async ({ body, error }) => {
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
-      body: { checked: 'true' },
+      body,
     });
 
     await setCheck(req, res);
 
-    expectJsonStatus(res, 400, { error: 'checked must be a boolean' });
+    expectJsonStatus(res, 400, { error });
     expect(checklistRepo.verifyOccasionBelongsToTrip).not.toHaveBeenCalled();
   });
 
@@ -266,7 +283,7 @@ describe('setCheck', () => {
     );
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
-      body: { checked: true },
+      body: { checked: true, location: '託運' },
     });
 
     await setCheck(req, res);
@@ -282,7 +299,7 @@ describe('setCheck', () => {
     vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(false);
     const { req, res } = createMockReqRes({
       params: { tripId: '1', occId: '2', itemId: '3' },
-      body: { checked: true },
+      body: { checked: true, location: '託運' },
     });
 
     await setCheck(req, res);
@@ -291,22 +308,45 @@ describe('setCheck', () => {
     expect(checklistRepo.setCheck).not.toHaveBeenCalled();
   });
 
-  it('returns 204 on success', async () => {
-    vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
-      true,
-    );
-    vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
-    const { req, res } = createMockReqRes({
-      params: { tripId: '1', occId: '2', itemId: '3' },
-      body: { checked: true },
-    });
+  it.each([
+    { itemLocations: ['託運', '隨身'], location: '隨身', stored: true },
+    { itemLocations: [''], location: '', stored: true },
+    { itemLocations: ['託運'], location: '隨身', stored: false },
+    { itemLocations: ['託運'], location: '', stored: false },
+  ])(
+    'stores=$stored for location "$location" on an item filed under $itemLocations',
+    async ({ itemLocations, location, stored }) => {
+      vi.mocked(checklistRepo.verifyOccasionBelongsToTrip).mockResolvedValue(
+        true,
+      );
+      vi.mocked(checklistRepo.verifyItemBelongsToTrip).mockResolvedValue(true);
+      vi.mocked(checklistRepo.getItemCheckLocations).mockResolvedValue(
+        itemLocations,
+      );
+      const { req, res } = createMockReqRes({
+        params: { tripId: '1', occId: '2', itemId: '3' },
+        body: { checked: true, location },
+      });
 
-    await setCheck(req, res);
+      await setCheck(req, res);
 
-    expect(checklistRepo.setCheck).toHaveBeenCalledWith(2, 3, true);
-    expect(res.status).toHaveBeenCalledWith(204);
-    expect(res.send).toHaveBeenCalled();
-  });
+      if (stored) {
+        expect(checklistRepo.setCheck).toHaveBeenCalledWith(
+          2,
+          3,
+          location,
+          true,
+        );
+        expect(res.status).toHaveBeenCalledWith(204);
+        expect(res.send).toHaveBeenCalled();
+      } else {
+        expectJsonStatus(res, 400, {
+          error: 'location is not a storage location of the checked unit',
+        });
+        expect(checklistRepo.setCheck).not.toHaveBeenCalled();
+      }
+    },
+  );
 });
 
 describe('unexpected repository errors', () => {
@@ -343,7 +383,7 @@ describe('unexpected repository errors', () => {
       handler: setCheck,
       req: {
         params: { tripId: '1', occId: '2', itemId: '3' },
-        body: { checked: true },
+        body: { checked: true, location: '託運' },
       },
       arrange: error =>
         vi

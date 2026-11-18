@@ -41,6 +41,7 @@ describe('tripItemSpecRepository', () => {
       const result = await createTripItemSpec(999, { name: '防水' });
 
       expect(result).toBeNull();
+      expect(mockPoolExecute).toHaveBeenCalledTimes(1);
     });
 
     it('inserts a spec and defaults storage_location to null when omitted', async () => {
@@ -53,6 +54,44 @@ describe('tripItemSpecRepository', () => {
       const result = await createTripItemSpec(1, { name: '防水' });
 
       expect(result).toEqual({ id: 700, name: '防水', storage_location: null });
+    });
+
+    it('clears the item location, then prunes the item checks down to the empty location', async () => {
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[{ id: 1 }]]]],
+        [{ insertId: 700 }],
+      );
+
+      await createTripItemSpec(1, { name: '防水', storage_location: '託運' });
+
+      const calls = mockPoolExecute.mock.calls.map(
+        ([sql, params]) =>
+          [(sql as string).replace(/\s+/g, ' '), params] as const,
+      );
+      const clearIndex = calls.findIndex(
+        ([sql]) =>
+          sql ===
+          'UPDATE checklist_trip_items SET storage_location = NULL WHERE id = ?',
+      );
+      const pruneIndex = calls.findIndex(([sql]) =>
+        sql.startsWith('DELETE FROM checklist_checks'),
+      );
+      expect(clearIndex).toBeGreaterThan(-1);
+      expect(pruneIndex).toBeGreaterThan(clearIndex);
+      expect(calls[clearIndex][1]).toEqual([1]);
+      expect(calls[pruneIndex][1]).toEqual([1, '']);
+    });
+
+    it('does not prune any checks when the item does not exist', async () => {
+      mockPoolExecute.mockResolvedValueOnce([[]]);
+
+      await createTripItemSpec(999, { name: '防水' });
+
+      expect(mockPoolExecute).not.toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM'),
+        expect.anything(),
+      );
     });
   });
 
@@ -94,30 +133,88 @@ describe('tripItemSpecRepository', () => {
 
       expect(result?.storage_location).toBe(expected);
     });
+
+    it.each([
+      {
+        name: 'prunes the spec checks when storage_location is provided',
+        data: { name: '新名稱', storage_location: '託運' },
+        pruned: true,
+      },
+      {
+        name: 'does not touch the spec checks when storage_location is omitted',
+        data: { name: '新名稱' },
+        pruned: false,
+      },
+    ])('$name', async ({ data, pruned }) => {
+      routeSql(
+        mockPoolExecute,
+        [[sql => sql.trim().startsWith('SELECT'), [[CURRENT_SPEC]]]],
+        [{ affectedRows: 1 }],
+      );
+
+      await updateTripItemSpec(1, data);
+
+      const deletes = mockPoolExecute.mock.calls.filter(([sql]) =>
+        (sql as string).includes('DELETE FROM checklist_spec_checks'),
+      );
+      expect(deletes.length > 0).toBe(pruned);
+    });
+
+    it.each([
+      { storage_location: '託運,隨身', expected: [1, '託運', '隨身'] },
+      { storage_location: null, expected: [1, ''] },
+    ])(
+      'prunes the spec checks to $expected when storage_location becomes $storage_location, never reading the item',
+      async ({ storage_location, expected }) => {
+        routeSql(
+          mockPoolExecute,
+          [[sql => sql.trim().startsWith('SELECT'), [[CURRENT_SPEC]]]],
+          [{ affectedRows: 1 }],
+        );
+
+        await updateTripItemSpec(1, { name: '新名稱', storage_location });
+
+        const deletes = mockPoolExecute.mock.calls.filter(([sql]) =>
+          (sql as string).includes('DELETE FROM checklist_spec_checks'),
+        );
+        expect(deletes).toHaveLength(1);
+        expect(deletes[0][1]).toEqual(expected);
+        const selects = mockPoolExecute.mock.calls.filter(([sql]) =>
+          (sql as string).trim().startsWith('SELECT'),
+        );
+        expect(selects).toHaveLength(1);
+      },
+    );
   });
 
   describe('setSpecCheck', () => {
-    it('upserts a checked=1 row when checked is true', async () => {
-      mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
+    it.each([{ location: '託運' }, { location: '' }])(
+      'upserts a checked=1 row for location "$location" when checked is true',
+      async ({ location }) => {
+        mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
 
-      await setSpecCheck(1, 700, true);
+        await setSpecCheck(1, 700, location, true);
 
-      expect(mockPoolExecute).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO checklist_spec_checks'),
-        [1, 700],
-      );
-    });
+        expect(mockPoolExecute).toHaveBeenCalledWith(
+          expect.stringContaining('INSERT INTO checklist_spec_checks'),
+          [1, 700, location],
+        );
+      },
+    );
 
-    it('deletes the row when checked is false', async () => {
-      mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
+    it.each([{ location: '隨身' }, { location: '' }])(
+      'deletes only the row of location "$location" when checked is false',
+      async ({ location }) => {
+        mockPoolExecute.mockResolvedValue([{ affectedRows: 1 }]);
 
-      await setSpecCheck(1, 700, false);
+        await setSpecCheck(1, 700, location, false);
 
-      expect(mockPoolExecute).toHaveBeenCalledWith(
-        'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ?',
-        [1, 700],
-      );
-    });
+        expect(mockPoolExecute).toHaveBeenCalledWith(
+          'DELETE FROM checklist_spec_checks WHERE checklist_occasion_id = ? AND checklist_trip_item_spec_id = ? AND location = ?',
+          [1, 700, location],
+        );
+      },
+    );
   });
 
   describe('deleteTripItemSpec', () => {

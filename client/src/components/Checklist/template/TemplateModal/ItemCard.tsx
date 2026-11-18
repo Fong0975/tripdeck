@@ -1,3 +1,4 @@
+import { summarizeSpecLocations } from '@/components/Checklist/shared/checklistUtils';
 import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistItem } from '@/types';
 
@@ -12,6 +13,8 @@ interface Props {
  */
 export default function ItemCard({ item }: Props) {
   const specs = item.specs ?? [];
+  const itemLocation =
+    specs.length > 0 ? summarizeSpecLocations(specs) : item.storage_location;
 
   return (
     <li className='rounded-xl border border-border bg-background p-4'>
@@ -20,9 +23,9 @@ export default function ItemCard({ item }: Props) {
         <span className='rounded-md bg-muted px-2 py-0.5 text-sm text-muted-foreground'>
           {item.quantity ? `× ${item.quantity}` : '些許'}
         </span>
-        {item.storage_location && (
+        {itemLocation && (
           <span className='flex items-center gap-1'>
-            <StorageBadges value={item.storage_location} />
+            <StorageBadges value={itemLocation} />
           </span>
         )}
       </div>

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CHECKED_REQUIRED_ERROR,
   INVALID_QUANTITY_ERROR,
+  LOCATION_REQUIRED_ERROR,
   NAME_REQUIRED_ERROR,
+  parseCheckBody,
   parseItemFields,
   parseSpecFields,
   parseTripItemPatch,
@@ -283,5 +286,44 @@ describe('parseTripItemPatch', () => {
 
   it.each(tests)('$label', ({ body, expected }) => {
     expect(parseTripItemPatch(body)).toStrictEqual(expected);
+  });
+});
+
+describe('parseCheckBody', () => {
+  const tests = [
+    {
+      label: 'accepts a checked state with a storage location',
+      body: { checked: true, location: '託運' },
+      expected: { ok: true, value: { checked: true, location: '託運' } },
+    },
+    {
+      label: 'accepts an unchecked state with the empty location',
+      body: { checked: false, location: '' },
+      expected: { ok: true, value: { checked: false, location: '' } },
+    },
+    {
+      label: 'rejects a non-boolean checked before looking at location',
+      body: { checked: 'true' },
+      expected: { ok: false, error: CHECKED_REQUIRED_ERROR },
+    },
+    {
+      label: 'rejects a missing location',
+      body: { checked: true },
+      expected: { ok: false, error: LOCATION_REQUIRED_ERROR },
+    },
+    {
+      label: 'rejects a null location',
+      body: { checked: true, location: null },
+      expected: { ok: false, error: LOCATION_REQUIRED_ERROR },
+    },
+    {
+      label: 'rejects a body that is not an object',
+      body: 'checked',
+      expected: { ok: false, error: CHECKED_REQUIRED_ERROR },
+    },
+  ];
+
+  it.each(tests)('$label', ({ body, expected }) => {
+    expect(parseCheckBody(body)).toStrictEqual(expected);
   });
 });

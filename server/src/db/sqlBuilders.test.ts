@@ -5,10 +5,12 @@ import {
   buildAddColumnSql,
   buildAddForeignKeySql,
   buildAddIndexSql,
+  buildAddUniqueKeySql,
   buildColumnSql,
   buildCreateTableSql,
   buildDeleteOrphansSql,
   buildDropForeignKeySql,
+  buildDropIndexSql,
   buildForeignKeyClause,
   buildIndexClause,
 } from './sqlBuilders';
@@ -163,6 +165,16 @@ describe('db/sqlBuilders', () => {
         name: 'DROP FOREIGN KEY',
         actual: () => buildDropForeignKeySql('foo', 'fk_foo_bar'),
         expected: 'ALTER TABLE foo DROP FOREIGN KEY fk_foo_bar',
+      },
+      {
+        name: 'ADD UNIQUE KEY',
+        actual: () => buildAddUniqueKeySql('baz', 'uq_a', ['x', 'y', 'z']),
+        expected: 'ALTER TABLE baz ADD UNIQUE KEY uq_a (x, y, z)',
+      },
+      {
+        name: 'DROP INDEX',
+        actual: () => buildDropIndexSql('baz', 'uq_a'),
+        expected: 'ALTER TABLE baz DROP INDEX uq_a',
       },
       {
         name: 'orphan DELETE via LEFT JOIN',

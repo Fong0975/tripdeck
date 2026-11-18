@@ -11,6 +11,10 @@ import {
   handleUpdateSpec,
   type SpecStore,
 } from './shared/specHandlers';
+import {
+  INVALID_CHECK_LOCATION_ERROR,
+  parseCheckBody,
+} from './shared/validation';
 
 /** Trip item specs are scoped by the item's `:tripId` trip. */
 const logger = createLogger('checklist-trip');
@@ -57,18 +61,39 @@ export async function deleteTripItemSpec(
 
 export async function setSpecCheck(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Set the checked state of an item spec within an occasion' */
+     #swagger.summary = 'Set the checked state of an item spec at one of its storage locations within an occasion'
+     #swagger.description = 'Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.'
+     #swagger.requestBody = {
+       required: true,
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             required: ['checked', 'location'],
+             properties: {
+               checked: { type: 'boolean', example: true },
+               location: {
+                 type: 'string',
+                 description: 'One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.',
+                 example: '託運'
+               }
+             }
+           }
+         }
+       }
+     }
+     #swagger.responses[204] = { description: 'Check state stored' }
+     #swagger.responses[400] = { description: 'checked is not a boolean, or location is not a string or not one of the locations of the spec' }
+     #swagger.responses[404] = { description: 'Occasion, item, or spec not found' } */
   const meta = idParams(req, 'tripId', 'occId', 'itemId', 'specId');
   const { tripId, occId, itemId, specId } = meta;
-  const { checked } = req.body as { checked?: unknown };
-  if (typeof checked !== 'boolean') {
-    logger.warn(
-      'Rejected set-spec-check request with a non-boolean value',
-      meta,
-    );
-    res.status(400).json({ error: 'checked must be a boolean' });
+  const body = parseCheckBody(req.body);
+  if (!body.ok) {
+    logger.warn('Rejected set-spec-check request with an invalid body', meta);
+    res.status(400).json({ error: body.error });
     return;
   }
+  const { checked, location } = body.value;
   if (!(await checklistRepo.verifyOccasionBelongsToTrip(occId, tripId))) {
     const message = 'Set-spec-check rejected: occasion not found';
     rejectNotFound(res, logger, 'Occasion', message, meta);
@@ -84,7 +109,20 @@ export async function setSpecCheck(req: Request, res: Response): Promise<void> {
     rejectNotFound(res, logger, 'Spec', message, meta);
     return;
   }
-  await checklistRepo.setSpecCheck(occId, specId, checked);
-  logger.debug('Trip checklist spec check toggled', { ...meta, checked });
+  const locations = await checklistRepo.getSpecCheckLocations(specId);
+  if (!locations.includes(location)) {
+    logger.warn('Set-spec-check rejected: location not stored on spec', {
+      ...meta,
+      location,
+    });
+    res.status(400).json({ error: INVALID_CHECK_LOCATION_ERROR });
+    return;
+  }
+  await checklistRepo.setSpecCheck(occId, specId, location, checked);
+  logger.debug('Trip checklist spec check toggled', {
+    ...meta,
+    location,
+    checked,
+  });
   res.status(204).send();
 }

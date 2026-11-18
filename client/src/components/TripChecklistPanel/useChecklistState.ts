@@ -1,9 +1,11 @@
+import { checkKey, parseCheckKey } from '@tripdeck/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { showToast } from '@/components/ui/toast';
 import type { TripChecklist } from '@/types';
 import { getTripChecklist, setCheck, setSpecCheck } from '@/utils/storage';
 
+import type { CheckGetter } from './checkUnits';
 import {
   changedChecks,
   pruneLocalChecks,
@@ -75,43 +77,59 @@ export function useChecklistState(
     return () => onDirtyChange?.(false);
   }, [onDirtyChange]);
 
-  const getCheck = useCallback(
-    (occId: number, itemId: number): boolean => {
-      const local = localChecks[occId]?.[itemId];
+  const getCheck = useCallback<CheckGetter>(
+    (occId, itemId, location) => {
+      const key = checkKey(itemId, location);
+      const local = localChecks[occId]?.[key];
       if (local !== undefined) {
         return local;
       }
       const occ = checklist?.occasions.find(o => o.id === occId);
-      return !!occ?.checks[itemId];
+      return !!occ?.checks[key];
     },
     [checklist, localChecks],
   );
 
-  const getSpecCheck = useCallback(
-    (occId: number, specId: number): boolean => {
-      const local = localSpecChecks[occId]?.[specId];
+  const getSpecCheck = useCallback<CheckGetter>(
+    (occId, specId, location) => {
+      const key = checkKey(specId, location);
+      const local = localSpecChecks[occId]?.[key];
       if (local !== undefined) {
         return local;
       }
       const occ = checklist?.occasions.find(o => o.id === occId);
-      return !!occ?.specChecks[specId];
+      return !!occ?.specChecks[key];
     },
     [checklist, localSpecChecks],
   );
 
-  const handleToggleCheck = (occId: number, itemId: number) => {
-    const current = getCheck(occId, itemId);
+  const handleToggleCheck = (
+    occId: number,
+    itemId: number,
+    location: string,
+  ) => {
+    const current = getCheck(occId, itemId, location);
     setLocalChecks(prev => ({
       ...prev,
-      [occId]: { ...(prev[occId] ?? {}), [itemId]: !current },
+      [occId]: {
+        ...(prev[occId] ?? {}),
+        [checkKey(itemId, location)]: !current,
+      },
     }));
   };
 
-  const handleToggleSpecCheck = (occId: number, specId: number) => {
-    const current = getSpecCheck(occId, specId);
+  const handleToggleSpecCheck = (
+    occId: number,
+    specId: number,
+    location: string,
+  ) => {
+    const current = getSpecCheck(occId, specId, location);
     setLocalSpecChecks(prev => ({
       ...prev,
-      [occId]: { ...(prev[occId] ?? {}), [specId]: !current },
+      [occId]: {
+        ...(prev[occId] ?? {}),
+        [checkKey(specId, location)]: !current,
+      },
     }));
   };
 
@@ -133,19 +151,34 @@ export function useChecklistState(
       );
       const updates: Promise<void>[] = [];
       for (const occ of checklist.occasions) {
-        for (const [itemId, checked] of changedChecks(
+        for (const [key, checked] of changedChecks(
           localChecks[occ.id],
           occ.checks,
         )) {
-          updates.push(setCheck(tripId, occ.id, itemId, checked));
+          const parsed = parseCheckKey(key);
+          if (parsed) {
+            updates.push(
+              setCheck(tripId, occ.id, parsed.id, parsed.location, checked),
+            );
+          }
         }
-        for (const [specId, checked] of changedChecks(
+        for (const [key, checked] of changedChecks(
           localSpecChecks[occ.id],
           occ.specChecks,
         )) {
-          const itemId = itemIdBySpecId.get(specId);
-          if (itemId !== undefined) {
-            updates.push(setSpecCheck(tripId, occ.id, itemId, specId, checked));
+          const parsed = parseCheckKey(key);
+          const itemId = parsed ? itemIdBySpecId.get(parsed.id) : undefined;
+          if (parsed && itemId !== undefined) {
+            updates.push(
+              setSpecCheck(
+                tripId,
+                occ.id,
+                itemId,
+                parsed.id,
+                parsed.location,
+                checked,
+              ),
+            );
           }
         }
       }
