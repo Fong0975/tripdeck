@@ -1,5 +1,6 @@
-import { Fragment } from 'react';
+import { type CSSProperties, Fragment, useRef } from 'react';
 
+import { useElementHeight } from '@/hooks/useElementHeight';
 import type { TripChecklist } from '@/types';
 
 import ChecklistItemRow from './ChecklistItemRow';
@@ -27,14 +28,21 @@ export default function ChecklistTable({
   onToggleSpecCheck,
   viewMode = 'category',
 }: Props) {
+  const headRef = useRef<HTMLTableSectionElement>(null);
+  const headHeight = useElementHeight(headRef);
+
   return (
-    <div className='flex-1 overflow-auto'>
+    <div
+      className='flex-1 overflow-auto'
+      style={{ '--checklist-head-h': `${headHeight}px` } as CSSProperties}
+    >
       <div className='mx-auto w-full sm:w-fit'>
         <table className='w-full border-collapse text-base sm:w-auto'>
           <ChecklistTableHeader
             checklist={checklist}
             getCheck={getCheck}
             getSpecCheck={getSpecCheck}
+            headRef={headRef}
           />
 
           {viewMode === 'storage' ? (
