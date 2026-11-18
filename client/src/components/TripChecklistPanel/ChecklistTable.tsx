@@ -3,6 +3,11 @@ import { type CSSProperties, Fragment, useRef } from 'react';
 import { useElementHeight } from '@/hooks/useElementHeight';
 import type { TripChecklist } from '@/types';
 
+import {
+  filterCategories,
+  NO_HIDDEN_KEYS,
+  type HiddenKeys,
+} from './checklistFilter';
 import ChecklistItemRow from './ChecklistItemRow';
 import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
@@ -18,6 +23,11 @@ interface Props {
   onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
   /** How rows are grouped; defaults to by category. */
   viewMode?: ViewMode;
+  /**
+   * Items the filter hides from the rows. The header progress always counts
+   * the whole checklist.
+   */
+  hidden?: HiddenKeys;
 }
 
 export default function ChecklistTable({
@@ -27,6 +37,7 @@ export default function ChecklistTable({
   onToggleCheck,
   onToggleSpecCheck,
   viewMode = 'category',
+  hidden = NO_HIDDEN_KEYS,
 }: Props) {
   const headRef = useRef<HTMLTableSectionElement>(null);
   const headHeight = useElementHeight(headRef);
@@ -48,6 +59,7 @@ export default function ChecklistTable({
           {viewMode === 'storage' ? (
             <ChecklistStorageBody
               checklist={checklist}
+              hidden={hidden}
               getCheck={getCheck}
               getSpecCheck={getSpecCheck}
               onToggleCheck={onToggleCheck}
@@ -55,7 +67,7 @@ export default function ChecklistTable({
             />
           ) : (
             <tbody>
-              {checklist.categories.map(cat => (
+              {filterCategories(checklist.categories, hidden).map(cat => (
                 <Fragment key={cat.id}>
                   <GroupHeaderRow
                     label={cat.name}

@@ -5,6 +5,11 @@ import { useLocationLabelSet } from '@/components/Checklist/locations/LocationLa
 import type { TripChecklist } from '@/types';
 
 import CategorySubheaderRow from './CategorySubheaderRow';
+import {
+  filterStorageGroups,
+  NO_HIDDEN_KEYS,
+  type HiddenKeys,
+} from './checklistFilter';
 import ChecklistStorageRow from './ChecklistStorageRow';
 import type { CheckGetter } from './checkUnits';
 import {
@@ -16,6 +21,8 @@ import GroupHeaderRow from './GroupHeaderRow';
 
 interface Props {
   checklist: TripChecklist;
+  /** Items the filter hides; defaults to showing everything. */
+  hidden?: HiddenKeys;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
   onToggleCheck: (occId: number, itemId: number, location: string) => void;
@@ -25,6 +32,7 @@ interface Props {
 /** Table body that lists the checklist grouped by storage location. */
 export default function ChecklistStorageBody({
   checklist,
+  hidden = NO_HIDDEN_KEYS,
   getCheck,
   getSpecCheck,
   onToggleCheck,
@@ -34,7 +42,10 @@ export default function ChecklistStorageBody({
 
   return (
     <tbody>
-      {groupByStorage(checklist.categories, labels).map(group => (
+      {filterStorageGroups(
+        groupByStorage(checklist.categories, labels),
+        hidden,
+      ).map(group => (
         <Fragment key={group.key}>
           <GroupHeaderRow
             label={

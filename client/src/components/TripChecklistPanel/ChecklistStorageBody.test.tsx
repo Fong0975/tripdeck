@@ -292,3 +292,46 @@ describe('ChecklistStorageBody with user-defined labels', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('ChecklistStorageBody filter', () => {
+  function renderFiltered(hidden: string[]) {
+    render(
+      <table>
+        <ChecklistStorageBody
+          checklist={makeChecklist()}
+          hidden={new Set(hidden)}
+          getCheck={() => false}
+          getSpecCheck={() => false}
+          onToggleCheck={vi.fn()}
+          onToggleSpecCheck={vi.fn()}
+        />
+      </table>,
+    );
+  }
+
+  it.each([
+    {
+      name: 'hides an item only in the given group',
+      hidden: ['10|託運'],
+      headers: ['託運1 項', '隨身2 項', '未指定存放位置1 項'],
+    },
+    {
+      name: 'drops a group whose items are all hidden',
+      hidden: ['11|', '20|', '10|隨身'],
+      headers: ['託運2 項', '隨身1 項'],
+    },
+    {
+      name: 'ignores keys that match no group',
+      hidden: ['10|手提', '99|託運'],
+      headers: ['託運2 項', '隨身2 項', '未指定存放位置1 項'],
+    },
+  ])('$name', ({ hidden, headers }) => {
+    renderFiltered(hidden);
+
+    expect(
+      screen
+        .getAllByText(/ 項$/)
+        .map(count => count.parentElement?.textContent),
+    ).toEqual(headers);
+  });
+});

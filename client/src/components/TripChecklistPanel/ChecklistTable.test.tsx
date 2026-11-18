@@ -509,3 +509,62 @@ describe('ChecklistTable', () => {
     });
   });
 });
+
+describe('ChecklistTable filter', () => {
+  function renderFiltered(hidden: string[], viewMode?: ViewMode) {
+    render(
+      <ChecklistTable
+        checklist={makeChecklist()}
+        getCheck={() => false}
+        getSpecCheck={() => false}
+        onToggleCheck={vi.fn()}
+        onToggleSpecCheck={vi.fn()}
+        viewMode={viewMode}
+        hidden={new Set(hidden)}
+      />,
+    );
+  }
+
+  it.each([
+    {
+      name: 'hides a hidden item in the category view',
+      hidden: ['10|1'],
+      visible: ['Item B'],
+      absent: ['Item A'],
+    },
+    {
+      name: 'ignores a key of another category',
+      hidden: ['10|9'],
+      visible: ['Item A', 'Item B'],
+      absent: [],
+    },
+    {
+      name: 'drops a category whose items are all hidden',
+      hidden: ['10|1', '20|1'],
+      visible: [],
+      absent: ['Category A', 'Item A', 'Item B'],
+    },
+  ])('$name', ({ hidden, visible, absent }) => {
+    renderFiltered(hidden);
+
+    for (const text of visible) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    for (const text of absent) {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    }
+  });
+
+  it('hides an item in the storage view with the storage group key', () => {
+    renderFiltered(['10|'], 'storage');
+
+    expect(screen.queryByText('Item A')).not.toBeInTheDocument();
+    expect(screen.getByText('Item B')).toBeInTheDocument();
+  });
+
+  it('keeps counting the whole checklist in the progress', () => {
+    renderFiltered(['10|1']);
+
+    expect(screen.getAllByText('0 / 2')).toHaveLength(2);
+  });
+});
