@@ -66,7 +66,7 @@ export default function ViewSettingsMenu({
           onClose={() => setOpen(false)}
         >
           <div className='flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-3 p-1'>
-            <section className='flex flex-col gap-1.5'>
+            <section className='flex flex-col items-start gap-1.5'>
               <h3 className='text-xs font-medium text-muted-foreground'>
                 檢視方式
               </h3>
