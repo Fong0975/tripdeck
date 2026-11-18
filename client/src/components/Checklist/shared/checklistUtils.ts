@@ -1,23 +1,21 @@
-export type StorageOption = '託運' | '隨身';
+import {
+  STORAGE_OPTIONS,
+  getEffectiveLocations,
+  type StorageOption,
+} from '@tripdeck/shared';
+
+export { STORAGE_OPTIONS, type StorageOption };
 
 let _tempId = -1;
 export function nextTempId(): number {
   return _tempId--;
 }
 
-export const STORAGE_OPTIONS: StorageOption[] = ['託運', '隨身'];
-
 export function hasStorageOption(
   value: string | null | undefined,
   option: StorageOption,
 ): boolean {
-  if (!value) {
-    return false;
-  }
-  return value
-    .split(',')
-    .map(s => s.trim())
-    .includes(option);
+  return getEffectiveLocations(value).includes(option);
 }
 
 export function toggleStorageOption(

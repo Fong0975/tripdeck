@@ -1,10 +1,7 @@
 import type { TripChecklist } from '@/types';
 
-import {
-  countCheckedUnits,
-  countCheckUnits,
-  type CheckGetter,
-} from './checkProgress';
+import { countCheckedUnits, countCheckUnits } from './checkProgress';
+import type { CheckGetter } from './checkUnits';
 
 interface Props {
   checklist: TripChecklist;

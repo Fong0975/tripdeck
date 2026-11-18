@@ -186,11 +186,12 @@ export async function setCheck(
   tripId: number,
   occId: number,
   itemId: number,
+  location: string,
   checked: boolean,
 ): Promise<void> {
   await api<void>(
     `/api/trips/${tripId}/checklist/occasions/${occId}/items/${itemId}/check`,
-    { method: 'PUT', ...json({ checked }) },
+    { method: 'PUT', ...json({ checked, location }) },
   );
 }
 
@@ -199,10 +200,11 @@ export async function setSpecCheck(
   occId: number,
   itemId: number,
   specId: number,
+  location: string,
   checked: boolean,
 ): Promise<void> {
   await api<void>(
     `/api/trips/${tripId}/checklist/occasions/${occId}/items/${itemId}/specs/${specId}/check`,
-    { method: 'PUT', ...json({ checked }) },
+    { method: 'PUT', ...json({ checked, location }) },
   );
 }

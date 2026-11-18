@@ -2,10 +2,14 @@ import StorageBadges from '@/components/Checklist/shared/StorageBadges';
 import type { ChecklistOccasion, ItemSpec } from '@/types';
 
 import CheckCell from './CheckCell';
-import type { CheckGetter } from './checkProgress';
+import { getCheckCellLabel, type CheckGetter } from './checkUnits';
 
 interface Props {
   spec: ItemSpec;
+  /** The location this row checks; `''` when the spec has none. */
+  location: string;
+  /** Whether to show the location badge next to the spec name. */
+  showLocation: boolean;
   /** Zero-based position of the spec within its item. */
   specIndex: number;
   /** Zero-based position of the parent item, used for row striping. */
@@ -13,12 +17,17 @@ interface Props {
   isLast: boolean;
   occasions: ChecklistOccasion[];
   getSpecCheck: CheckGetter;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
 }
 
-/** A spec of a checklist item, with its own check cell per occasion. */
+/**
+ * One row of a spec at one of its locations, with its own check cell per
+ * occasion. A spec filed under several locations has one such row each.
+ */
 export default function ChecklistSpecRow({
   spec,
+  location,
+  showLocation,
   specIndex,
   itemIndex,
   isLast,
@@ -38,16 +47,18 @@ export default function ChecklistSpecRow({
             {specIndex + 1}.
           </span>
           <span className='text-sm text-foreground/80'>{spec.name}</span>
-          <StorageBadges value={spec.storage_location} compact />
+          {showLocation && <StorageBadges value={location} compact />}
         </div>
       </td>
 
       {occasions.map(occ => (
         <CheckCell
           key={occ.id}
-          state={getSpecCheck(occ.id, spec.id) ? 'checked' : 'unchecked'}
-          label={`${spec.name} - ${occ.name}`}
-          onToggle={() => onToggleSpecCheck(occ.id, spec.id)}
+          state={
+            getSpecCheck(occ.id, spec.id, location) ? 'checked' : 'unchecked'
+          }
+          label={getCheckCellLabel(spec.name, location, occ.name)}
+          onToggle={() => onToggleSpecCheck(occ.id, spec.id, location)}
         />
       ))}
 

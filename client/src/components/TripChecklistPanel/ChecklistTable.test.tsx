@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -31,22 +31,27 @@ function makeChecklist(overrides: Partial<TripChecklist> = {}): TripChecklist {
   });
 }
 
+type Getter = (occId: number, id: number, location: string) => boolean;
+
 function renderTable(
   checklist: TripChecklist,
-  getCheck: (occId: number, id: number) => boolean = () => false,
-  getSpecCheck: (occId: number, id: number) => boolean = () => false,
+  getCheck: Getter = () => false,
+  getSpecCheck: Getter = () => false,
   viewMode?: ViewMode,
 ) {
+  const onToggleCheck = vi.fn();
+  const onToggleSpecCheck = vi.fn();
   render(
     <ChecklistTable
       checklist={checklist}
       getCheck={getCheck}
       getSpecCheck={getSpecCheck}
-      onToggleCheck={vi.fn()}
-      onToggleSpecCheck={vi.fn()}
+      onToggleCheck={onToggleCheck}
+      onToggleSpecCheck={onToggleSpecCheck}
       viewMode={viewMode}
     />,
   );
+  return { onToggleCheck, onToggleSpecCheck };
 }
 
 describe('ChecklistTable', () => {
@@ -216,16 +221,149 @@ describe('ChecklistTable', () => {
       },
     );
 
-    it('keeps the per-occasion progress identical to the category view', () => {
+    it('counts a multi-location item once per location, like the category view', () => {
       renderTable(
         storageChecklist,
-        (occId, id) => occId === 1 && id === 10,
+        (occId, id, location) =>
+          occId === 1 && id === 10 && location === '託運',
         undefined,
         'storage',
       );
 
-      // Jacket is listed twice but counted once: 1 of 3 units.
-      expect(screen.getByText('1 / 3')).toBeInTheDocument();
+      // Jacket (2 locations) + Socks + USB-C = 4 units, 1 of them checked.
+      expect(screen.getByText('1 / 4')).toBeInTheDocument();
+    });
+  });
+
+  describe('per-location checks', () => {
+    const jacketChecklist = makeChecklist({
+      categories: [
+        makeChecklistCategory({
+          items: [
+            makeChecklistItem({
+              id: 10,
+              name: 'Jacket',
+              storage_location: '託運,隨身',
+            }),
+          ],
+        }),
+      ],
+    });
+    const checkedAtCheckedBaggage: Getter = (occId, id, location) =>
+      occId === 1 && id === 10 && location === '託運';
+
+    it('splits a multi-location item into one independently checked row per location in the category view', () => {
+      const { onToggleCheck } = renderTable(
+        jacketChecklist,
+        checkedAtCheckedBaggage,
+      );
+
+      expect(screen.getAllByText('Jacket')).toHaveLength(2);
+      expect(screen.getByLabelText('Jacket（託運） - Occ A')).toBeChecked();
+      expect(screen.getByLabelText('Jacket（隨身） - Occ A')).not.toBeChecked();
+
+      fireEvent.click(screen.getByLabelText('Jacket（隨身） - Occ B'));
+
+      expect(onToggleCheck).toHaveBeenCalledTimes(1);
+      expect(onToggleCheck).toHaveBeenCalledWith(2, 10, '隨身');
+    });
+
+    it('checks the two groups of a multi-location item independently in the storage view', () => {
+      const { onToggleCheck } = renderTable(
+        jacketChecklist,
+        checkedAtCheckedBaggage,
+        undefined,
+        'storage',
+      );
+
+      // Groups are ordered 託運 then 隨身, one Jacket row each, Occ A column.
+      const [inCheckedBaggage, inCarryOn] = screen
+        .getAllByLabelText('Jacket - Occ A')
+        .map(box => box as HTMLInputElement);
+      expect(inCheckedBaggage).toBeChecked();
+      expect(inCarryOn).not.toBeChecked();
+
+      fireEvent.click(inCarryOn);
+
+      expect(onToggleCheck).toHaveBeenCalledTimes(1);
+      expect(onToggleCheck).toHaveBeenCalledWith(1, 10, '隨身');
+    });
+
+    it.each([
+      {
+        name: 'item without location',
+        storage_location: null,
+        labels: ['Jacket - Occ A'],
+      },
+      {
+        name: 'item with one location',
+        storage_location: '隨身',
+        labels: ['Jacket（隨身） - Occ A'],
+      },
+      {
+        name: 'item with both locations',
+        storage_location: '託運,隨身',
+        labels: ['Jacket（託運） - Occ A', 'Jacket（隨身） - Occ A'],
+      },
+    ])(
+      'labels the category view check cells of an $name',
+      ({ storage_location, labels }) => {
+        renderTable(
+          makeChecklist({
+            categories: [
+              makeChecklistCategory({
+                items: [
+                  makeChecklistItem({
+                    id: 10,
+                    name: 'Jacket',
+                    storage_location,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        );
+
+        for (const label of labels) {
+          expect(screen.getByLabelText(label)).toBeInTheDocument();
+        }
+        expect(screen.getAllByLabelText(/^Jacket.* - Occ A$/)).toHaveLength(
+          labels.length,
+        );
+      },
+    );
+
+    it('splits a spec inheriting a multi-location item into one row per location and keeps the item row read-only', () => {
+      const { onToggleSpecCheck } = renderTable(
+        makeChecklist({
+          categories: [
+            makeChecklistCategory({
+              items: [
+                makeChecklistItem({
+                  id: 30,
+                  name: 'Charger',
+                  storage_location: '託運,隨身',
+                  specs: [makeChecklistSpec({ id: 301, name: 'USB-C' })],
+                }),
+              ],
+            }),
+          ],
+        }),
+        undefined,
+        (occId, id, location) =>
+          occId === 1 && id === 301 && location === '隨身',
+      );
+
+      expect(screen.getByLabelText('Charger - Occ A')).toBeDisabled();
+      // Only one of the two units is checked, so the item row is partial.
+      expect(screen.getByLabelText('Charger - Occ A')).toBePartiallyChecked();
+      expect(screen.getByLabelText('USB-C（託運） - Occ A')).not.toBeChecked();
+      expect(screen.getByLabelText('USB-C（隨身） - Occ A')).toBeChecked();
+
+      fireEvent.click(screen.getByLabelText('USB-C（託運） - Occ B'));
+
+      expect(onToggleSpecCheck).toHaveBeenCalledTimes(1);
+      expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 301, '託運');
     });
   });
 });

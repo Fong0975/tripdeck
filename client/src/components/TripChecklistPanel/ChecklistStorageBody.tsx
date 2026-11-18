@@ -4,7 +4,7 @@ import type { TripChecklist } from '@/types';
 
 import CategorySubheaderRow from './CategorySubheaderRow';
 import ChecklistStorageRow from './ChecklistStorageRow';
-import type { CheckGetter } from './checkProgress';
+import type { CheckGetter } from './checkUnits';
 import {
   groupByStorage,
   splitByCategory,
@@ -22,8 +22,8 @@ interface Props {
   checklist: TripChecklist;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
-  onToggleCheck: (occId: number, itemId: number) => void;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleCheck: (occId: number, itemId: number, location: string) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
 }
 
 /** Table body that lists the checklist grouped by storage location. */

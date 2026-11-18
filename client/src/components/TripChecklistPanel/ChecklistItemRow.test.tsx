@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +6,7 @@ import { makeChecklistItem } from '@/test-utils/fixtures';
 import type { ChecklistItem, ChecklistOccasion } from '@/types';
 
 import ChecklistItemRow from './ChecklistItemRow';
+import type { CheckGetter } from './checkUnits';
 
 function makeItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
   return makeChecklistItem({
@@ -26,9 +27,9 @@ const occasions: ChecklistOccasion[] = [
 
 function renderRow(
   item: ChecklistItem,
-  getCheck: (occId: number, itemId: number) => boolean = () => false,
+  getCheck: CheckGetter = () => false,
   onToggleCheck = vi.fn(),
-  getSpecCheck: (occId: number, specId: number) => boolean = () => false,
+  getSpecCheck: CheckGetter = () => false,
   onToggleSpecCheck = vi.fn(),
 ) {
   render(
@@ -115,7 +116,7 @@ describe('ChecklistItemRow', () => {
     const cell = checkbox.closest('td') as HTMLElement;
     await user.click(cell);
 
-    expect(onToggleCheck).toHaveBeenCalledWith(1, 10);
+    expect(onToggleCheck).toHaveBeenCalledWith(1, 10, '');
   });
 
   it('calls onToggleCheck exactly once when the checkbox itself is clicked', async () => {
@@ -125,7 +126,7 @@ describe('ChecklistItemRow', () => {
     await user.click(screen.getAllByRole('checkbox')[0]);
 
     expect(onToggleCheck).toHaveBeenCalledTimes(1);
-    expect(onToggleCheck).toHaveBeenCalledWith(1, 10);
+    expect(onToggleCheck).toHaveBeenCalledWith(1, 10, '');
   });
 
   it('renders one extra checkbox row per spec for each occasion', () => {
@@ -196,7 +197,181 @@ describe('ChecklistItemRow', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Spec B - Occ B' }));
 
     expect(onToggleSpecCheck).toHaveBeenCalledTimes(1);
-    expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 102);
+    expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 102, '');
     expect(onToggleCheck).not.toHaveBeenCalled();
+  });
+
+  describe('an item without specs filed under several locations', () => {
+    const multiLocationItem = makeItem({ storage_location: '託運,隨身' });
+
+    it('renders one independently labelled row per location', () => {
+      renderRow(multiLocationItem);
+
+      expect(screen.getAllByText('Item A')).toHaveLength(2);
+      expect(screen.getAllByRole('checkbox')).toHaveLength(4);
+      expect(
+        screen.getByRole('checkbox', { name: 'Item A（託運） - Occ A' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('checkbox', { name: 'Item A（隨身） - Occ B' }),
+      ).toBeInTheDocument();
+    });
+
+    it.each([{ location: '託運' }, { location: '隨身' }])(
+      'shows only the $location badge on its own row',
+      ({ location }) => {
+        renderRow(multiLocationItem);
+
+        const row = screen
+          .getByRole('checkbox', { name: `Item A（${location}） - Occ A` })
+          // eslint-disable-next-line testing-library/no-node-access
+          .closest('tr') as HTMLElement;
+        const badges = within(row)
+          .getAllByText(/^(託運|隨身)$/)
+          .map(badge => badge.textContent);
+        expect(badges).toEqual([location]);
+      },
+    );
+
+    it.each([
+      {
+        description: 'only 託運 is checked',
+        checkedLocation: '託運',
+        expectedChecked: ['Item A（託運） - Occ A'],
+      },
+      {
+        description: 'only 隨身 is checked',
+        checkedLocation: '隨身',
+        expectedChecked: ['Item A（隨身） - Occ A'],
+      },
+    ])(
+      'checks just the matching row when $description',
+      ({ checkedLocation, expectedChecked }) => {
+        const getCheck = vi.fn<CheckGetter>(
+          (occId, _itemId, location) =>
+            occId === 1 && location === checkedLocation,
+        );
+        renderRow(multiLocationItem, getCheck);
+
+        const checked = screen
+          .getAllByRole('checkbox')
+          .filter(box => (box as HTMLInputElement).checked)
+          .map(box => box.getAttribute('aria-label'));
+        expect(checked).toEqual(expectedChecked);
+        expect(getCheck).toHaveBeenCalledWith(1, 10, '託運');
+        expect(getCheck).toHaveBeenCalledWith(1, 10, '隨身');
+      },
+    );
+
+    it.each([{ location: '託運' }, { location: '隨身' }])(
+      'toggles only the $location check when its checkbox is clicked',
+      async ({ location }) => {
+        const user = userEvent.setup();
+        const { onToggleCheck } = renderRow(multiLocationItem);
+
+        await user.click(
+          screen.getByRole('checkbox', {
+            name: `Item A（${location}） - Occ B`,
+          }),
+        );
+
+        expect(onToggleCheck).toHaveBeenCalledTimes(1);
+        expect(onToggleCheck).toHaveBeenCalledWith(2, 10, location);
+      },
+    );
+  });
+
+  describe('an item with specs filed under several locations', () => {
+    const specItem = makeItem({
+      storage_location: '託運,隨身',
+      specs: [{ id: 101, name: 'Spec A', storage_location: null }],
+    });
+
+    it('renders a read-only item row and one spec row per location', () => {
+      renderRow(specItem);
+
+      expect(screen.getAllByText('1.')).toHaveLength(2);
+      expect(
+        screen.getByRole('checkbox', { name: 'Item A - Occ A' }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('checkbox', { name: 'Spec A（託運） - Occ A' }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole('checkbox', { name: 'Spec A（隨身） - Occ A' }),
+      ).toBeEnabled();
+    });
+
+    it.each([
+      { description: 'no location is checked', checked: [], expected: 'none' },
+      {
+        description: 'one location is checked',
+        checked: ['託運'],
+        expected: 'partial',
+      },
+      {
+        description: 'every location is checked',
+        checked: ['託運', '隨身'],
+        expected: 'all',
+      },
+    ])('derives the item state when $description', ({ checked, expected }) => {
+      renderRow(
+        specItem,
+        () => false,
+        vi.fn(),
+        (occId, _specId, location) => occId === 1 && checked.includes(location),
+      );
+
+      const itemCheckbox = screen.getByRole('checkbox', {
+        name: 'Item A - Occ A',
+      });
+      if (expected === 'all') {
+        expect(itemCheckbox).toBeChecked();
+      } else if (expected === 'partial') {
+        expect(itemCheckbox).toBePartiallyChecked();
+      } else {
+        expect(itemCheckbox).not.toBeChecked();
+        expect(itemCheckbox).not.toBePartiallyChecked();
+      }
+    });
+
+    it('toggles the spec check of the clicked location only', async () => {
+      const user = userEvent.setup();
+      const { onToggleSpecCheck } = renderRow(specItem);
+
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Spec A（隨身） - Occ B' }),
+      );
+
+      expect(onToggleSpecCheck).toHaveBeenCalledTimes(1);
+      expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 101, '隨身');
+    });
+  });
+
+  describe('spec location badges', () => {
+    it.each([
+      {
+        description: 'a spec inheriting a single item location shows none',
+        item: makeItem({
+          storage_location: '託運',
+          specs: [{ id: 101, name: 'Spec A', storage_location: null }],
+        }),
+        expectedBadgeCount: 1,
+      },
+      {
+        description: 'a spec with its own location shows it beside its name',
+        item: makeItem({
+          storage_location: '託運',
+          specs: [{ id: 101, name: 'Spec A', storage_location: '隨身' }],
+        }),
+        expectedBadgeCount: 2,
+      },
+    ])('$description', ({ item, expectedBadgeCount }) => {
+      renderRow(item);
+
+      expect(screen.getAllByText(/^(託運|隨身)$/)).toHaveLength(
+        expectedBadgeCount,
+      );
+    });
   });
 });

@@ -6,6 +6,7 @@ import { makeChecklistItem, makeChecklistSpec } from '@/test-utils/fixtures';
 import type { ChecklistOccasion } from '@/types';
 
 import ChecklistStorageRow from './ChecklistStorageRow';
+import type { CheckGetter } from './checkUnits';
 import type { StorageUnit } from './groupByStorage';
 
 const occasions: ChecklistOccasion[] = [
@@ -17,6 +18,7 @@ const itemUnit: StorageUnit = {
   kind: 'item',
   categoryId: 1,
   categoryName: 'Clothes',
+  location: '託運',
   item: makeChecklistItem({
     id: 10,
     name: 'Jacket',
@@ -30,14 +32,15 @@ const specUnit: StorageUnit = {
   kind: 'spec',
   categoryId: 2,
   categoryName: 'Gadgets',
+  location: '隨身',
   item: specItem,
   spec: makeChecklistSpec({ id: 201, name: 'USB-C' }),
 };
 
 function renderRow(
   unit: StorageUnit,
-  getCheck: (occId: number, id: number) => boolean = () => false,
-  getSpecCheck: (occId: number, id: number) => boolean = () => false,
+  getCheck: CheckGetter = () => false,
+  getSpecCheck: CheckGetter = () => false,
 ) {
   const onToggleCheck = vi.fn();
   const onToggleSpecCheck = vi.fn();
@@ -93,7 +96,8 @@ describe('ChecklistStorageRow', () => {
       description: 'an item unit reads getCheck',
       unit: itemUnit,
       label: 'Jacket - Occ A',
-      getCheck: (occId: number, id: number) => occId === 1 && id === 10,
+      getCheck: (occId: number, id: number, location: string) =>
+        occId === 1 && id === 10 && location === '託運',
       getSpecCheck: () => false,
     },
     {
@@ -101,7 +105,8 @@ describe('ChecklistStorageRow', () => {
       unit: specUnit,
       label: 'USB-C - Occ A',
       getCheck: () => false,
-      getSpecCheck: (occId: number, id: number) => occId === 1 && id === 201,
+      getSpecCheck: (occId: number, id: number, location: string) =>
+        occId === 1 && id === 201 && location === '隨身',
     },
   ])('$description', ({ unit, label, getCheck, getSpecCheck }) => {
     renderRow(unit, getCheck, getSpecCheck);
@@ -115,7 +120,7 @@ describe('ChecklistStorageRow', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Jacket - Occ B' }));
 
-    expect(onToggleCheck).toHaveBeenCalledWith(2, 10);
+    expect(onToggleCheck).toHaveBeenCalledWith(2, 10, '託運');
     expect(onToggleSpecCheck).not.toHaveBeenCalled();
   });
 
@@ -125,7 +130,34 @@ describe('ChecklistStorageRow', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'USB-C - Occ B' }));
 
-    expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 201);
+    expect(onToggleSpecCheck).toHaveBeenCalledWith(2, 201, '隨身');
     expect(onToggleCheck).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { description: 'an item unit', unit: itemUnit, kind: 'item' },
+    { description: 'a spec unit', unit: specUnit, kind: 'spec' },
+  ])(
+    'reads and toggles only the unit location for $description',
+    async ({ unit, kind }) => {
+      const user = userEvent.setup();
+      const getCheck = vi.fn<CheckGetter>(() => false);
+      const getSpecCheck = vi.fn<CheckGetter>(() => false);
+      const { onToggleCheck, onToggleSpecCheck } = renderRow(
+        unit,
+        getCheck,
+        getSpecCheck,
+      );
+
+      await user.click(screen.getAllByRole('checkbox')[0]);
+
+      const read = kind === 'item' ? getCheck : getSpecCheck;
+      const toggled = kind === 'item' ? onToggleCheck : onToggleSpecCheck;
+      read.mock.calls.forEach(([, , location]) => {
+        expect(location).toBe(unit.location);
+      });
+      expect(toggled).toHaveBeenCalledTimes(1);
+      expect(toggled.mock.calls[0][2]).toBe(unit.location);
+    },
+  );
 });

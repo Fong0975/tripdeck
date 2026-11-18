@@ -5,7 +5,7 @@ import type { TripChecklist } from '@/types';
 import ChecklistItemRow from './ChecklistItemRow';
 import ChecklistStorageBody from './ChecklistStorageBody';
 import ChecklistTableHeader from './ChecklistTableHeader';
-import type { CheckGetter } from './checkProgress';
+import type { CheckGetter } from './checkUnits';
 import GroupHeaderRow from './GroupHeaderRow';
 import type { ViewMode } from './viewMode';
 
@@ -13,8 +13,8 @@ interface Props {
   checklist: TripChecklist;
   getCheck: CheckGetter;
   getSpecCheck: CheckGetter;
-  onToggleCheck: (occId: number, itemId: number) => void;
-  onToggleSpecCheck: (occId: number, specId: number) => void;
+  onToggleCheck: (occId: number, itemId: number, location: string) => void;
+  onToggleSpecCheck: (occId: number, specId: number, location: string) => void;
   /** How rows are grouped; defaults to by category. */
   viewMode?: ViewMode;
 }
