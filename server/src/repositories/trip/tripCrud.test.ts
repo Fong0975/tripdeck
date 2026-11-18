@@ -219,16 +219,33 @@ describe('tripCrud', () => {
   });
 
   describe('create', () => {
-    it('inserts one trip_days row per day for a multi-day trip', async () => {
-      const startDate = '2026-07-01';
-      const endDate = '2026-07-03';
-      const expectedDates = ['2026-07-01', '2026-07-02', '2026-07-03'];
+    const INSERT_OCCASION_SQL =
+      "INSERT INTO checklist_occasions (trip_id, name) VALUES (?, '收拾')";
+
+    /** Mocks the transaction connection; `templateCategories` is the global template. */
+    function mockCreateExecute(templateCategories: unknown[] = []) {
       mockConnExecute.mockImplementation((sql: string) => {
         if (sql.includes('INSERT INTO trips')) {
           return Promise.resolve([{ insertId: 42 }]);
         }
+        if (sql.includes('checklist_template_categories')) {
+          return Promise.resolve([templateCategories]);
+        }
+        if (sql.includes('checklist_template_')) {
+          return Promise.resolve([[]]);
+        }
+        if (sql.includes('INSERT INTO checklist_trip_categories')) {
+          return Promise.resolve([{ insertId: 500 }]);
+        }
         return Promise.resolve([{ affectedRows: 1 }]);
       });
+    }
+
+    it('inserts one trip_days row per day for a multi-day trip', async () => {
+      const startDate = '2026-07-01';
+      const endDate = '2026-07-03';
+      const expectedDates = ['2026-07-01', '2026-07-02', '2026-07-03'];
+      mockCreateExecute();
       mockPoolExecute.mockResolvedValueOnce([
         [
           {
@@ -255,12 +272,7 @@ describe('tripCrud', () => {
     });
 
     it('commits the transaction and returns the freshly selected trip on success', async () => {
-      mockConnExecute.mockImplementation((sql: string) => {
-        if (sql.includes('INSERT INTO trips')) {
-          return Promise.resolve([{ insertId: 42 }]);
-        }
-        return Promise.resolve([{ affectedRows: 1 }]);
-      });
+      mockCreateExecute();
       const freshTripRow = {
         id: 42,
         title: 'New Trip',
@@ -304,6 +316,81 @@ describe('tripCrud', () => {
       });
       expect(mockConnRelease).toHaveBeenCalled();
       expect(mockLogger.info).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {
+        label: 'the template has categories',
+        template: [{ id: 1, name: '衣物' }],
+        expectCategoryCopy: true,
+      },
+      {
+        label: 'the template is empty',
+        template: [],
+        expectCategoryCopy: false,
+      },
+    ])(
+      'builds the checklist and default occasion in the same transaction when $label',
+      async ({ template, expectCategoryCopy }) => {
+        mockCreateExecute(template);
+        mockPoolExecute.mockResolvedValueOnce([
+          [
+            {
+              id: 42,
+              title: 'New Trip',
+              destination: null,
+              start_date: '2026-07-01',
+              end_date: '2026-07-01',
+              description: null,
+              created_at: '2026-07-01T00:00:00.000Z',
+            },
+          ],
+        ]);
+
+        await create({
+          title: 'New Trip',
+          startDate: '2026-07-01',
+          endDate: '2026-07-01',
+        });
+
+        const executedSql = mockConnExecute.mock.calls.map(([sql]) => sql);
+        expect(
+          executedSql.some(sql =>
+            (sql as string).includes('INSERT INTO checklist_trip_categories'),
+          ),
+        ).toBe(expectCategoryCopy);
+        expect(mockConnExecute).toHaveBeenCalledWith(INSERT_OCCASION_SQL, [42]);
+        expect(executedSql.indexOf(INSERT_OCCASION_SQL)).toBeGreaterThan(
+          executedSql.findIndex(sql =>
+            (sql as string).includes('INSERT INTO trip_days'),
+          ),
+        );
+        expect(mockConnCommit).toHaveBeenCalledTimes(1);
+        expect(mockConnRollback).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rolls back the trip when building its checklist fails', async () => {
+      mockConnExecute.mockImplementation((sql: string) => {
+        if (sql.includes('INSERT INTO trips')) {
+          return Promise.resolve([{ insertId: 42 }]);
+        }
+        if (sql.includes('checklist_template_categories')) {
+          return Promise.reject(new Error('template error'));
+        }
+        return Promise.resolve([{ affectedRows: 1 }]);
+      });
+
+      await expect(
+        create({
+          title: 'New Trip',
+          startDate: '2026-07-01',
+          endDate: '2026-07-01',
+        }),
+      ).rejects.toThrow('template error');
+
+      expect(mockConnRollback).toHaveBeenCalled();
+      expect(mockConnCommit).not.toHaveBeenCalled();
     });
 
     it('rolls back the transaction and rethrows when a query fails mid-transaction', async () => {

@@ -4,7 +4,7 @@ import { createLogger } from '../../logger';
 import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParam } from './params';
-import { rejectNotFound } from './shared/responses';
+import { ensureTripExists } from './shared/tripGuards';
 
 const logger = createLogger('checklist-trip');
 
@@ -14,7 +14,7 @@ export async function getTripChecklist(
 ): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
      #swagger.summary = 'Get the packing checklist for a trip'
-     #swagger.description = 'Returns the trip checklist. Automatically initialized from the global template if it does not exist yet.'
+     #swagger.description = 'Returns the trip checklist, which is built from the global template when the trip is created. Read-only: a trip without a checklist (e.g. created before this behaviour) returns empty categories and occasions.'
      #swagger.responses[200] = {
        description: 'Trip checklist',
        content: {
@@ -85,11 +85,13 @@ export async function getTripChecklist(
        }
      } */
   const tripId = idParam(req, 'tripId');
-  const checklist = await checklistRepo.findOrInitChecklist(tripId);
-  if (!checklist) {
-    const message = 'Get-checklist rejected: trip not found';
-    rejectNotFound(res, logger, 'Trip', message, { tripId });
+  const checklist = await checklistRepo.findChecklist(tripId);
+  if (checklist) {
+    res.json(checklist);
     return;
   }
-  res.json(checklist);
+  if (!(await ensureTripExists(tripId, res, logger, 'Get-checklist'))) {
+    return;
+  }
+  res.json({ tripId, categories: [], occasions: [] });
 }
