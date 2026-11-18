@@ -111,7 +111,30 @@ export async function updateTripItem(
 
 export async function setCheck(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Set the checked state of an item within an occasion' */
+     #swagger.summary = 'Set the checked state of an item at one of its storage locations within an occasion'
+     #swagger.description = 'Each storage location of an item is checked independently.'
+     #swagger.requestBody = {
+       required: true,
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             required: ['checked', 'location'],
+             properties: {
+               checked: { type: 'boolean', example: true },
+               location: {
+                 type: 'string',
+                 description: 'One of the storage locations of the item (託運 or 隨身); an empty string when it has none.',
+                 example: '託運'
+               }
+             }
+           }
+         }
+       }
+     }
+     #swagger.responses[204] = { description: 'Check state stored' }
+     #swagger.responses[400] = { description: 'checked is not a boolean, or location is not a string or not one of the locations of the item' }
+     #swagger.responses[404] = { description: 'Occasion or item not found' } */
   const meta = idParams(req, 'tripId', 'occId', 'itemId');
   const { tripId, occId, itemId } = meta;
   const body = parseCheckBody(req.body);

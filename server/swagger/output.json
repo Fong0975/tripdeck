@@ -1940,12 +1940,24 @@
                           },
                           "checks": {
                             "type": "object",
+                            "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
                             "additionalProperties": {
                               "type": "boolean"
                             },
                             "example": {
-                              "3": true,
-                              "7": true
+                              "3|託運": true,
+                              "3|隨身": true,
+                              "7|": true
+                            }
+                          },
+                          "specChecks": {
+                            "type": "object",
+                            "description": "Keys are `<specId>|<location>`; only checked entries are present.",
+                            "additionalProperties": {
+                              "type": "boolean"
+                            },
+                            "example": {
+                              "11|託運": true
                             }
                           }
                         }
@@ -1993,6 +2005,13 @@
                       "example": "回程"
                     },
                     "checks": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "boolean"
+                      },
+                      "example": {}
+                    },
+                    "specChecks": {
                       "type": "object",
                       "additionalProperties": {
                         "type": "boolean"
@@ -2053,12 +2072,24 @@
                     },
                     "checks": {
                       "type": "object",
+                      "description": "Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.",
                       "additionalProperties": {
                         "type": "boolean"
                       },
                       "example": {
-                        "3": true,
-                        "7": true
+                        "3|託運": true,
+                        "3|隨身": true,
+                        "7|": true
+                      }
+                    },
+                    "specChecks": {
+                      "type": "object",
+                      "description": "Keys are `<specId>|<location>`; only checked entries are present.",
+                      "additionalProperties": {
+                        "type": "boolean"
+                      },
+                      "example": {
+                        "11|託運": true
                       }
                     }
                   }
@@ -2110,8 +2141,8 @@
         "tags": [
           "Trip Checklist"
         ],
-        "summary": "Set the checked state of an item within an occasion",
-        "description": "",
+        "summary": "Set the checked state of an item at one of its storage locations within an occasion",
+        "description": "Each storage location of an item is checked independently.",
         "parameters": [
           {
             "name": "tripId",
@@ -2140,10 +2171,38 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "Check state stored"
           },
           "400": {
-            "description": "Bad Request"
+            "description": "checked is not a boolean, or location is not a string or not one of the locations of the item"
+          },
+          "404": {
+            "description": "Occasion or item not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "checked",
+                  "location"
+                ],
+                "properties": {
+                  "checked": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "description": "One of the storage locations of the item (託運 or 隨身); an empty string when it has none.",
+                    "example": "託運"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2153,8 +2212,8 @@
         "tags": [
           "Trip Checklist"
         ],
-        "summary": "Set the checked state of an item spec within an occasion",
-        "description": "",
+        "summary": "Set the checked state of an item spec at one of its storage locations within an occasion",
+        "description": "Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.",
         "parameters": [
           {
             "name": "tripId",
@@ -2191,10 +2250,38 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "Check state stored"
           },
           "400": {
-            "description": "Bad Request"
+            "description": "checked is not a boolean, or location is not a string or not one of the locations of the spec"
+          },
+          "404": {
+            "description": "Occasion, item, or spec not found"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "checked",
+                  "location"
+                ],
+                "properties": {
+                  "checked": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "description": "One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.",
+                    "example": "託運"
+                  }
+                }
+              }
+            }
           }
         }
       }

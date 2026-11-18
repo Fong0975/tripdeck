@@ -61,7 +61,30 @@ export async function deleteTripItemSpec(
 
 export async function setSpecCheck(req: Request, res: Response): Promise<void> {
   /* #swagger.tags = ['Trip Checklist']
-     #swagger.summary = 'Set the checked state of an item spec within an occasion' */
+     #swagger.summary = 'Set the checked state of an item spec at one of its storage locations within an occasion'
+     #swagger.description = 'Each storage location of a spec is checked independently. A spec without a location of its own uses the locations of its item.'
+     #swagger.requestBody = {
+       required: true,
+       content: {
+         'application/json': {
+           schema: {
+             type: 'object',
+             required: ['checked', 'location'],
+             properties: {
+               checked: { type: 'boolean', example: true },
+               location: {
+                 type: 'string',
+                 description: 'One of the storage locations of the spec (託運 or 隨身); an empty string when it has none.',
+                 example: '託運'
+               }
+             }
+           }
+         }
+       }
+     }
+     #swagger.responses[204] = { description: 'Check state stored' }
+     #swagger.responses[400] = { description: 'checked is not a boolean, or location is not a string or not one of the locations of the spec' }
+     #swagger.responses[404] = { description: 'Occasion, item, or spec not found' } */
   const meta = idParams(req, 'tripId', 'occId', 'itemId', 'specId');
   const { tripId, occId, itemId, specId } = meta;
   const body = parseCheckBody(req.body);

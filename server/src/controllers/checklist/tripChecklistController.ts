@@ -66,8 +66,15 @@ export async function getTripChecklist(
                      name: { type: 'string', example: '收拾' },
                      checks: {
                        type: 'object',
+                       description: 'Keys are `<itemId>|<location>` (location is 託運, 隨身, or empty for an item without a storage location); only checked entries are present.',
                        additionalProperties: { type: 'boolean' },
-                       example: { '3': true, '7': true }
+                       example: { '3|託運': true, '3|隨身': true, '7|': true }
+                     },
+                     specChecks: {
+                       type: 'object',
+                       description: 'Keys are `<specId>|<location>`; only checked entries are present.',
+                       additionalProperties: { type: 'boolean' },
+                       example: { '11|託運': true }
                      }
                    }
                  }
