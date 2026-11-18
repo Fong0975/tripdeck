@@ -4,7 +4,19 @@ import { nextTempId } from '../../shared/checklistUtils';
 import type { EditOccasion } from '../../shared/types';
 import { useTrackedEditState } from '../../shared/useTrackedEditState';
 
+const DEFAULT_OCCASION_NAME = '收拾';
+
+/**
+ * Builds the initial occasion drafts. A checklist without any occasion (a
+ * trip that never had one built) gets a local default draft, which is created
+ * on save, so categories added through the editor always have a column to
+ * check against. The draft is part of the baseline, so it alone never makes
+ * the editor dirty.
+ */
 function initOccasions(occasions: ChecklistOccasion[]): EditOccasion[] {
+  if (occasions.length === 0) {
+    return [{ id: nextTempId(), name: DEFAULT_OCCASION_NAME }];
+  }
   return occasions.map(o => ({ id: o.id, name: o.name }));
 }
 

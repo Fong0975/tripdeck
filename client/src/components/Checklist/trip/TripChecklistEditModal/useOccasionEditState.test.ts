@@ -25,6 +25,15 @@ describe('useOccasionEditState', () => {
     expect(result.current.occasions).toEqual([{ id: 1, name: 'Occasion A' }]);
   });
 
+  it('seeds a default local occasion when the checklist has none, without making the editor dirty', () => {
+    const { result } = renderHook(() => useOccasionEditState([]));
+
+    expect(result.current.visibleOccasions).toHaveLength(1);
+    expect(result.current.visibleOccasions[0].id).toBeLessThan(0);
+    expect(result.current.visibleOccasions[0].name).toBe('收拾');
+    expect(result.current.isDirty).toBe(false);
+  });
+
   it('adds a locally-created occasion with a negative temp id', () => {
     const { result } = renderHook(() => useOccasionEditState(makeOccasions()));
 

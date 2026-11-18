@@ -27,7 +27,8 @@ const IMAGE_READ_CONCURRENCY = 8;
 /**
  * Assembles the full backup payload for one trip: its own fields/images,
  * the full day/attraction/connection content tree, and its checklist
- * (null when the checklist was never initialized for this trip).
+ * (null when the trip has no checklist yet, e.g. it was created before
+ * checklists were built at trip creation and never synced from the template).
  */
 export async function buildTripBackupData(
   tripId: number,
