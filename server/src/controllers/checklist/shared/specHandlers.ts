@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import type { Logger } from '../../../logger';
 import { idParams } from '../params';
 
+import { rejectDisallowedLocation } from './locationGuard';
 import { rejectInvalidBody, rejectNotFound } from './responses';
 import { parseSpecFields } from './validation';
 
@@ -19,6 +20,14 @@ export interface SpecStore {
   parentParam: string;
   verifyItem(itemId: number, parentId: number): Promise<boolean>;
   verifySpec(specId: number, itemId: number): Promise<boolean>;
+  /**
+   * Returns the first location name a write may not file the spec under, or
+   * null. `specId` is omitted when the spec is being created.
+   */
+  findDisallowedLocation(
+    location: string | null | undefined,
+    specId?: number,
+  ): Promise<string | null>;
   create(itemId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   update(specId: number, data: ChecklistSpecBody): Promise<ItemSpec | null>;
   remove(specId: number): Promise<boolean>;
@@ -80,6 +89,18 @@ export async function handleAddSpec(
     rejectNotFound(res, logger, 'Item', message, meta);
     return;
   }
+  if (
+    await rejectDisallowedLocation(
+      res,
+      logger,
+      'add-spec',
+      meta,
+      fields.value.storage_location,
+      location => store.findDisallowedLocation(location),
+    )
+  ) {
+    return;
+  }
   const spec = await store.create(itemId, fields.value);
   if (!spec) {
     const message = 'Add-spec rejected: item not found on create';
@@ -111,6 +132,18 @@ export async function handleUpdateSpec(
     return;
   }
   if (!(await ensureSpecInItem(store, res, 'Update-spec', meta))) {
+    return;
+  }
+  if (
+    await rejectDisallowedLocation(
+      res,
+      logger,
+      'update-spec',
+      meta,
+      fields.value.storage_location,
+      location => store.findDisallowedLocation(location, meta.specId),
+    )
+  ) {
     return;
   }
   const spec = await store.update(meta.specId, fields.value);

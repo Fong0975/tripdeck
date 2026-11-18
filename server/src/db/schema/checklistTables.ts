@@ -2,7 +2,22 @@ import type { TableDef } from './types';
 
 // --- Table definitions (ordered by foreign key dependency) ---
 
+export const LOCATION_LABEL_TABLE = 'checklist_location_labels';
+
 export const checklistTables: TableDef[] = [
+  {
+    name: LOCATION_LABEL_TABLE,
+    columns: [
+      { name: 'id', type: 'INT', autoIncrement: true, primaryKey: true },
+      { name: 'name', type: 'VARCHAR(64)', notNull: true },
+      { name: 'show_as_group', type: 'TINYINT(1)', notNull: true, default: 1 },
+      { name: 'sort_order', type: 'INT', notNull: true, default: 0 },
+    ],
+    uniqueKeys: [
+      { name: 'uq_checklist_location_labels_name', columns: ['name'] },
+    ],
+  },
+
   {
     name: 'checklist_template_categories',
     columns: [

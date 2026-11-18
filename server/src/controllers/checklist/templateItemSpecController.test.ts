@@ -23,6 +23,10 @@ vi.mock('../../repositories/checklist/template', () => ({
   verifySpecBelongsToItem: vi.fn(),
 }));
 
+vi.mock('../../repositories/checklist/locationLabelRepository', () => ({
+  findDisallowedLocation: vi.fn().mockResolvedValue(null),
+}));
+
 const blankNameCases = [
   ...invalidNameCases,
   { label: 'name is whitespace only', body: { name: '   ' } },

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as templateRepo from '../../repositories/checklist/template';
 
 import {
@@ -17,6 +18,8 @@ const templateSpecs: SpecStore = {
   parentParam: 'catId',
   verifyItem: templateRepo.verifyItemBelongsToCategory,
   verifySpec: templateRepo.verifySpecBelongsToItem,
+  findDisallowedLocation: location =>
+    labelRepo.findDisallowedLocation(location),
   create: templateRepo.createItemSpec,
   update: templateRepo.updateItemSpec,
   remove: templateRepo.deleteItemSpec,

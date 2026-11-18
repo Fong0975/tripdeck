@@ -1,4 +1,4 @@
-import { getEffectiveLocations } from '@tripdeck/shared';
+import { getEffectiveLocations, STORAGE_OPTIONS } from '@tripdeck/shared';
 import { Fragment } from 'react';
 
 import { summarizeSpecLocations } from '@/components/Checklist/shared/checklistUtils';
@@ -39,7 +39,10 @@ export default function ChecklistItemRow({
 }: Props) {
   const specs = item.specs ?? [];
   const hasSpecs = specs.length > 0;
-  const locations = getEffectiveLocations(item.storage_location);
+  const locations = getEffectiveLocations(
+    item.storage_location,
+    STORAGE_OPTIONS,
+  );
   const hasLocationRows = !hasSpecs && locations.length > 1;
   const hasChildren = hasSpecs || hasLocationRows;
   const [singleLocation] = locations;

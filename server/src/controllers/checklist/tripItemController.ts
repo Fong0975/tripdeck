@@ -2,6 +2,7 @@ import type { UpdateTripChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParams } from './params';
@@ -33,6 +34,13 @@ const tripItems: ItemStore<UpdateTripChecklistItemBody> = {
   create: checklistRepo.createTripItem,
   parseUpdate: parseTripItemPatch,
   verifyItem: checklistRepo.verifyItemBelongsToTrip,
+  findDisallowedLocation: async (location, itemId) =>
+    labelRepo.findDisallowedLocation(
+      location,
+      itemId === undefined
+        ? []
+        : await checklistRepo.getItemCheckLocations(itemId),
+    ),
   update: checklistRepo.updateTripItem,
   remove: checklistRepo.deleteTripItem,
 };

@@ -27,6 +27,10 @@ vi.mock('../../repositories/checklist/trip', () => ({
   verifyOccasionBelongsToTrip: vi.fn(),
 }));
 
+vi.mock('../../repositories/checklist/locationLabelRepository', () => ({
+  findDisallowedLocation: vi.fn().mockResolvedValue(null),
+}));
+
 const blankNameCases = [
   ...invalidNameCases,
   { label: 'name is whitespace only', body: { name: '   ' } },

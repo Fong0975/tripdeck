@@ -10,31 +10,54 @@ import { hasStorageOption } from './checklistUtils';
 
 describe('getEffectiveLocations', () => {
   it.each([
-    { name: 'null', value: null, expected: [''] },
-    { name: 'undefined', value: undefined, expected: [''] },
-    { name: 'an empty string', value: '', expected: [''] },
-    { name: 'a single option', value: '託運', expected: ['託運'] },
-    { name: 'both options', value: '託運,隨身', expected: ['託運', '隨身'] },
+    { name: 'null', value: null, order: undefined, expected: [''] },
+    { name: 'undefined', value: undefined, order: undefined, expected: [''] },
+    { name: 'an empty string', value: '', order: undefined, expected: [''] },
     {
-      name: 'both options in reverse order',
+      name: 'a single name',
+      value: '託運',
+      order: undefined,
+      expected: ['託運'],
+    },
+    {
+      name: 'two names keeping stored order',
       value: '隨身,託運',
-      expected: ['託運', '隨身'],
+      order: undefined,
+      expected: ['隨身', '託運'],
     },
     {
-      name: 'options with surrounding spaces',
+      name: 'names with surrounding spaces',
       value: ' 隨身 , 託運 ',
+      order: undefined,
+      expected: ['隨身', '託運'],
+    },
+    {
+      name: 'a name that is not a default label',
+      value: '後背包',
+      order: undefined,
+      expected: ['後背包'],
+    },
+    {
+      name: 'a duplicated name',
+      value: '託運,託運',
+      order: undefined,
+      expected: ['託運'],
+    },
+    { name: 'only separators', value: ',,', order: undefined, expected: [''] },
+    {
+      name: 'names sorted by the given order',
+      value: '隨身,託運',
+      order: ['託運', '隨身'],
       expected: ['託運', '隨身'],
     },
-    { name: 'an unknown value', value: '後背包', expected: [''] },
     {
-      name: 'a mix of known and unknown values',
-      value: '後背包,隨身',
-      expected: ['隨身'],
+      name: 'names missing from the order placed last in stored order',
+      value: '手提,隨身,後背包',
+      order: ['隨身'],
+      expected: ['隨身', '手提', '後背包'],
     },
-    { name: 'a duplicated option', value: '託運,託運', expected: ['託運'] },
-    { name: 'only separators', value: ',,', expected: [''] },
-  ])('returns $expected for $name', ({ value, expected }) => {
-    expect(getEffectiveLocations(value)).toEqual(expected);
+  ])('returns $expected for $name', ({ value, order, expected }) => {
+    expect(getEffectiveLocations(value, order)).toEqual(expected);
   });
 
   it('exposes the empty location as NO_LOCATION', () => {

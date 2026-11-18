@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as checklistRepo from '../../repositories/checklist/trip';
 
 import { idParams } from './params';
@@ -25,6 +26,13 @@ const tripSpecs: SpecStore = {
   parentParam: 'tripId',
   verifyItem: checklistRepo.verifyItemBelongsToTrip,
   verifySpec: checklistRepo.verifyTripSpecBelongsToItem,
+  findDisallowedLocation: async (location, specId) =>
+    labelRepo.findDisallowedLocation(
+      location,
+      specId === undefined
+        ? []
+        : await checklistRepo.getSpecCheckLocations(specId),
+    ),
   create: checklistRepo.createTripItemSpec,
   update: checklistRepo.updateTripItemSpec,
   remove: checklistRepo.deleteTripItemSpec,

@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import appRoutes from './appRoutes';
 import backupRoutes from './backupRoutes';
+import checklistLocationRoutes from './checklistLocationRoutes';
 import checklistTemplateRoutes from './checklistTemplateRoutes';
 import mapsRoutes from './mapsRoutes';
 import tripRoutes from './tripRoutes';
@@ -13,6 +14,7 @@ router.use('/', appRoutes);
 router.use('/backups', backupRoutes);
 router.use('/trips', tripRoutes);
 router.use('/checklist-template', checklistTemplateRoutes);
+router.use('/checklist-locations', checklistLocationRoutes);
 router.use('/weather', weatherRoutes);
 router.use('/maps', mapsRoutes);
 

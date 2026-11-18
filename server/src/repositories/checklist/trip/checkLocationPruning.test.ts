@@ -52,11 +52,11 @@ describe('checkLocationPruning', () => {
         ],
       },
       {
-        name: 'keeps only the empty location for unknown storage values',
-        itemLocation: '後背包',
+        name: 'keeps names that are not defined labels any more',
+        itemLocation: '後背包,隨身',
         expected: [
-          'DELETE FROM checklist_checks WHERE checklist_trip_item_id = ? AND location NOT IN (?)',
-          [5, ''],
+          'DELETE FROM checklist_checks WHERE checklist_trip_item_id = ? AND location NOT IN (?, ?)',
+          [5, '後背包', '隨身'],
         ],
       },
     ])('$name', async ({ itemLocation, expected }) => {

@@ -2,6 +2,7 @@ import type { ChecklistItemBody } from '@tripdeck/shared';
 import type { Request, Response } from 'express';
 
 import { createLogger } from '../../logger';
+import * as labelRepo from '../../repositories/checklist/locationLabelRepository';
 import * as templateRepo from '../../repositories/checklist/template';
 
 import { idParams } from './params';
@@ -25,6 +26,8 @@ const templateItems: ItemStore<ChecklistItemBody> = {
   create: templateRepo.createItem,
   parseUpdate: parseItemFields,
   verifyItem: templateRepo.verifyItemBelongsToCategory,
+  findDisallowedLocation: location =>
+    labelRepo.findDisallowedLocation(location),
   update: templateRepo.updateItem,
   remove: templateRepo.deleteItem,
 };

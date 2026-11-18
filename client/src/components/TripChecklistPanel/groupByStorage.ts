@@ -68,8 +68,8 @@ export function splitByCategory(units: StorageUnit[]): CategorySection[] {
  * Groups the checkable units of a checklist by storage location. Every unit
  * already carries exactly one location (a unit filed under several locations
  * is expanded into one unit per location), so each lands in exactly one
- * group; units without a location go to the `none` group. Empty groups are
- * omitted.
+ * group; units without a location, or under a name that is not one of
+ * {@link STORAGE_OPTIONS}, go to the `none` group. Empty groups are omitted.
  *
  * @param categories The checklist categories.
  * @returns Groups ordered by {@link STORAGE_OPTIONS}, then `none`.
@@ -85,7 +85,11 @@ export function groupByStorage(
     })),
     {
       key: 'none',
-      units: units.filter(unit => unit.location === NO_LOCATION),
+      units: units.filter(
+        unit =>
+          unit.location === NO_LOCATION ||
+          !(STORAGE_OPTIONS as readonly string[]).includes(unit.location),
+      ),
     },
   ];
   return groups.filter(group => group.units.length > 0);

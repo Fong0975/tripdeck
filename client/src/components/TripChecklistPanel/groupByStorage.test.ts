@@ -182,7 +182,7 @@ describe('groupByStorage', () => {
     },
     {
       description:
-        'files unknown location values and specs without any in none',
+        'files names that are not default labels and specs without any in none',
       categories: [
         makeChecklistCategory({
           items: [
@@ -195,7 +195,9 @@ describe('groupByStorage', () => {
           ],
         }),
       ],
-      expected: [{ key: 'none', labels: ['A', 'B > S1'], locations: [''] }],
+      expected: [
+        { key: 'none', labels: ['A', 'B > S1'], locations: ['後背包', ''] },
+      ],
     },
     {
       description:

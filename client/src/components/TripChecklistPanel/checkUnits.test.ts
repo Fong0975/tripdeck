@@ -48,9 +48,9 @@ describe('getSpecLocations', () => {
       expected: [''],
     },
     {
-      name: 'ignores unknown location values',
+      name: 'keeps names that are not default labels',
       specLocation: '後背包',
-      expected: [''],
+      expected: ['後背包'],
     },
   ];
 
