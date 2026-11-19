@@ -45,6 +45,6 @@ export interface TripBackupData {
     images: UploadedImage[];
   };
   content: TripContent;
-  /** Null when the trip's checklist was never initialized. */
+  /** Null when the trip has no checklist (no occasions) yet. */
   checklist: TripChecklist | null;
 }

@@ -1,9 +1,15 @@
 import { checkKey, parseCheckKey } from '@tripdeck/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ApiError } from '@/api/client';
 import { showToast } from '@/components/ui/toast';
 import type { TripChecklist } from '@/types';
-import { getTripChecklist, setCheck, setSpecCheck } from '@/utils/storage';
+import {
+  getTripChecklist,
+  setCheck,
+  setSpecCheck,
+  syncTripChecklistFromTemplate,
+} from '@/utils/storage';
 
 import type { CheckGetter } from './checkUnits';
 import {
@@ -36,6 +42,7 @@ export function useChecklistState(
   const [localChecks, setLocalChecks] = useState<LocalChecks>({});
   const [localSpecChecks, setLocalSpecChecks] = useState<LocalChecks>({});
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const reload = useCallback(async () => {
     setChecklist(await getTripChecklist(tripId));
@@ -216,12 +223,38 @@ export function useChecklistState(
     }
   };
 
+  /**
+   * Copies the global template into a checklist without categories. A 409
+   * means another session already filled the checklist, so it is reloaded
+   * instead of reported as a failure. Always resolves.
+   */
+  const handleSyncTemplate = async () => {
+    setSyncing(true);
+    try {
+      const synced = await syncTripChecklistFromTemplate(tripId);
+      setChecklist(synced);
+      if (synced.categories.length === 0) {
+        showToast('info', '範本目前沒有內容，請先到首頁編輯範本。');
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        await handleEditSaved();
+      } else {
+        showToast('error', '同步範本失敗，請稍後再試');
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return {
     checklist,
     loading,
     loadError,
     retryLoad: loadChecklist,
     saving,
+    syncing,
+    handleSyncTemplate,
     isDirty,
     getCheck,
     getSpecCheck,

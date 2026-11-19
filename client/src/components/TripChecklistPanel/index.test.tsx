@@ -92,6 +92,8 @@ function makeState(
     loadError: false,
     retryLoad: vi.fn(),
     saving: false,
+    syncing: false,
+    handleSyncTemplate: vi.fn(),
     isDirty: false,
     getCheck: vi.fn(),
     getSpecCheck: vi.fn(),
@@ -145,9 +147,7 @@ describe('TripChecklistPanel', () => {
     render(<TripChecklistPanel tripId={1} />);
 
     expect(
-      screen.getByText(
-        '尚未有任何分類，請點擊「編輯清單」以開始建立行李清單。',
-      ),
+      screen.getByText('此行程尚無行李清單，可從範本同步，或自行建立。'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByText('編輯清單'));
@@ -155,6 +155,22 @@ describe('TripChecklistPanel', () => {
 
     await user.click(screen.getByText('close-edit-modal'));
     expect(screen.queryByText('edit-modal')).not.toBeInTheDocument();
+  });
+
+  it('calls handleSyncTemplate from the empty state and never shows the sync button once there are categories', async () => {
+    const handleSyncTemplate = vi.fn();
+    vi.mocked(useChecklistState).mockReturnValue(
+      makeState({ checklist: makeChecklist([]), handleSyncTemplate }),
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(<TripChecklistPanel tripId={1} />);
+
+    await user.click(screen.getByText('從範本同步'));
+    expect(handleSyncTemplate).toHaveBeenCalledTimes(1);
+
+    vi.mocked(useChecklistState).mockReturnValue(makeState());
+    rerender(<TripChecklistPanel tripId={1} />);
+    expect(screen.queryByText('從範本同步')).not.toBeInTheDocument();
   });
 
   it('calls handleEditSaved when the edit modal reports saved from the empty state', async () => {

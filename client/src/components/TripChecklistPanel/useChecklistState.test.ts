@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/api/client';
 import { showToast } from '@/components/ui/toast';
 import {
   makeChecklistCategory,
@@ -9,7 +10,12 @@ import {
   makeTripChecklist,
 } from '@/test-utils/fixtures';
 import type { TripChecklist } from '@/types';
-import { getTripChecklist, setCheck, setSpecCheck } from '@/utils/storage';
+import {
+  getTripChecklist,
+  setCheck,
+  setSpecCheck,
+  syncTripChecklistFromTemplate,
+} from '@/utils/storage';
 
 import { useChecklistState } from './useChecklistState';
 
@@ -507,5 +513,70 @@ describe('useChecklistState per-location checks', () => {
     await act(() => result.current.handleEditSaved());
 
     expect(result.current.isDirty).toBe(expectedDirty);
+  });
+});
+
+describe('useChecklistState handleSyncTemplate', () => {
+  const emptyChecklist = makeTripChecklist({ categories: [] });
+
+  it.each([
+    {
+      description: 'stores the synced checklist without a toast',
+      synced: makeChecklist(),
+      expectedToast: null,
+    },
+    {
+      description: 'tells the user when the template has no content',
+      synced: emptyChecklist,
+      expectedToast: ['info', '範本目前沒有內容，請先到首頁編輯範本。'],
+    },
+  ])('$description', async ({ synced, expectedToast }) => {
+    vi.mocked(getTripChecklist).mockResolvedValueOnce(emptyChecklist);
+    vi.mocked(syncTripChecklistFromTemplate).mockResolvedValueOnce(synced);
+    const { result } = await renderLoaded();
+
+    await act(() => result.current.handleSyncTemplate());
+
+    expect(syncTripChecklistFromTemplate).toHaveBeenCalledWith(1);
+    expect(result.current.checklist).toEqual(synced);
+    expect(result.current.syncing).toBe(false);
+    if (expectedToast) {
+      expect(showToast).toHaveBeenCalledWith(...expectedToast);
+    } else {
+      expect(showToast).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each([
+    {
+      description: 'reloads silently when another session already synced (409)',
+      error: new ApiError('conflict', undefined, 409),
+      expectReload: true,
+      expectedToast: null,
+    },
+    {
+      description: 'shows an error toast for other failures',
+      error: new Error('API error'),
+      expectReload: false,
+      expectedToast: ['error', '同步範本失敗，請稍後再試'],
+    },
+  ])('$description', async ({ error, expectReload, expectedToast }) => {
+    vi.mocked(getTripChecklist).mockResolvedValueOnce(emptyChecklist);
+    const { result } = await renderLoaded();
+    vi.mocked(getTripChecklist).mockClear();
+    vi.mocked(getTripChecklist).mockResolvedValueOnce(makeChecklist());
+    vi.mocked(syncTripChecklistFromTemplate).mockRejectedValueOnce(error);
+
+    await act(() => result.current.handleSyncTemplate());
+
+    expect(vi.mocked(getTripChecklist).mock.calls.length).toBe(
+      expectReload ? 1 : 0,
+    );
+    expect(result.current.syncing).toBe(false);
+    if (expectedToast) {
+      expect(showToast).toHaveBeenCalledWith(...expectedToast);
+    } else {
+      expect(showToast).not.toHaveBeenCalled();
+    }
   });
 });

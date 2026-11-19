@@ -17,6 +17,7 @@ import { useTripForm } from './TripForm/useTripForm';
 import type { TripFormValues } from './TripForm/validateTripForm';
 import Modal from './ui/Modal';
 import ModalFooterActions from './ui/ModalFooterActions';
+import ProgressDialog from './ui/ProgressDialog';
 
 interface Props {
   onClose: () => void;
@@ -70,24 +71,27 @@ export default function AddTripModal({ onClose, onAdded }: Props) {
   };
 
   return (
-    <Modal title='新增旅程' onClose={onClose}>
-      <form onSubmit={handleSubmit} className='space-y-4'>
-        <TripFormFields values={form} onChange={handleChange} />
+    <>
+      <Modal title='新增旅程' onClose={onClose}>
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          <TripFormFields values={form} onChange={handleChange} />
 
-        <div>
-          <label className={LABEL_CLS}>圖片</label>
-          <StagedImageUploader onImagesChange={setStagedImages} />
-        </div>
+          <div>
+            <label className={LABEL_CLS}>圖片</label>
+            <StagedImageUploader onImagesChange={setStagedImages} />
+          </div>
 
-        {error && <p className='text-sm text-destructive'>{error}</p>}
+          {error && <p className='text-sm text-destructive'>{error}</p>}
 
-        <ModalFooterActions
-          onCancel={onClose}
-          submitLabel='建立旅程'
-          submitting={submitting}
-          submittingLabel='建立中…'
-        />
-      </form>
-    </Modal>
+          <ModalFooterActions
+            onCancel={onClose}
+            submitLabel='建立旅程'
+            submitting={submitting}
+            submittingLabel='建立中…'
+          />
+        </form>
+      </Modal>
+      <ProgressDialog open={submitting} message='建立旅程中，請稍候…' />
+    </>
   );
 }

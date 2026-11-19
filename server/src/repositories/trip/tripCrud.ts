@@ -5,6 +5,7 @@ import pool from '../../config/database';
 import { createLogger } from '../../logger';
 import { deleteImageFromDisk } from '../../storage/imageFiles';
 import { withTransaction } from '../../utils/withTransaction';
+import { seedTripChecklist } from '../checklist/trip/tripChecklistSeed';
 import * as imageRepo from '../image';
 
 import { getDatesInRange, toDateString, toTripResponse } from './helpers';
@@ -70,8 +71,9 @@ export async function findById(id: number): Promise<Trip | null> {
 }
 
 /**
- * Creates a trip and auto-generates one trip_days row per calendar day
- * between startDate and endDate (inclusive).
+ * Creates a trip, auto-generates one trip_days row per calendar day
+ * between startDate and endDate (inclusive), and builds its packing
+ * checklist from the current global template, all in one transaction.
  *
  * @param data - New trip fields.
  * @returns The created trip (without images).
@@ -101,6 +103,7 @@ export async function create(data: CreateTripBody): Promise<Trip> {
           [insertedId, i + 1, dates[i]],
         );
       }
+      await seedTripChecklist(conn, insertedId);
       return insertedId;
     });
   } catch (err) {
